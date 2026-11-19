@@ -16,6 +16,7 @@ interface Data {
   units: Unit[];
   next_page: number | null;
   next_skip: number;
+  discarded: number;
   partial: boolean;
   scanned_pages: { from: number; to: number };
   note: string;
@@ -147,9 +148,26 @@ describe("health_units_search", () => {
     stubFetch({ ...cnesRoutes(), [`GET ${establishmentsUrl(1, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE } });
     const client = await connectClient();
     const first = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 5 } }));
-    expect(first).toMatchObject({ next_page: 1, next_skip: 5, partial: false });
+    expect(first).toMatchObject({ next_page: 1, next_skip: 5, partial: false, discarded: 0 });
     const second = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 5, skip: 5 } }));
+    expect(second.discarded).toBe(0);
     expect(second.units.map((u) => u.name)).toEqual(["UMS 6", "UMS 7", "UMS 8", "UMS 9", "UMS 10"]);
+  });
+
+  it("does not count a resumed page's discards twice", async () => {
+    const page = JSON.parse(syntheticPage("UMS", 1)) as { estabelecimentos: Record<string, unknown>[] };
+    for (const r of page.estabelecimentos.slice(15)) r.descricao_natureza_juridica_estabelecimento = "4000";
+    stubFetch({
+      ...cnesRoutes(),
+      [`GET ${establishmentsUrl(1, null)}`]: { body: JSON.stringify(page), contentType: JSON_TYPE },
+      [`GET ${establishmentsUrl(2, null)}`]: { body: '{"estabelecimentos":[]}', contentType: JSON_TYPE },
+    });
+    const client = await connectClient();
+    const first = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 10 } }));
+    expect(first).toMatchObject({ next_page: 1, next_skip: 10, discarded: 5 });
+    const second = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 10, skip: 10 } }));
+    expect(second).toMatchObject({ next_page: null, discarded: 0 });
+    expect(second.units).toHaveLength(5);
   });
 
   it("moves to the next page when the limit is filled exactly at a page end", async () => {

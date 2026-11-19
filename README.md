@@ -108,14 +108,19 @@ counts. What it does return, and what it refuses:
   record.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
-  nascimento, servidor, beneficiario or paciente, or the words rg, rua, cep, mae or pai (accents and case ignored).
-  **This guard is name-based and not perfect**: a column with personal data under an innocent name is not caught.
+  nasc (nascimento, DTNASC), servidor, beneficiario or paciente, or the words rg, rua, cep, mae, pai or tel (accents
+  and case ignored; camelCase, acronyms and digits are split, so `numeroRG`, `CEPResidencia` and `RG1` are refused). It fails closed on look-alikes (`NOMENCLATURA`,
+  `QTD_PACIENTES` are refused too). **This guard is name-based and not perfect**: a column with personal data under an
+  innocent or run-together name (`CEPRESIDENCIA`) is not caught.
 - **Files without a header are refused** (`no_header_detected`, no columns returned): if any cell of the first line
   looks like a value (only digits and punctuation, a CPF, CNPJ, e-mail, phone, date or CEP pattern, or longer than 60
-  characters).
+  characters). This also refuses some real headers (a column named `2024`). It cannot catch a headerless file whose
+  first line is plain words (`Maria;Rua das Flores;Centro`): those words would come back as `columns`, so only use
+  files that have a header row.
 - The path must be a `.csv` file inside the folder; anything outside it is `file_not_allowed`, whether or not it
-  exists. The file is opened once (without following a final symbolic link), checked through that open descriptor and
-  read from it, so swapping the file after the check does not change what is read.
+  exists. The file is opened once (without following a final symbolic link, and without blocking, so a named pipe is
+  refused instead of hanging the server), checked through that open descriptor and read from it, so swapping the file
+  after the check does not change what is read.
 - A field over 1 MB (for example an unclosed quote) or a line with more than 300 fields stops the read with
   `invalid_csv`.
 It was tested on synthetic files (including a 137 MB one: about 1 s), **not on the real 156 file**.

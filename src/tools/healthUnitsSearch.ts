@@ -67,7 +67,10 @@ export const healthUnitsSearchOutput = envelope(
     discarded: z
       .number()
       .int()
-      .describe("Records on the scanned pages dropped as non-public or incomplete; a sudden jump can mean a format change."),
+      .describe(
+        "Records dropped as non-public or incomplete on the pages this call scanned (a page resumed with skip is not " +
+          "counted again); a sudden jump can mean a format change.",
+      ),
     note: z.string(),
   }),
 );
@@ -135,7 +138,8 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
         scanned++;
-        discarded += res.value.received - res.value.units.length;
+        // A call resuming inside a page (skip > 0) already had that page's discards counted by the previous call.
+        if (!(scanned === 1 && skip > 0)) discarded += res.value.received - res.value.units.length;
         const skipped = scanned === 1 ? skip : 0;
         const matches = res.value.units.filter(
           (u) =>

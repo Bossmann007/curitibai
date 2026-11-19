@@ -82,6 +82,7 @@ export class CsvParser {
     if (this.inQuotes && this.quoteSeen) this.inQuotes = false;
     if (this.touched || this.field !== "") {
       this.record.push(this.field);
+      if (this.record.length > this.maxColumns) throw new CsvLimitError("columns");
       this.field = "";
       this.emit();
     }

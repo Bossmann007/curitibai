@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,7 @@ import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue } from "../src
 import { connectClient, errorOf } from "./helpers.js";
 
 // Synthetic files only, written to a temporary folder outside the repository.
+const HAS_FIFO = process.platform !== "win32";
 let root: string;
 let dataDir: string;
 
@@ -40,6 +42,10 @@ beforeAll(() => {
   // A line with far more fields than any header.
   writeFileSync(join(dataDir, "wide.csv"), `a,b\n1,2\n${",".repeat(MAX_COLUMNS * 10)}\n`);
   writeFileSync(join(dataDir, "swap.csv"), "a;b\ninside;1\n");
+  // Opening a FIFO for reading would block without O_NONBLOCK. mkfifo does not exist on Windows.
+  if (HAS_FIFO) execFileSync("mkfifo", [join(dataDir, "pipe.csv")]);
+  // 301 fields on the last line, with no trailing newline (the parser's end() path).
+  writeFileSync(join(dataDir, "wide-last.csv"), Array.from({ length: MAX_COLUMNS + 1 }, (_, i) => `c${i}`).join(";"));
   // An unterminated quote must not buffer the rest of the file into one field.
   writeFileSync(join(dataDir, "open-quote.csv"), `a;b\n1;"never closed\n${"x;y\n".repeat(MAX_FIELD_CHARS / 4 + 10)}`);
   writeFileSync(join(dataDir, "notes.txt"), "a;b\n1;2\n");
@@ -106,7 +112,8 @@ describe("header and column guards", () => {
   it("flags personal-looking column names (name-based)", () => {
     for (const c of ["nome", "NOME_SOLICITANTE", "nomeMae", "Name", "cpf", "CNPJ", "RG", "E-mail", "email", "Telefone",
       "fone", "Celular", "Matrícula", "Endereço", "logradouro", "Rua", "CEP", "Data de Nascimento", "servidor",
-      "Beneficiário", "paciente", "MÃE", "pai"]) {
+      "Beneficiário", "paciente", "MÃE", "pai", "numeroRG", "codCep", "ruaResidencia", "DTNASC", "DATA_NASC", "TEL",
+      "telResidencial", "CEPResidencia", "RGTitular", "TELResidencial", "RG1", "CEP2", "tel2", "NumRG2"]) {
       expect({ c, sensitive: isSensitiveColumn(c) }).toEqual({ c, sensitive: true });
     }
     for (const c of ["ASSUNTO", "BAIRRO", "PROTOCOLO", "categoria", "Regional", "Programa", "ORGAO", "DESCRICAO"]) {
@@ -200,6 +207,11 @@ describe("local_csv_summary", () => {
 
   it("fails early on a line with too many fields", async () => {
     expect(errorOf(await call({ file: "wide.csv" }))).toEqual({ error: "invalid_csv" });
+    expect(errorOf(await call({ file: "wide-last.csv" }))).toEqual({ error: "invalid_csv" });
+  });
+
+  it.skipIf(!HAS_FIFO)("refuses a named pipe instead of blocking on it", async () => {
+    expect(errorOf(await call({ file: "pipe.csv" }))).toEqual({ error: "file_not_allowed" });
   });
 
   it("reads comma files in subfolders and limits top", async () => {
