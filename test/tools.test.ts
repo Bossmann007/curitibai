@@ -90,6 +90,29 @@ describe("each tool returns the envelope, valid against its output schema", () =
     const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude", limit: 10 } });
     expect(res.structuredContent).toMatchObject({ data: { partial: true, total: 10 } });
   });
+
+  it("open_datasets_search says how long to wait when a later page is refused with HTTP 429", async () => {
+    let n = 0;
+    stubFetch(happyRoutes());
+    const inner = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
+      n++;
+      if (n > 1) return new Response("", { status: 429, headers: { "retry-after": "30" } });
+      return inner(input, init);
+    }) as typeof fetch;
+    const client = await connectClient();
+    const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude", limit: 10 } });
+    expect(res.structuredContent).toMatchObject({
+      data: { partial: true, total: 10, note: "The source is limiting requests; wait 30 s before trying again." },
+    });
+  });
+
+  it("open_datasets_search has no note when nothing was refused", async () => {
+    stubFetch(happyRoutes());
+    const client = await connectClient();
+    const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude", limit: 5 } });
+    expect((res.structuredContent as { data: object }).data).not.toHaveProperty("note");
+  });
 });
 
 describe("input validation", () => {

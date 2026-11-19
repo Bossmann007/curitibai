@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { detranPrInfo, detranPrInfoOutput, detranPrInfoResult } from "../src/tools/detranPrInfo.js";
+import { detranPrInfo, detranPrInfoOutput, detranPrInfoResult, UNITS_MAX_AGE_DAYS } from "../src/tools/detranPrInfo.js";
 import { DETRAN_HOME_URL, DETRAN_UNITS_URL, LICENSING_NEWS_URL, PORTARIA_907_URL } from "../src/sources/detran.js";
 import { connectClient, errorOf, stubFetch } from "./helpers.js";
 
@@ -99,6 +99,18 @@ describe("detran_pr_info stale-year note", () => {
       /Units and hours were checked on 2026-11-19; it is now 2027, so this data may be outdated/,
     );
     expect(detranPrInfoResult({ topic: "units" }, new Date("2026-06-01T12:00:00Z")).note).not.toMatch(/outdated/);
+  });
+
+  it(`units warn once ${UNITS_MAX_AGE_DAYS} days have passed since checked_at (Curitiba time)`, () => {
+    const units = (iso: string) => detranPrInfoResult({ topic: "units" }, new Date(iso)).note;
+    expect(units("2026-11-19T12:00:00Z")).not.toMatch(/days ago/);
+    expect(units("2027-05-18T12:00:00Z")).not.toMatch(/days ago/); // exactly 180 days
+    expect(units("2027-05-19T02:59:00Z")).not.toMatch(/days ago/); // still 18/5 in Curitiba
+    expect(units("2027-05-19T03:00:00Z")).toMatch(/Units and hours were checked 181 days ago \(more than 180\); they may be outdated\./);
+  });
+
+  it("the calendar has no age warning", () => {
+    expect(note("2027-06-01T12:00:00Z")).not.toMatch(/days ago/);
   });
 
   it("the tool uses the current clock", async () => {

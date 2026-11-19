@@ -362,6 +362,17 @@ describe("object gate (unit)", () => {
     ["lote 12 1234567 itens", "lote 12 1234567 itens"],
     ["item 3 12345678", "item 3 12345678"],
     ["Lei 8666 de 1993, item 12345678", "Lei 8666 de 1993, item 12345678"],
+    ["tel 2025 - 2026", `tel ${MASK}`],
+    ["Fone: 2025-2026", `Fone: ${MASK}`],
+    ["TELEFONE 2025.2026", `TELEFONE ${MASK}`],
+    ["celular:2025 2026", `celular:${MASK}`],
+    ["contato 2025-2026", `contato ${MASK}`],
+    ["WhatsApp : 2025-2026", `WhatsApp : ${MASK}`],
+    ["contrato 2025 - 2026", "contrato 2025 - 2026"],
+    ["hotel 2025 - 2026", "hotel 2025 - 2026"],
+    ["Pimentel 2025-2026", "Pimentel 2025-2026"],
+    ["telefones 2025-2026", "telefones 2025-2026"],
+    ["vigência 2025 - 2026, tel 3333-4444", `vigência 2025 - 2026, tel ${MASK}`],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
   });
@@ -498,6 +509,46 @@ describe("procurement_search paging", () => {
     const data = dataOf(await search({ limit: 20 }));
     expect(data).toMatchObject({ partial: true, next_page: 2 });
     expect(data.note).toMatch(/^The source is limiting requests; wait 60 s before trying again\./);
+  });
+
+  it("says the time budget was reached when a 429 retry wait made the first page slow", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    let n = 0;
+    globalThis.Date.now = () => t;
+    globalThis.fetch = (async () => {
+      if (n++ === 0) {
+        t += 16_000; // the 429 and its retry wait take 16 s
+        return new Response("", { status: 429, headers: { "retry-after": "0" } });
+      }
+      return new Response(syntheticPncpPage(1, 1, 3), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(n).toBe(2);
+      expect(data).toMatchObject({ partial: true, next_page: 2, scanned_pages: { from: 1, to: 1 } });
+      expect(data.note).toMatch(/^Stopped after 1 upstream page\(s\) \(the 15 s time budget was reached\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
+  it("does not blame the time budget when the page cap stopped the scan", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    globalThis.fetch = (async (input: string | URL) => {
+      t += 10_000; // two normal 10 s pages: over the budget, but the cap is the reason
+      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      return new Response(syntheticPncpPage(page * 10, 1, 3), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(data).toMatchObject({ partial: true, next_page: 3, scanned_pages: { from: 1, to: 2 } });
+      expect(data.note).toMatch(/^Stopped after 2 upstream page\(s\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
   });
 
   it("skips the second page when the first was slow", async () => {
