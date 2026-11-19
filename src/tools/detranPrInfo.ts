@@ -66,18 +66,26 @@ export const detranPrInfoOutput = z.object({
   note: z.string(),
 });
 
-function staleNote(year: number, what: string): string {
-  return year > CALENDAR_YEAR ? ` ${what}; it is now ${year}, so this data may be outdated.` : "";
+function staleNote(year: number, what: string, calendarYear: number = CALENDAR_YEAR): string {
+  return year > calendarYear ? ` ${what}; it is now ${year}, so this data may be outdated.` : "";
 }
 
 /** Units and hours are checked by hand; past this many days since CHECKED_AT the units note warns they may be outdated. */
 export const UNITS_MAX_AGE_DAYS = 180;
 
-function ageNote(today: string): string {
-  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${CHECKED_AT}T00:00:00Z`)) / 86_400_000;
-  return days > UNITS_MAX_AGE_DAYS
-    ? ` Units and hours were checked ${days} days ago (more than ${UNITS_MAX_AGE_DAYS}); they may be outdated.`
-    : "";
+/**
+ * Units staleness: the year-based warning, the age warning (more than UNITS_MAX_AGE_DAYS since checkedAt), or one
+ * merged sentence when both apply. `today` is a Curitiba date (YYYY-MM-DD).
+ */
+export function unitsStaleNote(today: string, checkedAt: string = CHECKED_AT, calendarYear: number = CALENDAR_YEAR): string {
+  const year = Number(today.slice(0, 4));
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${checkedAt}T00:00:00Z`)) / 86_400_000;
+  const tooOld = days > UNITS_MAX_AGE_DAYS;
+  if (year > calendarYear && tooOld) {
+    return ` Units and hours were checked on ${checkedAt}, ${days} days ago (more than ${UNITS_MAX_AGE_DAYS}), and it is now ${year}, so this data may be outdated.`;
+  }
+  if (year > calendarYear) return staleNote(year, `Units and hours were checked on ${checkedAt}`, calendarYear);
+  return tooOld ? ` Units and hours were checked ${days} days ago (more than ${UNITS_MAX_AGE_DAYS}); they may be outdated.` : "";
 }
 
 /** Digits in calendar order (earliest due date first). */
@@ -132,8 +140,7 @@ export function detranPrInfoResult(
       `${DETRAN_BASE_NOTE} Units of the 01ª CIRETRAN (Curitiba) block of the Detran-PR units page; the PSTRAN service ` +
       `posts run by city halls are listed only at ${DETRAN_UNITS_URL}. The site publishes no hours per unit and ` +
       "states two different general hours (both in hours.statements); confirm at 0800 643 7373." +
-      staleNote(year, `Units and hours were checked on ${CHECKED_AT}`) +
-      ageNote(today),
+      unitsStaleNote(today),
   };
 }
 
