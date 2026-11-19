@@ -20,7 +20,7 @@ read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_no
 |---|---|---|---|
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page timed out | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
-| `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page`, and `partial` when the 5-request cap stopped the scan | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
+| `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, and `partial` when the 5-request cap stopped the scan | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column (optionally filtered by `column = value`). **Never returns rows** | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -102,7 +102,9 @@ The server never downloads data files. A person does it in a browser:
 
 The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns only
 counts. Groups with fewer than 3 rows are added to `other_count` instead of being listed, so that a filter on a unique
-column cannot reveal a single record. The path must resolve (symlinks included) to a `.csv` file inside the folder.
+column cannot reveal a single record. The first line is always read as the header and returned as `columns`, so use
+files that have a header row. The path must resolve (symlinks included) to a `.csv` file inside the folder. A field
+over 1 MB (for example an unclosed quote) stops the read with `invalid_csv`.
 It was tested on synthetic files (including a 137 MB one: about 1 s), **not on the real 156 file**.
 
 ## Privacy and safety
@@ -130,8 +132,7 @@ It was tested on synthetic files (including a 137 MB one: about 1 s), **not on t
 - CNES: the Ministry's licence notices disagree (CC BY-ND 3.0, CC BY-NC-SA 4.0, MIT; see
   [docs/sources.md](docs/sources.md)). This server treats the data under the strictest one: values are passed on
   unchanged, with attribution in `license_note`. The CNES API has no name filter and no total; `name` is matched on the
-  pages scanned, so a search may need several calls (`next_page`). When the last scanned page has more matches than
-  `limit`, `next_page` points back at that page and a few units repeat; de-duplicate by `cnes_code`.
+  pages scanned, so a search may need several calls: pass `next_page` and `next_skip` back as `page` and `skip`.
 
 ## Development
 

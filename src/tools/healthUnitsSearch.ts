@@ -36,6 +36,13 @@ export const healthUnitsSearchInput = {
     .max(1000)
     .default(1)
     .describe("Upstream page to start scanning from; pass the previous result's next_page to continue."),
+  skip: z
+    .number()
+    .int()
+    .min(0)
+    .max(20)
+    .default(0)
+    .describe("Matches to skip on the first scanned page; pass the previous result's next_skip to continue."),
 };
 
 const unitSchema = z.object({
@@ -55,6 +62,7 @@ export const healthUnitsSearchOutput = envelope(
     units: z.array(unitSchema),
     scanned_pages: z.object({ from: z.number().int(), to: z.number().int() }),
     next_page: z.number().int().nullable(),
+    next_skip: z.number().int(),
     partial: z.boolean(),
     note: z.string(),
   }),
@@ -66,11 +74,11 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   description:
     "Search active public-administration health units in Curitiba in the Ministry of Health CNES open API: CNES code, " +
     "name, unit type, address, neighbourhood, CEP, unit phone, management sphere. Filters by name text and unit type. " +
-    "Scans at most 5 upstream pages of 20 per call; continue with next_page. Private and non-profit units are not " +
+    "Scans at most 5 upstream pages of 20 per call; continue with next_page and next_skip. Private and non-profit units are not " +
     "returned. Read-only.",
   inputSchema: healthUnitsSearchInput,
   outputSchema: healthUnitsSearchOutput,
-  handler: async ({ name, unit_type, limit, page }) => {
+  handler: async ({ name, unit_type, limit, page, skip }) => {
     try {
       const types = await getUnitTypes();
       let serverType: number | null = null;
@@ -83,6 +91,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
               units: [],
               scanned_pages: { from: page, to: page - 1 },
               next_page: null,
+              next_skip: 0,
               partial: false,
               note: `No CNES unit type matches unit_type. ${SCOPE_NOTE}`,
             },
@@ -99,8 +108,8 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       const units: HealthUnit[] = [];
       let fetchedAt = "";
       let nextPage: number | null = null;
+      let nextSkip = 0;
       let partial = false;
-      let repeated = false;
       let p = page;
       let scanned = 0;
       for (;;) {
@@ -120,20 +129,22 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
         scanned++;
+        const skipped = scanned === 1 ? skip : 0;
         const matches = res.value.units.filter(
           (u) =>
             (needle === null || fold(u.name).includes(needle)) &&
             (clientTypes === null || (u.unit_type_code !== null && clientTypes.has(u.unit_type_code))),
         );
         const room = limit - units.length;
-        for (const u of matches.slice(0, room)) {
+        const taken = matches.slice(skipped, skipped + room);
+        for (const u of taken) {
           units.push({ ...u, unit_type: u.unit_type_code === null ? null : (types.value.get(u.unit_type_code) ?? null) });
         }
         const lastPage = res.value.received < CNES_PAGE_SIZE;
-        if (matches.length > room) {
-          // This page has more matches than fit: the next call restarts on it, so a few units repeat.
+        if (matches.length > skipped + taken.length) {
+          // More matches on this page than fit: the next call resumes on it, after the ones returned.
           nextPage = p;
-          repeated = true;
+          nextSkip = skipped + taken.length;
           break;
         }
         if (lastPage) break;
@@ -145,12 +156,12 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       }
       const notes = [SCOPE_NOTE];
       if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
-      if (repeated) notes.unshift("next_page restarts on the last scanned page: de-duplicate by cnes_code.");
       return ok({
         data: {
           units,
           scanned_pages: { from: page, to: page + scanned - 1 },
           next_page: nextPage,
+          next_skip: nextSkip,
           partial,
           note: notes.join(" "),
         },

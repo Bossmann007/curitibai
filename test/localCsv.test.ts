@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { CsvParser, detectDelimiter } from "../src/csv.js";
+import { CsvFieldTooLongError, CsvParser, detectDelimiter, MAX_FIELD_CHARS } from "../src/csv.js";
 import { DATA_DIR_ENV } from "../src/localfs.js";
 import { localCsvSummaryOutput } from "../src/tools/localCsvSummary.js";
 import { connectClient, errorOf } from "./helpers.js";
@@ -35,6 +35,8 @@ beforeAll(() => {
   const ascii = `nome;categoria\n${"linha;ascii\n".repeat(100_000)}`;
   writeFileSync(join(dataDir, "latin1.csv"), Buffer.concat([Buffer.from(ascii, "latin1"), Buffer.from("x;Saúde\nx;Saúde\nx;Saúde\n", "latin1")]));
   writeFileSync(join(dataDir, "empty.csv"), "");
+  // An unterminated quote must not buffer the rest of the file into one field.
+  writeFileSync(join(dataDir, "open-quote.csv"), `a;b\n1;"never closed\n${"x;y\n".repeat(MAX_FIELD_CHARS / 4 + 10)}`);
   writeFileSync(join(dataDir, "notes.txt"), "a;b\n1;2\n");
   writeFileSync(join(root, "outside.csv"), "a;b\n1;2\n");
   symlinkSync(join(root, "outside.csv"), join(dataDir, "link-out.csv"));
@@ -62,6 +64,13 @@ describe("csv parser", () => {
       p.end();
       expect(out).toEqual([["a", "b"], ["x;1", 'say "hi"'], ["multi\r\nline", "z"], ["last", "row"]]);
     }
+  });
+
+  it("stops a field that outgrows the cap", () => {
+    const p = new CsvParser(";", () => undefined, 10);
+    expect(() => p.push('a;"0123456789ABC')).toThrow(CsvFieldTooLongError);
+    const q = new CsvParser(";", () => undefined, 10);
+    expect(() => q.push("a;0123456789ABC")).toThrow(CsvFieldTooLongError);
   });
 
   it("detects the delimiter from the header", () => {
@@ -145,6 +154,7 @@ describe("local_csv_summary", () => {
     ["/etc/passwd", "file_not_allowed"],
     ["missing.csv", "file_not_found"],
     ["empty.csv", "invalid_csv"],
+    ["open-quote.csv", "invalid_csv"],
   ])("rejects %s with %s", async (file, code) => {
     const res = await call({ file });
     expect(errorOf(res)).toEqual({ error: code });

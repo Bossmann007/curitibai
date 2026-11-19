@@ -12,8 +12,9 @@ export const CNES_LICENSE_NOTE =
   "Source: Ministério da Saúde, Cadastro Nacional de Estabelecimentos de Saúde (CNES), via the API de Dados Abertos " +
   "(https://apidadosabertos.saude.gov.br/) of the Portal de Dados Abertos do SUS (https://dadosabertos.saude.gov.br/). " +
   "Values are passed on unchanged; only selected fields are returned. The Ministry's notices differ: the portal home " +
-  "says CC BY-ND 3.0, its Cartilha (https://dadosabertos.saude.gov.br/Cartilha-de-Dados-Abertos-do-SUS_ISBN.pdf) says " +
-  "CC BY-NC-SA 4.0, and the API's Swagger (https://apidadosabertos.saude.gov.br/static/swagger.json) says MIT; " +
+  "says its content is under CC BY-ND 3.0, the portal's Cartilha de Dados Abertos do SUS " +
+  "(https://dadosabertos.saude.gov.br/Cartilha-de-Dados-Abertos-do-SUS_ISBN.pdf) is under CC BY-NC-SA 4.0, and the " +
+  "API's Swagger (https://apidadosabertos.saude.gov.br/static/swagger.json) says MIT; " +
   "treat the data under the strictest of them (attribution, non-commercial, no derivatives). " +
   "Unofficial; not affiliated with Ministério da Saúde or Prefeitura de Curitiba.";
 
