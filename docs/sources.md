@@ -149,7 +149,8 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
   "2026-2027") are kept, so an 8-digit phone shaped like that is not masked (fails open, by owner decision);
   with one of those before them ("41 2025-2026", "(041) 2025-2026"), or a contact word right before them (tel, tels,
   telef, cel, fone, telefone(s), celular, contato(s), whatsapp, whats, zap, fax, ramal, any case, not inside a longer
-  word such as "hotel", "Excel" or "Marcel", optional "." and ":", as in "Tel. 2025-2026"), they are still masked. The
+  word such as "hotel", "Excel" or "Marcel", optional "." and ":", as in "Tel. 2025-2026"), they are still masked. The cue covers only the number right after
+  it ("tel 2025-2026 2027-2028" keeps the second pair) and only the words listed (not "fones" or "cels"). The
   official text is on the linked page.
 - The `query` text matches only the object the tool returns (after masking) and the body name, never a withheld object.
 - No supplier is ever returned (the endpoint has none, and the output is built field by field).
