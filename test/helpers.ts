@@ -66,10 +66,19 @@ export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[
   { name: "open_dataset_preview", arguments: { dataset_url: DETAIL_UNIDADES, rows: 2 } },
 ];
 
+/** Error results carry their JSON in the text content only. */
+export function errorOf(res: object): unknown {
+  const r = res as { isError?: unknown; content?: { type: string; text: string }[]; structuredContent?: unknown };
+  if (r.isError !== true || r.structuredContent !== undefined) return undefined;
+  const first = r.content?.[0];
+  return first?.type === "text" ? JSON.parse(first.text) : undefined;
+}
+
 export async function connectClient(): Promise<Client> {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await createServer().connect(serverTransport);
   const client = new Client({ name: "test", version: "0.0.0" });
   await client.connect(clientTransport);
+  await client.listTools(); // as real clients do; enables client-side outputSchema validation
   return client;
 }

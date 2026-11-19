@@ -41,9 +41,13 @@ export function ok<T>(payload: { data: T; source_url: string; fetched_at: string
   };
 }
 
+/**
+ * Error results carry the JSON only as text: MCP clients validate `structuredContent` against the tool's
+ * outputSchema even when `isError` is set, so an error object there would be rejected.
+ */
 export function fail(error: ErrorCode, message?: string): CallToolResult {
   const payload = message ? { error, message } : { error };
-  return { isError: true, content: [{ type: "text", text: JSON.stringify(payload) }], structuredContent: payload };
+  return { isError: true, content: [{ type: "text", text: JSON.stringify(payload) }] };
 }
 
 /** Maps thrown errors to a fixed error code. Never echoes source text or user input. */

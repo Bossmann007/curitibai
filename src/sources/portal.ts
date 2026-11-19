@@ -59,7 +59,8 @@ export function parseSearchPage(html: string): SearchPage {
   const current = pages.find((p) => /disabled/.test(p[2] ?? ""));
   const currentNo = current ? Number(current[1]) : 1;
   const has_next = pages.some((p) => Number(p[1]) > currentNo);
-  return { total: totalMatch ? Number(totalMatch[1]) : null, items, has_next };
+  const empty = /Nenhum resultado encontrado/i.test(html);
+  return { total: totalMatch ? Number(totalMatch[1]) : empty ? 0 : null, items, has_next };
 }
 
 function toIsoDate(ddmmyyyy: string): string | null {
@@ -103,10 +104,13 @@ export function parseDatasetPreview(html: string, maxRows: number): DatasetPrevi
   return { title, columns, rows, note: null };
 }
 
-export function getDatasetPage(url: string): Promise<Cached<{ url: string; html: string }>> {
+export const MAX_PREVIEW_ROWS = 20;
+
+/** Caches the parsed preview (at most MAX_PREVIEW_ROWS rows), not the page itself. */
+export function getDatasetPreview(url: string): Promise<Cached<{ url: string; preview: DatasetPreview }>> {
   return sharedCache.getOrLoad(`GET ${url}`, async () => {
     const res = await fetchText(url);
     if (!/text\/html/i.test(res.contentType)) throw new SourceUnavailableError("not an HTML dataset page");
-    return { url: res.url, html: res.body };
+    return { url: res.url, preview: parseDatasetPreview(res.body, MAX_PREVIEW_ROWS) };
   });
 }

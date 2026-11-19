@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { tools } from "../src/tools/index.js";
 import { scheduleUrl, URBS_LINES_URL, URBS_STOPS_URL } from "../src/sources/urbs.js";
 import { PORTAL_SEARCH_URL } from "../src/sources/portal.js";
-import { connectClient, DETAIL_TRANSPORTE, happyRoutes, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
+import { connectClient, DETAIL_TRANSPORTE, errorOf, happyRoutes, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
 
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
@@ -48,7 +48,7 @@ describe("each tool returns the envelope, valid against its output schema", () =
     const calls = stubFetch(happyRoutes());
     const client = await connectClient();
     const res = await client.callTool({ name: "bus_line_schedule", arguments: { line_code: "x99", day_type: "sunday" } });
-    expect(res.structuredContent).toEqual({ error: "line_not_found" });
+    expect(errorOf(res)).toEqual({ error: "line_not_found" });
     expect(calls.map((c) => c.url)).toEqual([URBS_LINES_URL]);
   });
 
@@ -124,20 +124,20 @@ describe("source down", () => {
     const client = await connectClient();
     const res = await client.callTool(call);
     expect(res.isError).toBe(true);
-    expect(res.structuredContent).toEqual({ error: "source_unavailable" });
+    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
   });
 
   it("bus_line_schedule fails cleanly when only the timetable is down", async () => {
     stubFetch({ ...happyRoutes(), [`GET ${scheduleUrl("182")}`]: { status: 404, body: "<html>não encontrada</html>" } });
     const client = await connectClient();
     const res = await client.callTool({ name: "bus_line_schedule", arguments: { line_code: "182", day_type: "weekday" } });
-    expect(res.structuredContent).toEqual({ error: "source_unavailable" });
+    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
   });
 
   it("a malformed source body is source_unavailable, not invented data", async () => {
     stubFetch({ [`GET ${URBS_LINES_URL}`]: { body: "<html>maintenance</html>" } });
     const client = await connectClient();
     const res = await client.callTool({ name: "bus_lines_search", arguments: {} });
-    expect(res.structuredContent).toEqual({ error: "source_unavailable" });
+    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
   });
 });
