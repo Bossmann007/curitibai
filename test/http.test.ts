@@ -1,34 +1,39 @@
 import { describe, expect, it } from "vitest";
 import { fetchText, isAllowedUrl, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
-import { connectClient, errorOf, stubFetch } from "./helpers.js";
+import { stubFetch } from "./helpers.js";
 
 const OK = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=1";
 
 describe("host allowlist (SSRF)", () => {
   it.each([
-    "https://curitiba.pr.gov.br/x",
-    "https://www.curitiba.pr.gov.br/dadosabertos/",
     "https://dadosabertos.curitiba.pr.gov.br/conjuntodado",
-    "https://urbs.curitiba.pr.gov.br/",
-    "https://www.urbs.curitiba.pr.gov.br/portal/",
-    "https://WWW.CURITIBA.PR.GOV.BR/",
-    "https://www.curitiba.pr.gov.br:443/",
+    "https://DADOSABERTOS.CURITIBA.PR.GOV.BR/",
+    "https://dadosabertos.curitiba.pr.gov.br:443/",
+    "https://dadosabertos.curitiba.pr.gov.br./",
   ])("allows %s", (u) => expect(isAllowedUrl(u)).toBe(true));
 
   it.each([
-    "http://www.curitiba.pr.gov.br/",
-    "https://evilcuritiba.pr.gov.br/",
-    "https://curitiba.pr.gov.br.evil.com/",
-    "https://www.curitiba.pr.gov.br@evil.com/",
-    "https://user:pass@www.curitiba.pr.gov.br/",
-    "https://www.curitiba.pr.gov.br:8443/",
+    // hosts whose robots.txt disallows automated access
+    "https://mid-dadosabertos.curitiba.pr.gov.br/156/2026-11-18_156_-_Base_de_Dados.csv",
     "https://dadosabertos.c3sl.ufpr.br/curitiba/",
+    // hosts dropped from scope
+    "https://www.curitiba.pr.gov.br/dadosabertos/",
+    "https://www.urbs.curitiba.pr.gov.br/portal/",
+    "https://curitiba.pr.gov.br/",
+    "https://github.com/benaytms/urbs-gtfs/releases/download/latest/gtfs_curitiba.zip",
+    // look-alikes and tricks
+    "http://dadosabertos.curitiba.pr.gov.br/",
+    "https://x.dadosabertos.curitiba.pr.gov.br/",
+    "https://evildadosabertos.curitiba.pr.gov.br/",
+    "https://dadosabertos.curitiba.pr.gov.br.evil.com/",
+    "https://dadosabertos.curitiba.pr.gov.br@evil.com/",
+    "https://user:pass@dadosabertos.curitiba.pr.gov.br/",
+    "https://dadosabertos.curitiba.pr.gov.br:8443/",
     "https://127.0.0.1/",
     "https://[::1]/",
     "https://169.254.169.254/latest/meta-data/",
     "file:///etc/passwd",
-    "ftp://www.curitiba.pr.gov.br/",
     "javascript:alert(1)",
     "not a url",
     "",
@@ -56,7 +61,7 @@ describe("fetchText", () => {
 
   it("refuses a redirect to a disallowed host and never requests it", async () => {
     const calls = stubFetch({
-      [`GET ${OK}`]: { status: 302, headers: { location: "https://dadosabertos.c3sl.ufpr.br/curitiba/" } },
+      [`GET ${OK}`]: { status: 302, headers: { location: "https://mid-dadosabertos.curitiba.pr.gov.br/156/" } },
     });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(UrlNotAllowedError);
     expect(calls.map((c) => c.url)).toEqual([OK]);
@@ -71,10 +76,10 @@ describe("fetchText", () => {
   it("follows a redirect inside the allowlist", async () => {
     const target = "https://dadosabertos.curitiba.pr.gov.br/";
     stubFetch({
-      "GET https://www.curitiba.pr.gov.br/dadosabertos/": { status: 301, headers: { location: target } },
+      "GET https://dadosabertos.curitiba.pr.gov.br/old": { status: 301, headers: { location: "/" } },
       [`GET ${target}`]: { body: "home" },
     });
-    const res = await fetchText("https://www.curitiba.pr.gov.br/dadosabertos/");
+    const res = await fetchText("https://dadosabertos.curitiba.pr.gov.br/old");
     expect(res).toMatchObject({ url: target, body: "home" });
   });
 
@@ -93,29 +98,5 @@ describe("fetchText", () => {
   it("caps the response size", async () => {
     stubFetch({ [`GET ${OK}`]: { body: "x".repeat(MAX_RESPONSE_BYTES + 1) } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
-  });
-});
-
-describe("open_dataset_preview allowlist", () => {
-  it.each([
-    "https://example.com/data.csv",
-    "http://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=1",
-    "https://dadosabertos.c3sl.ufpr.br/curitiba/156/",
-    "https://localhost/",
-  ])("rejects %s with url_not_allowed and no fetch", async (dataset_url) => {
-    const calls = stubFetch({});
-    const client = await connectClient();
-    const res = await client.callTool({ name: "open_dataset_preview", arguments: { dataset_url } });
-    expect(res.isError).toBe(true);
-    expect(errorOf(res)).toEqual({ error: "url_not_allowed" });
-    expect(calls).toHaveLength(0);
-  });
-
-  it("rejects an allowlisted URL that redirects off the allowlist", async () => {
-    const calls = stubFetch({ [`GET ${OK}`]: { status: 302, headers: { location: "https://evil.example/" } } });
-    const client = await connectClient();
-    const res = await client.callTool({ name: "open_dataset_preview", arguments: { dataset_url: OK } });
-    expect(errorOf(res)).toEqual({ error: "url_not_allowed" });
-    expect(calls.map((c) => c.url)).toEqual([OK]);
   });
 });

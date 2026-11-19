@@ -33,7 +33,7 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
   name: "open_datasets_search",
   title: "Search Curitiba open datasets",
   description:
-    "Search the Portal de Dados Abertos de Curitiba catalogue. Returns dataset titles, publishers and detail-page URLs to pass to open_dataset_preview. Read-only (the portal search is a form POST).",
+    "Search the Portal de Dados Abertos de Curitiba catalogue. Returns dataset ids, titles, publishers and detail-page URLs; pass an id to dataset_files. Read-only (the portal search is a form POST).",
   inputSchema: openDatasetsSearchInput,
   outputSchema: openDatasetsSearchOutput,
   handler: async ({ query, limit }) => {

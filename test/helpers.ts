@@ -3,8 +3,7 @@ import { vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
-import { URBS_LINES_URL, URBS_STOPS_URL, scheduleUrl } from "../src/sources/urbs.js";
-import { PORTAL_SEARCH_URL } from "../src/sources/portal.js";
+import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 
 export function fixture(name: string): string {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -44,26 +43,23 @@ export function stubFetch(routes: Record<string, Route>): FetchCall[] {
   return calls;
 }
 
-export const DETAIL_UNIDADES = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=680ed5ed-c8b7-4e81-a2af-637d2757027a";
-export const DETAIL_TRANSPORTE = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=ca40f13b-ef61-472b-810f-dd705f85fd2e";
+export const ID_UNIDADES = "680ed5ed-c8b7-4e81-a2af-637d2757027a";
+export const ID_TRANSPORTE = "ca40f13b-ef61-472b-810f-dd705f85fd2e";
+export const EXT_CSV = "377f4e23-0e4f-4f11-954f-ae06ba689558";
+export const FILES_UNIDADES = filesListUrl({ dataset: ID_UNIDADES, extension: EXT_CSV }, 1);
 
 export function happyRoutes(): Record<string, Route> {
   return {
-    [`GET ${URBS_LINES_URL}`]: { body: fixture("urbs_linhas_ativas.json"), contentType: "application/json" },
-    [`GET ${scheduleUrl("182")}`]: { body: fixture("urbs_linha_182_v2.json"), contentType: "application/json" },
-    [`GET ${URBS_STOPS_URL}`]: { body: fixture("urbs_pontos_parada.html") },
     [`POST ${PORTAL_SEARCH_URL}`]: { body: fixture("portal_busca_saude.html") },
-    [`GET ${DETAIL_UNIDADES}`]: { body: fixture("portal_detalhe_unidades.html") },
-    [`GET ${DETAIL_TRANSPORTE}`]: { body: fixture("portal_detalhe_transporte.html") },
+    [`GET ${datasetUrl(ID_UNIDADES)}`]: { body: fixture("portal_detalhe_unidades.html") },
+    [`GET ${FILES_UNIDADES}`]: { body: fixture("portal_arquivos_unidades.json"), contentType: "application/json; charset=utf-8" },
+    [`GET ${datasetUrl(ID_TRANSPORTE)}`]: { body: fixture("portal_detalhe_transporte.html") },
   };
 }
 
 export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[] = [
-  { name: "bus_lines_search", arguments: { query: "botanico" } },
-  { name: "bus_line_schedule", arguments: { line_code: "182", day_type: "weekday" } },
-  { name: "bus_stops_near", arguments: { lat: -25.4296, lon: -49.2713, radius_m: 300 } },
   { name: "open_datasets_search", arguments: { query: "saude", limit: 5 } },
-  { name: "open_dataset_preview", arguments: { dataset_url: DETAIL_UNIDADES, rows: 2 } },
+  { name: "dataset_files", arguments: { dataset_id: ID_UNIDADES } },
 ];
 
 /** Error results carry their JSON in the text content only. */

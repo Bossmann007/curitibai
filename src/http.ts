@@ -14,7 +14,7 @@ export class UrlNotAllowedError extends Error {
   }
 }
 
-/** https only, default port, no credentials, host equal to or a dot-boundary subdomain of an allowed host. */
+/** https only, default port, no credentials, host exactly equal to an allowed host. */
 export function isAllowedUrl(raw: string): boolean {
   let url: URL;
   try {
@@ -26,7 +26,7 @@ export function isAllowedUrl(raw: string): boolean {
   if (url.username !== "" || url.password !== "") return false;
   if (url.port !== "" && url.port !== "443") return false;
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  return ALLOWED_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+  return (ALLOWED_HOSTS as readonly string[]).includes(host);
 }
 
 export interface FetchResult {

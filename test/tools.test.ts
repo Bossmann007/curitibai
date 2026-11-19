@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { tools } from "../src/tools/index.js";
-import { scheduleUrl, URBS_LINES_URL, URBS_STOPS_URL } from "../src/sources/urbs.js";
-import { PORTAL_SEARCH_URL } from "../src/sources/portal.js";
-import { connectClient, DETAIL_TRANSPORTE, errorOf, happyRoutes, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
+import { datasetUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
+import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_UNIDADES, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
 
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the five read-only tools with input and output schemas", async () => {
+  it("lists exactly the two read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
-    expect(listed.map((t) => t.name).sort()).toEqual(
-      ["bus_line_schedule", "bus_lines_search", "bus_stops_near", "open_dataset_preview", "open_datasets_search"],
-    );
+    expect(listed.map((t) => t.name).sort()).toEqual(["dataset_files", "open_datasets_search"]);
     for (const t of listed) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
       expect(t.outputSchema).toBeDefined();
@@ -30,53 +27,30 @@ describe("each tool returns the envelope, valid against its output schema", () =
     const parsed = byName[call.name]!.outputSchema.parse(res.structuredContent);
     expect(Object.keys(parsed).sort()).toEqual(["data", "fetched_at", "license_note", "source_url"]);
     expect(Date.parse(parsed.fetched_at)).not.toBeNaN();
-    expect(new URL(parsed.source_url).hostname.endsWith("curitiba.pr.gov.br")).toBe(true);
+    expect(new URL(parsed.source_url).hostname).toBe("dadosabertos.curitiba.pr.gov.br");
+    expect(parsed.license_note).toMatch(/CC BY 4\.0/);
     expect(parsed.license_note).toMatch(/Unofficial; not affiliated with Prefeitura de Curitiba/);
   });
 
-  it("bus_lines_search folds accents and honours limit", async () => {
-    stubFetch(happyRoutes());
-    const client = await connectClient();
-    const res = await client.callTool({ name: "bus_lines_search", arguments: { query: "botanico" } });
-    expect(res.structuredContent).toMatchObject({ data: { total_matches: 1, lines: [{ code: "464" }] } });
-    const all = await client.callTool({ name: "bus_lines_search", arguments: { limit: 3 } });
-    expect(all.structuredContent).toMatchObject({ data: { total_matches: 8 } });
-    expect((all.structuredContent as { data: { lines: unknown[] } }).data.lines).toHaveLength(3);
-  });
-
-  it("bus_line_schedule returns line_not_found for a code not in the active list, without fetching a timetable", async () => {
+  it("dataset_files lists links without requesting them", async () => {
     const calls = stubFetch(happyRoutes());
     const client = await connectClient();
-    const res = await client.callTool({ name: "bus_line_schedule", arguments: { line_code: "x99", day_type: "sunday" } });
-    expect(errorOf(res)).toEqual({ error: "line_not_found" });
-    expect(calls.map((c) => c.url)).toEqual([URBS_LINES_URL]);
+    const res = await client.callTool({ name: "dataset_files", arguments: { dataset_id: ID_UNIDADES.toUpperCase() } });
+    const data = (res.structuredContent as { data: { total_files: number; files: { url: string }[]; note: string } }).data;
+    expect(data.total_files).toBe(25);
+    expect(data.files).toHaveLength(3);
+    expect(data.note).toMatch(/does not download/);
+    expect(calls.map((c) => c.url)).toEqual([datasetUrl(ID_UNIDADES), FILES_UNIDADES]);
+    for (const f of data.files) expect(calls.some((c) => c.url === f.url)).toBe(false);
   });
 
-  it("bus_stops_near sorts by distance and respects the radius", async () => {
-    stubFetch(happyRoutes());
-    const client = await connectClient();
-    const res = await client.callTool({ name: "bus_stops_near", arguments: { lat: -25.4296, lon: -49.2713, radius_m: 300 } });
-    const data = (res.structuredContent as { data: { total_in_radius: number; stops: { distance_m: number }[] } }).data;
-    expect(data.total_in_radius).toBe(3);
-    expect(data.stops.map((s) => s.distance_m)).toEqual([...data.stops.map((s) => s.distance_m)].sort((a, b) => a - b));
-    expect(data.stops.every((s) => s.distance_m <= 300)).toBe(true);
-  });
-
-  it("bus_stops_near fetches the stop list once and caches it by source URL only", async () => {
+  it("dataset_files returns an empty list for a dataset without files", async () => {
     const calls = stubFetch(happyRoutes());
     const client = await connectClient();
-    await client.callTool({ name: "bus_stops_near", arguments: { lat: -25.43, lon: -49.27 } });
-    await client.callTool({ name: "bus_stops_near", arguments: { lat: -25.5, lon: -49.3, radius_m: 1000 } });
-    expect(calls.filter((c) => c.url === URBS_STOPS_URL)).toHaveLength(1);
-    for (const c of calls) expect(c.url).not.toMatch(/-25\.|49\./);
-  });
-
-  it("open_dataset_preview returns empty rows for a dataset without a table", async () => {
-    stubFetch(happyRoutes());
-    const client = await connectClient();
-    const res = await client.callTool({ name: "open_dataset_preview", arguments: { dataset_url: DETAIL_TRANSPORTE } });
+    const res = await client.callTool({ name: "dataset_files", arguments: { dataset_id: ID_TRANSPORTE } });
     expect(res.isError).toBeFalsy();
-    expect(res.structuredContent).toMatchObject({ data: { rows: [], columns: [] } });
+    expect(res.structuredContent).toMatchObject({ data: { files: [], total_files: 0 } });
+    expect(calls).toHaveLength(1);
   });
 
   it("open_datasets_search marks partial results when a later page fails", async () => {
@@ -96,13 +70,11 @@ describe("each tool returns the envelope, valid against its output schema", () =
 
 describe("input validation", () => {
   it.each([
-    { name: "bus_lines_search", arguments: { limit: 51 } },
-    { name: "bus_line_schedule", arguments: { line_code: "182", day_type: "holiday" } },
-    { name: "bus_line_schedule", arguments: { line_code: "../../etc", day_type: "weekday" } },
-    { name: "bus_stops_near", arguments: { lat: -25.4, lon: -49.2, radius_m: 1001 } },
-    { name: "bus_stops_near", arguments: { lat: 91, lon: -49.2 } },
     { name: "open_datasets_search", arguments: { query: "saude", limit: 21 } },
-    { name: "open_dataset_preview", arguments: { dataset_url: "https://dadosabertos.curitiba.pr.gov.br/", rows: 21 } },
+    { name: "open_datasets_search", arguments: { query: "s" } },
+    { name: "dataset_files", arguments: { dataset_id: "https://mid-dadosabertos.curitiba.pr.gov.br/156/" } },
+    { name: "dataset_files", arguments: { dataset_id: "../../etc/passwd" } },
+    { name: "dataset_files", arguments: { dataset_id: ID_UNIDADES, page: 0 } },
   ])("rejects $name $arguments", async (call) => {
     const calls = stubFetch({});
     const client = await connectClient();
@@ -114,30 +86,31 @@ describe("input validation", () => {
 
 describe("source down", () => {
   const down: Record<string, Route> = {
-    [`GET ${URBS_LINES_URL}`]: { status: 503 },
-    [`GET ${scheduleUrl("182")}`]: { error: true },
-    [`GET ${URBS_STOPS_URL}`]: { status: 403, body: "<H1>Access Denied</H1>" },
     [`POST ${PORTAL_SEARCH_URL}`]: { error: true },
+    [`GET ${datasetUrl(ID_UNIDADES)}`]: { status: 500 },
   };
   it.each(SAMPLE_CALLS)("$name returns {error: source_unavailable} and no data", async (call) => {
-    stubFetch({ ...down, [`GET ${String(call.arguments.dataset_url)}`]: { status: 500 } });
+    stubFetch(down);
     const client = await connectClient();
     const res = await client.callTool(call);
     expect(res.isError).toBe(true);
+    expect(res.structuredContent).toBeUndefined();
     expect(errorOf(res)).toEqual({ error: "source_unavailable" });
   });
 
-  it("bus_line_schedule fails cleanly when only the timetable is down", async () => {
-    stubFetch({ ...happyRoutes(), [`GET ${scheduleUrl("182")}`]: { status: 404, body: "<html>não encontrada</html>" } });
-    const client = await connectClient();
-    const res = await client.callTool({ name: "bus_line_schedule", arguments: { line_code: "182", day_type: "weekday" } });
-    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+  it("dataset_files fails cleanly when only the file listing is down or malformed", async () => {
+    for (const route of [{ status: 503 }, { body: "<html>maintenance</html>" }, { body: '{"sucesso":false,"erro":"x"}' }]) {
+      stubFetch({ ...happyRoutes(), [`GET ${FILES_UNIDADES}`]: route });
+      const client = await connectClient();
+      const res = await client.callTool({ name: "dataset_files", arguments: { dataset_id: ID_UNIDADES } });
+      expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+    }
   });
 
-  it("a malformed source body is source_unavailable, not invented data", async () => {
-    stubFetch({ [`GET ${URBS_LINES_URL}`]: { body: "<html>maintenance</html>" } });
+  it("a malformed search page is source_unavailable, not invented data", async () => {
+    stubFetch({ [`POST ${PORTAL_SEARCH_URL}`]: { status: 403, body: "<H1>Access Denied</H1>" } });
     const client = await connectClient();
-    const res = await client.callTool({ name: "bus_lines_search", arguments: {} });
+    const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude" } });
     expect(errorOf(res)).toEqual({ error: "source_unavailable" });
   });
 });
