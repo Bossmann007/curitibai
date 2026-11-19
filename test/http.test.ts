@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fetchText, isAllowedUrl, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
+import { rateLimitedMessage } from "../src/tools/common.js";
 import { stubFetch } from "./helpers.js";
 
 const OK = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=1";
@@ -131,5 +132,18 @@ describe("fetchText", () => {
   it("caps the response size", async () => {
     stubFetch({ [`GET ${OK}`]: { body: "x".repeat(MAX_RESPONSE_BYTES + 1) } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
+  });
+});
+
+describe("rateLimitedMessage", () => {
+  it.each([
+    [null, "about 1 minute"],
+    [0, "about 1 minute"],
+    [4, "about 1 minute"],
+    [5, "5 s"],
+    [119, "119 s"],
+    [120, "about 2 minutes"],
+  ])("Retry-After %j -> %s", (s, wait) => {
+    expect(rateLimitedMessage(s)).toBe(`The source is limiting requests; wait ${wait} before trying again.`);
   });
 });
