@@ -124,7 +124,8 @@ names and counts. Data rows (after the first line) are never returned. What it d
   after the check does not change what is read.
 - A field over 1 MB (for example an unclosed quote) or a line with more than 300 fields stops the read with
   `invalid_csv`.
-It was tested on synthetic files (including a 137 MB one: about 1 s), **not on the real 156 file**.
+The automated tests use synthetic files (including a 137 MB one: about 1 s). It was also checked once, on 2026-11-19,
+against the 2026-11-18 daily 156 file: header accepted, 12 columns, 0 malformed rows.
 
 ## Privacy and safety
 
