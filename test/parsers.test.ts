@@ -35,7 +35,8 @@ describe("URBS schedule", () => {
     expect(s.notes).not.toMatch(/<|>/);
     expect(s.notes).toContain("SOMENTE COM CARTÃO TRANSPORTE");
     expect(s.departures.map((d) => d.stop)).toContain("TERMINAL BARREIRINHA");
-    expect(s.departures[0]?.times[0]).toEqual({ time: "05:28", accessible: true });
+    expect(s.departures[0]?.times[0]).toEqual({ time: "05:28", wheelchair_lift: true });
+    expect(s.is_current).toBe(true);
   });
   it("uses the saturday and sunday simulations", () => {
     expect(parseSchedule(raw, "saturday").valid_from).toBe("2025-10-25");
@@ -47,11 +48,18 @@ describe("URBS schedule", () => {
     expect(s.runs_on_day).toBe(false);
     expect(s.departures).toEqual([]);
   });
-  it("prefers the current, most recent simulation for a day", () => {
+  it("picks the period URBS marks current, like its widget, even when a future one is listed first", () => {
     const sim = raw.data.simulacoes[0]!;
-    const old = { ...sim, validade_inicio: "2020-01-01", is_current: false, dias: { "1": { OLD: [{ hora: "09:99", adapt: false }] } } };
-    const s = parseSchedule({ ...raw, data: { ...raw.data, simulacoes: [old, sim] } }, "weekday");
+    const future = { ...sim, validade_inicio: "2027-01-10", is_current: false, dias: { "1": { NEXT: [{ hora: "06:00", adapt: false }] } } };
+    const s = parseSchedule({ ...raw, data: { ...raw.data, simulacoes: [future, sim] } }, "weekday");
     expect(s.valid_from).toBe("2026-11-03");
+    expect(s.is_current).toBe(true);
+  });
+  it("falls back to the first period with that day when none is current", () => {
+    const sim = { ...raw.data.simulacoes[0]!, is_current: false };
+    const s = parseSchedule({ ...raw, data: { ...raw.data, simulacoes: [sim] } }, "weekday");
+    expect(s.runs_on_day).toBe(true);
+    expect(s.is_current).toBe(false);
   });
   it("rejects a non-success payload", () => {
     expect(() => validateScheduleJson({ status: "error", data: {} })).toThrow(SourceUnavailableError);
@@ -88,6 +96,9 @@ describe("portal search page", () => {
       url: "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=476294a4-e9e3-4eb0-a8b0-c774280c9932",
     });
     expect(page.items[0]?.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  it("reads a search with no results as zero, not as a failure", () => {
+    expect(parseSearchPage(fixture("portal_busca_vazia.html"))).toEqual({ total: 0, items: [], has_next: false });
   });
   it("rejects a page that is not a search result", () => {
     expect(() => parseSearchPage("<html><body>Access Denied</body></html>")).toThrow(SourceUnavailableError);

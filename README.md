@@ -10,12 +10,12 @@ Data comes from their public websites as they are; always confirm important info
 
 All tools are read-only. A successful call returns `{data, source_url, fetched_at, license_note}`.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` and no data.
-Other errors: `url_not_allowed`, `line_not_found`.
+Other errors: `url_not_allowed`, `line_not_found`. Errors are returned as JSON text with `isError: true`.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
 | `bus_lines_search` | `query?`, `limit` ≤ 50 | Active lines: code, name, category, colour, card-only | URBS `linhas_ativas.json` (used by [Horário de Ônibus](https://www.urbs.curitiba.pr.gov.br/portal/horario-de-onibus/)) |
-| `bus_line_schedule` | `line_code`, `day_type`: `weekday` \| `saturday` \| `sunday` | Planned departures by departure stop, validity dates, notes | URBS `linha_{code}_v2.json` (same page) |
+| `bus_line_schedule` | `line_code`, `day_type`: `weekday` \| `saturday` \| `sunday` | Planned departures by departure stop, wheelchair-lift flag, validity dates, notes. Picks the period URBS marks current, as its website does | URBS `linha_{code}_v2.json` (same page) |
 | `bus_stops_near` | `lat`, `lon`, `radius_m` ≤ 1000 | Stops in the radius, nearest first (max 50), with lines | URBS [Relação de Pontos de Parada](https://www.urbs.curitiba.pr.gov.br/portal/transporte/rede-integrada-de-transporte/relacao-de-pontos-de-parada/) |
 | `open_datasets_search` | `query`, `limit` ≤ 20 | Dataset title, publisher, description, formats, last update, detail URL | [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) search |
 | `open_dataset_preview` | `dataset_url`, `rows` ≤ 20 | Column names and the first rows of the dataset page's preview table | Portal dataset detail page |
@@ -31,12 +31,12 @@ Not implemented, because no source could be confirmed for automated access on 20
 | `health_units_search` | The full "Unidades de Atendimento" CSV is only on the UFPR mirror `dadosabertos.c3sl.ufpr.br`, whose `/curitiba/robots.txt` says `Disallow: /`; that host is also outside the allowlist. The portal page shows a 20-row preview only |
 | `schools_search` | Same base and reason as `health_units_search` |
 | `markets_fairs_list` | Fairs data is only on the same mirror (latest file from 2017); portal search returns nothing |
-| `garbage_collection_by_street` | No source found on the portal or the URBS site |
+| `garbage_collection_by_street` | No source found: portal searches for "lixo", "coleta" and "residuos" return nothing relevant (only "Clique Economia"); not searched elsewhere |
 | `culture_agenda` | `AgendaPMC` / `FundacaoCultural` files are only on the same mirror |
 | `city156_categories` | 156 data is only on the same mirror; no category-only list was confirmed |
 
 Out of scope by design: gov.br/CPF login, payments, scheduling, opening or looking up 156 tickets, personal data,
-any tool that writes, and real-time feeds that need a key (the URBS WebService needs a registration code).
+any tool that writes, and real-time feeds that need a key (the URBS WebService redirects to a login page).
 
 ## Run it
 
@@ -67,7 +67,8 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 ## Privacy and safety
 
 - No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by
-  source URL, never by user input.
+  the request sent to the source (URL, plus the search term for `open_datasets_search`). Coordinates are never part
+  of a request or a cache key.
 - `bus_stops_near` downloads the whole stop list and computes distances locally. Your coordinates are never sent to
   any server, logged or stored.
 - Requests go only to `https://` hosts equal to or under `curitiba.pr.gov.br` (this includes `urbs.curitiba.pr.gov.br`

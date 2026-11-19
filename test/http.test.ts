@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fetchText, isAllowedUrl, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
-import { connectClient, stubFetch } from "./helpers.js";
+import { connectClient, errorOf, stubFetch } from "./helpers.js";
 
 const OK = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=1";
 
@@ -107,7 +107,7 @@ describe("open_dataset_preview allowlist", () => {
     const client = await connectClient();
     const res = await client.callTool({ name: "open_dataset_preview", arguments: { dataset_url } });
     expect(res.isError).toBe(true);
-    expect(res.structuredContent).toEqual({ error: "url_not_allowed" });
+    expect(errorOf(res)).toEqual({ error: "url_not_allowed" });
     expect(calls).toHaveLength(0);
   });
 
@@ -115,7 +115,7 @@ describe("open_dataset_preview allowlist", () => {
     const calls = stubFetch({ [`GET ${OK}`]: { status: 302, headers: { location: "https://evil.example/" } } });
     const client = await connectClient();
     const res = await client.callTool({ name: "open_dataset_preview", arguments: { dataset_url: OK } });
-    expect(res.structuredContent).toEqual({ error: "url_not_allowed" });
+    expect(errorOf(res)).toEqual({ error: "url_not_allowed" });
     expect(calls.map((c) => c.url)).toEqual([OK]);
   });
 });

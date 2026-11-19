@@ -31,6 +31,8 @@ The tools then return `{"error":"source_unavailable"}`. This server never sends 
 | Found via | Same page script (`block-horario-de-onibus-v2`) |
 | Format | JSON `{status, data:{cod_linha, nome, pagamento, info_extra (HTML), simulacoes:[{validade_inicio, validade_fim, is_current, dias:{"1"\|"2"\|"3": {stop: [{hora, adapt}]}}]}}` |
 | Day keys | `1` = Dia Útil, `2` = Sábado, `3` = Domingo/Feriado (from the page's `<select>`) |
+| Period rule | Each `simulacoes` entry is a validity period with its own days. The page script shows the first period that has the chosen day and `is_current: true`, else the first period with that day; the tool does the same |
+| `adapt` | The page script renders `adapt: false` as "veículo sem elevador" and anything else as "com elevador"; the tool exposes it as `wheelchair_lift` (null when absent) |
 | Checked | Lines `182`, `464`, `X43` → 200; unknown `X99` → 404 HTML |
 | API / CSV / JSON | Static JSON per line, undocumented |
 | License / terms | Not found (as above) |
@@ -57,10 +59,10 @@ The tools then return `{"error":"source_unavailable"}`. This server never sends 
 | Search | `POST https://dadosabertos.curitiba.pr.gov.br/conjuntodado/` form fields `Parametros.Termo`, `Parametros.IndicePagina`, `cookie=true`. 5 cards per page plus a "N resultados" total and a pager |
 | Format | HTML. Each card: detail link `conjuntodado/detalhe?chave=<GUID>`, title, publishing body, description, file formats, "Atualizado em" |
 | API / CSV / JSON | No public API found. The search is a read-only form POST |
-| Behavior | Term search matches accents literally: "saude" and "transporte" match, "onibus" and "feira(s)" return nothing. Unfiltered page 1 ≈1 s; unfiltered pages 2–3 took 20–40 s+; filtered page 2 ≈6 s |
+| Behavior | Term search matches accents literally: "saude" and "transporte" match, "onibus", "feira(s)", "escola(s)", "lixo" and "residuos" return nothing ("Nenhum resultado encontrado"), "coleta" returns only "Clique Economia", the "cultura" search timed out. Unfiltered page 1 ≈1 s; unfiltered pages 2–3 took 20–40 s+; filtered page 2 ≈6 s |
 | License / terms | Footer: "Conteúdo licenciado sob uma Licença Creative Commons" → CC BY 4.0 (`http://creativecommons.org/licenses/by/4.0/deed.pt_BR`). Usage rules (`/informacoes/regrasutilizacao/5`): free use for any purpose within the law; conditions: cite the source body, state the data was accessed via the Portal de Dados Abertos de Curitiba, and include the sentence "O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário." |
 | robots.txt | `https://dadosabertos.curitiba.pr.gov.br/robots.txt` → 404 (no robots file). `https://www.curitiba.pr.gov.br/robots.txt` → 200; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions for `*`; `/dadosabertos/` is not disallowed |
-| Fixture | `test/fixtures/portal_busca_saude.html` (results block of the "saude" search) |
+| Fixtures | `test/fixtures/portal_busca_saude.html` (results block of the "saude" search), `test/fixtures/portal_busca_vazia.html` (the "onibus" search, no results) |
 
 ### 5. Portal de Dados Abertos de Curitiba: dataset preview (`open_dataset_preview`)
 
@@ -79,7 +81,7 @@ The tools then return `{"error":"source_unavailable"}`. This server never sends 
 |---|---|---|
 | `https://dadosabertos.c3sl.ufpr.br/curitiba/` (UFPR mirror holding the full CSV/XLS files: `UnidadesAtendimentoCuritiba`, `FeirasCuritiba`, `AgendaPMC`, `FundacaoCultural`, `156`, `TransporteColetivo`) | 200, Apache listing | `/curitiba/robots.txt` says `User-agent: *`, `Disallow: /`, `Request-rate: 1/5`, `Visit-time: 0400-0645` UTC. The root `/robots.txt` is 404, but the intent is clear. Also not on the allowlist. About 9 requests (listings and robots.txt) were made while checking; none since |
 | `http://dadosabertos.c3sl.ufpr.br/curitibaurbs/` (URBS bulk files linked from the portal) | Not fetched | Same host and reason as above |
-| URBS WebService `https://transporteservico.urbs.curitiba.pr.gov.br/` | 302 → `login.php` | Needs a registration code (portal dataset "Transporte Coletivo de Curitiba"; documentation PDF on the mirror). Real-time feed needing a key: out of scope |
+| URBS WebService `https://transporteservico.urbs.curitiba.pr.gov.br/` | 302 → `login.php` | Redirects to a login page; the portal describes it as a WebService with real-time vehicle positions. Not checked further: a feed behind a login is out of scope |
 | `https://mid.curitiba.pr.gov.br/dadosabertos/` | 403 (curl) | Not needed; not checked further |
 
 ## Optional tools: status
@@ -89,6 +91,6 @@ The tools then return `{"error":"source_unavailable"}`. This server never sends 
 | `health_units_search` | Portal "Unidades de Atendimento de Curitiba - Ativas" (`chave=680ED5ED-…`) | Deferred: the full CSV is only on the UFPR mirror (robots `Disallow: /`); the portal page has a 20-row preview only |
 | `schools_search` | Same "Unidades de Atendimento" base (education themes) | Deferred: same reason; the portal search for "escolas" returns nothing |
 | `markets_fairs_list` | `FeirasCuritiba` on the UFPR mirror (latest file 2017) | Deferred: mirror robots; portal search for "feira"/"feiras" returns nothing |
-| `garbage_collection_by_street` | None found | Deferred: no source found on the portal or URBS |
+| `garbage_collection_by_street` | None found | Deferred: portal searches for "lixo", "coleta", "residuos" found nothing relevant; other sites not searched |
 | `culture_agenda` | `AgendaPMC` / `FundacaoCultural` on the UFPR mirror | Deferred: mirror robots |
 | `city156_categories` | `156` daily CSVs on the UFPR mirror | Deferred: mirror robots; not checked whether a category-only list exists |

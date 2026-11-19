@@ -97,9 +97,10 @@ export interface LineSchedule {
   notes: string | null;
   day_type: DayType;
   runs_on_day: boolean;
+  is_current: boolean | null;
   valid_from: string | null;
   valid_to: string | null;
-  departures: { stop: string; times: { time: string; accessible: boolean | null }[] }[];
+  departures: { stop: string; times: { time: string; wheelchair_lift: boolean | null }[] }[];
 }
 
 export function validateScheduleJson(json: unknown): RawScheduleJson {
@@ -110,13 +111,9 @@ export function validateScheduleJson(json: unknown): RawScheduleJson {
 
 export function parseSchedule(raw: RawScheduleJson, dayType: DayType): LineSchedule {
   const key = DAY_KEY[dayType];
-  const candidates = raw.data.simulacoes
-    .filter((s) => s.dias[key] !== undefined)
-    .sort((a, b) => {
-      const cur = Number(b.is_current === true) - Number(a.is_current === true);
-      return cur !== 0 ? cur : (b.validade_inicio ?? "").localeCompare(a.validade_inicio ?? "");
-    });
-  const chosen = candidates[0];
+  // Same rule as the URBS widget: first period with this day marked is_current, else the first period with this day.
+  const withDay = raw.data.simulacoes.filter((s) => s.dias[key] !== undefined);
+  const chosen = withDay.find((s) => s.is_current === true) ?? withDay[0];
   const base = {
     line_code: raw.data.cod_linha.trim().toUpperCase(),
     line_name: decodeEntities(raw.data.nome).trim(),
@@ -124,16 +121,17 @@ export function parseSchedule(raw: RawScheduleJson, dayType: DayType): LineSched
     notes: raw.data.info_extra ? htmlToText(raw.data.info_extra) || null : null,
     day_type: dayType,
   };
-  if (!chosen) return { ...base, runs_on_day: false, valid_from: null, valid_to: null, departures: [] };
+  if (!chosen) return { ...base, runs_on_day: false, is_current: null, valid_from: null, valid_to: null, departures: [] };
   const stops = chosen.dias[key] ?? {};
   return {
     ...base,
     runs_on_day: true,
+    is_current: chosen.is_current ?? null,
     valid_from: chosen.validade_inicio ?? null,
     valid_to: chosen.validade_fim ?? null,
     departures: Object.entries(stops).map(([stop, times]) => ({
       stop: htmlToText(stop),
-      times: times.map((t) => ({ time: t.hora.trim(), accessible: t.adapt ?? null })),
+      times: times.map((t) => ({ time: t.hora.trim(), wheelchair_lift: t.adapt ?? null })),
     })),
   };
 }

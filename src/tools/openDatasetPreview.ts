@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isAllowedUrl } from "../http.js";
-import { getDatasetPage, parseDatasetPreview, PORTAL_LICENSE_NOTE } from "../sources/portal.js";
+import { getDatasetPreview, MAX_PREVIEW_ROWS, PORTAL_LICENSE_NOTE } from "../sources/portal.js";
 import { envelope, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const openDatasetPreviewInput = {
@@ -9,7 +9,7 @@ export const openDatasetPreviewInput = {
     .trim()
     .max(500)
     .describe("Dataset detail URL on dadosabertos.curitiba.pr.gov.br (from open_datasets_search). Only https URLs on curitiba.pr.gov.br or its subdomains are accepted."),
-  rows: z.number().int().min(1).max(20).default(10),
+  rows: z.number().int().min(1).max(MAX_PREVIEW_ROWS).default(10),
 };
 export const openDatasetPreviewOutput = envelope(
   z.object({
@@ -30,9 +30,9 @@ export const openDatasetPreview: ToolDef<typeof openDatasetPreviewInput, typeof 
   handler: async ({ dataset_url, rows }) => {
     if (!isAllowedUrl(dataset_url)) return fail("url_not_allowed");
     try {
-      const { value, fetchedAt } = await getDatasetPage(dataset_url);
+      const { value, fetchedAt } = await getDatasetPreview(dataset_url);
       return ok({
-        data: parseDatasetPreview(value.html, rows),
+        data: { ...value.preview, rows: value.preview.rows.slice(0, rows) },
         source_url: value.url,
         fetched_at: fetchedAt,
         license_note: PORTAL_LICENSE_NOTE,

@@ -19,12 +19,13 @@ export const busLineScheduleOutput = envelope(
     notes: z.string().nullable(),
     day_type: z.enum(DAY_TYPES),
     runs_on_day: z.boolean(),
+    is_current: z.boolean().nullable(),
     valid_from: z.string().nullable(),
     valid_to: z.string().nullable(),
     departures: z.array(
       z.object({
         stop: z.string(),
-        times: z.array(z.object({ time: z.string(), accessible: z.boolean().nullable() })),
+        times: z.array(z.object({ time: z.string(), wheelchair_lift: z.boolean().nullable() })),
       }),
     ),
   }),
@@ -34,7 +35,7 @@ export const busLineSchedule: ToolDef<typeof busLineScheduleInput, typeof busLin
   name: "bus_line_schedule",
   title: "Curitiba bus line timetable",
   description:
-    "Planned departure times of one URBS bus line for a day type, grouped by departure stop. `accessible` marks an adapted vehicle. Read-only.",
+    "Planned departure times of one URBS bus line for a day type, grouped by departure stop. `wheelchair_lift` is URBS's `adapt` flag (false = vehicle without a lift; null = not stated). Picks the period URBS marks current, as its website does. Read-only.",
   inputSchema: busLineScheduleInput,
   outputSchema: busLineScheduleOutput,
   handler: async ({ line_code, day_type }) => {
