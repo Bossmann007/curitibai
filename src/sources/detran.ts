@@ -29,6 +29,15 @@ export const LICENSING_DUE_DATES: readonly string[] = [
   "2026-11-13", // 9
 ];
 
+/**
+ * Portaria DETRAN 907/2025, Anexo II, quoted as published (heading, column header, rows). Art. 2º says it applies
+ * "para os efeitos de fiscalização da regularidade documental dos veículos". Not turned into dates on purpose.
+ */
+export const ANEXO_II_QUOTE =
+  '"CALENDÁRIO PARA EFEITOS DE FISCALIZAÇÃO DA REGULARIDADE DOCUMENTAL DOS VEÍCULOS" – ' +
+  '"PRAZO FINAL PARA RENOVAÇÃO": "1 e 2": "Até setembro"; "3,4 e 5": "Até outubro"; "6,7 e 8": "Até novembro"; ' +
+  '"9 e 0": "Até dezembro"';
+
 /** "O pagamento é no valor único de R$ 94,61." (news page above, 2026-10-23). */
 export const LICENSING_FEE_BRL = 94.61;
 
