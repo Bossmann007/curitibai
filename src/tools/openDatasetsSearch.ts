@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getSearchPage, PAGE_SIZE, PORTAL_LICENSE_NOTE, PORTAL_SEARCH_URL, type DatasetSummary } from "../sources/portal.js";
-import { envelope, failFrom, ok, type ToolDef } from "./common.js";
+import { RateLimitedError } from "../http.js";
+import { envelope, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 export const openDatasetsSearchInput = {
   query: z
@@ -15,6 +16,7 @@ export const openDatasetsSearchOutput = envelope(
   z.object({
     total: z.number().int().nullable(),
     partial: z.boolean(),
+    note: z.string().optional().describe("Present only when a later result page was refused with HTTP 429: how long to wait."),
     datasets: z.array(
       z.object({
         id: z.string(),
@@ -41,6 +43,7 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
     let total: number | null = null;
     let fetchedAt = "";
     let partial = false;
+    let note: string | undefined;
     const maxPages = Math.ceil(limit / PAGE_SIZE);
     for (let page = 1; page <= maxPages && datasets.length < limit; page++) {
       try {
@@ -54,11 +57,12 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
       } catch (err) {
         if (page === 1) return failFrom(err);
         partial = true; // later pages are slow on the portal; keep what we have
+        if (err instanceof RateLimitedError) note = rateLimitedMessage(err.retryAfterS);
         break;
       }
     }
     return ok({
-      data: { total, partial, datasets: datasets.slice(0, limit) },
+      data: { total, partial, ...(note === undefined ? {} : { note }), datasets: datasets.slice(0, limit) },
       source_url: PORTAL_SEARCH_URL,
       fetched_at: fetchedAt,
       license_note: PORTAL_LICENSE_NOTE,

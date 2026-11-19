@@ -70,6 +70,16 @@ function staleNote(year: number, what: string): string {
   return year > CALENDAR_YEAR ? ` ${what}; it is now ${year}, so this data may be outdated.` : "";
 }
 
+/** Units and hours are checked by hand; past this many days since CHECKED_AT the units note warns they may be outdated. */
+export const UNITS_MAX_AGE_DAYS = 180;
+
+function ageNote(today: string): string {
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${CHECKED_AT}T00:00:00Z`)) / 86_400_000;
+  return days > UNITS_MAX_AGE_DAYS
+    ? ` Units and hours were checked ${days} days ago (more than ${UNITS_MAX_AGE_DAYS}); they may be outdated.`
+    : "";
+}
+
 /** Digits in calendar order (earliest due date first). */
 const DIGITS_BY_DATE = [...LICENSING_DUE_DATES.keys()].sort((a, b) =>
   LICENSING_DUE_DATES[a]!.localeCompare(LICENSING_DUE_DATES[b]!),
@@ -122,7 +132,8 @@ export function detranPrInfoResult(
       `${DETRAN_BASE_NOTE} Units of the 01ª CIRETRAN (Curitiba) block of the Detran-PR units page; the PSTRAN service ` +
       `posts run by city halls are listed only at ${DETRAN_UNITS_URL}. The site publishes no hours per unit and ` +
       "states two different general hours (both in hours.statements); confirm at 0800 643 7373." +
-      staleNote(year, `Units and hours were checked on ${CHECKED_AT}`),
+      staleNote(year, `Units and hours were checked on ${CHECKED_AT}`) +
+      ageNote(today),
   };
 }
 

@@ -53,7 +53,7 @@ export interface DetranUnit {
 const PATRAN_SERVICES =
   "Realizam todos os serviços de habilitação (exceto exames práticos de direção) e todos os serviços na área de veículos.";
 
-/** The Curitiba block of /unidades: the 01ª CIRETRAN and its PATRANs, text as published. */
+/** The Curitiba block of /unidades: the 01ª CIRETRAN and its PATRANs, text as published (CIRETRAN services: page legend). */
 export const CURITIBA_UNITS: readonly DetranUnit[] = [
   {
     kind: "CIRETRAN",
