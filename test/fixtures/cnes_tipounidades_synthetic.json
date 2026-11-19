@@ -1,0 +1,29 @@
+{
+ "_synthetic": "SYNTHETIC test fixture: same JSON shape as GET /cnes/tipounidades (checked 2026-11-19), labels invented. Not real CNES data.",
+ "tipos_unidade": [
+  {
+   "codigo_tipo_unidade": 2,
+   "descricao_tipo_unidade": "UNIDADE BASICA FICTICIA"
+  },
+  {
+   "codigo_tipo_unidade": 22,
+   "descricao_tipo_unidade": "CONSULTORIO FICTICIO"
+  },
+  {
+   "codigo_tipo_unidade": 36,
+   "descricao_tipo_unidade": "CLINICA FICTICIA"
+  },
+  {
+   "codigo_tipo_unidade": 70,
+   "descricao_tipo_unidade": "CENTRO PSICOSSOCIAL FICTICIO"
+  },
+  {
+   "codigo_tipo_unidade": 73,
+   "descricao_tipo_unidade": "PRONTO ATENDIMENTO FICTICIO"
+  },
+  {
+   "codigo_tipo_unidade": 74,
+   "descricao_tipo_unidade": "PRONTO ATENDIMENTO FICTICIO MOVEL"
+  }
+ ]
+}

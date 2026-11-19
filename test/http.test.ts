@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fetchText, isAllowedUrl, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
 import { stubFetch } from "./helpers.js";
@@ -11,6 +11,8 @@ describe("host allowlist (SSRF)", () => {
     "https://DADOSABERTOS.CURITIBA.PR.GOV.BR/",
     "https://dadosabertos.curitiba.pr.gov.br:443/",
     "https://dadosabertos.curitiba.pr.gov.br./",
+    "https://apidadosabertos.saude.gov.br/cnes/estabelecimentos?codigo_municipio=410690",
+    "https://APIDADOSABERTOS.SAUDE.GOV.BR/cnes/tipounidades",
   ])("allows %s", (u) => expect(isAllowedUrl(u)).toBe(true));
 
   it.each([
@@ -22,6 +24,13 @@ describe("host allowlist (SSRF)", () => {
     "https://www.urbs.curitiba.pr.gov.br/portal/",
     "https://curitiba.pr.gov.br/",
     "https://github.com/benaytms/urbs-gtfs/releases/download/latest/gtfs_curitiba.zip",
+    // Ministry of Health: only the API host
+    "https://dadosabertos.saude.gov.br/",
+    "https://saude.gov.br/",
+    "http://apidadosabertos.saude.gov.br/cnes/estabelecimentos",
+    "https://x.apidadosabertos.saude.gov.br/",
+    "https://apidadosabertos.saude.gov.br.evil.com/",
+    "https://apidadosabertos.saude.gov.br:8443/",
     // look-alikes and tricks
     "http://dadosabertos.curitiba.pr.gov.br/",
     "https://x.dadosabertos.curitiba.pr.gov.br/",
@@ -71,6 +80,30 @@ describe("fetchText", () => {
     const calls = stubFetch({ [`GET ${OK}`]: { status: 301, headers: { location: "http://169.254.169.254/" } } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(UrlNotAllowedError);
     expect(calls).toHaveLength(1);
+  });
+
+  it("refuses a protocol-relative redirect to another host", async () => {
+    const calls = stubFetch({ [`GET ${OK}`]: { status: 302, headers: { location: "//evil.com/x" } } });
+    await expect(fetchText(OK)).rejects.toBeInstanceOf(UrlNotAllowedError);
+    expect(calls.map((c) => c.url)).toEqual([OK]);
+  });
+
+  it("cancels the redirect response body before following the redirect", async () => {
+    const target = "https://dadosabertos.curitiba.pr.gov.br/";
+    const order: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        order.push(`fetch ${input}`);
+        if (input === OK) {
+          const body = new ReadableStream({ cancel: () => void order.push("cancel") });
+          return new Response(body, { status: 302, headers: { location: target } });
+        }
+        return new Response("home");
+      }),
+    );
+    await fetchText(OK);
+    expect(order).toEqual([`fetch ${OK}`, "cancel", `fetch ${target}`]);
   });
 
   it("follows a redirect inside the allowlist", async () => {
