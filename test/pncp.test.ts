@@ -228,6 +228,20 @@ describe("object gate (unit)", () => {
     expect(JSON.stringify(page.items).includes("FULANO FICTICIO PRIMEIRO")).toBe(false);
   });
 
+  it("stays fast on a 100k-character object (bounded e-mail parts and raw cap)", () => {
+    for (const s of ["a".repeat(100_000), "a.".repeat(50_000), `${"a".repeat(99_990)}@`, "1.".repeat(50_000)]) {
+      const t0 = performance.now();
+      const out = maskObject(s);
+      expect(performance.now() - t0).toBeLessThan(200);
+      expect(out.truncated).toBe(true);
+    }
+  });
+
+  it("drops the partial last word when the raw object is cut, so half a number is not shown", () => {
+    const out = maskObject(`${"palavra ".repeat(300)}123.456.789-09`);
+    expect(out.text).not.toMatch(/\d/);
+  });
+
   it("never cuts a mask token or a surrogate pair when truncating", () => {
     const masked = maskObject(`${"a".repeat(295)} 123.456.789-09 fim`);
     expect(masked.truncated).toBe(true);
@@ -269,6 +283,19 @@ describe("object gate (unit)", () => {
     ["contato (41) 999998888", `contato ${MASK}`],
     ["contato (41)33330000.", `contato ${MASK}.`],
     ["CPF 123 456 789 09", `CPF ${MASK}`],
+    ["CPF 123.456.789\u201309", `CPF ${MASK}`],
+    ["CPF 123.456.789\u201109", `CPF ${MASK}`],
+    ["CPF 123.456.789\u221209", `CPF ${MASK}`],
+    ["CPF 123. 456. 789-09", `CPF ${MASK}`],
+    ["CPF 123.456.789 - 09", `CPF ${MASK}`],
+    ["CPF 123 456 789 - 09", `CPF ${MASK}`],
+    ["CPF 123.4\u200B56.789-09", `CPF ${MASK}`],
+    ["CPF 123.456\u2060.789\uFEFF-09", `CPF ${MASK}`],
+    ["CPF 123_456_789_09", `CPF ${MASK}`],
+    ["CNPJ 12.345.678/0001\u201395", `CNPJ ${MASK}`],
+    ["fone 41 - 3333 - 4444", `fone ${MASK}`],
+    ["mail maria @ exemplo.com fim", `mail ${MASK} fim`],
+    ["exercício 2025/2026", "exercício 2025/2026"],
     ["CNPJ 12 345 678 0001 95", `CNPJ ${MASK}`],
     ["Pregão 116/2026, R$ 1.234.567,89, Lei 14.133", "Pregão 116/2026, R$ 1.234.567,89, Lei 14.133"],
     ["  espaços   colapsados  ", "espaços colapsados"],
@@ -368,6 +395,47 @@ describe("procurement_search paging", () => {
     const res = await search();
     expect(errorOf(res)).toEqual({ error: "source_unavailable" });
     expect(n).toBe(1);
+  });
+
+  it("HTTP 429 without a short Retry-After is rate_limited, with no retry", async () => {
+    for (const headers of [{}, { "retry-after": "120" }, { "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }] as Record<string, string>[]) {
+      const calls = stubFetch({ [`GET ${pncpUrl()}`]: { status: 429, headers } });
+      const res = await search();
+      expect(errorOf(res)).toEqual({ error: "rate_limited", message: "The source is limiting requests; wait about 1 minute and try again." });
+      expect(calls).toHaveLength(1);
+    }
+  });
+
+  it("HTTP 429 with Retry-After of at most 5 s is retried once", async () => {
+    let n = 0;
+    globalThis.fetch = (async () =>
+      n++ === 0
+        ? new Response("", { status: 429, headers: { "retry-after": "0" } })
+        : new Response(fixture("pncp_contratacoes_synthetic.json"), { status: 200 })) as typeof fetch;
+    const res = await search();
+    expect(res.isError).toBeFalsy();
+    expect(n).toBe(2);
+  });
+
+  it("a 429 on a later page keeps what was found as partial", async () => {
+    stubFetch({
+      [`GET ${pncpUrl(1)}`]: { body: syntheticPncpPage(1, 3, 4), contentType: JSON_TYPE },
+      [`GET ${pncpUrl(2)}`]: { status: 429, headers: { "retry-after": "60" } },
+    });
+    expect(dataOf(await search({ limit: 20 }))).toMatchObject({ partial: true, next_page: 2 });
+  });
+
+  it("does not count a resumed page's discards twice", async () => {
+    const page = JSON.parse(syntheticPncpPage(1, 14, 0)) as { data: Record<string, unknown>[] };
+    for (const r of page.data.slice(12, 14)) r.anoCompra = null; // 2 malformed records of a listed body
+    stubFetch({ [`GET ${pncpUrl()}`]: { body: JSON.stringify(page), contentType: JSON_TYPE } });
+    const first = dataOf(await search({ limit: 5 }));
+    expect(first).toMatchObject({ next_page: 1, next_skip: 5, discarded: 2 });
+    const second = dataOf(await search({ limit: 5, skip: 5 }));
+    expect(second).toMatchObject({ next_page: 1, next_skip: 10, discarded: 0 });
+    const third = dataOf(await search({ limit: 5, skip: 10 }));
+    expect(third).toMatchObject({ next_page: null, discarded: 0 });
+    expect(third.items).toHaveLength(2);
   });
 
   it("collapses repeated spaces in the query", async () => {

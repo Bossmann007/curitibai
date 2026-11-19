@@ -1,5 +1,5 @@
 import { sharedCache } from "../cache.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
 
 export const PNCP_CONSULTA = "https://pncp.gov.br/api/consulta";
 /** Curitiba, 7-digit IBGE code (PNCP's `codigoMunicipioIbge`). */
@@ -70,8 +70,8 @@ export const PNCP_LICENSE_NOTE =
   "The PNCP site (https://www.gov.br/pncp/pt-br) is published under CC BY-ND 3.0; no separate licence for the API " +
   "data was found. Selected fields only; no supplier is returned. Values are passed on unchanged, except the object " +
   "text: for dispensa, inexigibilidade and inaplicabilidade it is withheld (it may name a person), and for other " +
-  "modalities CPF/CNPJ-shaped numbers, e-mails and phone numbers are replaced by [masked], whitespace is collapsed " +
-  "and it is cut at 300 characters. Open the link for the official record. Unofficial; not affiliated with PNCP, the Ministério da Gestão " +
+  "modalities CPF/CNPJ-shaped numbers, e-mails and phone numbers are replaced by [masked], whitespace is collapsed, " +
+  "dashes are normalised and it is cut at 300 characters. Open the link for the official record. Unofficial; not affiliated with PNCP, the Ministério da Gestão " +
   "e Inovação em Serviços Públicos (MGI) or Prefeitura de Curitiba.";
 
 /** `from`/`to` as yyyyMMdd. */
@@ -87,26 +87,52 @@ export function publicationUrl(from: string, to: string, modality: number, page:
   return `${PNCP_CONSULTA}/v1/contratacoes/publicacao?${params.toString()}`;
 }
 
-const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
+/** Raw object characters examined at most; the output is cut at OBJECT_MAX_CHARS anyway. Bounds the regex work. */
+export const OBJECT_MAX_RAW_CHARS = 2000;
+/** Unicode hyphens and dashes (U+2010–U+2015) and minus (U+2212), read as "-". */
+const DASHES = /[‐-―−]/g;
+/** Zero-width space, non-joiner, joiner, word joiner, BOM: removed. */
+const ZERO_WIDTH = /[​-‍⁠﻿]/g;
+/** Bounded parts (RFC 5321 sizes) keep it linear; spaces around "@" are allowed ("maria @ exemplo.com"). */
+const EMAIL = /[\p{L}\p{N}._%+-]{1,64}\s*@\s*[\p{L}\p{N}-]{1,63}(?:\.[\p{L}\p{N}-]{1,63}){1,8}/gu;
 /** A digit run with dots, slashes or hyphens inside; masked when it holds 10+ digits (CPF 11, CNPJ 14, phone with DDD 10–11). */
 const DIGIT_RUN = /\d(?:[\d./-]*\d)?/g;
-/** CPF / CNPJ with spaces between the groups ("123 456 789 09", "12 345 678 0001 95"). */
-const SPACED_ID = /\b(?:\d{3}[\s.]\d{3}[\s.]\d{3}[\s.-]\d{2}|\d{2}[\s.]\d{3}[\s.]\d{3}[\s./]\d{4}[\s.-]\d{2})\b/g;
+/** Separator between number groups: 1–2 spaces or dots, or a hyphen or slash with optional spaces. */
+const SEP = String.raw`(?:\s*[-/]\s*|[\s.]{1,2})`;
+/** CPF / CNPJ whose groups are split by spaces or spaced separators ("123 456 789 09", "123. 456. 789 - 09"). */
+const SPACED_ID = new RegExp(String.raw`\b(?:\d{3}${SEP}\d{3}${SEP}\d{3}${SEP}\d{2}|\d{2}${SEP}\d{3}${SEP}\d{3}${SEP}\d{4}${SEP}\d{2})\b`, "g");
+/** Phone separator: like SEP but without "/", so "2025/2026" stays. */
+const PSEP = String.raw`(?:\s*-\s*|[\s.]{1,2})`;
 /**
  * Brazilian phone numbers: optional +55; a DDD in parentheses with 8 or 9 digits, separator optional; or an optional
- * bare DDD with 8 or 9 digits split by a space, dot or hyphen.
+ * bare DDD with 8 or 9 digits split by a separator ("41 3333-4444", "41 - 3333 - 4444").
  */
-const PHONE = /(?:\+?55[\s.-]?)?(?:\(\d{2}\)\s?9?\d{4}[\s.-]?\d{4}\b|(?:\b\d{2}[\s.-]?)?\b9?\d{4}[\s.-]\d{4}\b)/g;
+const PHONE = new RegExp(
+  String.raw`(?:\+?55${PSEP}?)?(?:\(\d{2}\)\s?9?\d{4}${PSEP}?\d{4}\b|(?:\b\d{2}${PSEP}?)?\b9?\d{4}${PSEP}\d{4}\b)`,
+  "g",
+);
 
-/** Masks CPF/CNPJ-shaped numbers, e-mails and phone numbers, collapses whitespace and caps the length. */
+/**
+ * Masks CPF/CNPJ-shaped numbers, e-mails and phone numbers in the formats above, collapses whitespace and caps the
+ * length. Dashes are normalised to "-", zero-width characters removed and "_" between digits read as a space first.
+ * Covers common formats only; it is not a guarantee.
+ */
 export function maskObject(raw: string): { text: string; truncated: boolean } {
-  let t = raw.replace(/\s+/g, " ").trim();
+  let rawCut = false;
+  let t = raw;
+  if (t.length > OBJECT_MAX_RAW_CHARS) {
+    // Drop the last partial word too, so a number cut in half is not left unmasked.
+    t = t.slice(0, OBJECT_MAX_RAW_CHARS).replace(/\S*$/, "");
+    rawCut = true;
+  }
+  t = t.replace(ZERO_WIDTH, "").replace(DASHES, "-").replace(/(?<=\d)_(?=\d)/g, " ");
+  t = t.replace(/\s+/g, " ").trim();
   t = t.replace(EMAIL, MASK);
   t = t.replace(DIGIT_RUN, (m) => (m.replace(/\D/g, "").length >= 10 ? MASK : m));
   t = t.replace(SPACED_ID, MASK);
   t = t.replace(PHONE, MASK);
   const chars = Array.from(t); // code points: never split a surrogate pair
-  if (chars.length <= OBJECT_MAX_CHARS) return { text: t, truncated: false };
+  if (chars.length <= OBJECT_MAX_CHARS) return rawCut ? { text: `${t}…`, truncated: true } : { text: t, truncated: false };
   let cut = chars.slice(0, OBJECT_MAX_CHARS).join("");
   const open = cut.lastIndexOf("[");
   if (open > cut.lastIndexOf("]") && t.startsWith(MASK, open)) cut = cut.slice(0, open); // never show half a mask
@@ -222,12 +248,21 @@ export function parseContratacoes(body: string): ParsedPage {
   return { items, received: list.length, discarded, lastPage };
 }
 
-/** PNCP reset about half of the connections on 2026-11-19 and answered on a retry: one retry, network errors only. */
+/** Longest Retry-After (seconds) the server waits for before its single retry; anything longer is returned as rate_limited. */
+export const MAX_RETRY_AFTER_S = 5;
+
+/**
+ * One retry at most: after a connection error (PNCP reset about half of the connections on 2026-11-19), or after an
+ * HTTP 429 whose Retry-After is at most 5 s. Never after a timeout or any other HTTP error.
+ */
 async function fetchPncp(url: string): Promise<string> {
   try {
     return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
   } catch (err) {
-    if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
+    if (err instanceof RateLimitedError) {
+      if (err.retryAfterS === null || err.retryAfterS > MAX_RETRY_AFTER_S) throw err;
+      await new Promise((r) => setTimeout(r, err.retryAfterS! * 1000));
+    } else if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
     return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
   }
 }
