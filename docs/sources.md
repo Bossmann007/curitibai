@@ -68,15 +68,21 @@ The repository's Apache-2.0 licence covers the code only, not data from any sour
 
 No network. The user downloads a file in a browser (for example the 156 CSV from the portal, about 137 MB) into the
 folder named by `CURITIBAI_DATA_DIR`. The tool streams it and returns column names, row counts and grouped counts.
+Data rows (after the first line) are never returned.
 The values of the grouped column are returned; groups under 3 rows are counted only in `other_count`, so a filter plus
 a group-by cannot reveal one record.
 
 **Owner decision (2026-11-19), same rule as CNES (no person names):** `group_by` and `filter_column` are refused
 (`column_not_allowed`) when the column name, accents and case ignored, matches nome, name, cpf, cnpj, rg, email/e-mail,
 telefone/fone/celular, matricula, endereco/logradouro/rua, cep, nascimento, servidor, beneficiario, paciente, mae or
-pai (also `nasc`, `tel` and split camelCase, added after code review). The guard is name-based and therefore not
-perfect, and it fails closed on look-alikes. A file whose first line looks like data (no header) is refused with
-`no_header_detected`; a headerless file whose first line is plain words is not detected (documented in the README).
+pai (also `nasc`, `tel` and split camelCase, added after code review; and solicitante, requerente, cidadao,
+contribuinte, titular, responsavel, documento, identidade, contato, whatsapp, usuario, morador, placa and inscricao,
+added in review round 2). The guard is name-based and therefore not perfect, and it fails closed on look-alikes.
+
+The first line is returned as column names. A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date,
+CEP, long text) is refused with `no_header_detected`; a first line made only of text cannot be told apart from a
+header and is returned as column names. This cannot be decided by a heuristic, so the README tells users to use files
+with a header row.
 
 Its licence is the publisher's (portal data: CC BY 4.0 with the portal's citation rules). Tested on synthetic files
 only, not on the real 156 file.

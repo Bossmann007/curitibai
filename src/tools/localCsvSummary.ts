@@ -18,7 +18,8 @@ export const MAX_HEADER_CHARS = 60;
  */
 const SENSITIVE_WORDS = [
   "nome", "name", "cpf", "cnpj", "email", "telefone", "fone", "celular", "matricula", "endereco", "logradouro",
-  "nasc", "servidor", "beneficiario", "paciente",
+  "nasc", "servidor", "beneficiario", "paciente", "solicitante", "requerente", "cidadao", "contribuinte", "titular",
+  "responsavel", "documento", "identidade", "contato", "whatsapp", "usuario", "morador", "placa", "inscricao",
 ];
 const SENSITIVE_TOKENS = ["rg", "rua", "cep", "mae", "pai", "tel"];
 
@@ -54,7 +55,8 @@ export function looksLikeValue(cell: string): boolean {
 }
 
 export const LOCAL_NOTE =
-  "Aggregates of a file the user downloaded by hand into CURITIBAI_DATA_DIR; no network, no rows returned. " +
+  "Aggregates of a file the user downloaded by hand into CURITIBAI_DATA_DIR; no network. " +
+  "A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, long text) is refused; a first line made only of text cannot be told apart from a header and is returned as column names. Data rows (after the first line) are never returned. " +
   "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
   "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused; the check is by name only. " +
@@ -204,11 +206,14 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
   description:
     "Count rows of a CSV file the user downloaded by hand into the folder set by CURITIBAI_DATA_DIR (for example the " +
     "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count and the top groups of one " +
-    "column (the values of that column are returned), optionally filtered by column = value. Never returns rows. " +
+    "column (the values of that column are returned), optionally filtered by column = value. Data rows (after the " +
+    "first line) are never returned. A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, " +
+    "long text) is refused; a first line made only of text cannot be told apart from a header and is returned as " +
+    "column names, so use files with a header row. " +
     "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
-    "pai; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column name only, refuses " +
-    "some harmless look-alikes and is not perfect. Refuses files whose first line looks like data instead of a header. " +
+    "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
+    "name only, refuses some harmless look-alikes and is not perfect. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,

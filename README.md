@@ -21,7 +21,7 @@ read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_no
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page timed out | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
-| `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). **Never returns rows**; refuses personal-looking columns | A file you downloaded yourself; no network |
+| `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
 server never opens them; a person can open them in a browser, and `local_csv_summary` can then summarise the file.
@@ -100,23 +100,24 @@ The server never downloads data files. A person does it in a browser:
 4. Ask the assistant, for example: "with local_csv_summary, count `156.csv` by `ASSUNTO`, only where `BAIRRO` is
    `CENTRO`". Use the column names the tool returns (call it with just `file` first).
 
-The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns only
-counts. What it does return, and what it refuses:
+The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns column
+names and counts. Data rows (after the first line) are never returned. What it does return, and what it refuses:
 
 - **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 3
   rows are added to `other_count` instead of being listed, so that a filter on a unique column cannot reveal a single
   record.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
-  nasc (nascimento, DTNASC), servidor, beneficiario or paciente, or the words rg, rua, cep, mae, pai or tel (accents
+  nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
+  titular, responsavel, documento, identidade, contato, whatsapp, usuario, morador, placa or inscricao, or the words rg, rua, cep, mae, pai or tel (accents
   and case ignored; camelCase, acronyms and digits are split, so `numeroRG`, `CEPResidencia` and `RG1` are refused). It fails closed on look-alikes (`NOMENCLATURA`,
   `QTD_PACIENTES` are refused too). **This guard is name-based and not perfect**: a column with personal data under an
   innocent or run-together name (`CEPRESIDENCIA`) is not caught.
-- **Files without a header are refused** (`no_header_detected`, no columns returned): if any cell of the first line
-  looks like a value (only digits and punctuation, a CPF, CNPJ, e-mail, phone, date or CEP pattern, or longer than 60
-  characters). This also refuses some real headers (a column named `2024`). It cannot catch a headerless file whose
-  first line is plain words (`Maria;Rua das Flores;Centro`): those words would come back as `columns`, so only use
-  files that have a header row.
+- **The first line is returned as column names, with one check.** A first line that looks like data (digits,
+  CPF/CNPJ, e-mail, phone, date, CEP, long text) is refused (`no_header_detected`, no columns returned); this also
+  refuses some real headers (a column named `2024`). **A first line made only of text cannot be told apart from a
+  header and is returned as column names**: in a headerless file, `Maria;Rua das Flores;Centro` would come back as
+  `columns`. Only use files that have a header row.
 - The path must be a `.csv` file inside the folder; anything outside it is `file_not_allowed`, whether or not it
   exists. The file is opened once (without following a final symbolic link, and without blocking, so a named pipe is
   refused instead of hanging the server), checked through that open descriptor and read from it, so swapping the file

@@ -113,7 +113,9 @@ describe("header and column guards", () => {
     for (const c of ["nome", "NOME_SOLICITANTE", "nomeMae", "Name", "cpf", "CNPJ", "RG", "E-mail", "email", "Telefone",
       "fone", "Celular", "Matrícula", "Endereço", "logradouro", "Rua", "CEP", "Data de Nascimento", "servidor",
       "Beneficiário", "paciente", "MÃE", "pai", "numeroRG", "codCep", "ruaResidencia", "DTNASC", "DATA_NASC", "TEL",
-      "telResidencial", "CEPResidencia", "RGTitular", "TELResidencial", "RG1", "CEP2", "tel2", "NumRG2"]) {
+      "telResidencial", "CEPResidencia", "RGTitular", "TELResidencial", "RG1", "CEP2", "tel2", "NumRG2",
+      "SOLICITANTE", "Requerente", "cidadão", "CONTRIBUINTE", "titular", "Responsável", "NUM_DOCUMENTO", "identidade",
+      "contato", "WhatsApp", "usuário", "MORADOR", "placa_veiculo", "Inscrição Municipal"]) {
       expect({ c, sensitive: isSensitiveColumn(c) }).toEqual({ c, sensitive: true });
     }
     for (const c of ["ASSUNTO", "BAIRRO", "PROTOCOLO", "categoria", "Regional", "Programa", "ORGAO", "DESCRICAO"]) {
@@ -187,6 +189,14 @@ describe("local_csv_summary", () => {
     expect(JSON.stringify(res)).not.toContain("Centro");
   });
 
+  it("returns a text-only first line as column names (documented limit: it cannot be told from a header)", async () => {
+    writeFileSync(join(dataDir, "text-first.csv"), "JOAO INVENTADO DA SILVA;CURITIBA\nMARIA INVENTADA;CURITIBA\n");
+    const data = localCsvSummaryOutput.parse((await call({ file: "text-first.csv" })).structuredContent).data;
+    expect(data.columns).toEqual(["JOAO INVENTADO DA SILVA", "CURITIBA"]);
+    expect(data.row_count).toBe(1); // the second line is a data row: counted, never returned
+    expect(JSON.stringify(data)).not.toContain("MARIA");
+  });
+
   it("refuses a file whose first line looks like data, without returning it", async () => {
     const res = await call({ file: "headerless.csv" });
     expect(errorOf(res)).toEqual({ error: "no_header_detected" });
@@ -195,7 +205,8 @@ describe("local_csv_summary", () => {
     for (const leak of ["Fulano", "123.456", "Rua Ficticia"]) expect(text).not.toContain(leak);
   });
 
-  it.each(["LOGRADOURO", "nome", "Nome do solicitante", "CPF", "e-mail", "Telefone", "Endereço", "data_nascimento", "Mãe"])(
+  it.each(["LOGRADOURO", "nome", "Nome do solicitante", "CPF", "e-mail", "Telefone", "Endereço", "data_nascimento", "Mãe",
+    "SOLICITANTE", "Responsável", "placa"])(
     "refuses to group or filter by %s",
     async (column) => {
       expect(errorOf(await call({ file: "156.csv", group_by: column }))).toEqual({ error: "column_not_allowed" });
