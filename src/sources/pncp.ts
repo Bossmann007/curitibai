@@ -117,15 +117,18 @@ const SPACED_ID = new RegExp(String.raw`\b(?:\d{3}${SEP}\d{3}${SEP}\d{3}${SEP}\d
 const PSEP = String.raw`(?:\s*[-.]\s*|\s{1,2})`;
 /** Two year-like groups ("2025 - 2026", "2026-2027"): not taken as a bare phone when nothing comes before them. */
 const YEAR_PAIR = String.raw`(?:19|20)\d{2}${PSEP}(?:19|20)\d{2}\b`;
+/** A contact word right before the number ("tel", "Fone:", "WhatsApp"); whitespace is already collapsed to one space. */
+const PHONE_CUE = String.raw`(?<=(?<![\p{L}\p{N}])(?:tel|fone|telefone|celular|contato|whatsapp) ?:? ?)`;
 /**
  * Brazilian phone numbers (a DDD may have a leading 0): optional +55; a DDD in parentheses with 8 or 9 digits,
  * separator optional; an optional bare DDD with 8 or 9 digits split by a separator ("41 3333-4444",
  * "41 - 3333 - 4444"); or a bare DDD and a separator before 8 or 9 glued digits ("41 999998888", "041 33334444").
- * A match that would start with a year pair is skipped; with a DDD, +55 or parentheses before it, it is still masked.
+ * A match that would start with a year pair is skipped unless a contact word comes right before it ("tel 2025-2026");
+ * with a DDD, +55 or parentheses before it, it is still masked.
  */
 const PHONE = new RegExp(
-  String.raw`(?!${YEAR_PAIR})(?:\+?55${PSEP}?)?(?:\(0?\d{2}\)\s?9?\d{4}${PSEP}?\d{4}\b|(?:\b0?\d{2}${PSEP}?)?\b9?\d{4}${PSEP}\d{4}\b|\b0?\d{2}${PSEP}9?\d{8}\b)`,
-  "g",
+  String.raw`(?:${PHONE_CUE}|(?!${YEAR_PAIR}))(?:\+?55${PSEP}?)?(?:\(0?\d{2}\)\s?9?\d{4}${PSEP}?\d{4}\b|(?:\b0?\d{2}${PSEP}?)?\b9?\d{4}${PSEP}\d{4}\b|\b0?\d{2}${PSEP}9?\d{8}\b)`,
+  "giu",
 );
 
 /**

@@ -362,6 +362,17 @@ describe("object gate (unit)", () => {
     ["lote 12 1234567 itens", "lote 12 1234567 itens"],
     ["item 3 12345678", "item 3 12345678"],
     ["Lei 8666 de 1993, item 12345678", "Lei 8666 de 1993, item 12345678"],
+    ["tel 2025 - 2026", `tel ${MASK}`],
+    ["Fone: 2025-2026", `Fone: ${MASK}`],
+    ["TELEFONE 2025.2026", `TELEFONE ${MASK}`],
+    ["celular:2025 2026", `celular:${MASK}`],
+    ["contato 2025-2026", `contato ${MASK}`],
+    ["WhatsApp : 2025-2026", `WhatsApp : ${MASK}`],
+    ["contrato 2025 - 2026", "contrato 2025 - 2026"],
+    ["hotel 2025 - 2026", "hotel 2025 - 2026"],
+    ["Pimentel 2025-2026", "Pimentel 2025-2026"],
+    ["telefones 2025-2026", "telefones 2025-2026"],
+    ["vigência 2025 - 2026, tel 3333-4444", `vigência 2025 - 2026, tel ${MASK}`],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
   });
