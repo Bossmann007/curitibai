@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Exit 0 = built. Needs no network except `npm ci` when the npm cache is cold.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+step() { printf '\n== %s\n' "$*"; }
+
+step "npm ci"
+npm ci --no-audit --no-fund --prefer-offline
+
+step "tsc --noEmit"
+npx tsc --noEmit
+
+step "eslint"
+npx eslint .
+
+step "vitest run"
+npx vitest run
+
+step "build"
+npm run --silent build
+
+step "stdio smoke test (tools/list)"
+node scripts/smoke.mjs
+
+echo
+echo "verify: OK"
+
+# Reported separately: never changes the exit code above.
+step "npm audit --omit=dev --audit-level=high (separate, needs network)"
+if curl -fsS -m 5 -o /dev/null https://registry.npmjs.org/ 2>/dev/null; then
+  if npm audit --omit=dev --audit-level=high; then
+    echo "audit: OK"
+  else
+    echo "audit: FINDINGS (not part of verify result)"
+  fi
+else
+  echo "audit: SKIPPED (network unavailable)"
+fi

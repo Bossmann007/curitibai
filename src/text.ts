@@ -1,0 +1,24 @@
+const NAMED: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+};
+
+/** Decodes numeric entities and a few named ones; unknown entities are left as they are. */
+export function decodeEntities(s: string): string {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
+    if (code[0] === "#") {
+      const n = code[1] === "x" || code[1] === "X" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+      return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : m;
+    }
+    return NAMED[code.toLowerCase()] ?? m;
+  });
+}
+
+/** Plain text from an HTML fragment: tags dropped, entities decoded, whitespace collapsed. */
+export function htmlToText(s: string): string {
+  return decodeEntities(s.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+/** Lowercase, accents removed, for matching. */
+export function fold(s: string): string {
+  return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
