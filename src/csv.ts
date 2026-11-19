@@ -1,12 +1,16 @@
-/** Thrown when one field outgrows the cap (e.g. an unterminated quote would swallow the rest of the file). */
-export class CsvFieldTooLongError extends Error {
-  constructor() {
-    super("csv field too long");
-    this.name = "CsvFieldTooLongError";
+/**
+ * Thrown when a field outgrows its cap (e.g. an unterminated quote would swallow the rest of the file) or a record has
+ * too many fields (a wide or malformed line), so memory stays bounded.
+ */
+export class CsvLimitError extends Error {
+  constructor(what: "field" | "columns") {
+    super(`csv ${what} limit exceeded`);
+    this.name = "CsvLimitError";
   }
 }
 
 export const MAX_FIELD_CHARS = 1 << 20;
+export const MAX_COLUMNS = 300;
 
 /** Streaming CSV record parser (RFC 4180 quoting: `"` quotes, `""` escapes, quoted newlines). State survives chunks. */
 export class CsvParser {
@@ -21,6 +25,7 @@ export class CsvParser {
     private readonly delimiter: string,
     private readonly onRecord: (fields: string[]) => void,
     private readonly maxField: number = MAX_FIELD_CHARS,
+    private readonly maxColumns: number = MAX_COLUMNS,
   ) {}
 
   push(text: string): void {
@@ -37,6 +42,7 @@ export class CsvParser {
           this.quoteSeen = false;
           if (c === '"') {
             field += '"';
+            if (field.length > this.maxField) throw new CsvLimitError("field");
             continue;
           }
           this.inQuotes = false; // the quote closed the field; fall through to normal handling
@@ -45,7 +51,7 @@ export class CsvParser {
           continue;
         } else {
           field += c;
-          if (field.length > this.maxField) throw new CsvFieldTooLongError();
+          if (field.length > this.maxField) throw new CsvLimitError("field");
           continue;
         }
       }
@@ -54,17 +60,19 @@ export class CsvParser {
         this.touched = true;
       } else if (c === d) {
         this.record.push(field);
+        if (this.record.length > this.maxColumns) throw new CsvLimitError("columns");
         field = "";
         this.touched = true;
       } else if (c === "\n" || c === "\r") {
         if (c === "\r") this.pendingCr = true;
         this.record.push(field);
+        if (this.record.length > this.maxColumns) throw new CsvLimitError("columns");
         field = "";
         this.emit();
       } else {
         field += c;
         this.touched = true;
-        if (field.length > this.maxField) throw new CsvFieldTooLongError();
+        if (field.length > this.maxField) throw new CsvLimitError("field");
       }
     }
     this.field = field;

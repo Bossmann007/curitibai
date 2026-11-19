@@ -32,18 +32,24 @@ describe("no tool writes", () => {
       /["']node:fs\/promises["']/, /["'](node:)?child_process["']/, /["'](node:)?(net|dgram|http|https|http2)["']/,
       /\blocalStorage\b/, /\bconsole\.log\b/,
     ];
+    // localfs.ts may open files, but only read-only and without following a final link, in exactly this form.
+    const READ_ONLY_OPEN = "openSync(real, constants.O_RDONLY | NOFOLLOW)";
     const files = sourceFiles(SRC);
     expect(files.length).toBeGreaterThan(5);
     for (const f of files) {
-      const text = readFileSync(f, "utf8");
-      for (const re of forbidden) expect({ file: f, hit: re.test(text) }).toEqual({ file: f, hit: false });
+      let text = readFileSync(f, "utf8");
+      if (f.endsWith("/src/localfs.ts")) {
+        expect(text.split(READ_ONLY_OPEN)).toHaveLength(2);
+        text = text.replace(READ_ONLY_OPEN, "");
+      }
+      for (const re of forbidden) expect({ file: f, re: String(re), hit: re.test(text) }).toMatchObject({ hit: false });
     }
   });
 
   it("imports node:fs only in the allowed modules, and only read APIs there", () => {
     // Every mention of the fs module (any spelling) must be one of these named imports.
     const allowed: Record<string, string[]> = {
-      "localfs.ts": ["createReadStream", "realpathSync", "statSync"],
+      "localfs.ts": ["closeSync", "constants", "fstatSync", "openSync", "read", "realpathSync", "statSync"],
       "server.ts": ["realpathSync"],
     };
     const anyFs = /["'](node:)?fs(\/[\w]+)?["']/g;

@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { CsvFieldTooLongError, CsvParser, detectDelimiter, MAX_FIELD_CHARS } from "../src/csv.js";
-import { DATA_DIR_ENV } from "../src/localfs.js";
-import { localCsvSummaryOutput } from "../src/tools/localCsvSummary.js";
+import { CsvLimitError, CsvParser, detectDelimiter, MAX_COLUMNS, MAX_FIELD_CHARS } from "../src/csv.js";
+import { closeFile, DATA_DIR_ENV, LocalFileError, openDataFile, openVerified, readChunks } from "../src/localfs.js";
+import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue } from "../src/tools/localCsvSummary.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Synthetic files only, written to a temporary folder outside the repository.
@@ -35,6 +35,11 @@ beforeAll(() => {
   const ascii = `nome;categoria\n${"linha;ascii\n".repeat(100_000)}`;
   writeFileSync(join(dataDir, "latin1.csv"), Buffer.concat([Buffer.from(ascii, "latin1"), Buffer.from("x;Saúde\nx;Saúde\nx;Saúde\n", "latin1")]));
   writeFileSync(join(dataDir, "empty.csv"), "");
+  // Headerless: the first line is a (synthetic) record with a name, a CPF-shaped number and a street.
+  writeFileSync(join(dataDir, "headerless.csv"), "Fulano Ficticio;123.456.789-09;Rua Ficticia 1\nBeltrana Ficticia;987.654.321-00;Rua Ficticia 2\n");
+  // A line with far more fields than any header.
+  writeFileSync(join(dataDir, "wide.csv"), `a,b\n1,2\n${",".repeat(MAX_COLUMNS * 10)}\n`);
+  writeFileSync(join(dataDir, "swap.csv"), "a;b\ninside;1\n");
   // An unterminated quote must not buffer the rest of the file into one field.
   writeFileSync(join(dataDir, "open-quote.csv"), `a;b\n1;"never closed\n${"x;y\n".repeat(MAX_FIELD_CHARS / 4 + 10)}`);
   writeFileSync(join(dataDir, "notes.txt"), "a;b\n1;2\n");
@@ -68,15 +73,67 @@ describe("csv parser", () => {
 
   it("stops a field that outgrows the cap", () => {
     const p = new CsvParser(";", () => undefined, 10);
-    expect(() => p.push('a;"0123456789ABC')).toThrow(CsvFieldTooLongError);
+    expect(() => p.push('a;"0123456789ABC')).toThrow(CsvLimitError);
     const q = new CsvParser(";", () => undefined, 10);
-    expect(() => q.push("a;0123456789ABC")).toThrow(CsvFieldTooLongError);
+    expect(() => q.push("a;0123456789ABC")).toThrow(CsvLimitError);
+  });
+
+  it("stops a record as soon as it has too many fields", () => {
+    const records: string[][] = [];
+    const p = new CsvParser(",", (r) => records.push(r), 100, 5);
+    expect(() => p.push(`a,b\n${",".repeat(1000)}`)).toThrow(CsvLimitError);
+    expect(records).toEqual([["a", "b"]]);
   });
 
   it("detects the delimiter from the header", () => {
     expect(detectDelimiter("a;b;c")).toBe(";");
     expect(detectDelimiter('"a;x",b,c')).toBe(",");
     expect(detectDelimiter("a")).toBe(",");
+  });
+});
+
+describe("header and column guards", () => {
+  it("treats data-looking cells as values", () => {
+    for (const v of ["123.456.789-09", "12.345.678/0001-90", "a@b.com", "(41) 3333-4444", "41 999998888", "18/11/2026",
+      "2026-11-18", "80000-000", "12345", "x".repeat(61)]) {
+      expect({ v, value: looksLikeValue(v) }).toEqual({ v, value: true });
+    }
+    for (const h of ["PROTOCOLO", "ASSUNTO", "Data de abertura", "BAIRRO_ID", "categoria", ""]) {
+      expect({ h, value: looksLikeValue(h) }).toEqual({ h, value: false });
+    }
+  });
+
+  it("flags personal-looking column names (name-based)", () => {
+    for (const c of ["nome", "NOME_SOLICITANTE", "nomeMae", "Name", "cpf", "CNPJ", "RG", "E-mail", "email", "Telefone",
+      "fone", "Celular", "Matrícula", "Endereço", "logradouro", "Rua", "CEP", "Data de Nascimento", "servidor",
+      "Beneficiário", "paciente", "MÃE", "pai"]) {
+      expect({ c, sensitive: isSensitiveColumn(c) }).toEqual({ c, sensitive: true });
+    }
+    for (const c of ["ASSUNTO", "BAIRRO", "PROTOCOLO", "categoria", "Regional", "Programa", "ORGAO", "DESCRICAO"]) {
+      expect({ c, sensitive: isSensitiveColumn(c) }).toEqual({ c, sensitive: false });
+    }
+  });
+});
+
+describe("local file descriptor checks", () => {
+  it("keeps reading the checked file after it is swapped for a symlink to outside", async () => {
+    const { fd } = openDataFile("swap.csv");
+    try {
+      unlinkSync(join(dataDir, "swap.csv"));
+      symlinkSync(join(root, "outside.csv"), join(dataDir, "swap.csv"));
+      let text = "";
+      for await (const chunk of readChunks(fd)) text += chunk.toString("utf8");
+      expect(text).toBe("a;b\ninside;1\n");
+    } finally {
+      closeFile(fd);
+    }
+    expect(errorOf(await call({ file: "swap.csv" }))).toEqual({ error: "file_not_allowed" });
+  });
+
+  it("refuses to open a path that is now a symlink, even one that was checked as a real file", () => {
+    expect(() => openVerified(join(dataDir, "link-in.csv"), dataDir)).toThrow(LocalFileError);
+    expect(() => openVerified(join(dataDir, "link-out.csv"), dataDir)).toThrow(LocalFileError);
+    closeFile(openVerified(join(dataDir, "156.csv"), dataDir));
   });
 });
 
@@ -117,10 +174,32 @@ describe("local_csv_summary", () => {
   });
 
   it("cannot rebuild a row by filtering on a unique column", async () => {
-    const res = await call({ file: "156.csv", group_by: "LOGRADOURO", filter_column: "PROTOCOLO", filter_value: "1" });
+    const res = await call({ file: "156.csv", group_by: "BAIRRO", filter_column: "PROTOCOLO", filter_value: "1" });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;
     expect(data.group_by).toMatchObject({ top: [], other_count: 1 });
-    expect(JSON.stringify(res)).not.toContain("Rua Fictícia A");
+    expect(JSON.stringify(res)).not.toContain("Centro");
+  });
+
+  it("refuses a file whose first line looks like data, without returning it", async () => {
+    const res = await call({ file: "headerless.csv" });
+    expect(errorOf(res)).toEqual({ error: "no_header_detected" });
+    expect(res.structuredContent).toBeUndefined();
+    const text = JSON.stringify(res);
+    for (const leak of ["Fulano", "123.456", "Rua Ficticia"]) expect(text).not.toContain(leak);
+  });
+
+  it.each(["LOGRADOURO", "nome", "Nome do solicitante", "CPF", "e-mail", "Telefone", "Endereço", "data_nascimento", "Mãe"])(
+    "refuses to group or filter by %s",
+    async (column) => {
+      expect(errorOf(await call({ file: "156.csv", group_by: column }))).toEqual({ error: "column_not_allowed" });
+      expect(errorOf(await call({ file: "156.csv", filter_column: column, filter_value: "x" }))).toEqual({
+        error: "column_not_allowed",
+      });
+    },
+  );
+
+  it("fails early on a line with too many fields", async () => {
+    expect(errorOf(await call({ file: "wide.csv" }))).toEqual({ error: "invalid_csv" });
   });
 
   it("reads comma files in subfolders and limits top", async () => {
@@ -147,6 +226,9 @@ describe("local_csv_summary", () => {
 
   it.each([
     ["../outside.csv", "file_not_allowed"],
+    ["../does-not-exist.csv", "file_not_allowed"],
+    ["../../../nowhere/x.csv", "file_not_allowed"],
+    ["/nonexistent-dir/x.csv", "file_not_allowed"],
     ["link-out.csv", "file_not_allowed"],
     ["notes.txt", "file_not_allowed"],
     ["sub", "file_not_allowed"],

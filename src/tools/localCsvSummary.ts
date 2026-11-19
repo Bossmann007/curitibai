@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { CsvParser, detectDelimiter } from "../csv.js";
-import { LocalFileError, readChunks, resolveDataFile } from "../localfs.js";
+import { CsvParser, detectDelimiter, MAX_COLUMNS } from "../csv.js";
+import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
 import { fold } from "../text.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -8,11 +8,50 @@ import { fail, ok, type ToolDef } from "./common.js";
 export const MIN_GROUP_COUNT = 3;
 export const MAX_DISTINCT = 50_000;
 export const MAX_VALUE_CHARS = 120;
-export const MAX_COLUMNS = 300;
+export const MAX_HEADER_CHARS = 60;
+
+/**
+ * Column names that may hold personal data. Long words match anywhere in the name with separators removed
+ * ("NOME_SOLICITANTE", "nomeMae", "E-mail"); short ones match only as a whole word ("RG", "CEP", "RUA").
+ * Name-based, so not perfect: a sensitive column with an innocent name is not caught.
+ */
+const SENSITIVE_WORDS = [
+  "nome", "name", "cpf", "cnpj", "email", "telefone", "fone", "celular", "matricula", "endereco", "logradouro",
+  "nascimento", "servidor", "beneficiario", "paciente",
+];
+const SENSITIVE_TOKENS = ["rg", "rua", "cep", "mae", "pai"];
+
+export function isSensitiveColumn(name: string): boolean {
+  const f = fold(name);
+  const compact = f.replace(/[^a-z0-9]/g, "");
+  if (SENSITIVE_WORDS.some((w) => compact.includes(w))) return true;
+  const tokens = f.split(/[^a-z0-9]+/);
+  return SENSITIVE_TOKENS.some((t) => tokens.includes(t));
+}
+
+const VALUE_PATTERNS = [
+  /^[\d\s.,;:/\\()+\-_]+$/, // only digits and punctuation
+  /\d{3}\.?\d{3}\.?\d{3}-?\d{2}/, // CPF
+  /\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/, // CNPJ
+  /[^\s@]+@[^\s@]+\.[^\s@]+/, // e-mail
+  /\(?\d{2}\)?[\s.-]?\d{4,5}[\s.-]?\d{4}/, // phone
+  /\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/, // date
+  /\d{5}-?\d{3}/, // CEP
+];
+
+/** A header cell that looks like data (fails closed: the file is then treated as having no header). */
+export function looksLikeValue(cell: string): boolean {
+  const t = cell.trim();
+  if (t === "") return false;
+  if (t.length > MAX_HEADER_CHARS) return true;
+  return VALUE_PATTERNS.some((re) => re.test(t));
+}
 
 export const LOCAL_NOTE =
   "Aggregates of a file the user downloaded by hand into CURITIBAI_DATA_DIR; no network, no rows returned. " +
+  "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
+  "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused; the check is by name only. " +
   "The data keeps its publisher's licence: cite the source of the file.";
 
 export const localCsvSummaryInput = {
@@ -50,7 +89,7 @@ export const localCsvSummaryOutput = z.object({
 });
 
 class CsvError extends Error {
-  constructor(readonly code: "column_not_found" | "invalid_csv") {
+  constructor(readonly code: "column_not_found" | "column_not_allowed" | "no_header_detected" | "invalid_csv") {
     super(code);
   }
 }
@@ -78,7 +117,7 @@ interface Scan {
 class NotUtf8 extends Error {}
 
 async function scan(
-  path: string,
+  fd: number,
   encoding: "utf-8" | "latin1",
   groupBy: string | undefined,
   filter: { column: string; value: string } | undefined,
@@ -95,14 +134,19 @@ async function scan(
 
   const onRecord = (rec: string[]) => {
     if (header === null) {
-      header = rec.map((h, i) => (i === 0 ? h.replace(/^﻿/, "") : h));
+      header = rec.map((h, i) => (i === 0 ? h.replace(/^\uFEFF/, "") : h));
       if (header.length > MAX_COLUMNS) throw new CsvError("invalid_csv");
+      if (header.some(looksLikeValue)) throw new CsvError("no_header_detected");
       s.columns = header.map(cut);
       if (groupBy !== undefined) {
         gi = findColumn(header, groupBy);
+        if (isSensitiveColumn(header[gi]!)) throw new CsvError("column_not_allowed");
         s.groupColumn = s.columns[gi]!;
       }
-      if (filter) fi = findColumn(header, filter.column);
+      if (filter) {
+        fi = findColumn(header, filter.column);
+        if (isSensitiveColumn(header[fi]!)) throw new CsvError("column_not_allowed");
+      }
       return;
     }
     s.rows++;
@@ -132,7 +176,7 @@ async function scan(
   };
 
   try {
-    for await (const chunk of readChunks(path)) feed(decoder.decode(chunk, { stream: true }));
+    for await (const chunk of readChunks(fd)) feed(decoder.decode(chunk, { stream: true }));
     feed(decoder.decode());
   } catch (err) {
     if (err instanceof TypeError && encoding === "utf-8") throw new NotUtf8();
@@ -155,8 +199,11 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
   description:
     "Count rows of a CSV file the user downloaded by hand into the folder set by CURITIBAI_DATA_DIR (for example the " +
     "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count and the top groups of one " +
-    "column, optionally filtered by column = value. Never returns rows. No network; reads only. Detects ; or , and " +
-    "UTF-8 or Latin-1.",
+    "column (the values of that column are returned), optionally filtered by column = value. Never returns rows. " +
+    "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
+    "celular, matrícula, endereço, logradouro, rua, CEP, nascimento, servidor, beneficiário, paciente, mãe, pai); " +
+    "this check is by column name only and is not perfect. Refuses files whose first line does not look like a header. " +
+    "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
   annotations: { openWorldHint: false },
@@ -165,16 +212,24 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       return fail("invalid_csv", "filter_column and filter_value go together");
     }
     const filter = filter_column !== undefined ? { column: filter_column, value: filter_value ?? "" } : undefined;
+    // Refuse before reading anything; the resolved header name is checked again during the scan.
+    if ((group_by !== undefined && isSensitiveColumn(group_by)) || (filter && isSensitiveColumn(filter.column))) {
+      return fail("column_not_allowed");
+    }
     try {
-      const target = resolveDataFile(file);
+      const target = openDataFile(file);
       let encoding: "utf-8" | "latin1" = "utf-8";
       let s: Scan;
       try {
-        s = await scan(target.path, "utf-8", group_by, filter);
-      } catch (err) {
-        if (!(err instanceof NotUtf8)) throw err;
-        encoding = "latin1"; // restart: the bytes are not valid UTF-8
-        s = await scan(target.path, "latin1", group_by, filter);
+        try {
+          s = await scan(target.fd, "utf-8", group_by, filter);
+        } catch (err) {
+          if (!(err instanceof NotUtf8)) throw err;
+          encoding = "latin1"; // restart on the same descriptor: the bytes are not valid UTF-8
+          s = await scan(target.fd, "latin1", group_by, filter);
+        }
+      } finally {
+        closeFile(target.fd);
       }
       let groupOut = null;
       if (group_by !== undefined) {
