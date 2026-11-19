@@ -1,9 +1,17 @@
 import { ALLOWED_HOSTS, FETCH_TIMEOUT_MS, MAX_REDIRECTS, MAX_RESPONSE_BYTES, USER_AGENT } from "./config.js";
 
 export class SourceUnavailableError extends Error {
-  constructor(reason: string) {
+  constructor(readonly reason: string) {
     super(`source_unavailable: ${reason}`);
     this.name = "SourceUnavailableError";
+  }
+}
+
+/** HTTP 429. `retryAfterS` is the Retry-After header in whole seconds, or null when absent or not a number. */
+export class RateLimitedError extends SourceUnavailableError {
+  constructor(readonly retryAfterS: number | null) {
+    super("HTTP 429");
+    this.name = "RateLimitedError";
   }
 }
 
@@ -38,6 +46,8 @@ export interface FetchResult {
 export interface FetchOptions {
   method?: "GET" | "POST";
   form?: Record<string, string>;
+  /** Per-hop timeout; defaults to FETCH_TIMEOUT_MS. */
+  timeoutMs?: number;
 }
 
 async function readCapped(res: Response): Promise<string> {
@@ -77,10 +87,11 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
         body,
         headers: { "user-agent": USER_AGENT, accept: "text/html,application/json;q=0.9,*/*;q=0.5" },
         redirect: "manual",
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(options.timeoutMs ?? FETCH_TIMEOUT_MS),
       });
-    } catch {
-      throw new SourceUnavailableError("network error or timeout");
+    } catch (err) {
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+      throw new SourceUnavailableError(timedOut ? "timeout" : "network error");
     }
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
@@ -97,6 +108,10 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
     }
     if (!res.ok) {
       await res.body?.cancel().catch(() => undefined);
+      if (res.status === 429) {
+        const ra = res.headers.get("retry-after")?.trim() ?? "";
+        throw new RateLimitedError(/^\d{1,6}$/.test(ra) ? Number(ra) : null);
+      }
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
     return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res) };
