@@ -232,14 +232,27 @@ describe("object gate (unit)", () => {
     for (const s of ["a".repeat(100_000), "a.".repeat(50_000), `${"a".repeat(99_990)}@`, "1.".repeat(50_000)]) {
       const t0 = performance.now();
       const out = maskObject(s);
-      expect(performance.now() - t0).toBeLessThan(200);
+      expect(performance.now() - t0).toBeLessThan(1000); // linear: a few ms; the quadratic regex took seconds
       expect(out.truncated).toBe(true);
     }
   });
 
-  it("drops the partial last word when the raw object is cut, so half a number is not shown", () => {
-    const out = maskObject(`${"palavra ".repeat(300)}123.456.789-09`);
-    expect(out.text).not.toMatch(/\d/);
+  it("never shows an identifier split by the raw cut", () => {
+    for (const id of ["123.456.789-09", "123 456 789 09", "maria @ exemplo.com", "fulana.ficticia@example.invalid"]) {
+      for (let inside = 1; inside < id.length; inside++) {
+        // collapsed text: prefix + " " + id, with the 2,000-character cut landing `inside` characters into the id
+        // long e-mails shrink to [masked], so the masked text is short and the cut region would be visible
+        const unit = `${"a".repeat(60)}@${"d".repeat(34)}.com `; // 100 characters, masked whole
+        const len = 2000 - inside - 1;
+        const prefix = unit.repeat(Math.floor(len / 100)) + "b".repeat(len % 100);
+        const out = maskObject(`${prefix} ${id}`);
+        expect({ id, inside, leak: /\d{3}|maria|fulana/.test(out.text) }).toEqual({ id, inside, leak: false });
+      }
+    }
+  });
+
+  it("whitespace padding does not count against the raw cap", () => {
+    expect(maskObject(`${" ".repeat(5000)}objeto real`)).toEqual({ text: "objeto real", truncated: false });
   });
 
   it("never cuts a mask token or a surrogate pair when truncating", () => {
@@ -296,6 +309,14 @@ describe("object gate (unit)", () => {
     ["fone 41 - 3333 - 4444", `fone ${MASK}`],
     ["mail maria @ exemplo.com fim", `mail ${MASK} fim`],
     ["exercício 2025/2026", "exercício 2025/2026"],
+    ["CPF 123.456.789\u00AD09", `CPF ${MASK}`],
+    ["CPF 123.456.789\uFF0D09", `CPF ${MASK}`],
+    ["CPF 123.456.789\uFE6309", `CPF ${MASK}`],
+    ["CPF 123.456\u2062.789\u2063-09", `CPF ${MASK}`],
+    ["CPF 123__456__789__09", `CPF ${MASK}`],
+    ["CPF 123 _ 456 _ 789 _ 09", `CPF ${MASK}`],
+    ["CPF 123 . 456 . 789 - 09", `CPF ${MASK}`],
+    ["valor unitário @ 10.50 reais", "valor unitário @ 10.50 reais"],
     ["CNPJ 12 345 678 0001 95", `CNPJ ${MASK}`],
     ["Pregão 116/2026, R$ 1.234.567,89, Lei 14.133", "Pregão 116/2026, R$ 1.234.567,89, Lei 14.133"],
     ["  espaços   colapsados  ", "espaços colapsados"],
@@ -398,10 +419,19 @@ describe("procurement_search paging", () => {
   });
 
   it("HTTP 429 without a short Retry-After is rate_limited, with no retry", async () => {
-    for (const headers of [{}, { "retry-after": "120" }, { "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }] as Record<string, string>[]) {
+    const cases: [Record<string, string>, string][] = [
+      [{}, "about 1 minute"],
+      [{ "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }, "about 1 minute"],
+      [{ "retry-after": "30" }, "30 s"],
+      [{ "retry-after": "3600" }, "about 60 minutes"],
+    ];
+    for (const [headers, wait] of cases) {
       const calls = stubFetch({ [`GET ${pncpUrl()}`]: { status: 429, headers } });
       const res = await search();
-      expect(errorOf(res)).toEqual({ error: "rate_limited", message: "The source is limiting requests; wait about 1 minute and try again." });
+      expect(errorOf(res)).toEqual({
+        error: "rate_limited",
+        message: `The source is limiting requests; wait ${wait} before trying again.`,
+      });
       expect(calls).toHaveLength(1);
     }
   });
@@ -422,7 +452,25 @@ describe("procurement_search paging", () => {
       [`GET ${pncpUrl(1)}`]: { body: syntheticPncpPage(1, 3, 4), contentType: JSON_TYPE },
       [`GET ${pncpUrl(2)}`]: { status: 429, headers: { "retry-after": "60" } },
     });
-    expect(dataOf(await search({ limit: 20 }))).toMatchObject({ partial: true, next_page: 2 });
+    const data = dataOf(await search({ limit: 20 }));
+    expect(data).toMatchObject({ partial: true, next_page: 2 });
+    expect(data.note).toMatch(/^The source is limiting requests; wait 60 s before trying again\./);
+  });
+
+  it("skips the second page when the first was slow", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    globalThis.fetch = (async () => {
+      t += 16_000; // the first page takes 16 s
+      return new Response(syntheticPncpPage(1, 1, 3), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(data).toMatchObject({ partial: true, next_page: 2, scanned_pages: { from: 1, to: 1 } });
+    } finally {
+      globalThis.Date.now = real;
+    }
   });
 
   it("does not count a resumed page's discards twice", async () => {

@@ -87,22 +87,32 @@ export function publicationUrl(from: string, to: string, modality: number, page:
   return `${PNCP_CONSULTA}/v1/contratacoes/publicacao?${params.toString()}`;
 }
 
-/** Raw object characters examined at most; the output is cut at OBJECT_MAX_CHARS anyway. Bounds the regex work. */
+/** Collapsed characters examined at most; the output is cut at OBJECT_MAX_CHARS anyway. Bounds the regex work. */
 export const OBJECT_MAX_RAW_CHARS = 2000;
-/** Unicode hyphens and dashes (U+2010–U+2015) and minus (U+2212), read as "-". */
-const DASHES = /[‐-―−]/g;
-/** Zero-width space, non-joiner, joiner, word joiner, BOM: removed. */
-const ZERO_WIDTH = /[​-‍⁠﻿]/g;
-/** Bounded parts (RFC 5321 sizes) keep it linear; spaces around "@" are allowed ("maria @ exemplo.com"). */
-const EMAIL = /[\p{L}\p{N}._%+-]{1,64}\s*@\s*[\p{L}\p{N}-]{1,63}(?:\.[\p{L}\p{N}-]{1,63}){1,8}/gu;
+/**
+ * When the collapsed text is cut at OBJECT_MAX_RAW_CHARS, this many characters before the cut are never shown, so an
+ * identifier split by the cut (a spaced CPF, an e-mail) cannot leak its first half.
+ */
+const RAW_CUT_GUARD = 200;
+/** Hyphens, dashes and minus signs read as "-": U+00AD, U+2010–U+2015, U+2212, U+FE58, U+FE63, U+FF0D. */
+const DASHES = /[­‐-―−﹘﹣－]/g;
+/** Invisible characters removed: zero-width space/non-joiner/joiner, U+2060–U+2064, BOM. */
+const INVISIBLE = /[​-‍⁠-⁤﻿]/g;
+/** Underscores (with any spaces) between digits read as one space: "123_456", "123__456", "123 _ 456". */
+const DIGIT_UNDERSCORE = /(?<=\d)[\s_]*_[\s_]*(?=\d)/g;
+/**
+ * Bounded parts (RFC 5321 sizes) keep it linear; spaces around "@" are allowed ("maria @ exemplo.com"); the last
+ * domain label must be letters, so "preço @ 10.50" is not an e-mail.
+ */
+const EMAIL = /[\p{L}\p{N}._%+-]{1,64}\s*@\s*[\p{L}\p{N}-]{1,63}(?:\.[\p{L}\p{N}-]{1,63}){0,7}\.\p{L}{2,24}\b/gu;
 /** A digit run with dots, slashes or hyphens inside; masked when it holds 10+ digits (CPF 11, CNPJ 14, phone with DDD 10–11). */
 const DIGIT_RUN = /\d(?:[\d./-]*\d)?/g;
-/** Separator between number groups: 1–2 spaces or dots, or a hyphen or slash with optional spaces. */
-const SEP = String.raw`(?:\s*[-/]\s*|[\s.]{1,2})`;
-/** CPF / CNPJ whose groups are split by spaces or spaced separators ("123 456 789 09", "123. 456. 789 - 09"). */
+/** Separator between number groups: a hyphen, slash or dot with optional spaces around it, or one or two spaces. */
+const SEP = String.raw`(?:\s*[-/.]\s*|\s{1,2})`;
+/** CPF / CNPJ whose groups are split by spaces or spaced separators ("123 456 789 09", "123 . 456 . 789 - 09"). */
 const SPACED_ID = new RegExp(String.raw`\b(?:\d{3}${SEP}\d{3}${SEP}\d{3}${SEP}\d{2}|\d{2}${SEP}\d{3}${SEP}\d{3}${SEP}\d{4}${SEP}\d{2})\b`, "g");
 /** Phone separator: like SEP but without "/", so "2025/2026" stays. */
-const PSEP = String.raw`(?:\s*-\s*|[\s.]{1,2})`;
+const PSEP = String.raw`(?:\s*[-.]\s*|\s{1,2})`;
 /**
  * Brazilian phone numbers: optional +55; a DDD in parentheses with 8 or 9 digits, separator optional; or an optional
  * bare DDD with 8 or 9 digits split by a separator ("41 3333-4444", "41 - 3333 - 4444").
@@ -114,28 +124,24 @@ const PHONE = new RegExp(
 
 /**
  * Masks CPF/CNPJ-shaped numbers, e-mails and phone numbers in the formats above, collapses whitespace and caps the
- * length. Dashes are normalised to "-", zero-width characters removed and "_" between digits read as a space first.
+ * length. First, dashes are normalised to "-", invisible characters removed and "_" between digits read as a space.
  * Covers common formats only; it is not a guarantee.
  */
 export function maskObject(raw: string): { text: string; truncated: boolean } {
-  let rawCut = false;
-  let t = raw;
-  if (t.length > OBJECT_MAX_RAW_CHARS) {
-    // Drop the last partial word too, so a number cut in half is not left unmasked.
-    t = t.slice(0, OBJECT_MAX_RAW_CHARS).replace(/\S*$/, "");
-    rawCut = true;
-  }
-  t = t.replace(ZERO_WIDTH, "").replace(DASHES, "-").replace(/(?<=\d)_(?=\d)/g, " ");
-  t = t.replace(/\s+/g, " ").trim();
+  let t = raw.replace(INVISIBLE, "").replace(DASHES, "-").replace(DIGIT_UNDERSCORE, " ").replace(/\s+/g, " ").trim();
+  const rawCut = t.length > OBJECT_MAX_RAW_CHARS;
+  if (rawCut) t = t.slice(0, OBJECT_MAX_RAW_CHARS);
   t = t.replace(EMAIL, MASK);
   t = t.replace(DIGIT_RUN, (m) => (m.replace(/\D/g, "").length >= 10 ? MASK : m));
   t = t.replace(SPACED_ID, MASK);
   t = t.replace(PHONE, MASK);
-  const chars = Array.from(t); // code points: never split a surrogate pair
-  if (chars.length <= OBJECT_MAX_CHARS) return rawCut ? { text: `${t}…`, truncated: true } : { text: t, truncated: false };
+  let chars = Array.from(t); // code points: never split a surrogate pair
+  if (rawCut) chars = chars.slice(0, Math.max(0, chars.length - RAW_CUT_GUARD));
+  else if (chars.length <= OBJECT_MAX_CHARS) return { text: t, truncated: false };
   let cut = chars.slice(0, OBJECT_MAX_CHARS).join("");
   const open = cut.lastIndexOf("[");
-  if (open > cut.lastIndexOf("]") && t.startsWith(MASK, open)) cut = cut.slice(0, open); // never show half a mask
+  const tail = cut.slice(open);
+  if (open >= 0 && tail.length < MASK.length && MASK.startsWith(tail)) cut = cut.slice(0, open); // never show half a mask
   return { text: `${cut.trimEnd()}…`, truncated: true };
 }
 
