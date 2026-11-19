@@ -1,3 +1,13 @@
+/** Thrown when one field outgrows the cap (e.g. an unterminated quote would swallow the rest of the file). */
+export class CsvFieldTooLongError extends Error {
+  constructor() {
+    super("csv field too long");
+    this.name = "CsvFieldTooLongError";
+  }
+}
+
+export const MAX_FIELD_CHARS = 1 << 20;
+
 /** Streaming CSV record parser (RFC 4180 quoting: `"` quotes, `""` escapes, quoted newlines). State survives chunks. */
 export class CsvParser {
   private field = "";
@@ -10,6 +20,7 @@ export class CsvParser {
   constructor(
     private readonly delimiter: string,
     private readonly onRecord: (fields: string[]) => void,
+    private readonly maxField: number = MAX_FIELD_CHARS,
   ) {}
 
   push(text: string): void {
@@ -34,6 +45,7 @@ export class CsvParser {
           continue;
         } else {
           field += c;
+          if (field.length > this.maxField) throw new CsvFieldTooLongError();
           continue;
         }
       }
@@ -52,6 +64,7 @@ export class CsvParser {
       } else {
         field += c;
         this.touched = true;
+        if (field.length > this.maxField) throw new CsvFieldTooLongError();
       }
     }
     this.field = field;

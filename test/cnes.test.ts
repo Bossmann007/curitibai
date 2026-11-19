@@ -15,6 +15,7 @@ interface Unit {
 interface Data {
   units: Unit[];
   next_page: number | null;
+  next_skip: number;
   partial: boolean;
   scanned_pages: { from: number; to: number };
   note: string;
@@ -122,21 +123,40 @@ describe("health_units_search", () => {
     expect(calls.filter((c) => c.url !== CNES_TYPES_URL)).toHaveLength(MAX_CNES_REQUESTS);
   });
 
-  it("restarts next_page on a page that had more matches than fit", async () => {
+  it.each([3, 7, 20])("following next_page/next_skip with limit %i visits every unit exactly once", async (limit) => {
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    for (let p = 1; p <= 3; p++) {
+      routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage("UMS", p * 100), contentType: JSON_TYPE };
+    }
+    routes[`GET ${establishmentsUrl(4, null)}`] = { body: syntheticPage("UMS", 400, 7), contentType: JSON_TYPE };
+    stubFetch(routes);
+    const client = await connectClient();
+    const seen: string[] = [];
+    let args: Record<string, unknown> = { limit, page: 1, skip: 0 };
+    for (let guard = 0; guard < 100; guard++) {
+      const data = dataOf(await client.callTool({ name: "health_units_search", arguments: args }));
+      seen.push(...data.units.map((u) => u.cnes_code));
+      if (data.next_page === null) break;
+      args = { limit, page: data.next_page, skip: data.next_skip };
+    }
+    expect(seen).toHaveLength(67);
+    expect(new Set(seen).size).toBe(67);
+  });
+
+  it("resumes inside a page with next_skip", async () => {
     stubFetch({ ...cnesRoutes(), [`GET ${establishmentsUrl(1, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE } });
     const client = await connectClient();
-    const res = await client.callTool({ name: "health_units_search", arguments: { limit: 5 } });
-    const data = dataOf(res);
-    expect(data.units).toHaveLength(5);
-    expect(data).toMatchObject({ next_page: 1, partial: false });
-    expect(data.note).toMatch(/de-duplicate by cnes_code/);
+    const first = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 5 } }));
+    expect(first).toMatchObject({ next_page: 1, next_skip: 5, partial: false });
+    const second = dataOf(await client.callTool({ name: "health_units_search", arguments: { limit: 5, skip: 5 } }));
+    expect(second.units.map((u) => u.name)).toEqual(["UMS 6", "UMS 7", "UMS 8", "UMS 9", "UMS 10"]);
   });
 
   it("moves to the next page when the limit is filled exactly at a page end", async () => {
     stubFetch({ ...cnesRoutes(), [`GET ${establishmentsUrl(2, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE } });
     const client = await connectClient();
     const res = await client.callTool({ name: "health_units_search", arguments: { limit: 20, page: 2 } });
-    expect(dataOf(res)).toMatchObject({ next_page: 3, scanned_pages: { from: 2, to: 2 } });
+    expect(dataOf(res)).toMatchObject({ next_page: 3, next_skip: 0, scanned_pages: { from: 2, to: 2 } });
   });
 
   it("keeps what it has (partial) when a later page fails", async () => {
