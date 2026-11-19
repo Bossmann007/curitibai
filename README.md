@@ -13,15 +13,15 @@ Data comes from the sources as it is; always confirm important information at th
 All tools are read-only. The three network tools return `{data, source_url, fetched_at, license_note}`.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
-read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `column_not_found` and
-`invalid_csv`.
+read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
+`column_not_found`, `column_not_allowed` and `invalid_csv`.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page timed out | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
-| `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, and `partial` when the 5-request cap stopped the scan | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
-| `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column (optionally filtered by `column = value`). **Never returns rows** | A file you downloaded yourself; no network |
+| `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
+| `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). **Never returns rows**; refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
 server never opens them; a person can open them in a browser, and `local_csv_summary` can then summarise the file.
@@ -101,10 +101,23 @@ The server never downloads data files. A person does it in a browser:
    `CENTRO`". Use the column names the tool returns (call it with just `file` first).
 
 The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns only
-counts. Groups with fewer than 3 rows are added to `other_count` instead of being listed, so that a filter on a unique
-column cannot reveal a single record. The first line is always read as the header and returned as `columns`, so use
-files that have a header row. The path must resolve (symlinks included) to a `.csv` file inside the folder. A field
-over 1 MB (for example an unclosed quote) stops the read with `invalid_csv`.
+counts. What it does return, and what it refuses:
+
+- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 3
+  rows are added to `other_count` instead of being listed, so that a filter on a unique column cannot reveal a single
+  record.
+- **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
+  containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
+  nascimento, servidor, beneficiario or paciente, or the words rg, rua, cep, mae or pai (accents and case ignored).
+  **This guard is name-based and not perfect**: a column with personal data under an innocent name is not caught.
+- **Files without a header are refused** (`no_header_detected`, no columns returned): if any cell of the first line
+  looks like a value (only digits and punctuation, a CPF, CNPJ, e-mail, phone, date or CEP pattern, or longer than 60
+  characters).
+- The path must be a `.csv` file inside the folder; anything outside it is `file_not_allowed`, whether or not it
+  exists. The file is opened once (without following a final symbolic link), checked through that open descriptor and
+  read from it, so swapping the file after the check does not change what is read.
+- A field over 1 MB (for example an unclosed quote) or a line with more than 300 fields stops the read with
+  `invalid_csv`.
 It was tested on synthetic files (including a 137 MB one: about 1 s), **not on the real 156 file**.
 
 ## Privacy and safety
@@ -116,8 +129,8 @@ It was tested on synthetic files (including a 137 MB one: about 1 s), **not on t
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a
   URL.
 - Requests use a generic User-Agent, `curitibai-mcp/0.2`, a 10 s timeout per request and an 8 MB response cap.
-- Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat and a
-  read stream), and only as aggregates.
+- Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
+  open, fstat, positional reads and close), and only as aggregates.
 - Text from the sources is returned as plain data fields with HTML removed. It is never meant as instructions.
 
 ## Limits

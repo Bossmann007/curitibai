@@ -63,7 +63,7 @@ describe("health_units_search", () => {
     const data = dataOf(res);
     expect(data.units.map((u) => u.name)).toEqual(["UMS FICTICIA ALFA", "CAPS FICTÍCIO BETA", "UPA FICTICIA EPSILON"]);
     expect(data.units[0]?.unit_type).toBe("UNIDADE BASICA FICTICIA");
-    expect(data).toMatchObject({ next_page: null, partial: false, scanned_pages: { from: 1, to: 1 } });
+    expect(data).toMatchObject({ next_page: null, partial: false, discarded: 4, scanned_pages: { from: 1, to: 1 } });
     expect(data.note).toMatch(/Private clinics, consultórios and non-profit hospitals/);
     const url = new URL(calls.find((c) => c.url !== CNES_TYPES_URL)!.url);
     expect(Object.fromEntries(url.searchParams)).toEqual({

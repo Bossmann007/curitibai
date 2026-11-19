@@ -64,6 +64,10 @@ export const healthUnitsSearchOutput = envelope(
     next_page: z.number().int().nullable(),
     next_skip: z.number().int(),
     partial: z.boolean(),
+    discarded: z
+      .number()
+      .int()
+      .describe("Records on the scanned pages dropped as non-public or incomplete; a sudden jump can mean a format change."),
     note: z.string(),
   }),
 );
@@ -93,6 +97,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
               next_page: null,
               next_skip: 0,
               partial: false,
+              discarded: 0,
               note: `No CNES unit type matches unit_type. ${SCOPE_NOTE}`,
             },
             source_url: establishmentsUrl(page, null),
@@ -110,6 +115,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       let nextPage: number | null = null;
       let nextSkip = 0;
       let partial = false;
+      let discarded = 0;
       let p = page;
       let scanned = 0;
       for (;;) {
@@ -129,6 +135,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
         scanned++;
+        discarded += res.value.received - res.value.units.length;
         const skipped = scanned === 1 ? skip : 0;
         const matches = res.value.units.filter(
           (u) =>
@@ -163,6 +170,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
           next_page: nextPage,
           next_skip: nextSkip,
           partial,
+          discarded,
           note: notes.join(" "),
         },
         source_url: establishmentsUrl(page, serverType),
