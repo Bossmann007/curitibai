@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { detranPrInfo, detranPrInfoOutput, detranPrInfoResult, UNITS_MAX_AGE_DAYS } from "../src/tools/detranPrInfo.js";
+import { detranPrInfo, detranPrInfoOutput, detranPrInfoResult, UNITS_MAX_AGE_DAYS, unitsStaleNote } from "../src/tools/detranPrInfo.js";
 import { DETRAN_HOME_URL, DETRAN_UNITS_URL, LICENSING_NEWS_URL, PORTARIA_907_URL } from "../src/sources/detran.js";
 import { connectClient, errorOf, stubFetch } from "./helpers.js";
 
@@ -95,7 +95,7 @@ describe("detran_pr_info stale-year note", () => {
   });
 
   it("units carry the same warning", () => {
-    expect(detranPrInfoResult({ topic: "units" }, new Date("2027-06-01T12:00:00Z")).note).toMatch(
+    expect(detranPrInfoResult({ topic: "units" }, new Date("2027-03-01T12:00:00Z")).note).toMatch(
       /Units and hours were checked on 2026-11-19; it is now 2027, so this data may be outdated/,
     );
     expect(detranPrInfoResult({ topic: "units" }, new Date("2026-06-01T12:00:00Z")).note).not.toMatch(/outdated/);
@@ -106,7 +106,33 @@ describe("detran_pr_info stale-year note", () => {
     expect(units("2026-11-19T12:00:00Z")).not.toMatch(/days ago/);
     expect(units("2027-05-18T12:00:00Z")).not.toMatch(/days ago/); // exactly 180 days
     expect(units("2027-05-19T02:59:00Z")).not.toMatch(/days ago/); // still 18/5 in Curitiba
-    expect(units("2027-05-19T03:00:00Z")).toMatch(/Units and hours were checked 181 days ago \(more than 180\); they may be outdated\./);
+    expect(units("2027-05-19T03:00:00Z")).toMatch(/Units and hours were checked on 2026-11-19, 181 days ago \(more than 180\), and it is now 2027, so this data may be outdated\./);
+  });
+
+  describe("unitsStaleNote merges the year and age warnings", () => {
+    it("neither", () => {
+      expect(unitsStaleNote("2026-12-31", "2026-11-19", 2026)).toBe("");
+    });
+    it("year only", () => {
+      expect(unitsStaleNote("2027-01-01", "2026-11-19", 2026)).toBe(
+        " Units and hours were checked on 2026-11-19; it is now 2027, so this data may be outdated.",
+      );
+      expect(unitsStaleNote("2026-03-01", "2026-02-01", 2025)).toBe(
+        " Units and hours were checked on 2026-02-01; it is now 2026, so this data may be outdated.",
+      );
+    });
+    it("age only", () => {
+      expect(unitsStaleNote("2026-12-31", "2026-01-01", 2026)).toBe(
+        " Units and hours were checked 364 days ago (more than 180); they may be outdated.",
+      );
+    });
+    it("both, as one sentence", () => {
+      const n = unitsStaleNote("2027-06-01", "2026-11-19", 2026);
+      expect(n).toBe(
+        " Units and hours were checked on 2026-11-19, 194 days ago (more than 180), and it is now 2027, so this data may be outdated.",
+      );
+      expect(n.match(/outdated/g)).toHaveLength(1);
+    });
   });
 
   it("the calendar has no age warning", () => {
