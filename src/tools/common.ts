@@ -32,6 +32,7 @@ export const ErrorResult = z.object({
     "invalid_csv",
     "invalid_date_range",
     "rate_limited",
+    "invalid_argument",
   ]),
   message: z.string().optional(),
 });
