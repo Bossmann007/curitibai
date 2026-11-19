@@ -3,10 +3,11 @@
 A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistants search the catalogue of the
 [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
 look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
-in the national PNCP portal, and summarise a CSV file the user downloaded by hand.
+in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, and
+summarise a CSV file the user downloaded by hand.
 
 **Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, the Ministério da Saúde or
-PNCP / the Ministério da Gestão e Inovação em Serviços Públicos.**
+PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, or Detran-PR / the Governo do Paraná.**
 Data comes from the sources as it is; always confirm important information at the source.
 
 ## Tools
@@ -15,7 +16,9 @@ All tools are read-only. The four network tools return `{data, source_url, fetch
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
-`column_not_found`, `column_not_allowed` and `invalid_csv`. `procurement_search` also returns `invalid_date_range`
+`column_not_found`, `column_not_allowed` and `invalid_csv`. `detran_pr_info` makes no network call either: it returns
+`{data, source_url, checked_at, note}` from data bundled in the code, and `invalid_argument` when `plate_final` is
+given with `topic: "units"`. `procurement_search` also returns `invalid_date_range`
 (`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
 to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
 `procurement_search` returns what it found as `partial`, with the wait in `note`.
@@ -26,6 +29,7 @@ to its first request; the message gives the wait from `Retry-After`, or about 1 
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
 | `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
+| `detran_pr_info` | `topic`: `licensing_calendar` or `units`; optional `plate_final` (0–9, calendar only) | Calendar: the 2026 licensing due date for one plate final digit (or all ten, earliest first, each with `past`) and the fee (R$ 94,61). Units: the 01ª CIRETRAN (Curitiba) and its five PATRANs (address, phone, services as published), the scheduling rule, and the site's two conflicting general hours (8h–16h and 8h–15h30), both returned. Each item has `source_url` and `checked_at`. **No network call**; for both topics `note` says the data may be outdated once the year in Curitiba is past 2026 | Portaria DETRAN 907/2025 (Anexo I), a Detran-PR news page, `detran.pr.gov.br/unidades` and its home page, checked by hand |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -55,6 +59,9 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | No source found |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
+| Detran-PR fees by vehicle, debts, fines and IPVA by plate | The Detran-PR pages that show them need a login and a CAPTCHA; automating them would bypass that, and the results are about one owner's vehicle |
+| Detran-PR statistics (Qlik panel) | An interactive Qlik dashboard, not a published dataset; not used |
+| Detran-PR hours per unit | The site does not publish them; it states two different general hours, and `detran_pr_info` returns both |
 | Procurement of Curitiba bodies missing from the list | The list was read from PNCP results published 2026-10-01 to 2026-11-18; a body that published nothing then is not in it |
 
 ### Alternatives (not recommended, not tested)
@@ -149,7 +156,7 @@ rows.
   `https://apidadosabertos.saude.gov.br` and `https://pncp.gov.br`, on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a
   URL.
-- Requests use a generic User-Agent, `curitibai-mcp/0.3`, a 10 s timeout per request (25 s for PNCP, which is slow)
+- Requests use a generic User-Agent, `curitibai-mcp/0.4`, a 10 s timeout per request (25 s for PNCP, which is slow)
   and an 8 MB response cap.
 - `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
   has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
@@ -188,6 +195,11 @@ rows.
   PNCP is slow (8–13 s per page) and answered HTTP 429 once during checks; a refused or failed request is returned as
   `source_unavailable` (a connection reset is retried once), and an HTTP 429 as `rate_limited` (retried once only when
   Retry-After is 5 s or less).
+- Detran-PR: no terms of use or licence was found on `detran.pr.gov.br` or `legislacao.pr.gov.br`, so
+  `detran_pr_info` carries only public facts (dates, a fee, addresses and phone numbers of public offices), each with
+  its source URL and check date. The data is a snapshot taken by hand on 2026-11-19 and is not refreshed: the
+  calendar covers 2026 only, and units or hours can change without this server knowing. A new year's calendar needs a
+  code update (see [docs/sources.md](docs/sources.md)).
 
 ## Development
 

@@ -19,6 +19,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
 | `www.curitiba.pr.gov.br` | 200; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, some extensions; `/dadosabertos/` not disallowed | Out of scope (Akamai returns 403 to non-browser clients such as curl). Not contacted |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
+| `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
+| `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
 was set: directory listings, the start of the 156 CSV, two 30-second throughput tests and one aborted full download
@@ -150,6 +152,34 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
 a Curitiba body list or a person-data gate. Not adopted: the tool is about 430 lines inside this server and reuses its
 HTTP client, cache and envelope.
 
+### `detran_pr_info`: Detran-PR licensing calendar and units (bundled data)
+
+No network. Every value was read by hand on **2026-11-19** with curl (User-Agent `curitibai-dev-check`) and copied
+into `src/sources/detran.ts`, with its source URL and that date. Design choice: the calendar is set once a year by a
+portaria, so a live fetch would add a host, HTML parsing and failure modes for data that does not change; the tool
+says the data may be outdated once the year in America/Sao_Paulo is past 2026.
+
+| Fact | Source | Notes |
+|---|---|---|
+| Licensing due date by plate final digit (1=14/8, 2=28/8, 3=9/9, 4=18/9, 5=28/9, 6=9/10, 7=20/10, 8=30/10, 9=13/11, 0=27/11, all 2026) | [Portaria DETRAN 907/2025](https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibir&codAto=375224) (DOE nº 12020, 31/10/2025), Anexo I (PDF attached to that page) | Art. 1º sets the calendar "para o exercício de 2026"; the Anexo I heading says "EXERCÍCIO DE 2025", an apparent typo. The [Detran-PR news page of 2026-10-23](https://www.detran.pr.gov.br/Noticia/Alerta-para-placas-com-final-8-9-e-0-calendario-do-licenciamento-de-2026-esta-perto-da) lists the same ten dates as the 2026 calendar |
+| Licensing fee R$ 94,61 | Same news page: "O pagamento é no valor único de R$ 94,61" | The page also says IPVA, fines and other debts must be paid first |
+| Enforcement deadlines (Anexo II: finals 1–2 até setembro, 3–5 até outubro, 6–8 até novembro, 9–0 até dezembro) | Portaria 907/2025, Anexo II | **Not returned by the tool** (not in the brief; turning "até setembro" into a date would be interpretation). Recorded here only |
+| 01ª CIRETRAN – Curitiba, Av. Victor Ferreira do Amaral, nº 2940, Capão da Imbuia, 0800 643 7373; PATRANs Vila Hauer, Almirante Tamandaré, Fazenda Rio Grande, Rio Branco do Sul, Colombo, with their service sentences | [detran.pr.gov.br/unidades](https://www.detran.pr.gov.br/unidades), Curitiba block | Text copied as published. The block also lists 11 PSTRANs (service posts run by city halls, city-hall phone numbers); they are not bundled, and `note` points to the page |
+| Scheduling: "O atendimento em todas as Unidades é mediante agendamento prévio." | `/unidades` | |
+| Hours | `/unidades` footer: "Atendimento presencial por agendamento: de segunda a sexta, das 8h às 16h"; [home page](https://www.detran.pr.gov.br/) footer: "… das 8h às 15h30" | **Conflict, not resolved**: both are returned with `hours.conflict: true`. No hours per unit are published. Older news (2023) gives other hours and is not used |
+
+Output details: with no `plate_final`, all ten dates are returned earliest first; each has `past: true` once its due
+date has passed in America/Sao_Paulo. Each unit's `city` is derived from the unit name and the Curitiba block (the page
+does not state it for Vila Hauer); every other unit field is copied as published.
+
+Terms: no terms of use or licence was found on the pages read (home, `/unidades`, three `/Noticia/` pages and the
+Portaria page, 2026-11-19); their only related link is a LGPD booklet on `cge.pr.gov.br`. Only public facts about public offices are used, each
+with its source URL and check date. Out of scope: fees by vehicle and debts by plate (behind login and CAPTCHA) and
+the Qlik statistics panel; none of them was accessed.
+
+Prior art (2026-11-19): GitHub searches for "detran", "detran mcp" and `topic:mcp-server detran` found only plate and
+fine lookups for other states or behind payment; nothing covers the Detran-PR calendar or units. Built.
+
 ### `local_csv_summary`: a file the user downloaded
 
 No network. The user downloads a file in a browser (for example the 156 CSV from the portal, about 137 MB) into the
@@ -184,6 +214,8 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files exist only on the two disallowed hosts (`local_csv_summary` can count a hand-downloaded file). Health units moved to the CNES API in v0.2 |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
+| Detran-PR fees by vehicle, debts, fines and IPVA by plate | Behind login and CAPTCHA on Detran-PR; per-owner data. Not accessed |
+| Detran-PR statistics (Qlik panel) | Interactive dashboard, not a published dataset. Not accessed |
 | PNCP suppliers, contracts, price-registration minutes (`/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` stays on the procurement notice, which has no supplier field |
 
 ### Bus alternative checked, not adopted
