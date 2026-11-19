@@ -67,7 +67,13 @@ export function fail(error: ErrorCode, message?: string): CallToolResult {
 /** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
 export function rateLimitedMessage(retryAfterS: number | null): string {
   const wait =
-    retryAfterS === null ? "about 1 minute" : retryAfterS < 120 ? `${retryAfterS} s` : `about ${Math.ceil(retryAfterS / 60)} minutes`;
+    retryAfterS === null || retryAfterS < 5
+      ? "about 1 minute"
+      : retryAfterS < 120
+        ? `${retryAfterS} s`
+        : retryAfterS <= 3600
+          ? `about ${Math.ceil(retryAfterS / 60)} minutes`
+          : "at least 1 hour";
   return `The source is limiting requests; wait ${wait} before trying again.`;
 }
 

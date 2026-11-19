@@ -229,7 +229,16 @@ describe("object gate (unit)", () => {
   });
 
   it("stays fast on a 100k-character object (bounded e-mail parts and raw cap)", () => {
-    for (const s of ["a".repeat(100_000), "a.".repeat(50_000), `${"a".repeat(99_990)}@`, "1.".repeat(50_000)]) {
+    const inputs = [
+      "a".repeat(100_000),
+      "a.".repeat(50_000),
+      `${"a".repeat(99_990)}@`,
+      "1.".repeat(50_000),
+      `1${"_".repeat(100_000)}x`,
+      `1${" _".repeat(50_000)}x`,
+      `${"a@b.".repeat(25_000)}`,
+    ];
+    for (const s of inputs) {
       const t0 = performance.now();
       const out = maskObject(s);
       expect(performance.now() - t0).toBeLessThan(1000); // linear: a few ms; the quadratic regex took seconds
@@ -317,6 +326,9 @@ describe("object gate (unit)", () => {
     ["CPF 123 _ 456 _ 789 _ 09", `CPF ${MASK}`],
     ["CPF 123 . 456 . 789 - 09", `CPF ${MASK}`],
     ["valor unitário @ 10.50 reais", "valor unitário @ 10.50 reais"],
+    ["contato maria@exemplo.com2", `contato ${MASK}2`],
+    ["contato maria@exemplo.com_2", `contato ${MASK}_2`],
+    ["conforme item [A] e [B", "conforme item [A] e [B"],
     ["CNPJ 12 345 678 0001 95", `CNPJ ${MASK}`],
     ["Pregão 116/2026, R$ 1.234.567,89, Lei 14.133", "Pregão 116/2026, R$ 1.234.567,89, Lei 14.133"],
     ["  espaços   colapsados  ", "espaços colapsados"],
@@ -424,6 +436,7 @@ describe("procurement_search paging", () => {
       [{ "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }, "about 1 minute"],
       [{ "retry-after": "30" }, "30 s"],
       [{ "retry-after": "3600" }, "about 60 minutes"],
+      [{ "retry-after": "999999" }, "at least 1 hour"],
     ];
     for (const [headers, wait] of cases) {
       const calls = stubFetch({ [`GET ${pncpUrl()}`]: { status: 429, headers } });

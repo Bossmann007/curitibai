@@ -135,8 +135,9 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
   invisible characters (U+200B–U+200D, U+2060–U+2064, U+FEFF) are removed, underscores between digits (with any
   spaces) count as one space, and whitespace is collapsed. Number groups may be split by one or two spaces, or by a
   hyphen, slash or dot with spaces around it; e-mails may have spaces around "@" (then only the word next to it is
-  masked) and must end in a letters-only label. Only the first 2,000 collapsed characters are examined; when the text
-  is cut there, the last 200 of them are never shown, so an identifier split by the cut cannot leak. These are the
+  masked) and must end in a letters-only label. At most 8,000 raw characters are read, and only the first 2,000
+  collapsed characters are examined; when the text is cut, the last 400 masked characters are never shown, so an
+  identifier split by the cut cannot leak. These are the
   formats covered, not a guarantee.
   These objects can still, rarely, contain a person's name. The masking fails closed and also hides some public
   numbers: amounts with 10 or more digits, long process numbers, and two 4-digit numbers joined by a space or hyphen
