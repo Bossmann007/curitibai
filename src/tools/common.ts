@@ -64,10 +64,17 @@ export function fail(error: ErrorCode, message?: string): CallToolResult {
   return { isError: true, content: [{ type: "text", text: JSON.stringify(payload) }] };
 }
 
+/** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
+export function rateLimitedMessage(retryAfterS: number | null): string {
+  const wait =
+    retryAfterS === null ? "about 1 minute" : retryAfterS < 120 ? `${retryAfterS} s` : `about ${Math.ceil(retryAfterS / 60)} minutes`;
+  return `The source is limiting requests; wait ${wait} before trying again.`;
+}
+
 /** Maps thrown errors to a fixed error code. Never echoes source text or user input. */
 export function failFrom(err: unknown): CallToolResult {
   if (err instanceof UrlNotAllowedError) return fail("url_not_allowed");
-  if (err instanceof RateLimitedError) return fail("rate_limited", "The source is limiting requests; wait about 1 minute and try again.");
+  if (err instanceof RateLimitedError) return fail("rate_limited", rateLimitedMessage(err.retryAfterS));
   if (err instanceof SourceUnavailableError) return fail("source_unavailable");
   return fail("source_unavailable");
 }

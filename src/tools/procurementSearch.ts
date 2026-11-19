@@ -7,7 +7,8 @@ import {
   type Procurement,
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
-import { envelope, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { RateLimitedError } from "../http.js";
+import { envelope, fail, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 /** Upstream pages requested per call, at most (8–13 s each on 2026-11-19). */
 export const MAX_PNCP_REQUESTS = 2;
@@ -15,6 +16,8 @@ export const DEFAULT_MODALITY = 6;
 export const DEFAULT_DAYS = 30;
 /** PNCP refuses a range over 365 days (HTTP 422). */
 export const MAX_RANGE_DAYS = 365;
+/** A second upstream page is requested only if the first took less than this, so one call stays well under a minute. */
+export const SECOND_PAGE_BUDGET_MS = 15_000;
 
 export const SCOPE_NOTE =
   "Procurement published in PNCP by Curitiba municipal bodies (the city, its câmara, funds, foundations, institutes, " +
@@ -147,7 +150,14 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let discarded = 0;
       let p = page;
       let scanned = 0;
+      let rateLimitNote: string | null = null;
+      const started = Date.now();
       for (;;) {
+        if (scanned > 0 && Date.now() - started > SECOND_PAGE_BUDGET_MS) {
+          partial = true; // the source is slow: return what we have rather than risk the client's timeout
+          nextPage = p;
+          break;
+        }
         if (scanned === MAX_PNCP_REQUESTS) {
           partial = true; // capped: more pages may hold matches
           nextPage = p;
@@ -160,6 +170,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           if (scanned === 0) throw err;
           partial = true;
           nextPage = p;
+          if (err instanceof RateLimitedError) rateLimitNote = rateLimitedMessage(err.retryAfterS);
           break;
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
@@ -184,6 +195,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
       if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
+      if (rateLimitNote !== null) notes.unshift(rateLimitNote);
       return ok({
         data: {
           items,

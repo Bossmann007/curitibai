@@ -16,8 +16,9 @@ When a source fails, times out or changes format, the tool returns `{"error":"so
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
 `column_not_found`, `column_not_allowed` and `invalid_csv`. `procurement_search` also returns `invalid_date_range`
-(`from` after `to`, or more than 365 days apart). Any network tool returns `rate_limited` ("wait about 1 minute") when
-the source answers HTTP 429.
+(`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
+to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
+`procurement_search` returns what it found as `partial`, with the wait in `note`.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
@@ -38,8 +39,8 @@ names (individual practitioners register under their own name). Each call scans 
 `procurement_search` asks PNCP for procurement whose buying unit is in Curitiba and keeps only the 15 CNPJs (14 municipal bodies; the city has two)
 listed in [docs/sources.md](docs/sources.md) (the city, the câmara, municipal funds, foundations and institutes, URBS,
 COHAB-CT), read from PNCP's own results; a body missing from that list is not returned. PNCP needs one modality per
-query, so `modality` picks it. Each call scans at most 2 upstream pages of 50 records, and PNCP took 8–13 s per page
-when checked.
+query, so `modality` picks it. Each call scans at most 2 upstream pages of 50 records (the second only if the first
+took under 15 s), and PNCP took 8–13 s per page when checked.
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](docs/sources.md).
 
@@ -156,9 +157,11 @@ rows.
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
   with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
-  Before masking, Unicode dashes become "-", zero-width characters are removed and "_" between digits counts as a
-  space; groups may be split by one or two spaces or dots, or by a spaced hyphen ("123. 456. 789 - 09"), and spaces
-  around "@" are allowed. This covers common formats; it is not a guarantee.
+  Before masking, Unicode hyphens, dashes and minus signs (soft and fullwidth hyphens included) become "-", invisible
+  characters are removed and underscores between digits count as a space; number groups may be split by one or two
+  spaces or by a hyphen, slash or dot with spaces around it ("123 . 456 . 789 - 09"), and spaces around "@" are
+  allowed. This covers common formats; it is not a guarantee. With spaces around "@" only the word next to it is
+  masked ("Maria Silva @ x.com" keeps "Maria").
   **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
   numbers (amounts of 10+ digits, long process numbers, "2026-2027"). `query` never matches a withheld object.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
