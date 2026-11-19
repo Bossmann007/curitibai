@@ -136,14 +136,18 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
   Before masking, hyphens, dashes and minus signs (U+00AD, U+2010–U+2015, U+2212, U+FE58, U+FE63, U+FF0D) become "-",
   invisible characters (U+200B–U+200D, U+2060–U+2064, U+FEFF) are removed, underscores between digits (with any
   spaces) count as one space, and whitespace is collapsed. Number groups may be split by one or two spaces, or by a
-  hyphen, slash or dot with spaces around it; e-mails may have spaces around "@" (then only the word next to it is
+  hyphen, slash or dot with spaces around it; a bare DDD (leading 0 allowed) may be followed by a separator and 8 or 9
+  glued digits ("41 999998888", "041 33334444"); e-mails may have spaces around "@" (then only the word next to it is
   masked) and must end in a letters-only label. At most 8,000 raw characters are read, and only the first 2,000
   collapsed characters are examined; when the text is cut, the last 400 masked characters are never shown, so an
   identifier split by the cut cannot leak. These are the
   formats covered, not a guarantee.
   These objects can still, rarely, contain a person's name. The masking fails closed and also hides some public
-  numbers: amounts with 10 or more digits, long process numbers, and two 4-digit numbers joined by a space or hyphen
-  (for example "2026-2027"). The official text is on the linked page.
+  numbers: amounts with 10 or more digits, long process numbers, two 4-digit numbers joined by a space or hyphen
+  (for example "2026-3333"), and 2 digits (or 0 plus 2 digits) followed by 8 or 9 digits. Two year-like numbers
+  (`(19|20)\d{2}`) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them ("2025 - 2026",
+  "2026-2027") are kept, so an 8-digit phone shaped like that is not masked (fails open, by owner decision for 0.4.1);
+  with one of those before them ("41 2025-2026", "(041) 2025-2026") they are still masked. The official text is on the linked page.
 - The `query` text matches only the object the tool returns (after masking) and the body name, never a withheld object.
 - No supplier is ever returned (the endpoint has none, and the output is built field by field).
 
@@ -163,13 +167,14 @@ says the data may be outdated once the year in America/Sao_Paulo is past 2026.
 |---|---|---|
 | Licensing due date by plate final digit (1=14/8, 2=28/8, 3=9/9, 4=18/9, 5=28/9, 6=9/10, 7=20/10, 8=30/10, 9=13/11, 0=27/11, all 2026) | [Portaria DETRAN 907/2025](https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibir&codAto=375224) (DOE nº 12020, 31/10/2025), Anexo I (PDF attached to that page) | Art. 1º sets the calendar "para o exercício de 2026"; the Anexo I heading says "EXERCÍCIO DE 2025", an apparent typo. The [Detran-PR news page of 2026-10-23](https://www.detran.pr.gov.br/Noticia/Alerta-para-placas-com-final-8-9-e-0-calendario-do-licenciamento-de-2026-esta-perto-da) lists the same ten dates as the 2026 calendar |
 | Licensing fee R$ 94,61 | Same news page: "O pagamento é no valor único de R$ 94,61" | The page also says IPVA, fines and other debts must be paid first |
-| Enforcement deadlines (Anexo II: finals 1–2 até setembro, 3–5 até outubro, 6–8 até novembro, 9–0 até dezembro) | Portaria 907/2025, Anexo II | **Not returned by the tool** (not in the brief; turning "até setembro" into a date would be interpretation). Recorded here only |
+| Enforcement calendar (Anexo II, "PRAZO FINAL PARA RENOVAÇÃO": "1 e 2" "Até setembro", "3,4 e 5" "Até outubro", "6,7 e 8" "Até novembro", "9 e 0" "Até dezembro") | Portaria 907/2025, Anexo II; Art. 2º applies it "para os efeitos de fiscalização da regularidade documental dos veículos" | Quoted literally in the calendar `note` (since 0.4.1), with the Portaria link, to say that `past` only means the Anexo I due date has passed. Not a field and never turned into dates ("até setembro" as a date would be interpretation) |
 | 01ª CIRETRAN – Curitiba, Av. Victor Ferreira do Amaral, nº 2940, Capão da Imbuia, 0800 643 7373; PATRANs Vila Hauer, Almirante Tamandaré, Fazenda Rio Grande, Rio Branco do Sul, Colombo, with their service sentences | [detran.pr.gov.br/unidades](https://www.detran.pr.gov.br/unidades), Curitiba block | Text copied as published. The block also lists 11 PSTRANs (service posts run by city halls, city-hall phone numbers); they are not bundled, and `note` points to the page |
 | Scheduling: "O atendimento em todas as Unidades é mediante agendamento prévio." | `/unidades` | |
 | Hours | `/unidades` footer: "Atendimento presencial por agendamento: de segunda a sexta, das 8h às 16h"; [home page](https://www.detran.pr.gov.br/) footer: "… das 8h às 15h30" | **Conflict, not resolved**: both are returned with `hours.conflict: true`. No hours per unit are published. Older news (2023) gives other hours and is not used |
 
 Output details: with no `plate_final`, all ten dates are returned earliest first; each has `past: true` once its due
-date has passed in America/Sao_Paulo. Each unit's `city` is derived from the unit name and the Curitiba block (the page
+date (Anexo I) has passed in America/Sao_Paulo; it only means that payment date has passed, and the calendar `note`
+quotes Anexo II for enforcement. Each unit's `city` is derived from the unit name and the Curitiba block (the page
 does not state it for Vila Hauer); every other unit field is copied as published.
 
 Terms: no terms of use or licence was found on the pages read (home, `/unidades`, three `/Noticia/` pages and the
