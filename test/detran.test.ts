@@ -67,6 +67,18 @@ describe("detran_pr_info past flag", () => {
   });
 });
 
+describe("detran_pr_info past note", () => {
+  it("says past is only the Anexo I due date and quotes Anexo II literally with the Portaria link", () => {
+    const { note } = detranPrInfoResult({ topic: "licensing_calendar" }, new Date("2026-11-19T12:00:00Z"));
+    expect(note).toContain("`past: true` only means the payment due date in Anexo I has passed (Curitiba time)");
+    expect(note).toContain(`Anexo II of the same Portaria (${PORTARIA_907_URL})`);
+    expect(note).toContain(
+      '"CALENDÁRIO PARA EFEITOS DE FISCALIZAÇÃO DA REGULARIDADE DOCUMENTAL DOS VEÍCULOS" – "PRAZO FINAL PARA RENOVAÇÃO": ' +
+        '"1 e 2": "Até setembro"; "3,4 e 5": "Até outubro"; "6,7 e 8": "Até novembro"; "9 e 0": "Até dezembro".',
+    );
+  });
+});
+
 describe("detran_pr_info stale-year note", () => {
   const note = (iso: string) => detranPrInfoResult({ topic: "licensing_calendar", plate_final: 1 }, new Date(iso)).note;
 
@@ -123,6 +135,41 @@ describe("detran_pr_info units", () => {
     ]);
     expect(parsed.note).toMatch(/two different general hours/);
     expect(calls).toHaveLength(0);
+  });
+});
+
+// The Curitiba block of detran.pr.gov.br/unidades, checked 2026-11-19, text as published.
+const PATRAN_SERVICES =
+  "Realizam todos os serviços de habilitação (exceto exames práticos de direção) e todos os serviços na área de veículos.";
+const EXPECTED_UNITS = [
+  ["CIRETRAN", "01ª CIRETRAN – Curitiba", "Curitiba", "Av. Victor Ferreira do Amaral, nº 2940, Capão da Imbuia", "Todos os serviços do DETRAN."],
+  ["PATRAN", "PATRAN – Vila Hauer", "Curitiba", "Rua Frederico Maurer, nº 1748", PATRAN_SERVICES],
+  ["PATRAN", "PATRAN – Almirante Tamandaré", "Almirante Tamandaré", "Rua Bertolina kendrik de Oliveira, nº 681 - Centro", PATRAN_SERVICES],
+  ["PATRAN", "PATRAN – Fazenda Rio Grande", "Fazenda Rio Grande", "Avenida Paraná, nº 1408, Pioneiros, Centro Comercial, Sala 05", PATRAN_SERVICES],
+  ["PATRAN", "PATRAN – Rio Branco do Sul", "Rio Branco do Sul", "Rua Doutor Zoni nº 103, Centro", PATRAN_SERVICES],
+  [
+    "PATRAN",
+    "PATRAN – Colombo",
+    "Colombo",
+    "Rua André Scrok, nº 100, São Gabriel",
+    "Realiza todos os serviços nas áreas de veículo e habilitação, inclusive exames práticos de direção.",
+  ],
+].map(([kind, name, city, address, services]) => ({
+  kind,
+  name,
+  city,
+  address,
+  phone: "0800 643 7373",
+  services,
+  source_url: DETRAN_UNITS_URL,
+  checked_at: "2026-11-19",
+}));
+
+describe("detran_pr_info unit table", () => {
+  it("returns exactly the six Curitiba units, in order, as published", () => {
+    const r = detranPrInfoResult({ topic: "units" }, new Date("2026-11-19T12:00:00Z"));
+    if (r.data.topic !== "units") throw new Error("wrong topic");
+    expect(r.data.units).toEqual(EXPECTED_UNITS);
   });
 });
 

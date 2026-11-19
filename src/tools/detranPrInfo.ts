@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ANEXO_II_QUOTE,
   CALENDAR_YEAR,
   CHECKED_AT,
   CURITIBA_UNITS,
@@ -97,7 +98,9 @@ export function detranPrInfoResult(
       note:
         `${DETRAN_BASE_NOTE} Dates are from Portaria DETRAN 907/2025, Anexo I (calendar for ${CALENDAR_YEAR}). ` +
         "Per the Detran-PR news page, the fee is paid only after the vehicle's IPVA, fines and other debts are paid; " +
-        "debts by plate are not available here. `past: true` means the due date has passed (Curitiba time)." +
+        "debts by plate are not available here. `past: true` only means the payment due date in Anexo I has passed " +
+        "(Curitiba time); it does not say whether the vehicle is irregular or fined. For enforcement, Art. 2º points to " +
+        `Anexo II of the same Portaria (${PORTARIA_907_URL}): ${ANEXO_II_QUOTE}.` +
         staleNote(year, `The bundled calendar is for ${CALENDAR_YEAR}`),
     };
   }
