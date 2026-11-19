@@ -7,6 +7,14 @@ export class SourceUnavailableError extends Error {
   }
 }
 
+/** HTTP 429. `retryAfterS` is the Retry-After header in whole seconds, or null when absent or not a number. */
+export class RateLimitedError extends SourceUnavailableError {
+  constructor(readonly retryAfterS: number | null) {
+    super("HTTP 429");
+    this.name = "RateLimitedError";
+  }
+}
+
 export class UrlNotAllowedError extends Error {
   constructor() {
     super("url_not_allowed");
@@ -100,6 +108,10 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
     }
     if (!res.ok) {
       await res.body?.cancel().catch(() => undefined);
+      if (res.status === 429) {
+        const ra = res.headers.get("retry-after")?.trim() ?? "";
+        throw new RateLimitedError(/^\d{1,6}$/.test(ra) ? Number(ra) : null);
+      }
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
     return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res) };

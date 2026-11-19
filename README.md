@@ -16,7 +16,8 @@ When a source fails, times out or changes format, the tool returns `{"error":"so
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
 `column_not_found`, `column_not_allowed` and `invalid_csv`. `procurement_search` also returns `invalid_date_range`
-(`from` after `to`, or more than 365 days apart).
+(`from` after `to`, or more than 365 days apart). Any network tool returns `rate_limited` ("wait about 1 minute") when
+the source answers HTTP 429.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
@@ -155,6 +156,9 @@ rows.
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
   with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
+  Before masking, Unicode dashes become "-", zero-width characters are removed and "_" between digits counts as a
+  space; groups may be split by one or two spaces or dots, or by a spaced hyphen ("123. 456. 789 - 09"), and spaces
+  around "@" are allowed. This covers common formats; it is not a guarantee.
   **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
   numbers (amounts of 10+ digits, long process numbers, "2026-2027"). `query` never matches a withheld object.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
@@ -179,7 +183,8 @@ rows.
   filter, so `query` and the body list are applied to the pages scanned (most records on a Curitiba page belong to
   state and federal bodies); continue with `next_page` and `next_skip`.
   PNCP is slow (8–13 s per page) and answered HTTP 429 once during checks; a refused or failed request is returned as
-  `source_unavailable` (a connection reset is retried once).
+  `source_unavailable` (a connection reset is retried once), and an HTTP 429 as `rate_limited` (retried once only when
+  Retry-After is 5 s or less).
 
 ## Development
 

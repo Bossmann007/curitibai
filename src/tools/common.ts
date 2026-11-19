@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { SourceUnavailableError, UrlNotAllowedError } from "../http.js";
+import { RateLimitedError, SourceUnavailableError, UrlNotAllowedError } from "../http.js";
 
 export const READ_ONLY: ToolAnnotations = {
   readOnlyHint: true,
@@ -31,6 +31,7 @@ export const ErrorResult = z.object({
     "no_header_detected",
     "invalid_csv",
     "invalid_date_range",
+    "rate_limited",
   ]),
   message: z.string().optional(),
 });
@@ -66,6 +67,7 @@ export function fail(error: ErrorCode, message?: string): CallToolResult {
 /** Maps thrown errors to a fixed error code. Never echoes source text or user input. */
 export function failFrom(err: unknown): CallToolResult {
   if (err instanceof UrlNotAllowedError) return fail("url_not_allowed");
+  if (err instanceof RateLimitedError) return fail("rate_limited", "The source is limiting requests; wait about 1 minute and try again.");
   if (err instanceof SourceUnavailableError) return fail("source_unavailable");
   return fail("source_unavailable");
 }
