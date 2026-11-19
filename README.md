@@ -2,25 +2,30 @@
 
 A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistants search the catalogue of the
 [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
-look up public health units in the Ministry of Health's CNES open API, and summarise a CSV file the user downloaded by
-hand.
+look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
+in the national PNCP portal, and summarise a CSV file the user downloaded by hand.
 
-**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba or the Ministério da Saúde.**
+**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, the Ministério da Saúde or
+PNCP / the Ministério da Gestão e Inovação em Serviços Públicos.**
 Data comes from the sources as it is; always confirm important information at the source.
 
 ## Tools
 
-All tools are read-only. The three network tools return `{data, source_url, fetched_at, license_note}`.
+All tools are read-only. The four network tools return `{data, source_url, fetched_at, license_note}`.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
-`column_not_found`, `column_not_allowed` and `invalid_csv`.
+`column_not_found`, `column_not_allowed` and `invalid_csv`. `procurement_search` also returns `invalid_date_range`
+(`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
+to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
+`procurement_search` returns what it found as `partial`, with the wait in `note`.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page timed out | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
+| `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -30,6 +35,12 @@ server never opens them; a person can open them in a browser, and `local_csv_sum
 state and federal bodies, autarquias, public foundations); a record without that code is dropped. **Private clinics,
 consultórios and non-profit hospitals are deliberately out of scope**, because in CNES their names can be people's
 names (individual practitioners register under their own name). Each call scans at most 5 upstream pages of 20 units.
+
+`procurement_search` asks PNCP for procurement whose buying unit is in Curitiba and keeps only the 15 CNPJs (14 municipal bodies; the city has two)
+listed in [docs/sources.md](docs/sources.md) (the city, the câmara, municipal funds, foundations and institutes, URBS,
+COHAB-CT), read from PNCP's own results; a body missing from that list is not returned. PNCP needs one modality per
+query, so `modality` picks it. Each call scans at most 2 upstream pages of 50 records (the second only if the first
+took under 15 s), and PNCP took 8–13 s per page when checked.
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](docs/sources.md).
 
@@ -43,6 +54,8 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files are only on the hosts whose robots.txt disallows automated access. `local_csv_summary` can count a file you download yourself |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | No source found |
+| Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
+| Procurement of Curitiba bodies missing from the list | The list was read from PNCP results published 2026-10-01 to 2026-11-18; a body that published nothing then is not in it |
 
 ### Alternatives (not recommended, not tested)
 
@@ -132,11 +145,25 @@ rows.
 
 - No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by the
   request sent to the source.
-- The server contacts exactly two hosts, `https://dadosabertos.curitiba.pr.gov.br` and
-  `https://apidadosabertos.saude.gov.br`, on the default port and without credentials. Every redirect hop is checked
+- The server contacts exactly three hosts, `https://dadosabertos.curitiba.pr.gov.br`,
+  `https://apidadosabertos.saude.gov.br` and `https://pncp.gov.br`, on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a
   URL.
-- Requests use a generic User-Agent, `curitibai-mcp/0.2`, a 10 s timeout per request and an 8 MB response cap.
+- Requests use a generic User-Agent, `curitibai-mcp/0.3`, a 10 s timeout per request (25 s for PNCP, which is slow)
+  and an 8 MB response cap.
+- `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
+  has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
+  so the gate is by modality: for **dispensa (8), inexigibilidade (9), inaplicabilidade (14)** and any unknown modality
+  the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
+  and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
+  with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
+  Before masking, Unicode hyphens, dashes and minus signs (soft and fullwidth hyphens included) become "-", invisible
+  characters are removed and underscores between digits count as a space; number groups may be split by one or two
+  spaces or by a hyphen, slash or dot with spaces around it ("123 . 456 . 789 - 09"), and spaces around "@" are
+  allowed. This covers common formats; it is not a guarantee. With spaces around "@" only the word next to it is
+  masked ("Maria Silva @ x.com" keeps "Maria").
+  **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
+  numbers (amounts of 10+ digits, long process numbers, "2026-2027"). `query` never matches a withheld object.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads and close), and only as aggregates.
 - Text from the sources is returned as plain data fields with HTML removed. It is never meant as instructions.
@@ -154,6 +181,13 @@ rows.
   [docs/sources.md](docs/sources.md)). This server treats the data under the strictest one: values are passed on
   unchanged, with attribution in `license_note`. The CNES API has no name filter and no total; `name` is matched on the
   pages scanned, so a search may need several calls: pass `next_page` and `next_skip` back as `page` and `skip`.
+- PNCP: no licence for the API data was found; the PNCP site on gov.br is CC BY-ND 3.0, and `license_note` attributes
+  the source and says how the object text was changed. PNCP has no text search in this endpoint and no Curitiba-only
+  filter, so `query` and the body list are applied to the pages scanned (most records on a Curitiba page belong to
+  state and federal bodies); continue with `next_page` and `next_skip`.
+  PNCP is slow (8–13 s per page) and answered HTTP 429 once during checks; a refused or failed request is returned as
+  `source_unavailable` (a connection reset is retried once), and an HTTP 429 as `rate_limited` (retried once only when
+  Retry-After is 5 s or less).
 
 ## Development
 
@@ -163,7 +197,8 @@ scripts/verify   # npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test
 
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
 trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:
-the real JSON shape with invented values), and CSV tests use synthetic files.
+the real JSON shape with invented values), PNCP tests use a synthetic fixture with planted supplier keys, CPF, e-mail,
+phone and names (`test/fixtures/pncp_contratacoes_synthetic.json`), and CSV tests use synthetic files.
 
 ## License
 

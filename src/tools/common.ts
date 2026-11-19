@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { SourceUnavailableError, UrlNotAllowedError } from "../http.js";
+import { RateLimitedError, SourceUnavailableError, UrlNotAllowedError } from "../http.js";
 
 export const READ_ONLY: ToolAnnotations = {
   readOnlyHint: true,
@@ -30,6 +30,8 @@ export const ErrorResult = z.object({
     "column_not_allowed",
     "no_header_detected",
     "invalid_csv",
+    "invalid_date_range",
+    "rate_limited",
   ]),
   message: z.string().optional(),
 });
@@ -62,9 +64,23 @@ export function fail(error: ErrorCode, message?: string): CallToolResult {
   return { isError: true, content: [{ type: "text", text: JSON.stringify(payload) }] };
 }
 
+/** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
+export function rateLimitedMessage(retryAfterS: number | null): string {
+  const wait =
+    retryAfterS === null || retryAfterS < 5
+      ? "about 1 minute"
+      : retryAfterS < 120
+        ? `${retryAfterS} s`
+        : retryAfterS <= 3600
+          ? `about ${Math.ceil(retryAfterS / 60)} minutes`
+          : "at least 1 hour";
+  return `The source is limiting requests; wait ${wait} before trying again.`;
+}
+
 /** Maps thrown errors to a fixed error code. Never echoes source text or user input. */
 export function failFrom(err: unknown): CallToolResult {
   if (err instanceof UrlNotAllowedError) return fail("url_not_allowed");
+  if (err instanceof RateLimitedError) return fail("rate_limited", rateLimitedMessage(err.retryAfterS));
   if (err instanceof SourceUnavailableError) return fail("source_unavailable");
   return fail("source_unavailable");
 }

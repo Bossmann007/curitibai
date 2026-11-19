@@ -5,6 +5,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
 import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { CNES_TYPES_URL, establishmentsUrl } from "../src/sources/cnes.js";
+import { publicationUrl } from "../src/sources/pncp.js";
 
 export function fixture(name: string): string {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -35,8 +36,10 @@ export function stubFetch(routes: Record<string, Route>): FetchCall[] {
       const route = routes[`${method} ${url}`];
       if (!route) throw new Error(`unexpected network call in test: ${method} ${url}`);
       if (route.error) throw new TypeError("fetch failed");
-      return new Response(route.body ?? "", {
-        status: route.status ?? 200,
+      const status = route.status ?? 200;
+      // 204/304 responses must have a null body.
+      return new Response(status === 204 || status === 304 ? null : (route.body ?? ""), {
+        status,
         headers: { "content-type": route.contentType ?? "text/html; charset=utf-8", ...(route.headers ?? {}) },
       });
     }),
@@ -56,6 +59,7 @@ export function happyRoutes(): Record<string, Route> {
     [`GET ${FILES_UNIDADES}`]: { body: fixture("portal_arquivos_unidades.json"), contentType: "application/json; charset=utf-8" },
     [`GET ${datasetUrl(ID_TRANSPORTE)}`]: { body: fixture("portal_detalhe_transporte.html") },
     ...cnesRoutes(),
+    ...pncpRoutes(),
   };
 }
 
@@ -67,6 +71,40 @@ export function cnesRoutes(): Record<string, Route> {
     [`GET ${CNES_TYPES_URL}`]: { body: fixture("cnes_tipounidades_synthetic.json"), contentType: JSON_TYPE },
     [`GET ${establishmentsUrl(1, null)}`]: { body: fixture("cnes_estabelecimentos_synthetic.json"), contentType: JSON_TYPE },
   };
+}
+
+export const PNCP_FROM = "2026-11-01";
+export const PNCP_TO = "2026-11-18";
+/** The PNCP URL the tool requests for the sample dates (modality 6 unless given). */
+export function pncpUrl(page = 1, modality = 6): string {
+  return publicationUrl(PNCP_FROM.replaceAll("-", ""), PNCP_TO.replaceAll("-", ""), modality, page);
+}
+
+/** PNCP route backed by the synthetic fixture (invented values, planted personal data). One page: the last. */
+export function pncpRoutes(): Record<string, Route> {
+  return { [`GET ${pncpUrl()}`]: { body: fixture("pncp_contratacoes_synthetic.json"), contentType: JSON_TYPE } };
+}
+
+/** A synthetic PNCP page: `listed` records of the Município (pregão), then `others` of a non-listed body. */
+export function syntheticPncpPage(start: number, listed: number, remaining: number, others = 50 - listed): string {
+  const rec = (seq: number, cnpj: string) => ({
+    numeroControlePNCP: `${cnpj}-1-${String(seq).padStart(6, "0")}/2026`,
+    orgaoEntidade: { cnpj, razaoSocial: cnpj === "76417005000186" ? "MUNICIPIO DE CURITIBA" : "OUTRO ORGAO FICTICIO", esferaId: "M" },
+    unidadeOrgao: { codigoIbge: "4106902", municipioNome: "Curitiba" },
+    anoCompra: 2026,
+    sequencialCompra: seq,
+    objetoCompra: `Objeto ficticio ${seq}`,
+    modalidadeId: 6,
+    situacaoCompraId: 1,
+    situacaoCompraNome: "Divulgada no PNCP",
+    valorTotalEstimado: 10,
+    dataPublicacaoPncp: "2026-11-03T08:00:00",
+  });
+  const data = [
+    ...Array.from({ length: listed }, (_, i) => rec(start + i, "76417005000186")),
+    ...Array.from({ length: others }, (_, i) => rec(start + 1000 + i, "11111111000191")),
+  ];
+  return JSON.stringify({ data, totalRegistros: 9999, totalPaginas: 99, numeroPagina: 1, paginasRestantes: remaining, empty: false });
 }
 
 /** A full upstream page (20 records) of synthetic public units named `${prefix} <n>`. */
@@ -86,6 +124,7 @@ export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[
   { name: "open_datasets_search", arguments: { query: "saude", limit: 5 } },
   { name: "dataset_files", arguments: { dataset_id: ID_UNIDADES } },
   { name: "health_units_search", arguments: {} },
+  { name: "procurement_search", arguments: { from: PNCP_FROM, to: PNCP_TO } },
 ];
 
 /** Error results carry their JSON in the text content only. */
