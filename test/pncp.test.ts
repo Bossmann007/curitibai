@@ -243,6 +243,8 @@ describe("object gate (unit)", () => {
       "2025 2026 ".repeat(10_000),
       "Tel.: 2025-2026 ".repeat(8_000),
       "tel. ".repeat(25_000),
+      "Telef. 2025-2026 ".repeat(8_000),
+      "contatos ".repeat(12_000),
     ];
     for (const s of inputs) {
       const t0 = performance.now();
@@ -385,6 +387,12 @@ describe("object gate (unit)", () => {
     ["exercício 2025 - 2026", "exercício 2025 - 2026"],
     ["parcel 2025-2026", "parcel 2025-2026"],
     ["telas 2025-2026", "telas 2025-2026"],
+    ["Telef. 2025-2026", `Telef. ${MASK}`],
+    ["tels 2025-2026", `tels ${MASK}`],
+    ["contatos 2025-2026", `contatos ${MASK}`],
+    ["Excel 2025-2026", "Excel 2025-2026"],
+    ["Marcel 2025-2026", "Marcel 2025-2026"],
+    ["hotels 2025-2026", "hotels 2025-2026"],
     ["vigência 2025 - 2026, tel 3333-4444", `vigência 2025 - 2026, tel ${MASK}`],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
