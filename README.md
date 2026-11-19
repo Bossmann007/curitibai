@@ -51,6 +51,8 @@ any tool that writes, and real-time feeds that need a key.
 Requires Node.js 22.12 or newer.
 
 ```sh
+git clone https://github.com/Bossmann007/curitibai.git
+cd curitibai
 npm ci
 npm run build
 node dist/server.js   # speaks MCP over stdio; it prints nothing else
@@ -101,4 +103,4 @@ responses in `test/fixtures/`.
 
 ## License
 
-No licence has been chosen for the code yet. The data belongs to its publishers under their own terms (see above).
+Code: [Apache-2.0](LICENSE). The data belongs to its publishers under their own terms (see above).
