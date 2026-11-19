@@ -237,6 +237,10 @@ describe("object gate (unit)", () => {
       `1${"_".repeat(100_000)}x`,
       `1${" _".repeat(50_000)}x`,
       `${"a@b.".repeat(25_000)}`,
+      "41 ".repeat(34_000),
+      "1 ".repeat(50_000),
+      "041 99999888 ".repeat(8_000),
+      "2025 2026 ".repeat(10_000),
     ];
     for (const s of inputs) {
       const t0 = performance.now();
@@ -247,7 +251,7 @@ describe("object gate (unit)", () => {
   });
 
   it("never shows an identifier split by the raw cut", () => {
-    for (const id of ["123.456.789-09", "123 456 789 09", "maria @ exemplo.com", "fulana.ficticia@example.invalid"]) {
+    for (const id of ["123.456.789-09", "123 456 789 09", "maria @ exemplo.com", "fulana.ficticia@example.invalid", "41 999998888", "+55 41 33334444"]) {
       for (let inside = 1; inside < id.length; inside++) {
         // collapsed text: prefix + " " + id, with the 2,000-character cut landing `inside` characters into the id
         // long e-mails shrink to [masked], so the masked text is short and the cut region would be visible
@@ -332,6 +336,32 @@ describe("object gate (unit)", () => {
     ["CNPJ 12 345 678 0001 95", `CNPJ ${MASK}`],
     ["Pregão 116/2026, R$ 1.234.567,89, Lei 14.133", "Pregão 116/2026, R$ 1.234.567,89, Lei 14.133"],
     ["  espaços   colapsados  ", "espaços colapsados"],
+    ["tel 41 999998888", `tel ${MASK}`],
+    ["tel +55 41 999998888", `tel ${MASK}`],
+    ["+55 41 999998888", MASK],
+    ["tel 55 41 999998888 fim", `tel ${MASK} fim`],
+    ["tel 41 33334444", `tel ${MASK}`],
+    ["tel 041 33334444.", `tel ${MASK}.`],
+    ["tel 041 999998888, ramal 2", `tel ${MASK}, ramal 2`],
+    ["vigência 2025 - 2026", "vigência 2025 - 2026"],
+    ["vigência 2026\u20132027", "vigência 2026-2027"],
+    ["ano 2025 2026", "ano 2025 2026"],
+    ["exercícios 1999-2000 e 2025.2026", "exercícios 1999-2000 e 2025.2026"],
+    ["fone 2025-3333", `fone ${MASK}`],
+    ["fone 3333 2026", `fone ${MASK}`],
+    ["fone 41 2025-2026", `fone ${MASK}`],
+    ["fone (41) 2025-2026", `fone ${MASK}`],
+    ["fone 041 2025-2026", `fone ${MASK}`],
+    ["fone (041) 2025-2026", `fone ${MASK}`],
+    ["fone +55 041 2025-2026", `fone ${MASK}`],
+    ["fone (041)3333-4444", `fone ${MASK}`],
+    ["nº 123 12345678", "nº 123 12345678"],
+    ["fone +55 2025 2026", `fone ${MASK}`],
+    ["datas 2025 2026 3333", `datas 2025 ${MASK}`],
+    ["tel 41 - 33334444", `tel ${MASK}`],
+    ["lote 12 1234567 itens", "lote 12 1234567 itens"],
+    ["item 3 12345678", "item 3 12345678"],
+    ["Lei 8666 de 1993, item 12345678", "Lei 8666 de 1993, item 12345678"],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
   });
