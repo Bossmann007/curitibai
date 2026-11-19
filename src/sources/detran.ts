@@ -108,7 +108,7 @@ export const HOURS_STATEMENTS: readonly { text: string; source_url: string }[] =
   },
 ];
 
-/** Current year in Curitiba's time zone. */
-export function yearInCuritiba(now: Date): number {
-  return Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric" }).format(now));
+/** Today's date (YYYY-MM-DD) in Curitiba's time zone. */
+export function dateInCuritiba(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
