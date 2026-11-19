@@ -9,7 +9,8 @@ import {
   type HealthUnit,
 } from "../sources/cnes.js";
 import { fold } from "../text.js";
-import { envelope, failFrom, ok, type ToolDef } from "./common.js";
+import { RateLimitedError } from "../http.js";
+import { envelope, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 /** Upstream pages requested per call, at most. Curitiba has thousands of units; one call never walks them all. */
 export const MAX_CNES_REQUESTS = 5;
@@ -121,6 +122,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       let discarded = 0;
       let p = page;
       let scanned = 0;
+      let rateLimitNote: string | null = null;
       for (;;) {
         if (scanned === MAX_CNES_REQUESTS) {
           partial = true; // capped: more pages may hold matches
@@ -134,6 +136,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
           if (scanned === 0) throw err;
           partial = true;
           nextPage = p;
+          if (err instanceof RateLimitedError) rateLimitNote = rateLimitedMessage(err.retryAfterS);
           break;
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
@@ -167,6 +170,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       }
       const notes = [SCOPE_NOTE];
       if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
+      if (rateLimitNote !== null) notes.unshift(rateLimitNote);
       return ok({
         data: {
           units,
