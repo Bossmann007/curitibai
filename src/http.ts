@@ -38,6 +38,8 @@ export interface FetchResult {
 export interface FetchOptions {
   method?: "GET" | "POST";
   form?: Record<string, string>;
+  /** Per-hop timeout; defaults to FETCH_TIMEOUT_MS. */
+  timeoutMs?: number;
 }
 
 async function readCapped(res: Response): Promise<string> {
@@ -77,7 +79,7 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
         body,
         headers: { "user-agent": USER_AGENT, accept: "text/html,application/json;q=0.9,*/*;q=0.5" },
         redirect: "manual",
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(options.timeoutMs ?? FETCH_TIMEOUT_MS),
       });
     } catch {
       throw new SourceUnavailableError("network error or timeout");
