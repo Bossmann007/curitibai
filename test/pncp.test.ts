@@ -228,6 +228,27 @@ describe("object gate (unit)", () => {
     expect(JSON.stringify(page.items).includes("FULANO FICTICIO PRIMEIRO")).toBe(false);
   });
 
+  it("never cuts a mask token or a surrogate pair when truncating", () => {
+    const masked = maskObject(`${"a".repeat(295)} 123.456.789-09 fim`);
+    expect(masked.truncated).toBe(true);
+    expect(masked.text).toBe(`${"a".repeat(295)}…`);
+    const emoji = maskObject(`${"b".repeat(299)}😀😀`);
+    expect(emoji.text).toBe(`${"b".repeat(299)}😀…`);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(emoji.text)).toBe(false); // no lone high surrogate
+  });
+
+  it.each([
+    ["control number of another CNPJ", { numeroControlePNCP: "11111111000191-1-000001/2026" }],
+    ["year 0", { anoCompra: 0 }],
+    ["year 123456789", { anoCompra: 123456789 }],
+  ])("drops a listed body's record with %s", (_label, patch) => {
+    const raw = JSON.parse(fixture("pncp_contratacoes_synthetic.json")) as { data: Record<string, unknown>[] };
+    Object.assign(raw.data[0]!, patch);
+    const page = parseContratacoes(JSON.stringify(raw));
+    expect(page.items.some((i) => i.link.includes("/76417005000186/"))).toBe(false);
+    expect(page.discarded).toBe(2);
+  });
+
   it("drops a listed body's record with a malformed control number", () => {
     const raw = JSON.parse(fixture("pncp_contratacoes_synthetic.json")) as { data: Record<string, unknown>[] };
     raw.data[0]!.numeroControlePNCP = "FULANO FICTICIO 123.456.789-09";
@@ -245,6 +266,10 @@ describe("object gate (unit)", () => {
     ["fone +55 41 3333 0000", `fone ${MASK}`],
     ["fone 4133330000", `fone ${MASK}`],
     ["mail a.b@c.gov.br ok", `mail ${MASK} ok`],
+    ["contato (41) 999998888", `contato ${MASK}`],
+    ["contato (41)33330000.", `contato ${MASK}.`],
+    ["CPF 123 456 789 09", `CPF ${MASK}`],
+    ["CNPJ 12 345 678 0001 95", `CNPJ ${MASK}`],
     ["Pregão 116/2026, R$ 1.234.567,89, Lei 14.133", "Pregão 116/2026, R$ 1.234.567,89, Lei 14.133"],
     ["  espaços   colapsados  ", "espaços colapsados"],
   ])("maskObject(%j)", (input, expected) => {
@@ -320,6 +345,34 @@ describe("procurement_search paging", () => {
     }
     expect(seen).toHaveLength(41);
     expect(new Set(seen).size).toBe(41);
+  });
+
+  it("retries once after a connection reset", async () => {
+    const urls: string[] = [];
+    globalThis.fetch = (async (input: string | URL) => {
+      urls.push(String(input));
+      if (urls.length === 1) throw new TypeError("fetch failed");
+      return new Response(fixture("pncp_contratacoes_synthetic.json"), { status: 200 });
+    }) as typeof fetch;
+    const res = await search();
+    expect(res.isError).toBeFalsy();
+    expect(urls).toEqual([pncpUrl(), pncpUrl()]);
+  });
+
+  it("does not retry after a timeout", async () => {
+    let n = 0;
+    globalThis.fetch = (async () => {
+      n++;
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    }) as typeof fetch;
+    const res = await search();
+    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+    expect(n).toBe(1);
+  });
+
+  it("collapses repeated spaces in the query", async () => {
+    stubFetch(pncpRoutes());
+    expect(dataOf(await search({ query: "medicamentos   ficticios" })).items.map((i) => i.modality_code)).toEqual([6]);
   });
 
   it("source down -> {error: source_unavailable}", async () => {

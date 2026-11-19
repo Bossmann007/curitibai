@@ -90,17 +90,27 @@ export function publicationUrl(from: string, to: string, modality: number, page:
 const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
 /** A digit run with dots, slashes or hyphens inside; masked when it holds 10+ digits (CPF 11, CNPJ 14, phone with DDD 10–11). */
 const DIGIT_RUN = /\d(?:[\d./-]*\d)?/g;
-/** Brazilian phone numbers: optional +55, optional DDD in parentheses, 8 or 9 digits split by a space, dot or hyphen. */
-const PHONE = /(?:\+?55[\s.-]?)?(?:\(\d{2}\)\s?|\b\d{2}[\s.-]?)?\b9?\d{4}[\s.-]\d{4}\b/g;
+/** CPF / CNPJ with spaces between the groups ("123 456 789 09", "12 345 678 0001 95"). */
+const SPACED_ID = /\b(?:\d{3}[\s.]\d{3}[\s.]\d{3}[\s.-]\d{2}|\d{2}[\s.]\d{3}[\s.]\d{3}[\s./]\d{4}[\s.-]\d{2})\b/g;
+/**
+ * Brazilian phone numbers: optional +55; a DDD in parentheses with 8 or 9 digits, separator optional; or an optional
+ * bare DDD with 8 or 9 digits split by a space, dot or hyphen.
+ */
+const PHONE = /(?:\+?55[\s.-]?)?(?:\(\d{2}\)\s?9?\d{4}[\s.-]?\d{4}\b|(?:\b\d{2}[\s.-]?)?\b9?\d{4}[\s.-]\d{4}\b)/g;
 
 /** Masks CPF/CNPJ-shaped numbers, e-mails and phone numbers, collapses whitespace and caps the length. */
 export function maskObject(raw: string): { text: string; truncated: boolean } {
   let t = raw.replace(/\s+/g, " ").trim();
   t = t.replace(EMAIL, MASK);
   t = t.replace(DIGIT_RUN, (m) => (m.replace(/\D/g, "").length >= 10 ? MASK : m));
+  t = t.replace(SPACED_ID, MASK);
   t = t.replace(PHONE, MASK);
-  if (t.length <= OBJECT_MAX_CHARS) return { text: t, truncated: false };
-  return { text: `${t.slice(0, OBJECT_MAX_CHARS).trimEnd()}…`, truncated: true };
+  const chars = Array.from(t); // code points: never split a surrogate pair
+  if (chars.length <= OBJECT_MAX_CHARS) return { text: t, truncated: false };
+  let cut = chars.slice(0, OBJECT_MAX_CHARS).join("");
+  const open = cut.lastIndexOf("[");
+  if (open > cut.lastIndexOf("]") && t.startsWith(MASK, open)) cut = cut.slice(0, open); // never show half a mask
+  return { text: `${cut.trimEnd()}…`, truncated: true };
 }
 
 export interface Procurement {
@@ -175,9 +185,9 @@ export function parseContratacoes(body: string): ParsedPage {
     const seq = int(r.sequencialCompra);
     const id = str(r.numeroControlePNCP);
     // Control number "<cnpj>-<n>-<seq 6 digits>/<year>"; anything else is not passed on.
-    const pncpId = id !== null && /^\d{14}-\d{1,2}-\d{6}\/\d{4}$/.test(id) ? id : null;
+    const pncpId = id !== null && id.startsWith(`${cnpj}-`) && /^\d{14}-\d{1,2}-\d{6}\/\d{4}$/.test(id) ? id : null;
     const bodyName = str(org?.razaoSocial);
-    if (str(unit?.codigoIbge) !== CURITIBA_IBGE7 || year === null || seq === null || seq <= 0 || pncpId === null || bodyName === null) {
+    if (str(unit?.codigoIbge) !== CURITIBA_IBGE7 || year === null || year < 2000 || year > 2100 || seq === null || seq <= 0 || pncpId === null || bodyName === null) {
       discarded++;
       continue;
     }
@@ -212,9 +222,17 @@ export function parseContratacoes(body: string): ParsedPage {
   return { items, received: list.length, discarded, lastPage };
 }
 
+/** PNCP reset about half of the connections on 2026-11-19 and answered on a retry: one retry, network errors only. */
+async function fetchPncp(url: string): Promise<string> {
+  try {
+    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+  } catch (err) {
+    if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
+    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+  }
+}
+
 export function getPublicationPage(from: string, to: string, modality: number, page: number) {
   const url = publicationUrl(from, to, modality, page);
-  return sharedCache.getOrLoad(`GET ${url}`, async () =>
-    parseContratacoes((await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body),
-  );
+  return sharedCache.getOrLoad(`GET ${url}`, async () => parseContratacoes(await fetchPncp(url)));
 }
