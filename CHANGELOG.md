@@ -28,9 +28,9 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 ## 0.4.0
 
 - Added `detran_pr_info`: bundled 2026 Detran-PR licensing calendar, fee and Curitiba units, each with its source URL and check date.
-- Object masking hardened: Unicode dashes and invisible characters are normalised, groups may be split by spaces or spaced separators, e-mails may have spaces around "@", and the work is bounded so it stays linear.
-- HTTP 429 becomes a `rate_limited` error with the wait time; a PNCP request is retried once after a connection error.
 
 ## 0.3.0
 
 - Added `procurement_search`: PNCP procurement of Curitiba municipal bodies, with CPF/CNPJ, e-mail and phone masking in the object and no supplier data.
+- Object masking hardened: Unicode dashes and invisible characters are normalised, groups may be split by spaces or spaced separators, e-mails may have spaces around "@", and the work is bounded so it stays linear.
+- HTTP 429 becomes a `rate_limited` error with the wait time; a PNCP request is retried once after a connection error.
