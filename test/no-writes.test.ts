@@ -32,8 +32,13 @@ describe("no tool writes", () => {
       /["']node:fs\/promises["']/, /["'](node:)?child_process["']/, /["'](node:)?(net|dgram|http|https|http2)["']/,
       /\blocalStorage\b/, /\bconsole\.log\b/,
     ];
-    // localfs.ts may open files, but only read-only and without following a final link, in exactly this form.
-    const READ_ONLY_OPEN = "openSync(real, constants.O_RDONLY | NOFOLLOW)";
+    // localfs.ts may open files, but only read-only (no write or create flag), in exactly this form.
+    const READ_ONLY_OPEN = "openSync(real, OPEN_FLAGS)";
+    // ...and the flags are pinned exactly: read-only, no-follow, non-blocking, nothing else.
+    const OPEN_FLAGS_DEF =
+      "const OPEN_FLAGS = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);";
+    expect(readFileSync(join(SRC, "localfs.ts"), "utf8").split("const OPEN_FLAGS")).toHaveLength(2);
+    expect(readFileSync(join(SRC, "localfs.ts"), "utf8")).toContain(OPEN_FLAGS_DEF);
     const files = sourceFiles(SRC);
     expect(files.length).toBeGreaterThan(5);
     for (const f of files) {

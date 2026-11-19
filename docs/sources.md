@@ -74,8 +74,9 @@ a group-by cannot reveal one record.
 **Owner decision (2026-11-19), same rule as CNES (no person names):** `group_by` and `filter_column` are refused
 (`column_not_allowed`) when the column name, accents and case ignored, matches nome, name, cpf, cnpj, rg, email/e-mail,
 telefone/fone/celular, matricula, endereco/logradouro/rua, cep, nascimento, servidor, beneficiario, paciente, mae or
-pai. The guard is name-based and therefore not perfect. A file whose first line looks like data (no header) is refused
-with `no_header_detected`, so a record is never returned as column names.
+pai (also `nasc`, `tel` and split camelCase, added after code review). The guard is name-based and therefore not
+perfect, and it fails closed on look-alikes. A file whose first line looks like data (no header) is refused with
+`no_header_detected`; a headerless file whose first line is plain words is not detected (documented in the README).
 
 Its licence is the publisher's (portal data: CC BY 4.0 with the portal's citation rules). Tested on synthetic files
 only, not on the real 156 file.

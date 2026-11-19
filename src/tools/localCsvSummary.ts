@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CsvParser, detectDelimiter, MAX_COLUMNS } from "../csv.js";
+import { CsvParser, detectDelimiter } from "../csv.js";
 import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
 import { fold } from "../text.js";
 import { fail, ok, type ToolDef } from "./common.js";
@@ -12,17 +12,23 @@ export const MAX_HEADER_CHARS = 60;
 
 /**
  * Column names that may hold personal data. Long words match anywhere in the name with separators removed
- * ("NOME_SOLICITANTE", "nomeMae", "E-mail"); short ones match only as a whole word ("RG", "CEP", "RUA").
- * Name-based, so not perfect: a sensitive column with an innocent name is not caught.
+ * ("NOME_SOLICITANTE", "nomeMae", "E-mail", "DTNASC"); short ones match only as a whole word, with camelCase split
+ * ("RG", "numeroRG", "codCep", "TEL"). Fails closed on look-alikes ("NOMENCLATURA" is refused too).
+ * Name-based, so not perfect: a sensitive column with an innocent or run-together name ("CEPRESIDENCIA") is not caught.
  */
 const SENSITIVE_WORDS = [
   "nome", "name", "cpf", "cnpj", "email", "telefone", "fone", "celular", "matricula", "endereco", "logradouro",
-  "nascimento", "servidor", "beneficiario", "paciente",
+  "nasc", "servidor", "beneficiario", "paciente",
 ];
-const SENSITIVE_TOKENS = ["rg", "rua", "cep", "mae", "pai"];
+const SENSITIVE_TOKENS = ["rg", "rua", "cep", "mae", "pai", "tel"];
 
 export function isSensitiveColumn(name: string): boolean {
-  const f = fold(name);
+  const split = name
+    .replace(/(\p{Ll})(\p{Lu})/gu, "$1 $2") // numeroRG
+    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2") // CEPResidencia
+    .replace(/(\p{L})(\d)/gu, "$1 $2") // RG1
+    .replace(/(\d)(\p{L})/gu, "$1 $2");
+  const f = fold(split);
   const compact = f.replace(/[^a-z0-9]/g, "");
   if (SENSITIVE_WORDS.some((w) => compact.includes(w))) return true;
   const tokens = f.split(/[^a-z0-9]+/);
@@ -135,7 +141,6 @@ async function scan(
   const onRecord = (rec: string[]) => {
     if (header === null) {
       header = rec.map((h, i) => (i === 0 ? h.replace(/^\uFEFF/, "") : h));
-      if (header.length > MAX_COLUMNS) throw new CsvError("invalid_csv");
       if (header.some(looksLikeValue)) throw new CsvError("no_header_detected");
       s.columns = header.map(cut);
       if (groupBy !== undefined) {
@@ -201,8 +206,9 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count and the top groups of one " +
     "column (the values of that column are returned), optionally filtered by column = value. Never returns rows. " +
     "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
-    "celular, matrícula, endereço, logradouro, rua, CEP, nascimento, servidor, beneficiário, paciente, mãe, pai); " +
-    "this check is by column name only and is not perfect. Refuses files whose first line does not look like a header. " +
+    "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
+    "pai; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column name only, refuses " +
+    "some harmless look-alikes and is not perfect. Refuses files whose first line looks like data instead of a header. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
@@ -229,7 +235,7 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
           s = await scan(target.fd, "latin1", group_by, filter);
         }
       } finally {
-        closeFile(target.fd);
+        closeFile(target.fd); // never throws, so the scan's own error code is kept
       }
       let groupOut = null;
       if (group_by !== undefined) {

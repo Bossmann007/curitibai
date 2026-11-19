@@ -28,17 +28,19 @@ function isInside(dir: string, p: string): boolean {
   return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
-const NOFOLLOW = constants.O_NOFOLLOW ?? 0;
+// O_NONBLOCK: opening a FIFO for reading would otherwise block (synchronously) until a writer appears; it is then
+// rejected by the regular-file check below. It has no effect on reads from regular files.
+const OPEN_FLAGS = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
 
 /**
- * Opens `real` read-only without following a final symbolic link (O_NOFOLLOW), then checks the open descriptor itself: a regular file,
+ * Opens `real` read-only, without following a final symbolic link (O_NOFOLLOW) or blocking (O_NONBLOCK), then checks the open descriptor itself: a regular file,
  * and the same file (device and inode) that `real` still names, with `real` unchanged and inside `dir`. A swap made
  * after the path checks therefore fails instead of reading another file. Exported for tests.
  */
 export function openVerified(real: string, dir: string): number {
   let fd: number;
   try {
-    fd = openSync(real, constants.O_RDONLY | NOFOLLOW);
+    fd = openSync(real, OPEN_FLAGS);
   } catch (err) {
     const code = (err as { code?: string }).code;
     throw new LocalFileError(code === "ENOENT" ? "file_not_found" : "file_not_allowed");
@@ -52,7 +54,7 @@ export function openVerified(real: string, dir: string): number {
     if (now.dev !== st.dev || now.ino !== st.ino) throw new LocalFileError("file_not_allowed");
     return fd;
   } catch (err) {
-    closeSync(fd);
+    closeFile(fd);
     throw err instanceof LocalFileError ? err : new LocalFileError("file_not_allowed");
   }
 }
@@ -96,6 +98,11 @@ export async function* readChunks(fd: number): AsyncGenerator<Buffer> {
   }
 }
 
+/** Closes the descriptor. A failed close is ignored so it never replaces the error that led here. */
 export function closeFile(fd: number): void {
-  closeSync(fd);
+  try {
+    closeSync(fd);
+  } catch {
+    // nothing useful to do; the descriptor is gone either way
+  }
 }
