@@ -147,8 +147,9 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
   (for example "2026-3333"), and 2 digits (or 0 plus 2 digits) followed by 8 or 9 digits. Two year-like numbers
   (`(19|20)\d{2}`) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them ("2025 - 2026",
   "2026-2027") are kept, so an 8-digit phone shaped like that is not masked (fails open, by owner decision for 0.4.1);
-  with one of those before them ("41 2025-2026", "(041) 2025-2026"), or a contact word right before them (tel, fone,
-  telefone, celular, contato, whatsapp, any case, optional ":"; since 0.4.2: "tel 2025-2026"), they are still masked. The official text is on the linked page.
+  with one of those before them ("41 2025-2026", "(041) 2025-2026"), or a contact word right before them (tel, cel, fone,
+  telefone(s), celular, contato, whatsapp, whats, zap, fax, ramal, any case, not inside a longer word such as "hotel",
+  optional "." and ":"; since 0.4.2: "tel 2025-2026", more words and "." since 0.4.3: "Tel. 2025-2026"), they are still masked. The official text is on the linked page.
 - The `query` text matches only the object the tool returns (after masking) and the body name, never a withheld object.
 - No supplier is ever returned (the endpoint has none, and the output is built field by field).
 
@@ -178,7 +179,8 @@ date (Anexo I) has passed in America/Sao_Paulo; it only means that payment date 
 quotes Anexo II for enforcement. Each unit's `city` is derived from the unit name and the Curitiba block (the page
 does not state it for Vila Hauer); the CIRETRAN's `services` comes from the page legend; every other unit field is
 copied as published from the Curitiba block. The units `note` also says the data may be outdated once more than 180
-days have passed since `checked_at` (in America/Sao_Paulo).
+days have passed since `checked_at` (in America/Sao_Paulo); when both this and the year warning apply, it is one
+sentence (since 0.4.3).
 
 Terms: no terms of use or licence was found on the pages read (home, `/unidades`, three `/Noticia/` pages and the
 Portaria page, 2026-11-19); their only related link is a LGPD booklet on `cge.pr.gov.br`. Only public facts about public offices are used, each
