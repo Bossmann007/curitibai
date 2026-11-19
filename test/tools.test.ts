@@ -6,7 +6,7 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the four read-only tools with input and output schemas", async () => {
+  it("lists exactly the five read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -14,6 +14,7 @@ describe("tools/list", () => {
       "health_units_search",
       "local_csv_summary",
       "open_datasets_search",
+      "procurement_search",
     ]);
     for (const t of listed) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
@@ -41,6 +42,10 @@ describe("each tool returns the envelope, valid against its output schema", () =
       expect(new URL(parsed.source_url).hostname).toBe("apidadosabertos.saude.gov.br");
       expect(parsed.license_note).toMatch(/CNES/);
       expect(parsed.license_note).toMatch(/CC BY-NC-SA 4\.0/);
+      expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
+    } else if (call.name === "procurement_search") {
+      expect(new URL(parsed.source_url).hostname).toBe("pncp.gov.br");
+      expect(parsed.license_note).toMatch(/PNCP/);
       expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
     } else {
       expect(new URL(parsed.source_url).hostname).toBe("dadosabertos.curitiba.pr.gov.br");
@@ -95,6 +100,14 @@ describe("input validation", () => {
     { name: "health_units_search", arguments: { limit: 21 } },
     { name: "health_units_search", arguments: { page: 0 } },
     { name: "health_units_search", arguments: { name: "x" } },
+    { name: "procurement_search", arguments: { limit: 21 } },
+    { name: "procurement_search", arguments: { modality: 0 } },
+    { name: "procurement_search", arguments: { modality: 21 } },
+    { name: "procurement_search", arguments: { from: "20261101" } },
+    { name: "procurement_search", arguments: { to: "2026-02-30" } },
+    { name: "procurement_search", arguments: { from: "2026-11-01", to: "2026-10-01" } },
+    { name: "procurement_search", arguments: { from: "2025-01-01", to: "2026-11-18" } },
+    { name: "procurement_search", arguments: { query: "x" } },
     { name: "local_csv_summary", arguments: { file: "a.csv", top: 51 } },
     { name: "local_csv_summary", arguments: {} },
   ])("rejects $name $arguments", async (call) => {

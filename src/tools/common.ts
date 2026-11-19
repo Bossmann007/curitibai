@@ -30,6 +30,7 @@ export const ErrorResult = z.object({
     "column_not_allowed",
     "no_header_detected",
     "invalid_csv",
+    "invalid_date_range",
   ]),
   message: z.string().optional(),
 });

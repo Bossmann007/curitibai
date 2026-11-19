@@ -2,7 +2,8 @@
 
 Checked live on **2026-11-19** from a Brazilian IP with the server's own client: Node.js `fetch`,
 User-Agent `curitibai-mcp/0.1`, redirects followed by hand. The CNES API (v0.2) was checked the same day with curl and
-User-Agent `curitibai-mcp/0.2`.
+User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the same day with curl and User-Agent
+`curitibai-mcp/0.3`.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -13,6 +14,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 |---|---|---|
 | `dadosabertos.curitiba.pr.gov.br` | 404 (HTML "not found" page, rechecked 2026-11-19) | No restriction (RFC 9309: a 4xx robots.txt means no rules). **Contacted.** |
 | `apidadosabertos.saude.gov.br` (Ministry of Health open-data API) | 404 (HTML "404 Not Found", checked 2026-11-19) | No restriction. **Contacted** (v0.2, `health_units_search`). |
+| `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309). **Contacted** (v0.3, `procurement_search`, `/api/consulta` only) |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
 | `www.curitiba.pr.gov.br` | 200; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, some extensions; `/dadosabertos/` not disallowed | Out of scope (Akamai returns 403 to non-browser clients such as curl). Not contacted |
@@ -48,7 +50,8 @@ was set: directory listings, the start of the 156 CSV, two 30-second throughput 
 
 ### `health_units_search`: Ministry of Health CNES open API
 
-Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.2`.
+Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the same day with curl and User-Agent
+`curitibai-mcp/0.3`.
 
 | Field | Value |
 |---|---|
@@ -63,6 +66,76 @@ Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.2`.
 | Fixtures | **Synthetic**: `test/fixtures/cnes_estabelecimentos_synthetic.json` and `test/fixtures/cnes_tipounidades_synthetic.json` have the real JSON shape with invented values (marked in a `_synthetic` key) |
 
 The repository's Apache-2.0 licence covers the code only, not data from any source.
+
+### `procurement_search`: PNCP Consulta API (contratações of Curitiba municipal bodies)
+
+Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.3`, before any code was written.
+
+| Field | Value |
+|---|---|
+| URL | `GET https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=<yyyyMMdd>&dataFinal=<yyyyMMdd>&codigoModalidadeContratacao=<code>&codigoMunicipioIbge=4106902&pagina=<n>&tamanhoPagina=50` (4106902 = Curitiba, 7-digit IBGE code). No trailing slash (see notice 11/26 below) |
+| Documentation | OpenAPI 3.0.1 at `https://pncp.gov.br/api/consulta/v3/api-docs` (UI at `/api/consulta/swagger-ui/index.html`): "API PNCP CONSULTA", `info.version` **1.0**, contact Serpro. No `license` field. The manual at `https://pncp.gov.br/manual/pt-br/latest/` is the *Manual de Integração do PNCP* v. 2.6 (the publishing API); no Consulta-specific manual was found. Several of its pages (sections 4–6 and `contratacao/index.html`) could not be read: the host reset most connections |
+| Parameters | `dataInicial`, `dataFinal` (`yyyyMMdd`, required), `codigoModalidadeContratacao` (**required**: without it the API answers 400 "Required request parameter ... is not present"), `pagina` (required, ≥ 1), `tamanhoPagina` (10–50; 51 answered 400 "Tamanho de página inválido"). Optional filters: `uf`, `codigoMunicipioIbge`, `cnpj`, `codigoUnidadeAdministrativa`, `codigoModoDisputa`, `idUsuario`. A date range over 365 days answers 422 "Período inicial e final maior que 365 dias" |
+| Municipality / body filter | `codigoMunicipioIbge=4106902` filters by the buying unit's municipality and returns every sphere (federal, state, municipal, other) with a unit in Curitiba. `cnpj=<14 digits>` filters one body (an 8-digit root answered 422 "CNPJ do Órgão/Entidade inválido"), but it was slower (18 s and 37 s per page against 8–13 s). **The server uses `codigoMunicipioIbge` and keeps only the bodies listed below (client-side, exact 14-digit CNPJ, fail closed)** |
+| Format | JSON `{data:[...], totalRegistros, totalPaginas, numeroPagina, paginasRestantes, empty}`. **An empty result is HTTP 204 with no body** (modalities 2, 3, 5, 7, 10, 13, 14 in the window below). `Cache-Control: no-cache, no-store`. No rate-limit headers |
+| Record fields | Body (`orgaoEntidade`: `cnpj`, `razaoSocial`, `esferaId`, `poderId`), unit (`unidadeOrgao`: `nomeUnidade`, `codigoIbge`, `municipioNome`, ...), `objetoCompra`, `modalidadeId`/`modalidadeNome`, `situacaoCompraId`/`situacaoCompraNome`, `valorTotalEstimado`, `valorTotalHomologado`, `dataPublicacaoPncp`, `dataAberturaProposta`, `dataEncerramentoProposta`, `numeroControlePNCP`, `anoCompra`, `sequencialCompra`, plus `informacaoComplementar`, `justificativaPresencial`, `processo`, `linkSistemaOrigem`, `usuarioNome` (the publishing platform), `amparoLegal`, `fontesOrcamentarias`. **This endpoint has no supplier (fornecedor) field**; suppliers appear in contracts and price-registration minutes, which are not queried |
+| Latency | 8–13 s for a page of 50, about 3 s for a page of 10. The host reset roughly half of the connections during the checks (curl error 56) and answered on a retry |
+| Rate limits | None documented in the pages that could be read, none in response headers. The server sends at most 2 upstream requests per call, sequentially |
+| Terms / licence | No terms of use for the API were found: `https://pncp.gov.br/app/termos-de-uso` is the single-page app's fallback page, and the app bundle has no terms text. The PNCP site on gov.br (`https://www.gov.br/pncp/pt-br`, its "Dados Abertos" page `https://www.gov.br/pncp/pt-br/acesso-a-informacao/copy_of_dados-abertos`) says "Todas as buscas podem ser feitas sem necessidade de cadastro ou login" and its footer says "Todo o conteúdo deste site está publicado sob a licença Creative Commons Atribuição-SemDerivações 3.0 Não Adaptada" (**CC BY-ND 3.0**; it covers the site, and no other licence names the API data). Nothing found forbids automated access. The server attributes the source in `license_note` |
+| Notice | gov.br/pncp communiqué Nº 11/26 (2026-11-17): after a Spring Boot update, API URLs must not end with `/` (HTTP 404); in production from 2026-12-17. The URL above has no trailing slash |
+| Modality codes | From `GET https://pncp.gov.br/api/pncp/v1/modalidades` (the domain service the manual's section 7.4 points to), 20 codes: 1 Leilão - Eletrônico, 2 Diálogo Competitivo, 3 Concurso, 4 Concorrência - Eletrônica, 5 Concorrência - Presencial, 6 Pregão - Eletrônico, 7 Pregão - Presencial, 8 Dispensa, 9 Inexigibilidade, 10 Manifestação de Interesse, 11 Pré-qualificação, 12 Credenciamento, 13 Leilão - Presencial, 14 Inaplicabilidade da Licitação, 15 Chamada pública, 16 Concorrência – Eletrônica Internacional, 17 Concorrência – Presencial Internacional, 18 Pregão – Eletrônico Internacional, 19 Pregão – Presencial Internacional, 20 Diálogo Competitivo Internacional |
+| Status codes | Manual 7.13 (`tabelas_de_dominio/situacao_da_contratacao.html`): 1 Divulgada no PNCP, 2 Revogada, 3 Anulada, 4 Suspensa |
+| Public page | `https://pncp.gov.br/app/editais/<cnpj>/<ano>/<sequencial>`: the app's `editais` route with child path `:cnpj/:ano/:sequencial` (read from the app bundle `src_app_pages_consultas_consultas_module_ts`). Built from validated digits; `linkSistemaOrigem` (free text, sometimes without a scheme) is never returned |
+| Fixtures | **Synthetic**: `test/fixtures/pncp_contratacoes_synthetic.json` has the real JSON shape with invented values and planted supplier keys, a CPF, an e-mail and a phone, so the tests can prove they never leave |
+
+Research-only requests on 2026-11-19 (not made by the code): `/api/pncp/v1/modalidades`, `/api/pncp/v3/api-docs`, one
+`/api/search/` query, the app's JavaScript bundles, the manual pages, and a walk of every result page for modalities 4,
+6, 8, 9, 11 and 12 (63 pages of 50, one request at a time) to list the bodies below.
+
+**Curitiba municipal bodies, read from PNCP.** Every body with a buying unit in Curitiba (`codigoIbge` 4106902) and
+`esferaId` `M` in the results published from 2026-10-01 to 2026-11-18, plus the two municipal companies PNCP lists
+with `esferaId` `N`. A body that published nothing in that window is not in the list and its procurement is not
+returned until the list is updated:
+
+| CNPJ | Name in PNCP (`razaoSocial`) | `esferaId` |
+|---|---|---|
+| 76417005000186 | MUNICIPIO DE CURITIBA | M |
+| 76417005001743 | MUNICIPIO DE CURITIBA | M |
+| 77636520000110 | CAMARA MUNICIPAL DE CURITIBA | M |
+| 13792329000184 | FUNDO MUNICIPAL DA SAUDE | M |
+| 14682109000160 | FUNDO DE URBANIZACAO DE CURITIBA | M |
+| 14814139000183 | FUNDACAO ESTATAL DE ATENCAO A SAUDE - FEAS | M |
+| 03518900000113 | INSTITUTO CURITIBA DE SAÚDE - PR | M |
+| 07505809000114 | INSTITUTO MUNICIPAL DE TURISMO - CURITIBA TURISMO | M |
+| 75123125000108 | FUNDACAO CULTURAL DE CURITIBA | M |
+| 76568930000108 | FUNDACAO DE ACAO SOCIAL FAS | M |
+| 76582337000116 | INST DE PESQUISA E PLANEJ URBANO DE CURITIBA IPPUC | M |
+| 76608736000109 | INSTITUTO DE PREVIDENCIA DOS SERVIDORES DO MUNICIPIO DE CURITIBA | M |
+| 78802394000199 | INSTITUTO MUNICIPAL DE ADMINISTRACAO PUBLICA | M |
+| 75076836000179 | URBS URBANIZACAO DE CURITIBA S/A | N |
+| 76495696000136 | COMPANHIA DE HABITACAO POPULAR DE CURITIBA | N |
+
+Not included: `81374949000153` "PROMOTOR TESTE BNC" (`esferaId` `M`, unit in Curitiba): a test body of a publishing
+platform, with objects such as "teste". This is why the filter is an explicit list and not `esferaId == "M"`.
+
+**Person names in `objetoCompra`.** In the real Curitiba sample, one inexigibilidade object names two public servants,
+and objects of direct awards can name a contracted natural person (an instructor, an artist). Text cannot be told apart
+from a name by a heuristic (the same lesson as the CSV header check), so the server gates by modality.
+**Owner decision (2026-11-19):**
+
+- Modalities **8 (Dispensa), 9 (Inexigibilidade), 14 (Inaplicabilidade da Licitação)** and any code not in the table
+  above: `object` is `null` and `object_withheld` is `"may_name_a_person"`. Body, modality, estimated value, status,
+  dates and the PNCP link are still returned; the official page is one click away.
+- All other modalities: `object` is returned as published, except that CPF/CNPJ-shaped digit runs (10 or more digits,
+  dots, slashes and hyphens allowed), e-mail addresses and phone numbers are replaced by `[masked]`, and the text is
+  cut at 300 characters (`object_truncated: true`). These objects can still, rarely, contain a person's name.
+- The `query` text matches only the object the tool returns (after masking) and the body name, never a withheld object.
+- No supplier is ever returned (the endpoint has none, and the output is built field by field).
+
+**Prior art (2026-11-19, `gh search repos "pncp mcp"`):** `mcp-dir/pncp-mcp` (MIT), `pipeworx-io/mcp-brazil-pncp`
+(MIT), `marlonnotebooklm-rgb/pncp-mcp` (no licence). Generic national search servers; none applies a host allowlist,
+a Curitiba body list or a person-data gate. Not adopted: the tool is about 430 lines inside this server and reuses its
+HTTP client, cache and envelope.
 
 ### `local_csv_summary`: a file the user downloaded
 
@@ -98,6 +171,7 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files exist only on the two disallowed hosts (`local_csv_summary` can count a hand-downloaded file). Health units moved to the CNES API in v0.2 |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
+| PNCP suppliers, contracts, price-registration minutes (`/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` stays on the procurement notice, which has no supplier field |
 
 ### Bus alternative checked, not adopted
 
