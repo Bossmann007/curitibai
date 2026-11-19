@@ -20,7 +20,15 @@ export function envelope<T extends z.ZodType>(data: T) {
 }
 
 export const ErrorResult = z.object({
-  error: z.enum(["source_unavailable", "url_not_allowed"]),
+  error: z.enum([
+    "source_unavailable",
+    "url_not_allowed",
+    "data_dir_not_set",
+    "file_not_allowed",
+    "file_not_found",
+    "column_not_found",
+    "invalid_csv",
+  ]),
   message: z.string().optional(),
 });
 export type ErrorCode = z.infer<typeof ErrorResult>["error"];
@@ -32,9 +40,11 @@ export interface ToolDef<I extends z.ZodRawShape, O extends z.ZodType> {
   inputSchema: I;
   outputSchema: O;
   handler: (args: z.infer<z.ZodObject<I>>) => Promise<CallToolResult>;
+  /** Overrides on top of READ_ONLY (e.g. openWorldHint: false for a tool with no network). */
+  annotations?: Partial<ToolAnnotations>;
 }
 
-export function ok<T>(payload: { data: T; source_url: string; fetched_at: string; license_note: string }): CallToolResult {
+export function ok<T extends object>(payload: T): CallToolResult {
   return {
     content: [{ type: "text", text: JSON.stringify(payload) }],
     structuredContent: payload as unknown as Record<string, unknown>,

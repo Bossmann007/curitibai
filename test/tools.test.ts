@@ -6,15 +6,21 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the two read-only tools with input and output schemas", async () => {
+  it("lists exactly the four read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
-    expect(listed.map((t) => t.name).sort()).toEqual(["dataset_files", "open_datasets_search"]);
+    expect(listed.map((t) => t.name).sort()).toEqual([
+      "dataset_files",
+      "health_units_search",
+      "local_csv_summary",
+      "open_datasets_search",
+    ]);
     for (const t of listed) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
       expect(t.outputSchema).toBeDefined();
       expect(t.inputSchema.type).toBe("object");
     }
+    expect(listed.find((t) => t.name === "local_csv_summary")?.annotations?.openWorldHint).toBe(false);
   });
 });
 
@@ -24,12 +30,23 @@ describe("each tool returns the envelope, valid against its output schema", () =
     const client = await connectClient();
     const res = await client.callTool(call);
     expect(res.isError).toBeFalsy();
-    const parsed = byName[call.name]!.outputSchema.parse(res.structuredContent);
+    const parsed = byName[call.name]!.outputSchema.parse(res.structuredContent) as {
+      fetched_at: string;
+      source_url: string;
+      license_note: string;
+    };
     expect(Object.keys(parsed).sort()).toEqual(["data", "fetched_at", "license_note", "source_url"]);
     expect(Date.parse(parsed.fetched_at)).not.toBeNaN();
-    expect(new URL(parsed.source_url).hostname).toBe("dadosabertos.curitiba.pr.gov.br");
-    expect(parsed.license_note).toMatch(/CC BY 4\.0/);
-    expect(parsed.license_note).toMatch(/Unofficial; not affiliated with Prefeitura de Curitiba/);
+    if (call.name === "health_units_search") {
+      expect(new URL(parsed.source_url).hostname).toBe("apidadosabertos.saude.gov.br");
+      expect(parsed.license_note).toMatch(/CNES/);
+      expect(parsed.license_note).toMatch(/CC BY-NC-SA 4\.0/);
+      expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
+    } else {
+      expect(new URL(parsed.source_url).hostname).toBe("dadosabertos.curitiba.pr.gov.br");
+      expect(parsed.license_note).toMatch(/CC BY 4\.0/);
+    }
+    expect(parsed.license_note).toMatch(/Unofficial; not affiliated with/);
   });
 
   it("dataset_files lists links without requesting them", async () => {
@@ -75,6 +92,11 @@ describe("input validation", () => {
     { name: "dataset_files", arguments: { dataset_id: "https://mid-dadosabertos.curitiba.pr.gov.br/156/" } },
     { name: "dataset_files", arguments: { dataset_id: "../../etc/passwd" } },
     { name: "dataset_files", arguments: { dataset_id: ID_UNIDADES, page: 0 } },
+    { name: "health_units_search", arguments: { limit: 21 } },
+    { name: "health_units_search", arguments: { page: 0 } },
+    { name: "health_units_search", arguments: { name: "x" } },
+    { name: "local_csv_summary", arguments: { file: "a.csv", top: 51 } },
+    { name: "local_csv_summary", arguments: {} },
   ])("rejects $name $arguments", async (call) => {
     const calls = stubFetch({});
     const client = await connectClient();
