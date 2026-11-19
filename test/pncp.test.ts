@@ -500,6 +500,46 @@ describe("procurement_search paging", () => {
     expect(data.note).toMatch(/^The source is limiting requests; wait 60 s before trying again\./);
   });
 
+  it("says the time budget was reached when a 429 retry wait made the first page slow", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    let n = 0;
+    globalThis.Date.now = () => t;
+    globalThis.fetch = (async () => {
+      if (n++ === 0) {
+        t += 16_000; // the 429 and its retry wait take 16 s
+        return new Response("", { status: 429, headers: { "retry-after": "0" } });
+      }
+      return new Response(syntheticPncpPage(1, 1, 3), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(n).toBe(2);
+      expect(data).toMatchObject({ partial: true, next_page: 2, scanned_pages: { from: 1, to: 1 } });
+      expect(data.note).toMatch(/^Stopped after 1 upstream page\(s\) \(the 15 s time budget was reached\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
+  it("does not blame the time budget when the page cap stopped the scan", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    globalThis.fetch = (async (input: string | URL) => {
+      t += 10_000; // two normal 10 s pages: over the budget, but the cap is the reason
+      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      return new Response(syntheticPncpPage(page * 10, 1, 3), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(data).toMatchObject({ partial: true, next_page: 3, scanned_pages: { from: 1, to: 2 } });
+      expect(data.note).toMatch(/^Stopped after 2 upstream page\(s\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
   it("skips the second page when the first was slow", async () => {
     const real = Date.now;
     let t = 1_000_000;
