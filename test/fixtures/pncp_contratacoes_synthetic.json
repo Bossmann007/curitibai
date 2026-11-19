@@ -1,5 +1,5 @@
 {
- "_synthetic": "Invented values in the real PNCP /v1/contratacoes/publicacao shape (checked 2026-11-19). Supplier keys, a CPF, e-mail, phone and person names are planted so the tests can prove they never leave.",
+ "_synthetic": "Real PNCP /v1/contratacoes/publicacao shape (checked 2026-11-19). The CNPJs and names of the listed Curitiba bodies (and the excluded platform test body) are the real public ones, because the allowlist needs them; every other value is invented. Supplier keys, a CPF, e-mail, phone and person names are planted so the tests can prove they never leave.",
  "data": [
   {
    "numeroControlePNCP": "76417005000186-1-000001/2026",
@@ -170,9 +170,9 @@
    "usuarioNome": "PLATAFORMA FICTICIA"
   },
   {
-   "numeroControlePNCP": "76416890000189-1-000004/2026",
+   "numeroControlePNCP": "11111111000191-1-000004/2026",
    "orgaoEntidade": {
-    "cnpj": "76416890000189",
+    "cnpj": "11111111000191",
     "razaoSocial": "ORGAO ESTADUAL FICTICIO",
     "poderId": "E",
     "esferaId": "E"

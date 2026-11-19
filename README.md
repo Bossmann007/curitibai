@@ -34,7 +34,7 @@ state and federal bodies, autarquias, public foundations); a record without that
 consultórios and non-profit hospitals are deliberately out of scope**, because in CNES their names can be people's
 names (individual practitioners register under their own name). Each call scans at most 5 upstream pages of 20 units.
 
-`procurement_search` asks PNCP for procurement whose buying unit is in Curitiba and keeps only the 15 municipal bodies
+`procurement_search` asks PNCP for procurement whose buying unit is in Curitiba and keeps only the 15 CNPJs (14 municipal bodies; the city has two)
 listed in [docs/sources.md](docs/sources.md) (the city, the câmara, municipal funds, foundations and institutes, URBS,
 COHAB-CT), read from PNCP's own results; a body missing from that list is not returned. PNCP needs one modality per
 query, so `modality` picks it. Each call scans at most 2 upstream pages of 50 records, and PNCP took 8–13 s per page
@@ -178,6 +178,8 @@ rows.
   the source and says how the object text was changed. PNCP has no text search in this endpoint and no Curitiba-only
   filter, so `query` and the body list are applied to the pages scanned (most records on a Curitiba page belong to
   state and federal bodies); continue with `next_page` and `next_skip`.
+  PNCP is slow (8–13 s per page) and answered HTTP 429 once during checks; a refused or failed request is returned as
+  `source_unavailable` (a connection reset is retried once).
 
 ## Development
 
