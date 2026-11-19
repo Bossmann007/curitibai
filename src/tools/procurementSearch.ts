@@ -134,7 +134,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     if (span > MAX_RANGE_DAYS) return fail("invalid_date_range", `PNCP accepts at most ${MAX_RANGE_DAYS} days.`);
     const f = compact(start);
     const t = compact(end);
-    const needle = query === undefined ? null : fold(query);
+    const needle = query === undefined ? null : fold(query).replace(/\s+/g, " ");
     const matches = (it: Procurement) =>
       needle === null || fold(it.body_name).includes(needle) || (it.object !== null && fold(it.object).includes(needle));
 

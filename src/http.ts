@@ -1,7 +1,7 @@
 import { ALLOWED_HOSTS, FETCH_TIMEOUT_MS, MAX_REDIRECTS, MAX_RESPONSE_BYTES, USER_AGENT } from "./config.js";
 
 export class SourceUnavailableError extends Error {
-  constructor(reason: string) {
+  constructor(readonly reason: string) {
     super(`source_unavailable: ${reason}`);
     this.name = "SourceUnavailableError";
   }
@@ -81,8 +81,9 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
         redirect: "manual",
         signal: AbortSignal.timeout(options.timeoutMs ?? FETCH_TIMEOUT_MS),
       });
-    } catch {
-      throw new SourceUnavailableError("network error or timeout");
+    } catch (err) {
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+      throw new SourceUnavailableError(timedOut ? "timeout" : "network error");
     }
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");

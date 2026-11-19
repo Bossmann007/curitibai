@@ -155,7 +155,8 @@ rows.
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
   with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
-  **These objects may still, rarely, contain a person's name.** `query` never matches a withheld object.
+  **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
+  numbers (amounts of 10+ digits, long process numbers, "2026-2027"). `query` never matches a withheld object.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads and close), and only as aggregates.
 - Text from the sources is returned as plain data fields with HTML removed. It is never meant as instructions.
