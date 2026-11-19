@@ -20,7 +20,7 @@ export function envelope<T extends z.ZodType>(data: T) {
 }
 
 export const ErrorResult = z.object({
-  error: z.enum(["source_unavailable", "url_not_allowed", "line_not_found", "invalid_input"]),
+  error: z.enum(["source_unavailable", "url_not_allowed"]),
   message: z.string().optional(),
 });
 export type ErrorCode = z.infer<typeof ErrorResult>["error"];

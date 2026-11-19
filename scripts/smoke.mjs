@@ -2,7 +2,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const expected = ["bus_line_schedule", "bus_lines_search", "bus_stops_near", "open_dataset_preview", "open_datasets_search"];
+const expected = ["dataset_files", "open_datasets_search"];
 const transport = new StdioClientTransport({ command: process.execPath, args: ["dist/server.js"], stderr: "pipe" });
 const client = new Client({ name: "smoke", version: "0.0.0" });
 const timer = setTimeout(() => {
