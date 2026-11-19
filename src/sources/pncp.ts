@@ -117,8 +117,11 @@ const SPACED_ID = new RegExp(String.raw`\b(?:\d{3}${SEP}\d{3}${SEP}\d{3}${SEP}\d
 const PSEP = String.raw`(?:\s*[-.]\s*|\s{1,2})`;
 /** Two year-like groups ("2025 - 2026", "2026-2027"): not taken as a bare phone when nothing comes before them. */
 const YEAR_PAIR = String.raw`(?:19|20)\d{2}${PSEP}(?:19|20)\d{2}\b`;
-/** A contact word right before the number ("tel", "Fone:", "WhatsApp"); whitespace is already collapsed to one space. */
-const PHONE_CUE = String.raw`(?<=(?<![\p{L}\p{N}])(?:tel|fone|telefone|celular|contato|whatsapp) ?:? ?)`;
+/**
+ * A contact word right before the number ("Tel.", "Fone:", "WhatsApp", "ramal"), not inside a longer word ("hotel");
+ * optional "." and ":" after it. Whitespace is already collapsed to one space.
+ */
+const PHONE_CUE = String.raw`(?<=(?<![\p{L}\p{N}])(?:tel|cel|fone|telefones?|celular|contato|whatsapp|whats|zap|fax|ramal)\.? ?:? ?)`;
 /**
  * Brazilian phone numbers (a DDD may have a leading 0): optional +55; a DDD in parentheses with 8 or 9 digits,
  * separator optional; an optional bare DDD with 8 or 9 digits split by a separator ("41 3333-4444",
