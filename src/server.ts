@@ -8,7 +8,7 @@ import { READ_ONLY } from "./tools/common.js";
 
 export function createServer(): McpServer {
   const server = new McpServer(
-    { name: "curitibai", version: "0.1.0" },
+    { name: "curitibai", version: "0.2.0" },
     {
       instructions:
         "Unofficial, read-only access to public Curitiba (Brazil) city data. Not affiliated with Prefeitura de Curitiba. " +
@@ -23,7 +23,7 @@ export function createServer(): McpServer {
         description: tool.description,
         inputSchema: tool.inputSchema,
         outputSchema: tool.outputSchema,
-        annotations: { ...READ_ONLY, title: tool.title },
+        annotations: { ...READ_ONLY, ...tool.annotations, title: tool.title },
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each tool's handler is typed against its own schema
       tool.handler as any,

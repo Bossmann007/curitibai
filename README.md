@@ -1,24 +1,35 @@
 # CuritibAI
 
 A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistants search the catalogue of the
-[Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil) and list each dataset's files.
+[Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
+look up public health units in the Ministry of Health's CNES open API, and summarise a CSV file the user downloaded by
+hand.
 
-**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba.**
-Data comes from the portal as it is; always confirm important information at the source.
+**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba or the Ministério da Saúde.**
+Data comes from the sources as it is; always confirm important information at the source.
 
 ## Tools
 
-Both tools are read-only. A successful call returns `{data, source_url, fetched_at, license_note}`.
-When the portal fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
-`isError: true`, and no data.
+All tools are read-only. The three network tools return `{data, source_url, fetched_at, license_note}`.
+When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
+`isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
+read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
+`column_not_found`, `column_not_allowed` and `invalid_csv`.
 
 | Tool | Input | Returns | Source (checked 2026-11-19) |
 |---|---|---|---|
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page timed out | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
+| `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
+| `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
-server never opens them; a person can open them in a browser.
+server never opens them; a person can open them in a browser, and `local_csv_summary` can then summarise the file.
+
+`health_units_search` returns only units whose natureza jurídica is in group 1 (public administration: municipal,
+state and federal bodies, autarquias, public foundations); a record without that code is dropped. **Private clinics,
+consultórios and non-profit hospitals are deliberately out of scope**, because in CNES their names can be people's
+names (individual practitioners register under their own name). Each call scans at most 5 upstream pages of 20 units.
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](docs/sources.md).
 
@@ -26,11 +37,11 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 
 | Tool | Reason |
 |---|---|
-| `open_dataset_preview` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB; needs permission or an official API |
-| `city156_categories` | Same reason |
-| `city156_stats` | Same reason |
+| `open_dataset_preview` | File hosts disallow automated access (robots.txt), and file rows hold individual records |
+| `city156_categories`, `city156_stats` | Same reason. Download the 156 file by hand and use `local_csv_summary` (see below) |
 | Bus lines, timetables and stops | The URBS website is out of scope (it refuses non-browser clients) and its WebService needs a login. See "Alternatives" |
-| `health_units_search`, `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files are only on the hosts whose robots.txt disallows automated access |
+| `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files are only on the hosts whose robots.txt disallows automated access. `local_csv_summary` can count a file you download yourself |
+| Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | No source found |
 
 ### Alternatives (not recommended, not tested)
@@ -73,14 +84,60 @@ MCP client configuration (for example Claude Desktop's `claude_desktop_config.js
 
 Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/server.js`
 
+To use `local_csv_summary`, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
+(Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it, that
+tool returns `{"error":"data_dir_not_set"}` and the other tools work as usual.
+
+### Summarising a file you downloaded (for example the 156 file)
+
+The server never downloads data files. A person does it in a browser:
+
+1. Make a folder for the files, for example `~/curitibai-data`, and point `CURITIBAI_DATA_DIR` at it (above).
+2. Open <https://dadosabertos.curitiba.pr.gov.br/> in a browser and search for "156" (or call `open_datasets_search`
+   with `156`, then `dataset_files` with the dataset id, to get the links).
+3. On the dataset page, click DOWNLOAD and choose a CSV file (the daily 156 file is about 137 MB). Save it into the
+   folder. Keep the `.csv` extension.
+4. Ask the assistant, for example: "with local_csv_summary, count `156.csv` by `ASSUNTO`, only where `BAIRRO` is
+   `CENTRO`". Use the column names the tool returns (call it with just `file` first).
+
+The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns column
+names and counts. Data rows (after the first line) are never returned. What it does return, and what it refuses:
+
+- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 3
+  rows are added to `other_count` instead of being listed, so that a filter on a unique column cannot reveal a single
+  record.
+- **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
+  containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
+  nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
+  titular, responsavel, documento, identidade, contato, whatsapp, usuario, morador, placa or inscricao, or the words rg, rua, cep, mae, pai or tel (accents
+  and case ignored; camelCase, acronyms and digits are split, so `numeroRG`, `CEPResidencia` and `RG1` are refused). It fails closed on look-alikes (`NOMENCLATURA`,
+  `QTD_PACIENTES` are refused too). **This guard is name-based and not perfect**: a column with personal data under an
+  innocent or run-together name (`CEPRESIDENCIA`) is not caught.
+- **The first line is returned as column names, with one check.** A first line that looks like data (digits,
+  CPF/CNPJ, e-mail, phone, date, CEP, long text) is refused (`no_header_detected`, no columns returned); this also
+  refuses some real headers (a column named `2024`). **A first line made only of text cannot be told apart from a
+  header and is returned as column names**: in a headerless file, `Maria;Rua das Flores;Centro` would come back as
+  `columns`. Only use files that have a header row.
+- The path must be a `.csv` file inside the folder; anything outside it is `file_not_allowed`, whether or not it
+  exists. The file is opened once (without following a final symbolic link, and without blocking, so a named pipe is
+  refused instead of hanging the server), checked through that open descriptor and read from it, so swapping the file
+  after the check does not change what is read.
+- A field over 1 MB (for example an unclosed quote) or a line with more than 300 fields stops the read with
+  `invalid_csv`.
+It was tested on synthetic files (including a 137 MB one: about 1 s), **not on the real 156 file**.
+
 ## Privacy and safety
 
 - No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by the
-  request sent to the portal.
-- The server contacts exactly one host, `https://dadosabertos.curitiba.pr.gov.br`, on the default port and without
-  credentials. Every redirect hop is checked against it, and inputs are a search term and a dataset GUID, never a URL.
-- Requests use a generic User-Agent, `curitibai-mcp/0.1`, a 10 s timeout per request and an 8 MB response cap.
-- Text from the portal is returned as plain data fields with HTML removed. It is never meant as instructions.
+  request sent to the source.
+- The server contacts exactly two hosts, `https://dadosabertos.curitiba.pr.gov.br` and
+  `https://apidadosabertos.saude.gov.br`, on the default port and without credentials. Every redirect hop is checked
+  against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a
+  URL.
+- Requests use a generic User-Agent, `curitibai-mcp/0.2`, a 10 s timeout per request and an 8 MB response cap.
+- Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
+  open, fstat, positional reads and close), and only as aggregates.
+- Text from the sources is returned as plain data fields with HTML removed. It is never meant as instructions.
 
 ## Limits
 
@@ -91,6 +148,10 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 - `dataset_files` does not check that the links work, and it cannot show the contents of a file.
 - Licence: portal data is CC BY 4.0. The portal's usage rules require citing the source and a disclaimer, and each
   result's `license_note` carries both.
+- CNES: the Ministry's licence notices disagree (CC BY-ND 3.0, CC BY-NC-SA 4.0, MIT; see
+  [docs/sources.md](docs/sources.md)). This server treats the data under the strictest one: values are passed on
+  unchanged, with attribution in `license_note`. The CNES API has no name filter and no total; `name` is matched on the
+  pages scanned, so a search may need several calls: pass `next_page` and `next_skip` back as `page` and `skip`.
 
 ## Development
 
@@ -98,9 +159,11 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 scripts/verify   # npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
 
-Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Parser tests use trimmed real
-responses in `test/fixtures/`.
+Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
+trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:
+the real JSON shape with invented values), and CSV tests use synthetic files.
 
 ## License
 
-Code: [Apache-2.0](LICENSE). The data belongs to its publishers under their own terms (see above).
+Code: [Apache-2.0](LICENSE). The Apache-2.0 licence covers the code only; the data belongs to its publishers under
+their own terms (see above).

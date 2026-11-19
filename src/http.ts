@@ -84,6 +84,8 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
     }
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
+      // Release the connection before the next hop; the redirect body is never read.
+      await res.body?.cancel().catch(() => undefined);
       if (!location) throw new SourceUnavailableError("redirect without location");
       url = new URL(location, url).href;
       // 301/302/303 turn a POST into a GET, as browsers do.
@@ -93,7 +95,10 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       }
       continue;
     }
-    if (!res.ok) throw new SourceUnavailableError(`HTTP ${res.status}`);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      throw new SourceUnavailableError(`HTTP ${res.status}`);
+    }
     return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res) };
   }
   throw new SourceUnavailableError("too many redirects");
