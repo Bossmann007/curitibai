@@ -190,6 +190,21 @@ describe("health_units_search", () => {
     expect(data).toMatchObject({ partial: true, next_page: 2 });
   });
 
+  it("says how long to wait when a later page is refused with HTTP 429", async () => {
+    stubFetch({
+      ...cnesRoutes(),
+      [`GET ${establishmentsUrl(1, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE },
+      [`GET ${establishmentsUrl(2, null)}`]: { status: 429, headers: { "retry-after": "60" } },
+    });
+    const client = await connectClient();
+    const res = await client.callTool({ name: "health_units_search", arguments: { name: "UMS 2" } });
+    const data = dataOf(res);
+    expect(data).toMatchObject({ partial: true, next_page: 2 });
+    expect(data.note).toMatch(
+      /^The source is limiting requests; wait 60 s before trying again\. Stopped after 1 upstream page\(s\); continue with next_page\./,
+    );
+  });
+
   it("is source_unavailable when the API answers with something else", async () => {
     for (const route of [{ status: 500 }, { body: "<html>down</html>" }, { body: '{"x":1}', contentType: JSON_TYPE }]) {
       stubFetch({ ...cnesRoutes(), [`GET ${establishmentsUrl(1, null)}`]: route });
