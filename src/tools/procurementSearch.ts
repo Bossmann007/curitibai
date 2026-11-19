@@ -151,15 +151,18 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let p = page;
       let scanned = 0;
       let rateLimitNote: string | null = null;
+      let budgetReached = false;
       const started = Date.now();
       for (;;) {
-        if (scanned > 0 && Date.now() - started > SECOND_PAGE_BUDGET_MS) {
-          partial = true; // the source is slow: return what we have rather than risk the client's timeout
+        if (scanned === MAX_PNCP_REQUESTS) {
+          partial = true; // capped: more pages may hold matches
           nextPage = p;
           break;
         }
-        if (scanned === MAX_PNCP_REQUESTS) {
-          partial = true; // capped: more pages may hold matches
+        // Wall clock since the first request, so a 429 retry wait counts too.
+        if (scanned > 0 && Date.now() - started > SECOND_PAGE_BUDGET_MS) {
+          partial = true; // the source is slow: return what we have rather than risk the client's timeout
+          budgetReached = true;
           nextPage = p;
           break;
         }
@@ -194,7 +197,10 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         p++;
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
-      if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
+      if (partial) {
+        const why = budgetReached ? ` (the ${SECOND_PAGE_BUDGET_MS / 1000} s time budget was reached)` : "";
+        notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
+      }
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);
       return ok({
         data: {
