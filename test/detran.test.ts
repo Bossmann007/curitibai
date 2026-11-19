@@ -32,7 +32,9 @@ describe("detran_pr_info licensing_calendar", () => {
       const res = await client.callTool({ name: "detran_pr_info", arguments: { topic: "licensing_calendar", plate_final: d } });
       expect(res.isError).toBeFalsy();
       const parsed = detranPrInfoOutput.parse(res.structuredContent) as unknown as Calendar & { source_url: string; checked_at: string };
-      expect(parsed.data.deadlines).toEqual([{ plate_final: d, due_date: date, source_url: PORTARIA_907_URL, checked_at: "2026-11-19" }]);
+      expect(parsed.data.deadlines).toEqual([
+        { plate_final: d, due_date: date, past: expect.any(Boolean), source_url: PORTARIA_907_URL, checked_at: "2026-11-19" },
+      ]);
       expect(parsed.data.fee).toMatchObject({ amount_brl: 94.61, source_url: LICENSING_NEWS_URL });
       expect(parsed.source_url).toBe(PORTARIA_907_URL);
       expect(parsed.checked_at).toBe("2026-11-19");
@@ -49,6 +51,22 @@ describe("detran_pr_info licensing_calendar", () => {
   });
 });
 
+describe("detran_pr_info past flag", () => {
+  const past = (iso: string, d: number) =>
+    (detranPrInfoResult({ topic: "licensing_calendar", plate_final: d }, new Date(iso)) as unknown as Calendar & {
+      data: { deadlines: { past: boolean }[] };
+    }).data.deadlines[0]!.past;
+
+  it("the due date itself is not past; the next day in Curitiba is", () => {
+    expect(past("2026-11-27T23:00:00Z", 0)).toBe(false); // 20:00 on 27/11 in Curitiba
+    expect(past("2026-11-28T02:59:00Z", 0)).toBe(false); // 23:59 on 27/11 in Curitiba
+    expect(past("2026-11-28T03:00:00Z", 0)).toBe(true);
+    expect(past("2026-11-19T12:00:00Z", 8)).toBe(true);
+    expect(past("2026-11-19T12:00:00Z", 9)).toBe(true);
+    expect(past("2026-11-13T12:00:00Z", 9)).toBe(false);
+  });
+});
+
 describe("detran_pr_info stale-year note", () => {
   const note = (iso: string) => detranPrInfoResult({ topic: "licensing_calendar", plate_final: 1 }, new Date(iso)).note;
 
@@ -61,11 +79,13 @@ describe("detran_pr_info stale-year note", () => {
   });
 
   it("warns once the year in Curitiba is past the bundled year", () => {
-    expect(note("2027-01-01T03:00:00Z")).toMatch(/calendar is for 2026; it is now 2027, so this data may be outdated/);
+    expect(note("2027-01-01T03:00:00Z")).toMatch(/The bundled calendar is for 2026; it is now 2027, so this data may be outdated/);
   });
 
   it("units carry the same warning", () => {
-    expect(detranPrInfoResult({ topic: "units" }, new Date("2027-06-01T12:00:00Z")).note).toMatch(/it is now 2027, so this data may be outdated/);
+    expect(detranPrInfoResult({ topic: "units" }, new Date("2027-06-01T12:00:00Z")).note).toMatch(
+      /Units and hours were checked on 2026-11-19; it is now 2027, so this data may be outdated/,
+    );
     expect(detranPrInfoResult({ topic: "units" }, new Date("2026-06-01T12:00:00Z")).note).not.toMatch(/outdated/);
   });
 
