@@ -33,7 +33,8 @@ function text(v: unknown): string | null {
 /** A number, or a plain decimal string ("28", "-1.5", "12,5") read as that number; anything else is null. */
 function num(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v !== "string" || !/^-?\d{1,3}([.,]\d+)?$/.test(v.trim())) return null;
+  // At most 2 decimals, so "1,234" (a thousands separator?) is null rather than 1.234.
+  if (typeof v !== "string" || !/^-?\d{1,3}([.,]\d{1,2})?$/.test(v.trim())) return null;
   return Number(v.trim().replace(",", "."));
 }
 
@@ -143,7 +144,10 @@ function listsCuritiba(geocodes: unknown): boolean {
   const parts = typeof geocodes === "string" ? [geocodes] : Array.isArray(geocodes) ? geocodes : null;
   if (parts === null) throw new SourceUnavailableError("INMET warning without geocodes");
   const codes = parts
-    .flatMap((p) => (typeof p === "number" || typeof p === "string" ? String(p).split(",") : []))
+    .flatMap((p) => {
+      if (typeof p !== "number" && typeof p !== "string") throw new SourceUnavailableError("unreadable INMET geocode");
+      return String(p).split(",");
+    })
     .map((c) => c.trim())
     .filter((c) => c !== "");
   // An empty area cannot be told apart from Curitiba's: fail closed instead of answering "no warning".
@@ -153,8 +157,8 @@ function listsCuritiba(geocodes: unknown): boolean {
 
 /**
  * `{hoje: [...], futuro: [...]}`, kept to Curitiba's warnings and to text fields: polygons, area lists and icons are
- * dropped here. A warning in both lists (same id, or same fields when there is no id) is returned once, with both lists
- * in `listed_in`, in INMET's order (today's list first).
+ * dropped here. A warning in both lists with the same id and the same returned fields is returned once, with both lists
+ * in `listed_in`, in INMET's order (today's list first). Copies that differ in any field are all returned as served.
  */
 export function parseAlerts(json: unknown): WeatherAlert[] {
   if (!isObject(json)) throw new SourceUnavailableError("unexpected INMET warnings");
@@ -174,7 +178,7 @@ export function parseAlerts(json: unknown): WeatherAlert[] {
         instructions: textList(item.instrucoes),
       };
       const id = typeof item.id === "number" && Number.isInteger(item.id) ? item.id : null;
-      const key = id !== null ? `id:${id}` : `fields:${JSON.stringify(fields)}`;
+      const key = JSON.stringify([id, fields]);
       const seen = byKey.get(key);
       if (seen) {
         if (!seen.listed_in.includes(bucket)) seen.listed_in.push(bucket);
