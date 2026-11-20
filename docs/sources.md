@@ -18,7 +18,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
-| `www.curitiba.pr.gov.br` | 200; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, some extensions; `/dadosabertos/` not disallowed | Out of scope (Akamai returns 403 to non-browser clients such as curl). Not contacted |
+| `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. For the owner's local copy used by `city_services_search` (v0.6), the `/servicos/` listing pages were read on 2026-11-19/20 with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds). That copy is **not** in this repository |
+| `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
@@ -216,6 +217,48 @@ the Qlik statistics panel; none of them was accessed.
 
 Prior art (2026-11-19): GitHub searches for "detran", "detran mcp" and `topic:mcp-server detran` found only plate and
 fine lookups for other states or behind payment; nothing covers the Detran-PR calendar or units. Built.
+
+### `city_services_search`: Prefeitura de Curitiba service catalog (local file, not shipped)
+
+No network, and **no catalog content in this repository**. The Carta de Serviços belongs to the Prefeitura Municipal
+de Curitiba and no terms of use or licence was found for it (not verified further), so the project neither ships nor
+fetches it. The tool reads `carta-servicos.json` from `CURITIBAI_DATA_DIR`, through `src/localfs.ts` with the same
+rules as `local_csv_summary` (realpath inside the folder, regular file, read-only open, no symlink out), on every call,
+with a 4 MB cap. The file is validated with zod: `captured` must start with a date, `count` must match the items, each
+`url` must be a service page on `servicos.curitiba.pr.gov.br` and the numeric ids must be unique. A missing variable
+or file is `data_not_available`; anything malformed is `invalid_data`, with a message that names the problem, never
+the file's text.
+
+The owner's copy: the listing pages of <https://www.curitiba.pr.gov.br/servicos/> were read with a scripted browser
+session (a real browser, one listing page at a time, about one page every few seconds) on **2026-11-19/20**
+(America/Sao_Paulo); detail pages on `servicos.curitiba.pr.gov.br` were never opened. The `www` host answers 403 to
+non-browser clients such as curl; the service pages' host has robots.txt `Disallow: /`. The server contacts neither.
+
+| Field | Value |
+|---|---|
+| Item shape | `{cat, title, what, url, online}`: the theme (category), the title, the listing's own "O que é?" teaser as published (the site truncates it; some are empty, and those services are found by title only), the detail-page URL and, for some, an online-service link |
+| Completeness of the 2026-11-19/20 copy | 756 unique services in 18 categories, 96 of them with an empty teaser. The listing paginates through ASP.NET postbacks and its order is not stable between requests; a full pass plus one pass per theme gave 756, while the paginator suggested about 770, so **a few services may be missing** |
+| `checked_at` | The first date in the file's `captured` (for "2026-11-19/20", `2026-11-19`), so the 180-day staleness warning, counted in America/Sao_Paulo, starts early rather than late. `license_note` repeats the date part of `captured` and never the rest of that text |
+| Terms / licence | None found. Treated under the strictest reading: values returned unchanged (except masked text, below), attributed to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture date in `license_note` |
+
+Privacy: the catalog describes public services. Online links to the city's obituary system
+(`obituarios.curitiba.pr.gov.br` or a subdomain, lists of deceased people) are never returned (matched on the parsed
+host), while the catalog entry and `official_url` stay; online links that are not http(s) or carry a username or
+password are dropped too. As a guard, summaries pass through the PNCP object masking (`maskObject`); a summary is
+returned as published unless the mask actually hides something. On the 2026-11-19/20 copy that happens twice, both
+public text (an office's institutional e-mail and a social-media handle read as an e-mail), and two services link to
+the obituary system. Titles are not masked. The tests use a synthetic catalog
+(`test/fixtures/carta_servicos_synthetic/`) with invented services that exercise each of these cases.
+
+Search: `query` is split on anything that is not a letter or digit ("segunda-via" = "segunda via"), and every word
+must appear in the title or the returned summary (accents and case ignored). The site's own leading "O que é?" / "O
+que são?" label and text hidden by the mask are not searched. Results where every word is in the title come first,
+then by title (pt-BR order), then by id. Single letters are not ignored, so "a" matches almost everything. The
+categories with counts are returned only when no filter (`query`, `category`, `online_only`) is given.
+
+Prior art (2026-11-19, `gh search repos`): "carta de serviços" found the federal gov.br service-letter model
+(`servicosgovbr/cartas-de-servico`) and unrelated agency projects; "curitiba mcp", "curitiba servicos mcp" and
+"prefeitura curitiba servicos" found nothing. Nothing covers Curitiba's catalog. Built.
 
 ### `local_csv_summary`: a file the user downloaded
 

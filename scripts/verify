@@ -20,7 +20,7 @@ npx vitest run
 step "build"
 npm run --silent build
 
-step "stdio smoke test (tools/list)"
+step "stdio smoke test (tools/list, city_services_search on the synthetic fixture)"
 node scripts/smoke.mjs
 
 echo
