@@ -2,6 +2,11 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.6.0
+
+- Added `city_services_search`: a bundled snapshot (2026-11-19/20) of the Prefeitura de Curitiba service catalog (Carta de Serviços), 756 services in 18 categories, searchable by words (accents and case ignored), category and online-only, with paging. No network call; the note warns after 180 days.
+- `city_services_search` never returns links to the obituary system; summaries pass through the existing PII masking as a guard.
+
 ## 0.5.0
 
 - Added `weather_forecast`: INMET's forecast for Curitiba, up to 5 days, per day and period as published (summary, min/max temperature and humidity, wind, sunrise and sunset).
