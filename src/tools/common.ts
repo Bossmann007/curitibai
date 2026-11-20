@@ -33,6 +33,8 @@ export const ErrorResult = z.object({
     "invalid_date_range",
     "rate_limited",
     "invalid_argument",
+    "data_not_available",
+    "invalid_data",
   ]),
   message: z.string().optional(),
 });

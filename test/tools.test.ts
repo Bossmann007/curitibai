@@ -6,10 +6,11 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the eight read-only tools with input and output schemas", async () => {
+  it("lists exactly the nine read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
+      "city_services_search",
       "dataset_files",
       "detran_pr_info",
       "health_units_search",
@@ -26,6 +27,7 @@ describe("tools/list", () => {
     }
     expect(listed.find((t) => t.name === "local_csv_summary")?.annotations?.openWorldHint).toBe(false);
     expect(listed.find((t) => t.name === "detran_pr_info")?.annotations?.openWorldHint).toBe(false);
+    expect(listed.find((t) => t.name === "city_services_search")?.annotations?.openWorldHint).toBe(false);
   });
 });
 
