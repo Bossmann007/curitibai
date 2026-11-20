@@ -393,6 +393,7 @@ describe("object gate (unit)", () => {
     ["Excel 2025-2026", "Excel 2025-2026"],
     ["Marcel 2025-2026", "Marcel 2025-2026"],
     ["hotels 2025-2026", "hotels 2025-2026"],
+    ["telefonia 2025-2026", "telefonia 2025-2026"],
     ["vigência 2025 - 2026, tel 3333-4444", `vigência 2025 - 2026, tel ${MASK}`],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
