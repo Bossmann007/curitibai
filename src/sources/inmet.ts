@@ -30,10 +30,11 @@ function text(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v : null;
 }
 
-/** A number, or a plain decimal string ("28", "-1.5") read as that number; anything else is null. */
+/** A number, or a plain decimal string ("28", "-1.5", "12,5") read as that number; anything else is null. */
 function num(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  return typeof v === "string" && /^-?\d{1,3}(\.\d+)?$/.test(v.trim()) ? Number(v.trim()) : null;
+  if (typeof v !== "string" || !/^-?\d{1,3}([.,]\d+)?$/.test(v.trim())) return null;
+  return Number(v.trim().replace(",", "."));
 }
 
 export type PeriodName = "morning" | "afternoon" | "night" | "whole_day";
@@ -93,7 +94,10 @@ export function parseForecast(json: unknown): ForecastDay[] {
   const days: ForecastDay[] = [];
   for (const [key, value] of Object.entries(city)) {
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(key);
-    if (!m || !isObject(value)) throw new SourceUnavailableError("unexpected INMET forecast day");
+    const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+    // A real calendar date only: 31/02 does not survive the round trip.
+    const real = m !== null && new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) === iso;
+    if (!real || !isObject(value)) throw new SourceUnavailableError("unexpected INMET forecast day");
     const parts = PERIOD_KEYS.filter(([k]) => isObject(value[k]));
     let periods: ForecastPeriod[];
     let first: Record<string, unknown>;
@@ -106,7 +110,7 @@ export function parseForecast(json: unknown): ForecastDay[] {
     } else {
       throw new SourceUnavailableError("unexpected INMET forecast day");
     }
-    days.push({ date: `${m[3]}-${m[2]}-${m[1]}`, weekday: text(first.dia_semana), periods });
+    days.push({ date: iso, weekday: text(first.dia_semana), periods });
   }
   if (days.length === 0) throw new SourceUnavailableError("empty INMET forecast");
   return days.sort((a, b) => a.date.localeCompare(b.date));
@@ -116,7 +120,8 @@ export type AlertBucket = "today" | "upcoming";
 
 export interface WeatherAlert {
   id: number | null;
-  listed_as: AlertBucket;
+  /** INMET's lists this warning is in; a warning can be in both. */
+  listed_in: AlertBucket[];
   description: string | null;
   severity: string | null;
   start: string | null;
@@ -125,50 +130,59 @@ export interface WeatherAlert {
   instructions: string[] | null;
 }
 
-export interface CuritibaAlerts {
-  today: WeatherAlert[];
-  upcoming: WeatherAlert[];
-}
-
+/** A list of strings as served (a lone string becomes a one-item list); non-string items are skipped. */
 function textList(v: unknown): string[] | null {
+  if (typeof v === "string") return v.trim() === "" ? null : [v];
   if (!Array.isArray(v)) return null;
   return v.filter((s): s is string => typeof s === "string" && s.trim() !== "");
 }
 
 /** Exact match of one comma-separated code (or array element); never a substring, so 41069020 is not Curitiba. */
 function listsCuritiba(geocodes: unknown): boolean {
-  let codes: string[];
-  if (typeof geocodes === "string") codes = geocodes.split(",");
-  else if (Array.isArray(geocodes)) codes = geocodes.map((c) => (typeof c === "number" ? String(c) : String(c ?? "")));
-  else throw new SourceUnavailableError("INMET warning without geocodes");
-  return codes.some((c) => c.trim() === CURITIBA_GEOCODE);
+  const parts = typeof geocodes === "string" ? [geocodes] : Array.isArray(geocodes) ? geocodes : null;
+  if (parts === null) throw new SourceUnavailableError("INMET warning without geocodes");
+  const codes = parts
+    .flatMap((p) => (typeof p === "number" || typeof p === "string" ? String(p).split(",") : []))
+    .map((c) => c.trim())
+    .filter((c) => c !== "");
+  // An empty area cannot be told apart from Curitiba's: fail closed instead of answering "no warning".
+  if (codes.length === 0) throw new SourceUnavailableError("INMET warning with empty geocodes");
+  return codes.includes(CURITIBA_GEOCODE);
 }
 
-function alertsIn(list: unknown, bucket: AlertBucket): WeatherAlert[] {
-  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected INMET warnings list");
-  const out: WeatherAlert[] = [];
-  for (const item of list) {
-    // A warning we cannot read could be Curitiba's: fail closed instead of answering "no warning".
-    if (!isObject(item)) throw new SourceUnavailableError("unexpected INMET warning");
-    if (!listsCuritiba(item.geocodes)) continue;
-    out.push({
-      id: typeof item.id === "number" && Number.isInteger(item.id) ? item.id : null,
-      listed_as: bucket,
-      description: text(item.descricao),
-      severity: text(item.severidade),
-      start: text(item.inicio),
-      end: text(item.fim),
-      risks: textList(item.riscos),
-      instructions: textList(item.instrucoes),
-    });
-  }
-  return out;
-}
-
-/** `{hoje: [...], futuro: [...]}`, kept to Curitiba's warnings and to text fields: polygons, area lists and icons are dropped here. */
-export function parseAlerts(json: unknown): CuritibaAlerts {
+/**
+ * `{hoje: [...], futuro: [...]}`, kept to Curitiba's warnings and to text fields: polygons, area lists and icons are
+ * dropped here. A warning in both lists (same id, or same fields when there is no id) is returned once, with both lists
+ * in `listed_in`, in INMET's order (today's list first).
+ */
+export function parseAlerts(json: unknown): WeatherAlert[] {
   if (!isObject(json)) throw new SourceUnavailableError("unexpected INMET warnings");
-  return { today: alertsIn(json.hoje, "today"), upcoming: alertsIn(json.futuro, "upcoming") };
+  const byKey = new Map<string, WeatherAlert>();
+  for (const [list, bucket] of [[json.hoje, "today"], [json.futuro, "upcoming"]] as const) {
+    if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected INMET warnings list");
+    for (const item of list) {
+      // A warning we cannot read could be Curitiba's: fail closed instead of answering "no warning".
+      if (!isObject(item)) throw new SourceUnavailableError("unexpected INMET warning");
+      if (!listsCuritiba(item.geocodes)) continue;
+      const fields = {
+        description: text(item.descricao),
+        severity: text(item.severidade),
+        start: text(item.inicio),
+        end: text(item.fim),
+        risks: textList(item.riscos),
+        instructions: textList(item.instrucoes),
+      };
+      const id = typeof item.id === "number" && Number.isInteger(item.id) ? item.id : null;
+      const key = id !== null ? `id:${id}` : `fields:${JSON.stringify(fields)}`;
+      const seen = byKey.get(key);
+      if (seen) {
+        if (!seen.listed_in.includes(bucket)) seen.listed_in.push(bucket);
+        continue;
+      }
+      byKey.set(key, { id, listed_in: [bucket], ...fields });
+    }
+  }
+  return [...byKey.values()];
 }
 
 async function getJson(url: string, maxBytes: number): Promise<unknown> {
@@ -185,6 +199,6 @@ export function getForecast(): Promise<Cached<ForecastDay[]>> {
   return sharedCache.getOrLoad(`GET ${FORECAST_URL}`, async () => parseForecast(await getJson(FORECAST_URL, FORECAST_MAX_BYTES)));
 }
 
-export function getCuritibaAlerts(): Promise<Cached<CuritibaAlerts>> {
+export function getCuritibaAlerts(): Promise<Cached<WeatherAlert[]>> {
   return sharedCache.getOrLoad(`GET ${ALERTS_URL}`, async () => parseAlerts(await getJson(ALERTS_URL, ALERTS_MAX_BYTES)));
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FORECAST_URL, getForecast, inmetLicenseNote } from "../sources/inmet.js";
+import { CURITIBA_GEOCODE, FORECAST_URL, getForecast, inmetLicenseNote } from "../sources/inmet.js";
 import { envelope, failFrom, ok, type ToolDef } from "./common.js";
 
 export const weatherForecastInput = {
@@ -35,9 +35,9 @@ export const weatherForecastOutput = envelope(
 );
 
 export const FORECAST_NOTE =
-  "INMET forecast for Curitiba (IBGE 4106902). INMET gives morning, afternoon and night for the first days and one " +
-  "whole-day entry for later days; both are returned as published. Text is INMET's, unchanged. A field INMET left out " +
-  "or empty is null.";
+  `INMET forecast for Curitiba (IBGE ${CURITIBA_GEOCODE}). INMET gives morning, afternoon and night for the first ` +
+  "days and one whole-day entry for later days; both are returned as published. Text is INMET's, unchanged. A field " +
+  "INMET left out or empty is null.";
 
 export const weatherForecast: ToolDef<typeof weatherForecastInput, typeof weatherForecastOutput> = {
   name: "weather_forecast",
@@ -54,7 +54,7 @@ export const weatherForecast: ToolDef<typeof weatherForecastInput, typeof weathe
       const selected = res.value.slice(0, days);
       const short = selected.length < days ? ` INMET published ${selected.length} day(s), fewer than the ${days} asked.` : "";
       return ok({
-        data: { city: "Curitiba" as const, ibge_code: "4106902", days: selected, note: FORECAST_NOTE + short },
+        data: { city: "Curitiba" as const, ibge_code: CURITIBA_GEOCODE, days: selected, note: FORECAST_NOTE + short },
         source_url: FORECAST_URL,
         fetched_at: res.fetchedAt,
         license_note: inmetLicenseNote(FORECAST_URL, res.fetchedAt),

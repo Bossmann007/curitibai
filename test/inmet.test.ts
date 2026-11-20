@@ -79,6 +79,7 @@ describe("weather_forecast", () => {
     ["no Curitiba key", { "4100000": {} }],
     ["an unknown day shape", { "4106902": { "01/02/2030": { foo: 1 } } }],
     ["a malformed date key", { "4106902": { "2030-02-01": { resumo: "x" } } }],
+    ["an impossible date", { "4106902": { "31/02/2030": { resumo: "x" } } }],
     ["no days", { "4106902": {} }],
     ["an array", []],
   ])("a forecast with %s is source_unavailable", async (_label, body) => {
@@ -92,9 +93,11 @@ describe("weather_forecast", () => {
     const json = forecastJson();
     const day = json["4106902"]!["03/02/2030"] as Record<string, unknown>;
     day.temp_max = "29";
+    day.umidade_min = "12,5";
     day.temp_min = "frio";
     const p = parseForecast(json)[2]!.periods[0]!;
     expect(p.temp_max_c).toBe(29);
+    expect(p.humidity_min_pct).toBe(12.5);
     expect(p.temp_min_c).toBeNull();
   });
 
@@ -111,14 +114,14 @@ describe("weather_alerts", () => {
     const out = weatherAlertsOutput.parse(res.structuredContent);
     expect(calls).toEqual([{ url: ALERTS_URL, method: "GET" }]);
     // 900002 lists 41069020 and 14106902 (near misses), not 4106902; 900001 is in both lists and is returned once.
-    expect(out.data.alerts.map((a) => [a.id, a.listed_as])).toEqual([
-      [900001, "today"],
-      [900003, "upcoming"],
+    expect(out.data.alerts.map((a) => [a.id, a.listed_in])).toEqual([
+      [900001, ["today", "upcoming"]],
+      [900003, ["upcoming"]],
     ]);
     expect(out.data.count).toBe(2);
     expect(out.data.alerts[0]).toEqual({
       id: 900001,
-      listed_as: "today",
+      listed_in: ["today", "upcoming"],
       description: "Fenomeno Ficticio A",
       severity: "Severidade Ficticia 1",
       start: "2030-02-01 08:00",
@@ -141,7 +144,7 @@ describe("weather_alerts", () => {
 
   it.each([
     ["today", [900001]],
-    ["upcoming", [900003, 900001]],
+    ["upcoming", [900001, 900003]],
   ] as const)("when=%s uses INMET's own list", async (when, ids) => {
     stubFetch(inmetRoutes());
     const out = weatherAlertsOutput.parse((await call("weather_alerts", { when })).structuredContent);
@@ -165,14 +168,39 @@ describe("weather_alerts", () => {
   it("accepts geocodes served as an array", () => {
     const json = alertsJson();
     json.hoje[0]!.geocodes = [4100103, 4106902];
-    expect(parseAlerts(json).today.map((a) => a.id)).toEqual([900001]);
+    json.futuro = [];
+    expect(parseAlerts(json).map((a) => a.id)).toEqual([900001]);
+  });
+
+  it("splits array elements on commas too", () => {
+    const json = alertsJson();
+    json.hoje[0]!.geocodes = ["4100103,4106902"];
+    json.futuro = [];
+    expect(parseAlerts(json).map((a) => a.id)).toEqual([900001]);
+  });
+
+  it("returns a warning listed twice without an id once, with both lists", () => {
+    const json = alertsJson();
+    for (const a of [...json.hoje, ...json.futuro]) delete a.id;
+    const out = parseAlerts(json);
+    expect(out.map((a) => [a.description, a.listed_in])).toEqual([
+      ["Fenomeno Ficticio A", ["today", "upcoming"]],
+      ["Fenomeno Ficticio C", ["upcoming"]],
+    ]);
+    expect(out.every((a) => a.id === null)).toBe(true);
+  });
+
+  it("keeps a lone risks string as a one-item list", () => {
+    const json = alertsJson();
+    json.futuro[0]!.riscos = "Risco ficticio unico. ";
+    expect(parseAlerts(json).find((a) => a.id === 900003)!.risks).toEqual(["Risco ficticio unico. "]);
   });
 
   it("missing text fields stay null", () => {
     const json = alertsJson();
     delete json.futuro[0]!.riscos;
     json.futuro[0]!.descricao = "";
-    const a = parseAlerts(json).upcoming[0]!;
+    const a = parseAlerts(json).find((x) => x.id === 900003)!;
     expect(a.risks).toBeNull();
     expect(a.description).toBeNull();
   });
@@ -181,6 +209,8 @@ describe("weather_alerts", () => {
     ["no hoje list", (j) => ({ futuro: j.futuro })],
     ["futuro not a list", (j) => ({ hoje: j.hoje, futuro: {} })],
     ["a warning without geocodes", (j) => ({ hoje: [{ ...j.hoje[1], geocodes: undefined }], futuro: [] })],
+    ["a warning with blank geocodes", (j) => ({ hoje: [{ ...j.hoje[1], geocodes: " , " }], futuro: [] })],
+    ["a warning with an empty geocodes list", (j) => ({ hoje: [], futuro: [{ ...j.futuro[0], geocodes: [] }] })],
     ["a warning that is not an object", () => ({ hoje: ["x"], futuro: [] })],
   ])("%s is source_unavailable, never 'no warning'", async (_label, mutate) => {
     stubFetch({ [`GET ${ALERTS_URL}`]: { body: JSON.stringify(mutate(alertsJson())), contentType: JSON_TYPE } });
