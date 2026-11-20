@@ -23,11 +23,12 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 - Phone masking: a DDD before 8 or 9 glued digits is masked ("41 999998888", "041 33334444"); a leading 0 in the DDD is accepted.
 - Phone masking: two year-like groups ("2025 - 2026") with no DDD, "+55" or parentheses before them are kept readable (owner decision).
-- `detran_pr_info`: deadlines are marked `past` in Curitiba time and ordered by due date; the calendar note quotes Portaria 907/2025 Anexo II literally.
+- `detran_pr_info`: the note now says `past` only means the Anexo I due date has passed, and quotes Portaria 907/2025 Anexo II literally.
 
 ## 0.4.0
 
 - Added `detran_pr_info`: bundled 2026 Detran-PR licensing calendar, fee and Curitiba units, each with its source URL and check date.
+- `detran_pr_info`: deadlines are marked `past` in Curitiba time and ordered by due date.
 
 ## 0.3.0
 
