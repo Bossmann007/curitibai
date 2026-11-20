@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # Fails if git tracks a file named carta-servicos.json (any folder, any letter case), other than the synthetic
 # test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
-# The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256.
-# Usage: scripts/check-no-catalog [repo-dir]   (default: this repo)
-# Exit: 0 OK, 1 a catalog file is tracked, 2 not a git checkout (cannot tell what is tracked).
+# The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256,
+# and the work-tree file at the fixture path, when present, must match the pinned sha256 too.
+# Usage: scripts/check-no-catalog [repo-dir]   (default: this repo; must be the top of a git checkout)
+# Exit: 0 OK, 1 a catalog file is tracked or the fixture is modified in the work tree,
+#       2 not a directory, not the top of a git checkout, or no temp file (cannot tell what is tracked).
 set -euo pipefail
-cd "${1:-$(dirname "$0")/..}"
+
+fail2() {
+  echo "check-no-catalog: FAIL: $*" >&2
+  exit 2
+}
+
+dir=${1:-$(dirname "$0")/..}
+CDPATH="" cd -- "$dir" >/dev/null 2>&1 || fail2 "not a directory (or not accessible): $dir"
+top=$(git rev-parse --show-toplevel 2>/dev/null) || fail2 "not a git checkout, cannot tell what is tracked"
+[[ "$top" == "$(pwd -P)" ]] || fail2 "not the top of a git checkout (top is $top)"
 
 allowed="test/fixtures/carta_servicos_synthetic/carta-servicos.json"
 # sha256 of the synthetic fixture: update it in the same commit when the fixture changes on purpose.
@@ -15,12 +26,9 @@ sha256() {
   if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1
 }
 
-index=$(mktemp)
+index=$(mktemp "${TMPDIR:-/tmp}/check-no-catalog.XXXXXX") || fail2 "cannot create a temp file"
 trap 'rm -f "$index"' EXIT
-git ls-files -s -z >"$index" || {
-  echo "check-no-catalog: FAIL: not a git checkout, cannot tell what is tracked" >&2
-  exit 2
-}
+git ls-files -s -z >"$index" || fail2 "git ls-files failed, cannot tell what is tracked"
 
 name_re='/carta-servicos\.json$'
 found=""
@@ -39,12 +47,22 @@ while IFS= read -r -d '' entry; do
   found+="  $path"$'\n'
 done <"$index"
 
+status=0
 if [[ -n "$found" ]]; then
   {
     echo "check-no-catalog: FAIL: git tracks a city services catalog file (private, never committed):"
     printf '%s' "$found"
     echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
   } >&2
-  exit 1
+  status=1
 fi
-echo "check-no-catalog: OK"
+# The index check misses an edit that is not staged yet: check the work-tree copy too (raw bytes, LF as pinned).
+if [[ (-e "$allowed" || -L "$allowed") && (! -f "$allowed" || "$(sha256 <"$allowed")" != "$allowed_sha256") ]]; then
+  {
+    echo "check-no-catalog: FAIL: fixture modified in the work tree: $allowed"
+    echo "Fix: git checkout -- $allowed, or update allowed_sha256 here if the change is on purpose."
+  } >&2
+  status=1
+fi
+[[ $status == 0 ]] && echo "check-no-catalog: OK"
+exit "$status"
