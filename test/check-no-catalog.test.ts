@@ -29,7 +29,8 @@ function gitEnv(): NodeJS.ProcessEnv {
 }
 
 const git = (...args: string[]) => execFileSync("git", args, { cwd: repo, env: gitEnv(), encoding: "utf8" });
-const guard = (dir = repo) => spawnSync(SCRIPT, [dir], { env: gitEnv(), encoding: "utf8" });
+const guard = (dir = repo, opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) =>
+  spawnSync(SCRIPT, [dir], { cwd: opts.cwd, env: { ...gitEnv(), ...opts.env }, encoding: "utf8" });
 
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-guard-")));
@@ -160,6 +161,63 @@ describe("scripts/check-no-catalog", () => {
     const res = guard();
     expect(res.status).toBe(1);
     expect(res.stderr).toContain("fixture modified in the work tree");
+  });
+
+  it("fails when the work-tree fixture path is a broken symlink", () => {
+    add(FIXTURE, FIXTURE_TEXT);
+    rmSync(join(repo, FIXTURE));
+    symlinkSync(join(root, "missing.json"), join(repo, FIXTURE)); // not staged: the index still holds the fixture
+    const res = guard();
+    expect(res.status).toBe(1);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("fixture modified in the work tree");
+    expect(res.stderr).not.toContain("git tracks a city services catalog file");
+  });
+
+  it("passes when the argument is a symlink to the top of the checkout", () => {
+    const link = join(root, "link-to-repo");
+    symlinkSync(repo, link);
+    const res = guard(link);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain("check-no-catalog: OK");
+  });
+
+  it("fails with exit 2 when the argument is a symlink to a folder below the top", () => {
+    mkdirSync(join(repo, "sub"));
+    const link = join(root, "link-to-sub");
+    symlinkSync(join(repo, "sub"), link);
+    const res = guard(link);
+    expect(res.status).toBe(2);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("check-no-catalog: FAIL: not the top of a git checkout");
+  });
+
+  it("fails with exit 2 when it cannot create a temp file", () => {
+    const res = guard(repo, { env: { TMPDIR: join(root, "missing-tmp") } });
+    expect(res.status).toBe(2);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("check-no-catalog: FAIL: cannot create a temp file");
+  });
+
+  it("checks the given relative folder, not a same-named one under CDPATH", () => {
+    add("carta-servicos.json", "{}\n", true);
+    const decoy = join(root, "decoy", "repo"); // a clean checkout the guard would pass
+    mkdirSync(decoy, { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: decoy, env: gitEnv() });
+    const res = guard("repo", { cwd: root, env: { CDPATH: join(root, "decoy") } });
+    expect(res.status).toBe(1);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("  carta-servicos.json\n");
+  });
+
+  it("treats a relative folder named like an option as a folder", () => {
+    repo = join(root, "-P"); // `cd -P` without `--` would go to $HOME instead
+    mkdirSync(repo);
+    git("init", "-q");
+    add("carta-servicos.json", "{}\n", true);
+    const res = guard("-P", { cwd: root });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("  carta-servicos.json\n");
   });
 
   it("fails, never OK, outside a git checkout", () => {
