@@ -130,13 +130,61 @@ describe("scripts/check-no-catalog", () => {
     expectFail(FIXTURE);
   });
 
+  it("fails when the fixture has the right content but mode 100755", () => {
+    add(FIXTURE, FIXTURE_TEXT);
+    git("update-index", "--chmod=+x", "--", FIXTURE);
+    expect(git("ls-files", "-s", FIXTURE)).toMatch(/^100755 /);
+    expectFail(FIXTURE);
+  });
+
+  it("fails when the fixture is modified in the work tree only", () => {
+    add(FIXTURE, FIXTURE_TEXT);
+    writeFileSync(join(repo, FIXTURE), "{}\n"); // staged copy stays the pinned fixture
+    const res = guard();
+    expect(res.status).toBe(1);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("fixture modified in the work tree");
+    expect(res.stderr).not.toContain("git tracks a city services catalog file");
+  });
+
+  it("passes when the tracked fixture is missing from the work tree", () => {
+    add(FIXTURE, FIXTURE_TEXT);
+    rmSync(join(repo, FIXTURE));
+    const res = guard();
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain("check-no-catalog: OK");
+  });
+
+  it("fails when the work-tree fixture path is a directory", () => {
+    mkdirSync(join(repo, FIXTURE), { recursive: true });
+    const res = guard();
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("fixture modified in the work tree");
+  });
+
   it("fails, never OK, outside a git checkout", () => {
     const plain = join(root, "plain");
     mkdirSync(plain);
     const res = guard(plain);
-    expect(res.status).not.toBe(0);
+    expect(res.status).toBe(2);
     expect(res.stdout).not.toContain("OK");
     expect(res.stderr).toContain("check-no-catalog: FAIL: not a git checkout");
+  });
+
+  it("fails with exit 2 in a folder below the top of a checkout", () => {
+    add("carta-servicos.json", "{}\n", true);
+    mkdirSync(join(repo, "sub"));
+    const res = guard(join(repo, "sub"));
+    expect(res.status).toBe(2);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("check-no-catalog: FAIL: not the top of a git checkout");
+  });
+
+  it("fails with exit 2 when the argument is not a directory", () => {
+    const res = guard(join(repo, "README.md"));
+    expect(res.status).toBe(2);
+    expect(res.stdout).not.toContain("OK");
+    expect(res.stderr).toContain("check-no-catalog: FAIL: not a directory");
   });
 
   it("is a step of scripts/verify", () => {
