@@ -287,7 +287,8 @@ twice), and CSV tests use synthetic files.
 (`test/fixtures/carta_servicos_synthetic/carta-servicos.json`: invented services in the real file shape, with an
 e-mail to mask, an empty summary, obituary, `javascript:` and credential links); no real catalog text is in the
 repository. `.gitignore` ignores `carta-servicos.json` in any folder, and `scripts/check-no-catalog` (the first verify
-step) fails if git tracks one anyway (e.g. after `git add -f`); only that synthetic fixture is exempt.
+step) fails if git tracks one anyway (e.g. after `git add -f`); only that synthetic fixture is exempt, and it also
+fails if the fixture is modified in the work tree.
 
 ## License
 
