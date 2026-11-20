@@ -85,6 +85,24 @@ describe("scripts/check-no-catalog", () => {
     },
   );
 
+  it.each(["a/carta-servicos.json", "sp ace/carta-servicos.json", "new\nline/carta-servicos.json"])(
+    "fails for %j (folder boundary; spaces and newlines in tracked names)",
+    (path) => {
+      add(path, "{}\n", true);
+      expectFail(path);
+    },
+  );
+
+  it.each(["xcarta-servicos.json", "a/xcarta-servicos.json", "carta-servicos.json.txt", "carta-servicos.jsonx"])(
+    "passes for %j (only the exact file name counts)",
+    (path) => {
+      add(path, "{}\n", true);
+      const res = guard();
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("check-no-catalog: OK");
+    },
+  );
+
   it("exempts only the exact fixture path, not one that ends with it", () => {
     const path = `x/${FIXTURE}`;
     add(path, FIXTURE_TEXT, true);
