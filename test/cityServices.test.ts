@@ -204,6 +204,22 @@ describe("city_services_search over MCP", () => {
     expect(errorOf(await call({}, tmp))).toMatchObject({ error: "invalid_data" });
   });
 
+  it("accepts a catalog of exactly 4 MiB and rejects 4 MiB + 1 byte", async () => {
+    expect(CATALOG_MAX_BYTES).toBe(4194304);
+    const json = JSON.stringify(RAW);
+    const file = join(tmp, CATALOG_FILE);
+    const padded = (size: number) => json + " ".repeat(size - Buffer.byteLength(json));
+    writeFileSync(file, padded(4194304));
+    const atLimit = await call({}, tmp);
+    expect(errorOf(atLimit)).toBeUndefined();
+    expect(atLimit.isError).toBeFalsy();
+    writeFileSync(file, padded(4194304 + 1));
+    expect(errorOf(await call({}, tmp))).toMatchObject({
+      error: "invalid_data",
+      message: "carta-servicos.json is larger than 4 MB.",
+    });
+  });
+
   it("file_not_allowed when the file is a symlink to outside the folder", async () => {
     const outside = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-out-")));
     try {

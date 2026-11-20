@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Fails if git tracks a file named carta-servicos.json (any folder, any letter case), other than the synthetic
+# test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
+# The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256.
+# Usage: scripts/check-no-catalog [repo-dir]   (default: this repo)
+# Exit: 0 OK, 1 a catalog file is tracked, 2 not a git checkout (cannot tell what is tracked).
+set -euo pipefail
+cd "${1:-$(dirname "$0")/..}"
+
+allowed="test/fixtures/carta_servicos_synthetic/carta-servicos.json"
+# sha256 of the synthetic fixture: update it in the same commit when the fixture changes on purpose.
+allowed_sha256="d290ab28a131eeb2673cd048787d8f4fdda44a3f372c4a1181a49d682b6e1e71"
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1
+}
+
+index=$(mktemp)
+trap 'rm -f "$index"' EXIT
+git ls-files -s -z >"$index" || {
+  echo "check-no-catalog: FAIL: not a git checkout, cannot tell what is tracked" >&2
+  exit 2
+}
+
+name_re='/carta-servicos\.json$'
+found=""
+while IFS= read -r -d '' entry; do
+  path=${entry#*$'\t'}
+  shopt -s nocasematch
+  if [[ "/$path" =~ $name_re ]]; then match=1; else match=0; fi
+  shopt -u nocasematch
+  [[ $match == 1 ]] || continue
+  if [[ "$path" == "$allowed" ]]; then
+    read -r mode blob _ <<<"${entry%%$'\t'*}"
+    if [[ $mode == 100644 && "$(git cat-file blob "$blob" | sha256)" == "$allowed_sha256" ]]; then
+      continue
+    fi
+  fi
+  found+="  $path"$'\n'
+done <"$index"
+
+if [[ -n "$found" ]]; then
+  {
+    echo "check-no-catalog: FAIL: git tracks a city services catalog file (private, never committed):"
+    printf '%s' "$found"
+    echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
+  } >&2
+  exit 1
+fi
+echo "check-no-catalog: OK"
