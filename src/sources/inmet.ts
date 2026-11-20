@@ -96,7 +96,8 @@ export function parseForecast(json: unknown): ForecastDay[] {
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(key);
     const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : "";
     // A real calendar date only: 31/02 does not survive the round trip.
-    const real = m !== null && new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) === iso;
+    const t = m === null ? NaN : Date.parse(`${iso}T00:00:00Z`);
+    const real = !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === iso;
     if (!real || !isObject(value)) throw new SourceUnavailableError("unexpected INMET forecast day");
     const parts = PERIOD_KEYS.filter(([k]) => isObject(value[k]));
     let periods: ForecastPeriod[];
