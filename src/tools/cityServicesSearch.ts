@@ -95,7 +95,9 @@ export function buildCatalog(json: unknown): Catalog {
   }
   const { captured, count, items } = parsed.data;
   const date = CAPTURED.exec(captured);
-  if (!date || Number.isNaN(Date.parse(`${date[1]}T00:00:00Z`))) {
+  // Round trip: Date.parse rolls impossible days over ("2026-02-30" -> 2026-03-02), so compare the date back.
+  const day = date ? Date.parse(`${date[1]}T00:00:00Z`) : NaN;
+  if (!date || Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== date[1]) {
     throw new InvalidCatalogError(`${CATALOG_FILE}: "captured" must start with a date (YYYY-MM-DD).`);
   }
   if (count !== items.length) throw new InvalidCatalogError(`${CATALOG_FILE}: "count" does not match the number of items.`);
