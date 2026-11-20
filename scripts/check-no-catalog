@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fails if git tracks a file named carta-servicos.json (any folder, any letter case), other than the synthetic
+# test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
+# Usage: scripts/check-no-catalog [repo-dir]   (default: this repo)
+set -euo pipefail
+cd "${1:-$(dirname "$0")/..}"
+
+allowed="test/fixtures/carta_servicos_synthetic/carta-servicos.json"
+found=$(git ls-files -z | tr '\0' '\n' | grep -iE '(^|/)carta-servicos\.json$' | grep -vxF "$allowed" || true)
+
+if [[ -n "$found" ]]; then
+  {
+    echo "check-no-catalog: FAIL: git tracks a city services catalog file (private, never committed):"
+    printf '%s\n' "$found" | sed 's/^/  /'
+    echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
+  } >&2
+  exit 1
+fi
+echo "check-no-catalog: OK"
