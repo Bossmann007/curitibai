@@ -62,9 +62,10 @@ export function openVerified(real: string, dir: string): number {
 /**
  * Opens `name` inside the folder named by CURITIBAI_DATA_DIR (read on every call). Anything that points outside the
  * folder, lexically or after resolving symlinks, is `file_not_allowed` whether or not it exists. The target must be a
- * regular `.csv` file. Returns an open read-only descriptor; the caller closes it with `closeFile`.
+ * regular file with `extension` (default `.csv`). Returns an open read-only descriptor; the caller closes it with
+ * `closeFile`.
  */
-export function openDataFile(name: string): { fd: number; relative: string } {
+export function openDataFile(name: string, extension = ".csv"): { fd: number; relative: string } {
   const raw = process.env[DATA_DIR_ENV];
   if (raw === undefined || raw.trim() === "") throw new LocalFileError("data_dir_not_set");
   const dir = realpathOrNull(raw);
@@ -75,7 +76,7 @@ export function openDataFile(name: string): { fd: number; relative: string } {
   const real = realpathOrNull(candidate);
   if (real === null) throw new LocalFileError("file_not_found");
   if (!isInside(dir, real)) throw new LocalFileError("file_not_allowed");
-  if (extname(real).toLowerCase() !== ".csv") throw new LocalFileError("file_not_allowed");
+  if (extname(real).toLowerCase() !== extension) throw new LocalFileError("file_not_allowed");
   return { fd: openVerified(real, dir), relative: relative(dir, real) };
 }
 
@@ -96,6 +97,25 @@ export async function* readChunks(fd: number): AsyncGenerator<Buffer> {
     pos += n;
     yield buf.subarray(0, n);
   }
+}
+
+export class FileTooLargeError extends Error {
+  constructor(readonly maxBytes: number) {
+    super("file_too_large");
+    this.name = "FileTooLargeError";
+  }
+}
+
+/** Reads the whole open file, refusing it (FileTooLargeError) as soon as it passes `maxBytes`. Leaves it open. */
+export async function readAllCapped(fd: number, maxBytes: number): Promise<Buffer> {
+  const parts: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of readChunks(fd)) {
+    total += chunk.length;
+    if (total > maxBytes) throw new FileTooLargeError(maxBytes);
+    parts.push(Buffer.from(chunk)); // copy: the chunk buffer is reused
+  }
+  return Buffer.concat(parts, total);
 }
 
 /** Closes the descriptor. A failed close is ignored so it never replaces the error that led here. */

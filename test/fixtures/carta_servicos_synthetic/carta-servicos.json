@@ -1,0 +1,63 @@
+{
+ "source": "synthetic test fixture (invented services, not real catalog text)",
+ "captured": "2026-11-19/20 synthetic",
+ "count": 8,
+ "items": [
+  {
+   "cat": "Saúde",
+   "title": "Vacinação sintética de exemplo",
+   "what": "O que é?Serviço inventado para testes: aplicação de vacina fictícia em unidade de exemplo...",
+   "url": "https://servicos.curitiba.pr.gov.br/vacinacao-sintetica-de-exemplo/9001",
+   "online": "https://exemplo-sintetico.curitiba.pr.gov.br/agenda"
+  },
+  {
+   "cat": "Saúde",
+   "title": "Consulta fictícia na unidade de teste",
+   "what": "O que são? Atendimentos inventados para testar a busca sem acento...",
+   "url": "https://servicos.curitiba.pr.gov.br/consulta-ficticia-na-unidade-de-teste/9002",
+   "online": null
+  },
+  {
+   "cat": "Saúde",
+   "title": "Teleatendimento de teste",
+   "what": "Texto sintético. Contato pelo e-mail teste.sintetico@exemplo.invalid para dúvidas...",
+   "url": "https://servicos.curitiba.pr.gov.br/teleatendimento-de-teste/9003",
+   "online": "https://usuario:senha@exemplo-sintetico.curitiba.pr.gov.br/x"
+  },
+  {
+   "cat": "Imóvel e Construção",
+   "title": "Segunda via de documento sintético",
+   "what": "O que é? Emissão de segunda via de um documento inventado – com travessão...",
+   "url": "https://servicos.curitiba.pr.gov.br/segunda-via-de-documento-sintetico/9004",
+   "online": "http://exemplo-sintetico.curitiba.pr.gov.br/segunda-via"
+  },
+  {
+   "cat": "Imóvel e Construção",
+   "title": "Alvará de exemplo para obra fictícia",
+   "what": "",
+   "url": "https://servicos.curitiba.pr.gov.br/alvara-de-exemplo-para-obra-ficticia/9005",
+   "online": "javascript:alert(1)"
+  },
+  {
+   "cat": "Serviços Funerários",
+   "title": "Lista sintética do serviço funerário",
+   "what": "O que é? Serviço inventado cujo link aponta para o sistema de obituários...",
+   "url": "https://servicos.curitiba.pr.gov.br/lista-sintetica-do-servico-funerario/9006",
+   "online": "http://obituarios.curitiba.pr.gov.br/publico/exemplo.aspx"
+  },
+  {
+   "cat": "Serviços Funerários",
+   "title": "Documento cemiterial de exemplo",
+   "what": "O que éServiço inventado de segunda via cemiterial...",
+   "url": "https://servicos.curitiba.pr.gov.br/documento-cemiterial-de-exemplo/9007",
+   "online": "https://OBITUARIOS.curitiba.pr.gov.br/publico/outro.aspx"
+  },
+  {
+   "cat": "Imóvel e Construção",
+   "title": "Licença sintética online",
+   "what": "O que é? Pedido inventado feito pela internet...",
+   "url": "https://servicos.curitiba.pr.gov.br/licenca-sintetica-online/9008",
+   "online": "https://exemplo-sintetico.curitiba.pr.gov.br/licenca"
+  }
+ ]
+}
