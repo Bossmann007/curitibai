@@ -231,8 +231,9 @@ the official page before acting: the summary is only the site's short teaser, an
   endpoints are undocumented, so a format change returns `source_unavailable`. Results are cached in memory for 10
   minutes, so a warning issued in that window appears on a later call.
 - Carta de Serviços: no terms of use or licence was found for the site content (not verified further), so
-  `city_services_search` returns titles and summaries unchanged and attributes them to "Prefeitura Municipal de
-  Curitiba — Carta de Serviços" with the link and capture date in `license_note`. The snapshot (756 services) was taken
+  `city_services_search` returns titles and summaries unchanged (except the two masked summaries, see "Privacy and
+  safety") and attributes them to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture
+  date in `license_note`. The snapshot (756 services) was taken
   by hand on 2026-11-19/20; the site's paginator suggested about 770, so **a few services may be missing**. Summaries
   are the site's own short teasers, not the full service page.
 - Detran-PR: no terms of use or licence was found on `detran.pr.gov.br` or `legislacao.pr.gov.br`, so

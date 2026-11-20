@@ -175,6 +175,12 @@ describe("city_services_search", () => {
     expect(err.message).not.toContain("<script>");
   });
 
+  it("over MCP: a query with no letter or digit is invalid_argument", async () => {
+    const client = await connectClient();
+    const res = await client.callTool({ name: "city_services_search", arguments: { query: "-- ??" } });
+    expect(errorOf(res)).toMatchObject({ error: "invalid_argument" });
+  });
+
   it.each([
     { limit: 0 },
     { limit: 21 },

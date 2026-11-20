@@ -16,7 +16,8 @@ export const OBITUARY_HOST = "obituarios.curitiba.pr.gov.br";
 export const CITY_SERVICES_LICENSE_NOTE =
   "Source: Prefeitura Municipal de Curitiba — Carta de Serviços (https://www.curitiba.pr.gov.br/servicos/), " +
   "listing pages captured by hand on 2026-11-19/20 (America/Sao_Paulo). No terms of use or licence was found for the " +
-  "site content; titles and summaries are returned unchanged and attributed to the Prefeitura. Unofficial; not " +
+  "site content; titles and summaries are returned unchanged and attributed to the Prefeitura, except that e-mail-, " +
+  "phone- and CPF/CNPJ-shaped text in a summary is replaced by [masked] (two summaries in this snapshot). Unofficial; not " +
   "affiliated with the Prefeitura de Curitiba.";
 
 const BASE_NOTE =
@@ -130,9 +131,13 @@ export interface CityServicesSearchArgs {
   offset: number;
 }
 
+/** Query words: folded, split on anything that is not a letter or digit ("segunda-via" = "segunda via"). */
+export function queryWords(query: string): string[] {
+  return fold(query).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
 export function cityServicesSearchResult(args: CityServicesSearchArgs, now: Date) {
-  // Split on anything that is not a letter or digit, so "segunda-via" matches "segunda via".
-  const words = args.query === undefined ? [] : fold(args.query).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const words = args.query === undefined ? [] : queryWords(args.query);
   const matches = SERVICES.filter(
     (s) =>
       (args.category === undefined || s.category === args.category) &&
@@ -176,6 +181,9 @@ export const cityServicesSearch: ToolDef<typeof cityServicesSearchInput, typeof 
   handler: async (args) => {
     if (args.category !== undefined && !(CATEGORIES as readonly string[]).includes(args.category)) {
       return fail("invalid_argument", `category must be one of: ${CATEGORIES.join("; ")}.`);
+    }
+    if (args.query !== undefined && queryWords(args.query).length === 0) {
+      return fail("invalid_argument", "query must contain at least one letter or digit.");
     }
     return ok(cityServicesSearchResult(args, new Date()));
   },
