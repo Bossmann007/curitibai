@@ -4,7 +4,8 @@ A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistant
 [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
 look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
 in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, give INMET's weather forecast and
-active weather warnings for Curitiba, and summarise a CSV file the user downloaded by hand.
+active weather warnings for Curitiba, search the Prefeitura's service catalog (Carta de Serviços), and summarise a CSV
+file the user downloaded by hand.
 
 **Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, the Ministério da Saúde,
 PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
@@ -19,7 +20,11 @@ When a source fails, times out or changes format, the tool returns `{"error":"so
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
 `column_not_found`, `column_not_allowed` and `invalid_csv`. `detran_pr_info` makes no network call either: it returns
 `{data, source_url, checked_at, note}` from data bundled in the code, and `invalid_argument` when `plate_final` is
-given with `topic: "units"`. `procurement_search` also returns `invalid_date_range`
+given with `topic: "units"`. `city_services_search` also makes no network call: it reads a catalog file you keep in
+`CURITIBAI_DATA_DIR` (see below) and returns `{data, source_url, checked_at, license_note, note}`; its errors are
+`data_not_available` (no `CURITIBAI_DATA_DIR` or no `carta-servicos.json` in it), `invalid_data` (not UTF-8 JSON, the
+wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing the file's categories) for an unknown
+`category`. `procurement_search` also returns `invalid_date_range`
 (`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
 to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
 `procurement_search`, `health_units_search` and `open_datasets_search` return what they found as `partial`, with the
@@ -34,6 +39,7 @@ wait in `note`.
 | `detran_pr_info` | `topic`: `licensing_calendar` or `units`; optional `plate_final` (0–9, calendar only) | Calendar: the 2026 licensing due date for one plate final digit (or all ten, earliest first, each with `past`, which only means the Anexo I due date has passed; `note` quotes the Anexo II enforcement calendar as published) and the fee (R$ 94,61). Units: the 01ª CIRETRAN (Curitiba) and its five PATRANs (address, phone, services as published), the scheduling rule, and the site's two conflicting general hours (8h–16h and 8h–15h30), both returned. Each item has `source_url` and `checked_at`. **No network call**; for both topics `note` says the data may be outdated once the year in Curitiba is past 2026, and for units also once more than 180 days have passed since `checked_at` | Portaria DETRAN 907/2025 (Anexos I and II), a Detran-PR news page, `detran.pr.gov.br/unidades` and its home page, checked by hand |
 | `weather_forecast` | optional `days` 1–5 (default 3) | INMET's forecast for Curitiba, per day (`date`, `weekday`) and period: `morning`, `afternoon` and `night` for the first days, one `whole_day` entry for later days, as INMET publishes them. Each period: summary, min/max temperature (°C), min/max humidity (%), wind direction and intensity, sunrise and sunset. A field INMET leaves out or empty is `null` | INMET forecast API (`GET apiprevmet3.inmet.gov.br/previsao/4106902`) |
 | `weather_alerts` | optional `when`: `today`, `upcoming` or `all` (default) | INMET's active warnings whose area includes Curitiba (IBGE 4106902): id, which INMET lists it is in (`listed_in`: `today`, `upcoming` or both), description, severity, start, end (as published, no time zone given), risks and instructions, and `count`. A warning listed identically in both lists is returned once. When none covers Curitiba, `count` is 0 and `note` says so. Polygons, area lists and icons are dropped | INMET warnings API (`GET apiprevmet3.inmet.gov.br/avisos/ativos`) |
+| `city_services_search` | optional `query` (2–100 chars; every word must appear in the title or summary, accents, case and punctuation ignored), optional `category` (one of the file's categories, exact), optional `online_only`, `limit` ≤ 20 (default 10), `offset` | Prefeitura de Curitiba services: numeric id, title, category, `summary` (the listing's short "O que é?" teaser as published, often cut off), `official_url` and `online_url` (or null); `total` and `next_offset`; with no `query`, `category` or `online_only`, also the `categories` with counts. Title matches come first, then by title. **No network call**; `checked_at` is the first date in the file's `captured`, and `note` says the catalog may be outdated once more than 180 days have passed since it | A local copy of the Carta de Serviços listing (`www.curitiba.pr.gov.br/servicos/`) that **you provide**: `carta-servicos.json` in `CURITIBAI_DATA_DIR`. Not shipped, not fetched |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -113,9 +119,10 @@ MCP client configuration (for example Claude Desktop's `claude_desktop_config.js
 
 Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/server.js`
 
-To use `local_csv_summary`, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
-(Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it, that
-tool returns `{"error":"data_dir_not_set"}` and the other tools work as usual.
+To use `local_csv_summary` or `city_services_search`, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
+(Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
+`local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
+`{"error":"data_not_available"}`, and the other tools work as usual.
 
 ### Summarising a file you downloaded (for example the 156 file)
 
@@ -157,6 +164,35 @@ The automated tests use small synthetic files; a one-off manual run on a 137 MB 
 also checked once, on 2026-11-19, against the 2026-11-18 daily 156 file: header accepted, 12 columns, 0 malformed
 rows.
 
+### Finding a city service (Carta de Serviços)
+
+`city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
+**This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
+`CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
+
+```json
+{
+  "source": "https://www.curitiba.pr.gov.br/servicos/",
+  "captured": "2026-11-19/20",
+  "count": 1,
+  "items": [
+    { "cat": "Category", "title": "Service title", "what": "The listing's short description...",
+      "url": "https://servicos.curitiba.pr.gov.br/<slug>/<numeric id>", "online": "https://... or null" }
+  ]
+}
+```
+
+`captured` must start with a date (YYYY-MM-DD, optionally `/DD` for a second day); `count` must equal the number of
+items; `url` must be a service page on `servicos.curitiba.pr.gov.br` and its numeric ids must be unique. The file is
+read again on every call (at most 4 MB), with the same folder rules as `local_csv_summary`. Without it the tool
+returns `data_not_available` and the other tools work as usual.
+
+Call it with no arguments to see the categories, then search by words ("iptu", "segunda via", "vacina"), by `category`
+("Saúde") or with `online_only: true`. Each result links to the official service page (`official_url`) and, when the
+catalog has one, to the online service (`online_url`). The server never opens those links; they are for people. Check
+the official page before acting: the summary is only the site's short teaser, and the copy is a dated snapshot.
+
 ## Privacy and safety
 
 - No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by the
@@ -184,8 +220,14 @@ rows.
   numbers (amounts of 10+ digits, long process numbers, 2 digits or 0 plus 2 digits followed by 8 or 9 digits).
   Two year-like numbers (19xx/20xx) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them
   ("2025 - 2026", "2026-2027") are kept, so an 8-digit phone that looks like that is not masked. `query` never matches a withheld object.
+- `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
+  of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
+  links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same
+  masking as PNCP objects as a guard; on the 2026-11-19/20 capture it changes two summaries, both public text (an
+  office's institutional e-mail, and a social-media handle that looks like an e-mail).
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
-  open, fstat, positional reads and close), and only as aggregates.
+  open, fstat, positional reads and close). CSV files are returned only as aggregates; `carta-servicos.json` is the
+  one file whose entries are returned (it is a public service catalog with no personal data).
 - Text from the sources is returned as plain data fields with HTML removed, except INMET's text, which is passed on
   unchanged (it had no HTML when checked). It is never meant as instructions.
 
@@ -214,6 +256,15 @@ rows.
   3.0: values are passed on unchanged and `license_note` attributes INMET with the source URL and the fetch time. The
   endpoints are undocumented, so a format change returns `source_unavailable`. Results are cached in memory for 10
   minutes, so a warning issued in that window appears on a later call.
+- Carta de Serviços: the catalog's content belongs to the Prefeitura Municipal de Curitiba. No terms of use or
+  licence was found for it, so this repository does not include it and the server never fetches it.
+  `city_services_search` returns the titles and summaries of your local file unchanged (except masked text, see
+  "Privacy and safety") and attributes them to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link
+  and the capture date in `license_note`. The `www.curitiba.pr.gov.br` host answers 403 to non-browser clients, and
+  the service pages' host (`servicos.curitiba.pr.gov.br`) has robots.txt `Disallow: /`; the server contacts neither.
+  For the owner's own copy, the listing pages were read with a scripted browser session on 2026-11-19/20 (details in
+  [docs/sources.md](docs/sources.md)); that copy may miss a few services, and its summaries are the site's short
+  teasers, some of them empty (those services are found by title only).
 - Detran-PR: no terms of use or licence was found on `detran.pr.gov.br` or `legislacao.pr.gov.br`, so
   `detran_pr_info` carries only public facts (dates, a fee, addresses and phone numbers of public offices), each with
   its source URL and check date. The data is a snapshot taken by hand on 2026-11-19 and is not refreshed: the
@@ -232,8 +283,12 @@ the real JSON shape with invented values), PNCP tests use a synthetic fixture wi
 phone and names (`test/fixtures/pncp_contratacoes_synthetic.json`), INMET tests use synthetic fixtures with the real
 shape (`test/fixtures/inmet_*_synthetic.json`: invented texts, polygons and icons, a near-miss geocode, a warning listed
 twice), and CSV tests use synthetic files.
+`city_services_search` tests and the smoke test use a small synthetic catalog
+(`test/fixtures/carta_servicos_synthetic/carta-servicos.json`: invented services in the real file shape, with an
+e-mail to mask, an empty summary, obituary, `javascript:` and credential links); no real catalog text is in the
+repository.
 
 ## License
 
 Code: [Apache-2.0](LICENSE). The Apache-2.0 licence covers the code only; the data belongs to its publishers under
-their own terms (see above).
+their own terms (see above). The Carta de Serviços catalog is not part of this repository.
