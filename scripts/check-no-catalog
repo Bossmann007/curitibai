@@ -14,7 +14,7 @@ fail2() {
 }
 
 dir=${1:-$(dirname "$0")/..}
-cd -- "$dir" 2>/dev/null || fail2 "not a directory: $dir"
+CDPATH="" cd -- "$dir" >/dev/null 2>&1 || fail2 "not a directory (or not accessible): $dir"
 top=$(git rev-parse --show-toplevel 2>/dev/null) || fail2 "not a git checkout, cannot tell what is tracked"
 [[ "$top" == "$(pwd -P)" ]] || fail2 "not the top of a git checkout (top is $top)"
 
@@ -28,7 +28,7 @@ sha256() {
 
 index=$(mktemp "${TMPDIR:-/tmp}/check-no-catalog.XXXXXX") || fail2 "cannot create a temp file"
 trap 'rm -f "$index"' EXIT
-git ls-files -s -z >"$index" || fail2 "not a git checkout, cannot tell what is tracked"
+git ls-files -s -z >"$index" || fail2 "git ls-files failed, cannot tell what is tracked"
 
 name_re='/carta-servicos\.json$'
 found=""
@@ -47,14 +47,6 @@ while IFS= read -r -d '' entry; do
   found+="  $path"$'\n'
 done <"$index"
 
-# The index check misses an edit that is not staged yet: check the work-tree copy too.
-worktree_modified=0
-if [[ -e "$allowed" || -L "$allowed" ]]; then
-  if [[ ! -f "$allowed" || "$(sha256 <"$allowed")" != "$allowed_sha256" ]]; then
-    worktree_modified=1
-  fi
-fi
-
 status=0
 if [[ -n "$found" ]]; then
   {
@@ -64,12 +56,13 @@ if [[ -n "$found" ]]; then
   } >&2
   status=1
 fi
-if [[ $worktree_modified == 1 ]]; then
+# The index check misses an edit that is not staged yet: check the work-tree copy too (raw bytes, LF as pinned).
+if [[ (-e "$allowed" || -L "$allowed") && (! -f "$allowed" || "$(sha256 <"$allowed")" != "$allowed_sha256") ]]; then
   {
     echo "check-no-catalog: FAIL: fixture modified in the work tree: $allowed"
     echo "Fix: git checkout -- $allowed, or update allowed_sha256 here if the change is on purpose."
   } >&2
   status=1
 fi
-[[ $status == 0 ]] || exit 1
-echo "check-no-catalog: OK"
+[[ $status == 0 ]] && echo "check-no-catalog: OK"
+exit "$status"
