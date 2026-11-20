@@ -164,7 +164,8 @@ HTTP client, cache and envelope.
 ### `weather_forecast` and `weather_alerts`: INMET forecast and warnings API
 
 Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.5`, one request per URL, before any code was
-written; the built tools were then run once each against the live API.
+written; the built tools were then run against the live API twice each (before and after review fixes), four
+requests in all.
 
 | Field | Value |
 |---|---|

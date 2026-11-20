@@ -80,6 +80,7 @@ describe("weather_forecast", () => {
     ["an unknown day shape", { "4106902": { "01/02/2030": { foo: 1 } } }],
     ["a malformed date key", { "4106902": { "2030-02-01": { resumo: "x" } } }],
     ["an impossible date", { "4106902": { "31/02/2030": { resumo: "x" } } }],
+    ["a month 13", { "4106902": { "01/13/2030": { resumo: "x" } } }],
     ["no days", { "4106902": {} }],
     ["an array", []],
   ])("a forecast with %s is source_unavailable", async (_label, body) => {
