@@ -274,7 +274,7 @@ the official page before acting: the summary is only the site's short teaser, an
 ## Development
 
 ```sh
-scripts/verify   # npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
+scripts/verify   # no tracked carta-servicos.json, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
 
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
@@ -286,7 +286,8 @@ twice), and CSV tests use synthetic files.
 `city_services_search` tests and the smoke test use a small synthetic catalog
 (`test/fixtures/carta_servicos_synthetic/carta-servicos.json`: invented services in the real file shape, with an
 e-mail to mask, an empty summary, obituary, `javascript:` and credential links); no real catalog text is in the
-repository.
+repository. `.gitignore` ignores `carta-servicos.json` in any folder, and `scripts/check-no-catalog` (the first verify
+step) fails if git tracks one anyway (e.g. after `git add -f`); only that synthetic fixture is exempt.
 
 ## License
 
