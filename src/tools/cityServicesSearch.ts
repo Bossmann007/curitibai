@@ -33,11 +33,12 @@ export interface CityService {
   online_url: string | null;
 }
 
-/** `online` unless it points to the obituary system. Unparseable URLs are dropped too. */
+/** `online` unless it points to the obituary system. Unparseable and non-http(s) URLs are dropped too. */
 export function safeOnlineUrl(online: string | null): string | null {
   if (online === null) return null;
   try {
-    return new URL(online).hostname.toLowerCase() === OBITUARY_HOST ? null : online;
+    const u = new URL(online);
+    return (u.protocol === "https:" || u.protocol === "http:") && u.hostname.toLowerCase() !== OBITUARY_HOST ? online : null;
   } catch {
     return null;
   }

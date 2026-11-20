@@ -59,6 +59,8 @@ describe("obituary links", () => {
     expect(safeOnlineUrl("http://obituarios.curitiba.pr.gov.br/publico/x.aspx")).toBeNull();
     expect(safeOnlineUrl("https://OBITUARIOS.curitiba.pr.gov.br/")).toBeNull();
     expect(safeOnlineUrl("not a url")).toBeNull();
+    expect(safeOnlineUrl("javascript:alert(1)")).toBeNull();
+    expect(safeOnlineUrl("http://www.curitiba.pr.gov.br/x")).toBe("http://www.curitiba.pr.gov.br/x");
     expect(safeOnlineUrl("https://www.curitiba.pr.gov.br/x")).toBe("https://www.curitiba.pr.gov.br/x");
     expect(safeOnlineUrl(null)).toBeNull();
   });
@@ -113,6 +115,7 @@ describe("city_services_search", () => {
     const seen = new Set<number>();
     for (let offset = 0; offset < 756; offset += 20) {
       const r = search({ limit: 20, offset });
+      expect(() => cityServicesSearchOutput.parse(r)).not.toThrow();
       for (const i of r.data.items) seen.add(i.id);
     }
     expect(seen.size).toBe(756);
