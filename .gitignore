@@ -3,3 +3,5 @@ dist/
 .env
 .claude/
 coverage/
+carta-servicos.json
+!test/fixtures/carta_servicos_synthetic/carta-servicos.json
