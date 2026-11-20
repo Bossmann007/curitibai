@@ -1,0 +1,163 @@
+{
+ "_synthetic": "SYNTHETIC test fixture: same JSON shape as GET https://apiprevmet3.inmet.gov.br/avisos/ativos (checked 2026-11-19): geocodes is a comma-separated string. Ids, texts, polygons, icons and areas invented. Not real INMET data.",
+ "hoje": [
+  {
+   "id": 900001,
+   "id_aviso": 100001,
+   "id_sequencia": 1,
+   "id_condicao_severa": 1,
+   "id_icone": 1,
+   "id_usuario": 1,
+   "codigo": "urn:oid:0.0.0.0.0.0.0.2030.900001.1",
+   "referencia": null,
+   "data_inicio": "2030-02-01T00:00:00.000Z",
+   "hora_inicio": "08:00",
+   "data_fim": "2030-02-01T00:00:00.000Z",
+   "hora_fim": "23:59",
+   "poligono": "SYNTHETIC-POLYGON[[-49.0,-25.0],[-49.1,-25.1]]",
+   "municipios": "Municipio Ficticio A - PR,Municipio Ficticio B - SC",
+   "microrregioes": "Micro Ficticia",
+   "mesorregioes": "Meso Ficticia",
+   "estados": "PR,SC",
+   "regioes": "Sul",
+   "geocodes": "4100103,4106902,4200051",
+   "alterado": false,
+   "encerrado": false,
+   "created_at": "2030-02-01T00:00:00.000Z",
+   "updated_at": "2030-02-01T00:00:00.000Z",
+   "inicio": "2030-02-01 08:00",
+   "fim": "2030-02-01 23:59",
+   "icone": "data:image/png;base64,U1lOVEhFVElDLUlDT04=",
+   "descricao": "Fenomeno Ficticio A",
+   "aviso_cor": "#000000",
+   "id_severidade": 1,
+   "severidade": "Severidade Ficticia 1",
+   "riscos": [
+    "Risco ficticio do aviso 900001. "
+   ],
+   "instrucoes": [
+    "Instrucao ficticia 1 do aviso 900001. ",
+    "Instrucao ficticia 2 do aviso 900001."
+   ]
+  },
+  {
+   "id": 900002,
+   "id_aviso": 100002,
+   "id_sequencia": 1,
+   "id_condicao_severa": 1,
+   "id_icone": 1,
+   "id_usuario": 1,
+   "codigo": "urn:oid:0.0.0.0.0.0.0.2030.900002.1",
+   "referencia": null,
+   "data_inicio": "2030-02-01T00:00:00.000Z",
+   "hora_inicio": "09:00",
+   "data_fim": "2030-02-01T00:00:00.000Z",
+   "hora_fim": "23:59",
+   "poligono": "SYNTHETIC-POLYGON[[-49.0,-25.0],[-49.1,-25.1]]",
+   "municipios": "Municipio Ficticio A - PR,Municipio Ficticio B - SC",
+   "microrregioes": "Micro Ficticia",
+   "mesorregioes": "Meso Ficticia",
+   "estados": "PR,SC",
+   "regioes": "Sul",
+   "geocodes": "41069020,14106902,4200051",
+   "alterado": false,
+   "encerrado": false,
+   "created_at": "2030-02-01T00:00:00.000Z",
+   "updated_at": "2030-02-01T00:00:00.000Z",
+   "inicio": "2030-02-01 09:00",
+   "fim": "2030-02-01 23:59",
+   "icone": "data:image/png;base64,U1lOVEhFVElDLUlDT04=",
+   "descricao": "Fenomeno Ficticio B (fora de Curitiba)",
+   "aviso_cor": "#000000",
+   "id_severidade": 1,
+   "severidade": "Severidade Ficticia 2",
+   "riscos": [
+    "Risco ficticio do aviso 900002. "
+   ],
+   "instrucoes": [
+    "Instrucao ficticia 1 do aviso 900002. ",
+    "Instrucao ficticia 2 do aviso 900002."
+   ]
+  }
+ ],
+ "futuro": [
+  {
+   "id": 900003,
+   "id_aviso": 100003,
+   "id_sequencia": 1,
+   "id_condicao_severa": 1,
+   "id_icone": 1,
+   "id_usuario": 1,
+   "codigo": "urn:oid:0.0.0.0.0.0.0.2030.900003.1",
+   "referencia": null,
+   "data_inicio": "2030-02-02T00:00:00.000Z",
+   "hora_inicio": "09:00",
+   "data_fim": "2030-02-02T00:00:00.000Z",
+   "hora_fim": "23:59",
+   "poligono": "SYNTHETIC-POLYGON[[-49.0,-25.0],[-49.1,-25.1]]",
+   "municipios": "Municipio Ficticio A - PR,Municipio Ficticio B - SC",
+   "microrregioes": "Micro Ficticia",
+   "mesorregioes": "Meso Ficticia",
+   "estados": "PR,SC",
+   "regioes": "Sul",
+   "geocodes": "4106902",
+   "alterado": false,
+   "encerrado": false,
+   "created_at": "2030-02-02T00:00:00.000Z",
+   "updated_at": "2030-02-02T00:00:00.000Z",
+   "inicio": "2030-02-02 09:00",
+   "fim": "2030-02-02 23:59",
+   "icone": "data:image/png;base64,U1lOVEhFVElDLUlDT04=",
+   "descricao": "Fenomeno Ficticio C",
+   "aviso_cor": "#000000",
+   "id_severidade": 1,
+   "severidade": "Severidade Ficticia 3",
+   "riscos": [
+    "Risco ficticio do aviso 900003. "
+   ],
+   "instrucoes": [
+    "Instrucao ficticia 1 do aviso 900003. ",
+    "Instrucao ficticia 2 do aviso 900003."
+   ]
+  },
+  {
+   "id": 900001,
+   "id_aviso": 100001,
+   "id_sequencia": 1,
+   "id_condicao_severa": 1,
+   "id_icone": 1,
+   "id_usuario": 1,
+   "codigo": "urn:oid:0.0.0.0.0.0.0.2030.900001.1",
+   "referencia": null,
+   "data_inicio": "2030-02-01T00:00:00.000Z",
+   "hora_inicio": "08:00",
+   "data_fim": "2030-02-01T00:00:00.000Z",
+   "hora_fim": "23:59",
+   "poligono": "SYNTHETIC-POLYGON[[-49.0,-25.0],[-49.1,-25.1]]",
+   "municipios": "Municipio Ficticio A - PR,Municipio Ficticio B - SC",
+   "microrregioes": "Micro Ficticia",
+   "mesorregioes": "Meso Ficticia",
+   "estados": "PR,SC",
+   "regioes": "Sul",
+   "geocodes": "4100103,4106902,4200051",
+   "alterado": false,
+   "encerrado": false,
+   "created_at": "2030-02-01T00:00:00.000Z",
+   "updated_at": "2030-02-01T00:00:00.000Z",
+   "inicio": "2030-02-01 08:00",
+   "fim": "2030-02-01 23:59",
+   "icone": "data:image/png;base64,U1lOVEhFVElDLUlDT04=",
+   "descricao": "Fenomeno Ficticio A",
+   "aviso_cor": "#000000",
+   "id_severidade": 1,
+   "severidade": "Severidade Ficticia 1",
+   "riscos": [
+    "Risco ficticio do aviso 900001. "
+   ],
+   "instrucoes": [
+    "Instrucao ficticia 1 do aviso 900001. ",
+    "Instrucao ficticia 2 do aviso 900001."
+   ]
+  }
+ ]
+}

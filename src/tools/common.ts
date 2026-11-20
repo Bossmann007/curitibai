@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { RateLimitedError, SourceUnavailableError, UrlNotAllowedError } from "../http.js";
+import { RateLimitedError, ResponseTooLargeError, SourceUnavailableError, UrlNotAllowedError } from "../http.js";
 
 export const READ_ONLY: ToolAnnotations = {
   readOnlyHint: true,
@@ -82,6 +82,10 @@ export function rateLimitedMessage(retryAfterS: number | null): string {
 export function failFrom(err: unknown): CallToolResult {
   if (err instanceof UrlNotAllowedError) return fail("url_not_allowed");
   if (err instanceof RateLimitedError) return fail("rate_limited", rateLimitedMessage(err.retryAfterS));
+  if (err instanceof ResponseTooLargeError) {
+    const mb = Math.round((err.maxBytes / (1024 * 1024)) * 10) / 10;
+    return fail("source_unavailable", `The source response was larger than this tool's ${mb} MB cap; no data was returned.`);
+  }
   if (err instanceof SourceUnavailableError) return fail("source_unavailable");
   return fail("source_unavailable");
 }

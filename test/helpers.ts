@@ -6,6 +6,7 @@ import { createServer } from "../src/server.js";
 import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { CNES_TYPES_URL, establishmentsUrl } from "../src/sources/cnes.js";
 import { publicationUrl } from "../src/sources/pncp.js";
+import { ALERTS_URL, FORECAST_URL } from "../src/sources/inmet.js";
 
 export function fixture(name: string): string {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -60,6 +61,7 @@ export function happyRoutes(): Record<string, Route> {
     [`GET ${datasetUrl(ID_TRANSPORTE)}`]: { body: fixture("portal_detalhe_transporte.html") },
     ...cnesRoutes(),
     ...pncpRoutes(),
+    ...inmetRoutes(),
   };
 }
 
@@ -83,6 +85,14 @@ export function pncpUrl(page = 1, modality = 6): string {
 /** PNCP route backed by the synthetic fixture (invented values, planted personal data). One page: the last. */
 export function pncpRoutes(): Record<string, Route> {
   return { [`GET ${pncpUrl()}`]: { body: fixture("pncp_contratacoes_synthetic.json"), contentType: JSON_TYPE } };
+}
+
+/** INMET routes backed by the synthetic fixtures (invented values, real shape). */
+export function inmetRoutes(): Record<string, Route> {
+  return {
+    [`GET ${FORECAST_URL}`]: { body: fixture("inmet_previsao_synthetic.json"), contentType: JSON_TYPE },
+    [`GET ${ALERTS_URL}`]: { body: fixture("inmet_avisos_synthetic.json"), contentType: JSON_TYPE },
+  };
 }
 
 /** A synthetic PNCP page: `listed` records of the Município (pregão), then `others` of a non-listed body. */
@@ -125,6 +135,8 @@ export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[
   { name: "dataset_files", arguments: { dataset_id: ID_UNIDADES } },
   { name: "health_units_search", arguments: {} },
   { name: "procurement_search", arguments: { from: PNCP_FROM, to: PNCP_TO } },
+  { name: "weather_forecast", arguments: {} },
+  { name: "weather_alerts", arguments: {} },
 ];
 
 /** Error results carry their JSON in the text content only. */

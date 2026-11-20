@@ -15,6 +15,14 @@ export class RateLimitedError extends SourceUnavailableError {
   }
 }
 
+/** The body was larger than the cap for this request (declared or streamed). */
+export class ResponseTooLargeError extends SourceUnavailableError {
+  constructor(readonly maxBytes: number) {
+    super("response too large");
+    this.name = "ResponseTooLargeError";
+  }
+}
+
 export class UrlNotAllowedError extends Error {
   constructor() {
     super("url_not_allowed");
@@ -48,11 +56,16 @@ export interface FetchOptions {
   form?: Record<string, string>;
   /** Per-hop timeout; defaults to FETCH_TIMEOUT_MS. */
   timeoutMs?: number;
+  /** Body size cap; defaults to MAX_RESPONSE_BYTES and can only lower it. */
+  maxBytes?: number;
 }
 
-async function readCapped(res: Response): Promise<string> {
+async function readCapped(res: Response, maxBytes: number): Promise<string> {
   const declared = Number(res.headers.get("content-length") ?? "0");
-  if (declared > MAX_RESPONSE_BYTES) throw new SourceUnavailableError("response too large");
+  if (declared > maxBytes) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new ResponseTooLargeError(maxBytes);
+  }
   if (!res.body) return "";
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -61,9 +74,9 @@ async function readCapped(res: Response): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_RESPONSE_BYTES) {
+    if (total > maxBytes) {
       await reader.cancel();
-      throw new SourceUnavailableError("response too large");
+      throw new ResponseTooLargeError(maxBytes);
     }
     chunks.push(value);
   }
@@ -76,6 +89,7 @@ async function readCapped(res: Response): Promise<string> {
  */
 export async function fetchText(startUrl: string, options: FetchOptions = {}): Promise<FetchResult> {
   let url = startUrl;
+  const maxBytes = Math.min(options.maxBytes ?? MAX_RESPONSE_BYTES, MAX_RESPONSE_BYTES);
   let method = options.method ?? "GET";
   let body: URLSearchParams | undefined = options.form ? new URLSearchParams(options.form) : undefined;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -114,7 +128,7 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       }
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
-    return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res) };
+    return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res, maxBytes) };
   }
   throw new SourceUnavailableError("too many redirects");
 }
