@@ -62,6 +62,7 @@ describe("catalog file", () => {
     ["count mismatch", { ...RAW, count: RAW.count + 1 }],
     ["no date in captured", { ...RAW, captured: "last week" }],
     ["impossible date", { ...RAW, captured: "2026-13-45" }],
+    ["rolled-over date", { ...RAW, captured: "2026-02-30" }],
     ["official URL on another host", { ...RAW, items: [{ ...RAW.items[0]!, url: "https://example.com/x/1" }], count: 1 }],
     ["blank title", { ...RAW, items: [{ ...RAW.items[0]!, title: "  " }], count: 1 }],
     ["online not a string", { ...RAW, items: [{ ...RAW.items[0]!, online: 5 }], count: 1 }],
