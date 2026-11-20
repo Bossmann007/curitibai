@@ -5,7 +5,7 @@ import { MASK, maskObject } from "../sources/pncp.js";
 import { fold } from "../text.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
-/** First day of the hand capture (it ran 2026-11-19/20); the staleness warning counts from here. */
+/** First day of the capture (it ran 2026-11-19/20); the staleness warning counts from here. */
 export const CITY_SERVICES_CHECKED_AT = "2026-11-19";
 export const CITY_SERVICES_SOURCE_URL = "https://www.curitiba.pr.gov.br/servicos/";
 /** Past this many days since CITY_SERVICES_CHECKED_AT (Curitiba time) the note says the catalog may be outdated. */
@@ -15,7 +15,8 @@ export const OBITUARY_HOST = "obituarios.curitiba.pr.gov.br";
 
 export const CITY_SERVICES_LICENSE_NOTE =
   "Source: Prefeitura Municipal de Curitiba — Carta de Serviços (https://www.curitiba.pr.gov.br/servicos/), " +
-  "listing pages captured by hand on 2026-11-19/20 (America/Sao_Paulo). No terms of use or licence was found for the " +
+  "listing pages captured 2026-11-19/20 (America/Sao_Paulo) with a scripted browser session; detail pages were never " +
+  "opened. No terms of use or licence was found for the " +
   "site content; titles and summaries are returned unchanged and attributed to the Prefeitura, except that e-mail-, " +
   "phone- and CPF/CNPJ-shaped text in a summary is replaced by [masked] (two summaries in this snapshot). Unofficial; not " +
   "affiliated with the Prefeitura de Curitiba.";
@@ -34,14 +35,15 @@ export interface CityService {
   online_url: string | null;
 }
 
-/** `online` unless it points to the obituary system. Unparseable and non-http(s) URLs are dropped too. */
+/** `online` unless it points to the obituary system. Unparseable, non-http(s) and credential-bearing URLs are dropped too. */
 export function safeOnlineUrl(online: string | null): string | null {
   if (online === null) return null;
   try {
     const u = new URL(online);
     const host = u.hostname.toLowerCase().replace(/\.$/, "");
     const obituary = host === OBITUARY_HOST || host.endsWith(`.${OBITUARY_HOST}`);
-    return (u.protocol === "https:" || u.protocol === "http:") && !obituary ? online : null;
+    const credentials = u.username !== "" || u.password !== "";
+    return (u.protocol === "https:" || u.protocol === "http:") && !obituary && !credentials ? online : null;
   } catch {
     return null;
   }

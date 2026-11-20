@@ -35,6 +35,13 @@ describe("bundled Carta de Serviços snapshot", () => {
     for (const id of changed) expect(SERVICES.find((s) => s.id === id)!.summary).toContain(MASK);
   });
 
+  it("96 services have an empty summary (no teaser on the listing) and are found by title", () => {
+    const empty = SERVICES.filter((s) => s.summary === "");
+    expect(empty).toHaveLength(96);
+    const t = empty[0]!.title;
+    expect(search({ query: t, limit: 20 }).data.items.map((i) => i.id)).toContain(empty[0]!.id);
+  });
+
   it("every other summary is the teaser exactly as published (no dash or whitespace rewrite)", () => {
     const byId = new Map(ROWS.map((r) => [Number(r[3].split("/").pop()), r[2]]));
     const same = SERVICES.filter((s) => s.summary === byId.get(s.id));
@@ -62,6 +69,8 @@ describe("obituary links", () => {
     expect(safeOnlineUrl("https://www.obituarios.curitiba.pr.gov.br/")).toBeNull();
     expect(safeOnlineUrl("not a url")).toBeNull();
     expect(safeOnlineUrl("javascript:alert(1)")).toBeNull();
+    expect(safeOnlineUrl("https://user:pw@www.curitiba.pr.gov.br/x")).toBeNull();
+    expect(safeOnlineUrl("https://user@www.curitiba.pr.gov.br/x")).toBeNull();
     expect(safeOnlineUrl("http://www.curitiba.pr.gov.br/x")).toBe("http://www.curitiba.pr.gov.br/x");
     expect(safeOnlineUrl("https://www.curitiba.pr.gov.br/x")).toBe("https://www.curitiba.pr.gov.br/x");
     expect(safeOnlineUrl(null)).toBeNull();

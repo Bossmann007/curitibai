@@ -1,0 +1,11 @@
+curitibai-mcp
+The code is licensed under the Apache License 2.0 (see LICENSE).
+
+Third-party data
+
+src/sources/cityServicesData.ts holds content of the Prefeitura Municipal de Curitiba — Carta de Serviços
+(https://www.curitiba.pr.gov.br/servicos/): service titles, categories, the listing's short descriptions and links,
+captured 2026-11-19/20 from the listing pages. It is not covered by this repository's Apache-2.0 licence. No terms of
+use or licence for that content was found; it is reproduced unchanged (apart from the masking described in
+docs/sources.md), attributed to the Prefeitura and linked to the source. It will be removed on request of the
+Prefeitura Municipal de Curitiba.

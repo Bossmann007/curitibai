@@ -18,8 +18,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
-| `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. The `/servicos/` listing pages were read by hand in a normal browser, at a slow pace, on 2026-11-19/20 for `city_services_search` (v0.6); the data is bundled |
-| `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**, not even by hand for the capture. `city_services_search` returns these URLs only as links for people to open |
+| `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. The `/servicos/` listing pages were captured on 2026-11-19/20 for `city_services_search` (v0.6) with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds); the data is bundled |
+| `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
@@ -220,8 +220,8 @@ fine lookups for other states or behind payment; nothing covers the Detran-PR ca
 
 ### `city_services_search`: Prefeitura de Curitiba service catalog (bundled data)
 
-No network. The catalog listing at <https://www.curitiba.pr.gov.br/servicos/> (Carta de Serviços) was read by hand in a
-normal browser, at a slow pace, on **2026-11-19/20** (America/Sao_Paulo). Only the listing pages were read; each item
+No network. The catalog was captured **2026-11-19/20** (America/Sao_Paulo) with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds), listing pages of https://www.curitiba.pr.gov.br/servicos/ only; detail pages on servicos.curitiba.pr.gov.br were never opened.
+The `www` host answers 403 to non-browser clients such as curl, and the server never contacts either host. Each item
 gives the theme (category), the title, the listing's own "O que é?" teaser, the detail-page URL on
 `servicos.curitiba.pr.gov.br` and, for some, an online-service link. `scripts/gen-city-services.mjs` turns that capture
 into `src/sources/cityServicesData.ts`, values unchanged, sorted by the numeric id in the detail URL.
@@ -230,9 +230,9 @@ into `src/sources/cityServicesData.ts`, values unchanged, sorted by the numeric 
 |---|---|
 | Size | 756 unique services in 18 categories; 433 have an online link in the capture (431 are returned, see Privacy) |
 | Completeness | The listing paginates through ASP.NET postbacks and its order is not stable between requests. A full pass plus one pass per theme gave 756 unique services; the paginator suggested about 770 entries, so **a few services may be missing** |
-| Teasers | Copied as published, including the site's own truncation and its inconsistent prefixes ("O que é?", "O que são?", none); most end in "...", not all |
+| Teasers | Copied as published, including the site's own truncation and its inconsistent prefixes ("O que é?", "O que são?", none); most end in "...", not all. **96 services have an empty `summary`**: the listing shows no teaser for them, so they are found by title only |
 | `checked_at` | `2026-11-19`, the first capture day (so the 180-day staleness warning, counted in America/Sao_Paulo, starts early rather than late). `license_note` gives the full range 2026-11-19/20 |
-| Terms / licence | No terms of use or licence for the site content was found (not verified further). Treated under the strictest reading: values unchanged (except the two masked summaries below, which `license_note` also states), attributed to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture date in `license_note` |
+| Terms / licence | No terms of use or licence for the site content was found (not verified further). The bundled file is Prefeitura content, not under the repository's Apache-2.0 licence, and can be removed on request (see `NOTICE`). Treated under the strictest reading: values unchanged (except the two masked summaries below, which `license_note` also states), attributed to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture date in `license_note` |
 
 Privacy: the catalog describes public services and has no personal data, with one exception handled in code: two
 services link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists of deceased people); their
