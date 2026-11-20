@@ -100,6 +100,8 @@ describe("weather_forecast", () => {
     expect(p.temp_max_c).toBe(29);
     expect(p.humidity_min_pct).toBe(12.5);
     expect(p.temp_min_c).toBeNull();
+    day.umidade_max = "1,234";
+    expect(parseForecast(json)[2]!.periods[0]!.humidity_max_pct).toBeNull();
   });
 
   it("parseForecast rejects non-object input", () => {
@@ -189,6 +191,22 @@ describe("weather_alerts", () => {
       ["Fenomeno Ficticio C", ["upcoming"]],
     ]);
     expect(out.every((a) => a.id === null)).toBe(true);
+  });
+
+  it("returns both copies when the same id carries different values in the two lists", () => {
+    const json = alertsJson();
+    json.futuro[1]!.fim = "2030-02-02 06:00";
+    const out = parseAlerts(json).filter((a) => a.id === 900001);
+    expect(out.map((a) => [a.end, a.listed_in])).toEqual([
+      ["2030-02-01 23:59", ["today"]],
+      ["2030-02-02 06:00", ["upcoming"]],
+    ]);
+  });
+
+  it("an unreadable geocode item is source_unavailable", () => {
+    const json = alertsJson();
+    json.hoje[1]!.geocodes = ["4100103", null];
+    expect(() => parseAlerts(json)).toThrow(/source_unavailable/);
   });
 
   it("keeps a lone risks string as a one-item list", () => {

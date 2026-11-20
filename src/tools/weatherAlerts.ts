@@ -39,7 +39,7 @@ const SCOPE: Record<"today" | "upcoming" | "all", string> = {
 
 const ALERTS_NOTE =
   `Only warnings whose area lists Curitiba (IBGE ${CURITIBA_GEOCODE}) are returned; areas, polygons and icons are left out. ` +
-  "A warning in both of INMET's lists is returned once. Text is INMET's, unchanged.";
+  "A warning listed identically in both of INMET's lists is returned once. Text is INMET's, unchanged.";
 
 export const weatherAlerts: ToolDef<typeof weatherAlertsInput, typeof weatherAlertsOutput> = {
   name: "weather_alerts",
