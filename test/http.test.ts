@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchText, isAllowedUrl, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
+import { fetchText, isAllowedUrl, ResponseTooLargeError, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
 import { rateLimitedMessage } from "../src/tools/common.js";
 import { stubFetch } from "./helpers.js";
@@ -14,6 +14,8 @@ describe("host allowlist (SSRF)", () => {
     "https://dadosabertos.curitiba.pr.gov.br./",
     "https://apidadosabertos.saude.gov.br/cnes/estabelecimentos?codigo_municipio=410690",
     "https://APIDADOSABERTOS.SAUDE.GOV.BR/cnes/tipounidades",
+    "https://apiprevmet3.inmet.gov.br/previsao/4106902",
+    "https://apiprevmet3.inmet.gov.br/avisos/ativos",
   ])("allows %s", (u) => expect(isAllowedUrl(u)).toBe(true));
 
   it.each([
@@ -32,6 +34,11 @@ describe("host allowlist (SSRF)", () => {
     "https://x.apidadosabertos.saude.gov.br/",
     "https://apidadosabertos.saude.gov.br.evil.com/",
     "https://apidadosabertos.saude.gov.br:8443/",
+    // INMET: only the forecast API host
+    "https://portal.inmet.gov.br/",
+    "https://apiprevmet2.inmet.gov.br/previsao/4106902",
+    "http://apiprevmet3.inmet.gov.br/avisos/ativos",
+    "https://apiprevmet3.inmet.gov.br.evil.com/",
     // look-alikes and tricks
     "http://dadosabertos.curitiba.pr.gov.br/",
     "https://x.dadosabertos.curitiba.pr.gov.br/",
@@ -132,6 +139,20 @@ describe("fetchText", () => {
   it("caps the response size", async () => {
     stubFetch({ [`GET ${OK}`]: { body: "x".repeat(MAX_RESPONSE_BYTES + 1) } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
+  });
+
+  it("applies a lower per-request cap to the streamed body and to a declared content-length", async () => {
+    stubFetch({ [`GET ${OK}`]: { body: "x".repeat(101) } });
+    await expect(fetchText(OK, { maxBytes: 100 })).rejects.toBeInstanceOf(ResponseTooLargeError);
+    stubFetch({ [`GET ${OK}`]: { body: "x".repeat(100) } });
+    await expect(fetchText(OK, { maxBytes: 100 })).resolves.toMatchObject({ body: "x".repeat(100) });
+    stubFetch({ [`GET ${OK}`]: { body: "x", headers: { "content-length": "5000" } } });
+    await expect(fetchText(OK, { maxBytes: 100 })).rejects.toBeInstanceOf(ResponseTooLargeError);
+  });
+
+  it("never raises the cap above MAX_RESPONSE_BYTES", async () => {
+    stubFetch({ [`GET ${OK}`]: { body: "x".repeat(MAX_RESPONSE_BYTES + 1) } });
+    await expect(fetchText(OK, { maxBytes: MAX_RESPONSE_BYTES * 2 })).rejects.toBeInstanceOf(ResponseTooLargeError);
   });
 });
 
