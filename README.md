@@ -3,16 +3,17 @@
 A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistants search the catalogue of the
 [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
 look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
-in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, and
-summarise a CSV file the user downloaded by hand.
+in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, give INMET's weather forecast and
+active weather warnings for Curitiba, and summarise a CSV file the user downloaded by hand.
 
-**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, the Ministério da Saúde or
-PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, or Detran-PR / the Governo do Paraná.**
+**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, the Ministério da Saúde,
+PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
+(Instituto Nacional de Meteorologia).**
 Data comes from the sources as it is; always confirm important information at the source.
 
 ## Tools
 
-All tools are read-only. The four network tools return `{data, source_url, fetched_at, license_note}`.
+All tools are read-only. The six network tools return `{data, source_url, fetched_at, license_note}`.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
@@ -31,6 +32,8 @@ wait in `note`.
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
 | `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
 | `detran_pr_info` | `topic`: `licensing_calendar` or `units`; optional `plate_final` (0–9, calendar only) | Calendar: the 2026 licensing due date for one plate final digit (or all ten, earliest first, each with `past`, which only means the Anexo I due date has passed; `note` quotes the Anexo II enforcement calendar as published) and the fee (R$ 94,61). Units: the 01ª CIRETRAN (Curitiba) and its five PATRANs (address, phone, services as published), the scheduling rule, and the site's two conflicting general hours (8h–16h and 8h–15h30), both returned. Each item has `source_url` and `checked_at`. **No network call**; for both topics `note` says the data may be outdated once the year in Curitiba is past 2026, and for units also once more than 180 days have passed since `checked_at` | Portaria DETRAN 907/2025 (Anexos I and II), a Detran-PR news page, `detran.pr.gov.br/unidades` and its home page, checked by hand |
+| `weather_forecast` | optional `days` 1–5 (default 3) | INMET's forecast for Curitiba, per day (`date`, `weekday`) and period: `morning`, `afternoon` and `night` for the first days, one `whole_day` entry for later days, as INMET publishes them. Each period: summary, min/max temperature (°C), min/max humidity (%), wind direction and intensity, sunrise and sunset. A field INMET leaves out or empty is `null` | INMET forecast API (`GET apiprevmet3.inmet.gov.br/previsao/4106902`) |
+| `weather_alerts` | optional `when`: `today`, `upcoming` or `all` (default) | INMET's active warnings whose area includes Curitiba (IBGE 4106902): id, which INMET list it is in (`today`/`upcoming`), description, severity, start, end (as published, no time zone given), risks and instructions, and `count`. A warning in both lists is returned once. When none covers Curitiba, `count` is 0 and `note` says so. Polygons, area lists and icons are dropped | INMET warnings API (`GET apiprevmet3.inmet.gov.br/avisos/ativos`) |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -46,6 +49,11 @@ listed in [docs/sources.md](docs/sources.md) (the city, the câmara, municipal f
 COHAB-CT), read from PNCP's own results; a body missing from that list is not returned. PNCP needs one modality per
 query, so `modality` picks it. Each call scans at most 2 upstream pages of 50 records (the second only if the first
 took under 15 s), and PNCP took 8–13 s per page when checked.
+
+`weather_forecast` and `weather_alerts` pass INMET's values on unchanged (no rewording of summaries, descriptions, risks
+or instructions; only the selected fields are returned). The warnings list is national (about 750 KB when checked);
+the server reads it, keeps the warnings whose `geocodes` contain exactly `4106902`, and returns only their text fields.
+A warning the server cannot read makes the tool return `source_unavailable` rather than "no warning".
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](docs/sources.md).
 
@@ -153,12 +161,13 @@ rows.
 
 - No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by the
   request sent to the source.
-- The server contacts exactly three hosts, `https://dadosabertos.curitiba.pr.gov.br`,
-  `https://apidadosabertos.saude.gov.br` and `https://pncp.gov.br`, on the default port and without credentials. Every redirect hop is checked
+- The server contacts exactly four hosts, `https://dadosabertos.curitiba.pr.gov.br`,
+  `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br` and `https://apiprevmet3.inmet.gov.br`, on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a
   URL.
-- Requests use a generic User-Agent, `curitibai-mcp/0.4`, a 10 s timeout per request (25 s for PNCP, which is slow)
-  and an 8 MB response cap.
+- Requests use a generic User-Agent, `curitibai-mcp/0.5`, a 10 s timeout per request (25 s for PNCP, which is slow;
+  15 s for INMET) and an 8 MB response cap (1 MB for the INMET forecast, 6 MB for the INMET warnings list). A body over
+  the cap is `source_unavailable` with a message naming the cap.
 - `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
   has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
   so the gate is by modality: for **dispensa (8), inexigibilidade (9), inaplicabilidade (14)** and any unknown modality
@@ -177,7 +186,8 @@ rows.
   ("2025 - 2026", "2026-2027") are kept, so an 8-digit phone that looks like that is not masked. `query` never matches a withheld object.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads and close), and only as aggregates.
-- Text from the sources is returned as plain data fields with HTML removed. It is never meant as instructions.
+- Text from the sources is returned as plain data fields with HTML removed, except INMET's text, which is passed on
+  unchanged (it had no HTML when checked). It is never meant as instructions.
 
 ## Limits
 
@@ -199,6 +209,11 @@ rows.
   PNCP is slow (8–13 s per page) and answered HTTP 429 once during checks; a refused or failed request is returned as
   `source_unavailable` (a connection reset is retried once), and an HTTP 429 as `rate_limited` (retried once only when
   Retry-After is 5 s or less).
+- INMET: no documentation and no terms of use were found for `apiprevmet3.inmet.gov.br` (see
+  [docs/sources.md](docs/sources.md)). This server treats the data under the strictest notice found, gov.br's CC BY-ND
+  3.0: values are passed on unchanged and `license_note` attributes INMET with the source URL and the fetch time. The
+  endpoints are undocumented, so a format change returns `source_unavailable`. Results are cached in memory for 10
+  minutes, so a warning issued in that window appears on a later call.
 - Detran-PR: no terms of use or licence was found on `detran.pr.gov.br` or `legislacao.pr.gov.br`, so
   `detran_pr_info` carries only public facts (dates, a fee, addresses and phone numbers of public offices), each with
   its source URL and check date. The data is a snapshot taken by hand on 2026-11-19 and is not refreshed: the
@@ -214,7 +229,9 @@ scripts/verify   # npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
 trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:
 the real JSON shape with invented values), PNCP tests use a synthetic fixture with planted supplier keys, CPF, e-mail,
-phone and names (`test/fixtures/pncp_contratacoes_synthetic.json`), and CSV tests use synthetic files.
+phone and names (`test/fixtures/pncp_contratacoes_synthetic.json`), INMET tests use synthetic fixtures with the real
+shape (`test/fixtures/inmet_*_synthetic.json`: invented texts, polygons and icons, a near-miss geocode, a warning listed
+twice), and CSV tests use synthetic files.
 
 ## License
 

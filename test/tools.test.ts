@@ -6,7 +6,7 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the six read-only tools with input and output schemas", async () => {
+  it("lists exactly the eight read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -16,6 +16,8 @@ describe("tools/list", () => {
       "local_csv_summary",
       "open_datasets_search",
       "procurement_search",
+      "weather_alerts",
+      "weather_forecast",
     ]);
     for (const t of listed) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
@@ -49,6 +51,12 @@ describe("each tool returns the envelope, valid against its output schema", () =
       expect(new URL(parsed.source_url).hostname).toBe("pncp.gov.br");
       expect(parsed.license_note).toMatch(/PNCP/);
       expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
+    } else if (call.name.startsWith("weather_")) {
+      expect(new URL(parsed.source_url).hostname).toBe("apiprevmet3.inmet.gov.br");
+      expect(parsed.license_note).toMatch(/INMET/);
+      expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
+      expect(parsed.license_note).toContain(`fetched at ${parsed.fetched_at}`);
+      expect(parsed.license_note).toContain(parsed.source_url);
     } else {
       expect(new URL(parsed.source_url).hostname).toBe("dadosabertos.curitiba.pr.gov.br");
       expect(parsed.license_note).toMatch(/CC BY 4\.0/);
@@ -135,6 +143,10 @@ describe("input validation", () => {
     { name: "procurement_search", arguments: { query: "x" } },
     { name: "local_csv_summary", arguments: { file: "a.csv", top: 51 } },
     { name: "local_csv_summary", arguments: {} },
+    { name: "weather_forecast", arguments: { days: 0 } },
+    { name: "weather_forecast", arguments: { days: 6 } },
+    { name: "weather_forecast", arguments: { days: 2.5 } },
+    { name: "weather_alerts", arguments: { when: "tomorrow" } },
   ])("rejects $name $arguments", async (call) => {
     const calls = stubFetch({});
     const client = await connectClient();
