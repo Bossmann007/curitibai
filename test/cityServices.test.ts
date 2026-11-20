@@ -58,6 +58,8 @@ describe("obituary links", () => {
   it("matches the host by parsed URL, any scheme or case", () => {
     expect(safeOnlineUrl("http://obituarios.curitiba.pr.gov.br/publico/x.aspx")).toBeNull();
     expect(safeOnlineUrl("https://OBITUARIOS.curitiba.pr.gov.br/")).toBeNull();
+    expect(safeOnlineUrl("http://obituarios.curitiba.pr.gov.br./publico/x.aspx")).toBeNull();
+    expect(safeOnlineUrl("https://www.obituarios.curitiba.pr.gov.br/")).toBeNull();
     expect(safeOnlineUrl("not a url")).toBeNull();
     expect(safeOnlineUrl("javascript:alert(1)")).toBeNull();
     expect(safeOnlineUrl("http://www.curitiba.pr.gov.br/x")).toBe("http://www.curitiba.pr.gov.br/x");
@@ -95,6 +97,22 @@ describe("city_services_search", () => {
     const t = r.data.items[0]!.title.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     expect(t).toContain("segunda");
     expect(t).toContain("via");
+  });
+
+  it("splits the query on punctuation, as on spaces", () => {
+    expect(search({ query: "segunda-via" }).data.total).toBe(search({ query: "segunda via" }).data.total);
+    expect(search({ query: "segunda via" }).data.total).toBeGreaterThan(0);
+  });
+
+  it("does not match the site's own 'O que é?' label", () => {
+    const labelled = SERVICES.filter((s) => /^O que (é|são)/.test(s.summary));
+    expect(labelled.length).toBeGreaterThan(100);
+    for (const s of labelled) expect(s.folded.all.slice(s.folded.title.length + 1)).not.toMatch(/^\s*o que (e|sao)/);
+  });
+
+  it("cannot find a service by text the PII guard masked", () => {
+    expect(search({ query: "isscvco" }).data.total).toBe(0);
+    expect(search({ query: "partiucuritiba" }).data.total).toBe(0);
   });
 
   it("returns an empty result for a word that is not in the catalog", () => {

@@ -38,7 +38,9 @@ export function safeOnlineUrl(online: string | null): string | null {
   if (online === null) return null;
   try {
     const u = new URL(online);
-    return (u.protocol === "https:" || u.protocol === "http:") && u.hostname.toLowerCase() !== OBITUARY_HOST ? online : null;
+    const host = u.hostname.toLowerCase().replace(/\.$/, "");
+    const obituary = host === OBITUARY_HOST || host.endsWith(`.${OBITUARY_HOST}`);
+    return (u.protocol === "https:" || u.protocol === "http:") && !obituary ? online : null;
   } catch {
     return null;
   }
@@ -50,20 +52,26 @@ export function guardedSummary(what: string): string {
   return masked.text.includes(MASK) || masked.truncated ? masked.text : what;
 }
 
+/** The site's own "O que é?" / "O que são?" label (spacing and "?" vary); left out of the search text only. */
+const TEASER_LABEL = /^\s*o que (?:sao|e)\??/;
+
 export const SERVICES: readonly (CityService & { folded: { title: string; all: string } })[] = ROWS.map(
   ([cat, title, what, url, online]) => {
-    const category = CATEGORIES[cat]!;
+    const summary = guardedSummary(what);
     return {
       id: Number(url.slice(url.lastIndexOf("/") + 1)),
       title,
-      category,
-      summary: guardedSummary(what),
+      category: CATEGORIES[cat]!,
+      summary,
       official_url: url,
       online_url: safeOnlineUrl(online),
-      folded: { title: fold(title), all: fold(`${title} ${what}`) },
+      // Built from the returned (guarded) summary, so a query cannot probe text the mask hides.
+      folded: { title: fold(title), all: `${fold(title)} ${fold(summary).replace(TEASER_LABEL, "")}` },
     };
   },
 );
+
+const CATEGORY_COUNTS = CATEGORIES.map((name) => ({ name, count: SERVICES.filter((s) => s.category === name).length }));
 
 export const cityServicesSearchInput = {
   query: z
@@ -123,7 +131,8 @@ export interface CityServicesSearchArgs {
 }
 
 export function cityServicesSearchResult(args: CityServicesSearchArgs, now: Date) {
-  const words = args.query === undefined ? [] : fold(args.query).split(/\s+/).filter(Boolean);
+  // Split on anything that is not a letter or digit, so "segunda-via" matches "segunda via".
+  const words = args.query === undefined ? [] : fold(args.query).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   const matches = SERVICES.filter(
     (s) =>
       (args.category === undefined || s.category === args.category) &&
@@ -131,8 +140,9 @@ export function cityServicesSearchResult(args: CityServicesSearchArgs, now: Date
       words.every((w) => s.folded.all.includes(w)),
   );
   // Title hits first, then by title; ids break ties so paging is stable.
-  const titleHits = (s: (typeof SERVICES)[number]) => (words.length > 0 && words.every((w) => s.folded.title.includes(w)) ? 0 : 1);
-  matches.sort((a, b) => titleHits(a) - titleHits(b) || a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
+  const inTitle = new Set(words.length > 0 ? matches.filter((s) => words.every((w) => s.folded.title.includes(w))) : []);
+  const rank = (s: (typeof SERVICES)[number]) => (inTitle.has(s) ? 0 : 1);
+  matches.sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
   const page = matches.slice(args.offset, args.offset + args.limit);
   const end = args.offset + page.length;
   const noFilter = args.query === undefined && args.category === undefined && args.online_only === undefined;
@@ -143,7 +153,7 @@ export function cityServicesSearchResult(args: CityServicesSearchArgs, now: Date
       next_offset: end < matches.length ? end : null,
       items: page.map((s) => ({ id: s.id, title: s.title, category: s.category, summary: s.summary, official_url: s.official_url, online_url: s.online_url })),
       ...(noFilter
-        ? { categories: CATEGORIES.map((name) => ({ name, count: SERVICES.filter((s) => s.category === name).length })) }
+        ? { categories: CATEGORY_COUNTS.map((c) => ({ ...c })) }
         : {}),
     },
     source_url: CITY_SERVICES_SOURCE_URL,

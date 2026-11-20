@@ -242,8 +242,10 @@ mask actually hides something. In the bundled data that happens twice, both publ
 institutional e-mail) and id 2518 (a social-media handle, "do @partiucuritiba.pr", read as an e-mail). Both are pinned
 in the tests. Titles are not masked (one title has the public phone "3350-9000" of the Central Saúde Já).
 
-Search: every word of `query` must appear in the title or summary (accents and case ignored); results where every
-word is in the title come first, then by title (pt-BR order), then by id. The 18 categories with counts are returned
+Search: `query` is split on anything that is not a letter or digit ("segunda-via" = "segunda via"), and every word
+must appear in the title or the returned summary (accents and case ignored). The site's own leading "O que é?" / "O
+que são?" label and text hidden by the mask are not searched. Results where every word is in the title come first,
+then by title (pt-BR order), then by id. Single letters are not ignored, so "a" matches almost everything. The 18 categories with counts are returned
 only when no filter (`query`, `category`, `online_only`) is given.
 
 Prior art (2026-11-19, `gh search repos`): "carta de serviços" found the federal gov.br service-letter model
