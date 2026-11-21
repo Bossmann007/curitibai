@@ -7,6 +7,7 @@ import {
   loadUrbsOrFail,
   page,
   pagingInput,
+  skippedNote,
   skippedRowsOutput,
   urbsLicenseNote,
   urbsNote,
@@ -75,7 +76,7 @@ export interface Stop {
 }
 
 /** Rows grouped by stop NUM. Stops without coordinates in any row are left out (they cannot be placed). */
-export function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
+function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
   const stops = new Map<string, Stop>();
   const pending = new Map<string, Map<string, { cod: string; sentido: string }>>(); // lines seen before a coordinate
   for (const r of rows) {
@@ -100,6 +101,26 @@ export function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
   return stops;
 }
 
+/**
+ * Stops with coordinates within `radiusM` of `near` (compared before rounding), with their distance rounded to the
+ * metre, in file order; only those `lineCode` serves (case ignored) when given.
+ */
+export function stopsWithin(
+  rows: readonly Ponto[],
+  near: { lat: number; lon: number },
+  radiusM: number,
+  lineCode?: string,
+): { stop: Stop; distance: number }[] {
+  const wanted = lineCode?.trim().toUpperCase();
+  const matches: { stop: Stop; distance: number }[] = [];
+  for (const stop of groupStops(rows).values()) {
+    if (wanted !== undefined && ![...stop.lines.values()].some((l) => l.cod.toUpperCase() === wanted)) continue;
+    const exact = distanceM(near, stop);
+    if (exact <= radiusM) matches.push({ stop, distance: Math.round(exact) });
+  }
+  return matches;
+}
+
 export function busStopsNearResult(
   rows: readonly Ponto[],
   linhas: readonly Linha[],
@@ -108,14 +129,8 @@ export function busStopsNearResult(
   args: BusStopsNearArgs,
   now: Date,
 ) {
-  const wanted = args.line_code?.trim().toUpperCase();
   const names = new Map(linhas.map((l) => [l.COD.toUpperCase(), l.NOME]));
-  const matches: { stop: Stop; distance: number }[] = [];
-  for (const stop of groupStops(rows).values()) {
-    if (wanted !== undefined && ![...stop.lines.values()].some((l) => l.cod.toUpperCase() === wanted)) continue;
-    const exact = distanceM(args.near, stop);
-    if (exact <= args.radius_m) matches.push({ stop, distance: Math.round(exact) });
-  }
+  const matches = stopsWithin(rows, args.near, args.radius_m, args.line_code);
   const byNumber = (a: string, b: string) => Number(a) - Number(b) || a.localeCompare(b);
   matches.sort((a, b) => a.distance - b.distance || byNumber(a.stop.row.NUM, b.stop.row.NUM));
   const p = page(matches, args.offset, args.limit);
@@ -149,9 +164,7 @@ export function busStopsNearResult(
       "stop number: its name, position and type come from its first row in the file with coordinates, and `lines` " +
       "lists each line and direction (SENTIDO) whose itinerary includes it. `line_name` is null when the line code " +
       `is not in the lines file. Stops with no coordinates are never returned.${linesDate}` +
-      (linesSrc.skipped > 0
-        ? ` ${linesSrc.skipped} row${linesSrc.skipped === 1 ? "" : "s"} of ${linesSrc.file} did not match the expected shape and ${linesSrc.skipped === 1 ? "was" : "were"} left out.`
-        : ""),
+      skippedNote(linesSrc.skipped, linesSrc.file),
   };
 }
 

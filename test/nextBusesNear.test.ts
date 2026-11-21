@@ -60,6 +60,7 @@ const timeRows = () => [
   time("09:00", "1", "990201", "901", "9"), // the window's last minute, inclusive
   time("08:30", "1", "990201", "x91"), // code in lower case
   time("08:10", "2", "990201", "901"), // Saturday
+  time("08:40", "2", "990202", "901"), // a stop the stops file does not list for 901
   time("08:10", "3", "990201", "901"), // Sunday
   time("08:00", "1", "990203", "903"), // outside the radius
   time("23:59", "1", "990201", "901", "3"),
@@ -208,10 +209,20 @@ describe("next_buses_near", () => {
     dataDir();
     const out = await next({ at: "08:00", day: "1", line_code: "x91" });
     expect(brief(out.data.items)).toEqual(["1 08:05 +5 X91@990201", "1 08:30 +30 x91@990201"]);
-    expect(out.data.stops_considered).toBe(1);
+    expect(out.data).toMatchObject({ stops_considered: 3, stops_with_times: 1 });
     const unknown = errorOf(await call({ near: CENTRE, line_code: "404" })) as { error: string; message: string };
     expect(unknown).toMatchObject({ error: "invalid_argument" });
     expect(unknown.message).toContain("bus_lines_search");
+  });
+
+  it("line_code keeps a departure at a stop the stops file does not list for that line, with no directions", async () => {
+    dataDir();
+    const all = await next({ at: "08:00", day: "2" });
+    const one = await next({ at: "08:00", day: "2", line_code: "901" });
+    expect(brief(one.data.items)).toEqual(["2 08:10 +10 901@990201", "2 08:40 +40 901@990202"]);
+    expect(brief(one.data.items)).toEqual(brief(all.data.items));
+    expect(one.data.items[1]?.directions).toEqual([]);
+    expect(one.data).toMatchObject({ stops_considered: 3, stops_with_times: 2 });
   });
 
   it("radius_m and limit; no stop nearby is an empty result, not an error", async () => {

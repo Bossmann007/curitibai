@@ -2,19 +2,17 @@ import { z } from "zod";
 import { DAY_TYPE_NOTE, DAY_TYPES, URBS_SOURCE_URL, type Linha, type Ponto, type Tabela } from "../sources/urbs.js";
 import {
   busEnvelope,
-  emptyFieldsNote,
   isFailure,
   lineCodeInput,
   loadUrbsOrFail,
+  skippedNote,
   skippedRowsOutput,
   urbsLicenseNote,
   urbsNote,
   type UrbsSource,
 } from "./busCommon.js";
 import { TIME } from "./busDepartures.js";
-import { lineStops } from "./busLineStops.js";
-import { groupStops, NEAR_RADIUS_DEFAULT_M, type Stop } from "./busStopsNear.js";
-import { distanceM } from "./cityPointsSearch.js";
+import { NEAR_RADIUS_DEFAULT_M, stopsWithin, type Stop } from "./busStopsNear.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -84,8 +82,11 @@ export const nextBusesNearOutput = busEnvelope(
     cut_at_midnight: z
       .boolean()
       .describe("True when the window would pass 24:00 but `day` was given, so it stops at 23:59 (see note)."),
-    stops_considered: z.number().int().describe("Stops with coordinates within radius_m (of line_code, when given)."),
-    stops_with_times: z.number().int().describe("Of those, stops the timetable file lists at all (any day, any time)."),
+    stops_considered: z.number().int().describe("Stops with coordinates within radius_m (any line)."),
+    stops_with_times: z
+      .number()
+      .int()
+      .describe("Of those, stops the timetable lists at any day and time (for line_code, when given)."),
     total: z.number().int().describe("Departures in the windows, before `limit`."),
     skipped_rows: skippedRowsOutput,
     items: z.array(NextDeparture),
@@ -152,12 +153,8 @@ export function nextBusesNearResult(
   }
 
   const wanted = args.line_code?.trim().toUpperCase();
-  const nearby = new Map<string, { stop: Stop; distance: number }>();
-  for (const stop of groupStops(files.stops).values()) {
-    if (wanted !== undefined && ![...stop.lines.values()].some((l) => l.cod.toUpperCase() === wanted)) continue;
-    const exact = distanceM(args.near, stop);
-    if (exact <= args.radius_m) nearby.set(stop.row.NUM, { stop, distance: Math.round(exact) });
-  }
+  // Every stop in the radius, whatever line_code: the timetable can list a line at a stop the stops file does not.
+  const nearby = new Map(stopsWithin(files.stops, args.near, args.radius_m).map((m) => [m.stop.row.NUM, m]));
 
   // One pass over the timetable, stop number first: only rows at a nearby stop are looked at further.
   const timed = new Set<string>();
@@ -165,8 +162,8 @@ export function nextBusesNearResult(
   for (const r of files.times) {
     const hit = nearby.get(r.NUM);
     if (hit === undefined) continue;
-    timed.add(r.NUM);
     if (wanted !== undefined && r.COD.toUpperCase() !== wanted) continue;
+    timed.add(r.NUM);
     const t = minutes(r.HORA);
     for (const s of segments) {
       if (r.DIA === s.day && t >= s.from && t <= s.to) hits.push({ r, at: hit, m: t + s.shift - start });
@@ -188,10 +185,11 @@ export function nextBusesNearResult(
     );
   const otherFile = (s: UrbsSource, what: string) =>
     (s.date === src.times.date ? "" : ` ${what} come from ${s.file} (dated ${s.date}), a different date from the timetable: compare before relying on them.`) +
-    (s.skipped > 0
-      ? ` ${s.skipped} row${s.skipped === 1 ? "" : "s"} of ${s.file} did not match the expected shape and ${s.skipped === 1 ? "was" : "were"} left out.`
-      : "");
-  const stopNames = emptyFieldsNote(src.stops.emptyFields.filter((f) => f === "NOME"));
+    skippedNote(s.skipped, s.file);
+  const stopNames = src.stops.emptyFields.includes("NOME")
+    ? ` Every valid row of ${src.stops.file} has an empty NOME field, which real URBS exports fill: the field looks ` +
+      "missing or renamed in this file, so an empty `stop_name` may not come from URBS."
+    : "";
 
   return {
     data: {
@@ -229,7 +227,8 @@ export function nextBusesNearResult(
           "Sunday 3. Holidays are not detected: on a holiday pass the day code URBS announces (usually 3). "
         : "") +
       `${DAY_TYPE_NOTE} ` +
-      "`minutes_from_now` counts from `at` (HH:MM, seconds ignored), not from the moment of the call when `at` is given. " +
+      "`minutes_from_now` counts from `at` (HH:MM, seconds ignored), not from the moment of the call when `at` is given; " +
+      "`at` is a time on today's date, so for a time after midnight tonight also pass the next day's code. " +
       "Times are as published under their row's day code and never moved, as in bus_departures. When the window passes " +
       "24:00, the times from 00:00 on are read under the next calendar day's code, inferred the same way (`windows` " +
       "shows both parts), and counted past midnight; with an explicit `day` the next day's code is unknown, so the " +
@@ -244,7 +243,7 @@ export function nextBusesNearResult(
       "when the code is not there), `adapt` is ADAPT (accessibility equipment) as published." +
       otherFile(src.stops, "Stops and positions") +
       otherFile(src.lines, "Line names") +
-      (stopNames ? ` In ${src.stops.file}: ${stopNames}` : ""),
+      stopNames,
   };
 }
 
@@ -270,7 +269,8 @@ export const nextBusesNear: ToolDef<typeof nextBusesNearInput, typeof nextBusesN
     if (isFailure(times)) return times;
     if (isFailure(stops)) return stops;
     if (isFailure(lines)) return lines;
-    if (args.line_code !== undefined && lineStops(stops.rows, args.line_code).length === 0) {
+    const wanted = args.line_code?.trim().toUpperCase();
+    if (wanted !== undefined && !stops.rows.some((r) => r.COD.toUpperCase() === wanted)) {
       return fail("invalid_argument", `line_code has no stops in ${stops.file}; find the code with bus_lines_search.`);
     }
     return ok(
