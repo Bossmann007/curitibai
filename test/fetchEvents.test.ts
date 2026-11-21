@@ -161,7 +161,8 @@ describe("parsing", () => {
       maxPage: 2,
       noEvents: false,
     });
-    expect(parseListPage(listHtml([], 40), "2026-11-21").maxPage).toBe(10); // hard cap
+    expect(parseListPage(listHtml([], 10), "2026-11-21").maxPage).toBe(10);
+    expect(() => parseListPage(listHtml([], 11), "2026-11-21")).toThrow("layout_changed"); // never a partial file
   });
 
   it("stops with layout_changed when the list page is not the expected one", () => {

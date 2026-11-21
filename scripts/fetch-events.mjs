@@ -7,7 +7,7 @@
 // Prints only fixed status lines, counts and the exit code: never page text, titles or HTML.
 import { lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import { join, relative, isAbsolute, sep } from "node:path";
-import { cleanField } from "../src/mask.ts";
+import { cleanField, EVENT_PLACE_MAX, EVENT_SHORT_MAX, EVENT_TITLE_MAX } from "../src/mask.ts";
 import { decodeEntities } from "../src/text.ts";
 
 export const HOST = "turismo.curitiba.pr.gov.br";
@@ -26,11 +26,11 @@ export const GAP_MS = 5_000;
 export const LIST_MAX_BYTES = 512 * 1024;
 export const DETAIL_MAX_BYTES = 256 * 1024;
 export const ROBOTS_MAX_BYTES = 64 * 1024;
-/** Hard cap on list pages per run (the site showed 5 pages of 10). */
+/** Hard cap on list pages per run (the site showed 5 pages of 10); a pager showing more stops the run. */
 export const MAX_LIST_PAGES = 10;
-export const TITLE_MAX = 120;
-export const PLACE_MAX = 120;
-export const SHORT_MAX = 60;
+export const TITLE_MAX = EVENT_TITLE_MAX;
+export const PLACE_MAX = EVENT_PLACE_MAX;
+export const SHORT_MAX = EVENT_SHORT_MAX;
 /** A new count outside [MIN_RATIO, MAX_RATIO] times the previous one is treated as a layout change. */
 export const MIN_RATIO = 0.3;
 export const MAX_RATIO = 3;
@@ -335,7 +335,9 @@ export function parseListPage(html, isoDate) {
     for (const n of pager[1].matchAll(/>(\d{1,3})<\/a>/g)) maxPage = Math.max(maxPage, Number(n[1]));
   }
   const noEvents = NO_EVENTS_MARKER !== null && html.includes(NO_EVENTS_MARKER);
-  return { items, maxPage: Math.min(maxPage, MAX_LIST_PAGES), noEvents };
+  // More pages than the cap would mean a partial file with code ok: stop instead.
+  if (maxPage > MAX_LIST_PAGES) throw new StopError("layout_changed");
+  return { items, maxPage, noEvents };
 }
 
 /** Inner text of the one span with this id; null when absent; layout_changed when repeated or holding markup. */

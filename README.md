@@ -34,7 +34,8 @@ to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid 
 `events_search` makes no network call either: it reads `CURITIBAI_DATA_DIR/events/events.json`, written by the separate
 collector `scripts/fetch-events.mjs` (see below), and returns `{data, source_url, checked_at, stale, attribution,
 license_note, note}`; its errors are `data_not_available` (no file, or `checked_at` more than 7 days ago),
-`invalid_data` (not UTF-8 JSON, the wrong shape, a link that is not the event page of its id, or over 2 MB),
+`invalid_data` (not UTF-8 JSON, the wrong shape, a link that is not the event page of its id, `checked_at` in the
+future, or over 2 MB),
 `invalid_date_range` (`from` after `to`, or more than 366 days apart), `file_not_allowed` and `invalid_argument`. `procurement_search` also returns `invalid_date_range`
 (`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
 to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
@@ -269,7 +270,7 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
   02:00 and 06:00 and at most one request every 5 seconds. Outside the window the script makes no request and exits
   with `code=window_closed`. A scheduler (cron, launchd) can run it once a night inside the window.
 - Each run first fetches robots.txt and stops (`robots_changed`) if its Disallow, Visit-time or Request-rate rules
-  differ from the ones recorded in the script; then it reads the day's list pages (Curitiba's date, at most 10) and the
+  differ from the ones recorded in the script; then it reads the day's list pages (Curitiba's date; a pager showing more than 10 stops the run) and the
   detail page of each event id it has not seen before. It waits 5 s between requests, stops at 10 minutes, gives each
   request 15 s, follows no redirect, and stops without retrying on any error status (403, 429, 5xx included). Node
   built-ins only; User-Agent `curitibai-mcp/0.10`.

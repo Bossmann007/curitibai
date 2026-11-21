@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { closeFile, FileTooLargeError, LocalFileError, openDataFile, readAllCapped } from "../localfs.js";
-import { cleanField } from "../mask.js";
+import { cleanField, EVENT_PLACE_MAX as PLACE_MAX, EVENT_SHORT_MAX as SHORT_MAX, EVENT_TITLE_MAX as TITLE_MAX } from "../mask.js";
 import { dateInCuritiba } from "../sources/detran.js";
 import { fold } from "../text.js";
 import { page, pagingInput } from "./busCommon.js";
@@ -17,10 +17,6 @@ export const EVENTS_STALE_DAYS = 3;
 export const EVENTS_MAX_AGE_DAYS = 7;
 export const DEFAULT_RANGE_DAYS = 7;
 export const MAX_RANGE_DAYS = 366;
-/** Same caps as the collector (scripts/fetch-events.mjs). */
-const TITLE_MAX = 120;
-const PLACE_MAX = 120;
-const SHORT_MAX = 60;
 
 export const EVENTS_ATTRIBUTION = "Instituto Municipal de Turismo de Curitiba (not affiliated)";
 export const EVENTS_LICENSE_NOTE = "the site publishes no licence; facts and links only";
@@ -30,7 +26,9 @@ const LINK = /^https:\/\/turismo\.curitiba\.pr\.gov\.br\/evento\/[a-z0-9-]{1,200
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((s) => new Date(`${s}T00:00:00Z`).toISOString().startsWith(s), { message: "invalid date" });
+  .refine((s) => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().startsWith(s), {
+    message: "invalid date",
+  });
 
 const EventRow = z
   .object({
