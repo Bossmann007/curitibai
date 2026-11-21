@@ -222,7 +222,8 @@ their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automate
 Each tool reads the newest date present for its own kind, on every call (about 36 KB, 4.2 MB and 8.6 MB for the
 2026-11-20 files; at most 20 MB each), and returns that date as `checked_at`; `note` warns when the file is more than
 30 days old. A row that does not match the expected shape (for example a time of "24:10" or a stop number with a
-letter) is left out and counted in `note`; a missing or null descriptive field (such as `GRUPO`, `TIPO` or `ADAPT`)
+letter), or that lacks a field the tool filters or orders by (such as `CATEGORIA_SERVICO`, `SENTIDO` or `HORA`;
+docs/sources.md lists them all), is left out and counted in `note`; a missing or null descriptive field (such as `GRUPO`, `TIPO` or `ADAPT`)
 becomes an empty string. The whole file is refused (`invalid_data`) only when it is not a non-empty list or more than
 half of its rows are invalid; then delete that file or change its name (for example add `.bad`) and the tool reads the newest
 remaining dated file. Download a new set from time to time, since lines and timetables change; older files can stay or be
