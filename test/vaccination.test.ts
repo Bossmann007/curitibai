@@ -159,14 +159,19 @@ describe("vaccination_sites_search", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("does not follow a same-host redirect outside /locaisvacinacao", async () => {
-    const calls = stubFetch(route({ status: 302, headers: { location: "/App/login.aspx" } }));
-    expect(errorOf(await call())).toEqual({ error: "source_unavailable" });
-    expect(calls).toHaveLength(1);
-  });
+  it.each(["/App/login.aspx", "/locaisvacinacaoX/login.aspx", "/locaisvacinacao%2F..%2FApp%2Flogin.aspx", "/locaisvacinacao/%5C..%5CApp"])(
+    "does not follow a same-host redirect to %s",
+    async (location) => {
+      const calls = stubFetch(route({ status: 302, headers: { location } }));
+      expect(errorOf(await call())).toEqual({ error: "source_unavailable" });
+      expect(calls).toHaveLength(1);
+    },
+  );
 
-  it("follows a same-host redirect", async () => {
-    const moved = "https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/default.aspx";
+  it.each([
+    "https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/default.aspx",
+    "https://imunizaja.curitiba.pr.gov.br/LocaisVacinacao/Default.aspx",
+  ])("follows a same-host redirect to %s", async (moved) => {
     stubFetch({ ...route({ status: 302, headers: { location: moved } }), [`GET ${moved}`]: { body: page() } });
     expect((await search()).data.total).toBe(5);
   });

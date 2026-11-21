@@ -60,7 +60,11 @@ export interface FetchOptions {
   maxBytes?: number;
   /** When true, a redirect to any other host (allowed or not) is refused before it is followed. */
   sameHostOnly?: boolean;
-  /** When set, a redirect whose target path does not start with this prefix is refused before it is followed. */
+  /**
+   * When set, a redirect is followed only when its target path is this prefix or below it ("/a" accepts "/a" and
+   * "/a/x", not "/ab"), compared ignoring case (IIS paths are case-insensitive); a path with an encoded slash or
+   * backslash is refused. Checks the path only: use it with `sameHostOnly`.
+   */
   redirectPathPrefix?: string;
 }
 
@@ -120,8 +124,11 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       if (options.sameHostOnly && next.hostname.toLowerCase() !== new URL(url).hostname.toLowerCase()) {
         throw new SourceUnavailableError("cross-host redirect");
       }
-      if (options.redirectPathPrefix !== undefined && !next.pathname.startsWith(options.redirectPathPrefix)) {
-        throw new SourceUnavailableError("redirect outside the allowed path");
+      if (options.redirectPathPrefix !== undefined) {
+        const path = next.pathname.toLowerCase();
+        const prefix = options.redirectPathPrefix.toLowerCase();
+        const inside = path === prefix || path.startsWith(`${prefix}/`);
+        if (!inside || /%2f|%5c|\\/i.test(next.pathname)) throw new SourceUnavailableError("redirect outside the allowed path");
       }
       url = next.href;
       // 301/302/303 turn a POST into a GET, as browsers do.
