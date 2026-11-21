@@ -89,7 +89,7 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 | `city156_categories`, `city156_stats` | Same reason. Download the 156 file by hand and use `local_csv_summary` (see below) |
 | Bus lines, timetables and stops **fetched by the server** | The URBS website is out of scope (it refuses non-browser clients), its WebService needs a login, and the export mirror is treated as disallowed. The bus tools read files you download instead (see below); for a GTFS route, see "Alternatives" |
 | Real-time bus positions and fares | Not in the daily exports the bus tools read |
-| `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files are only on the hosts whose robots.txt disallows automated access. `local_csv_summary` can count a file you download yourself |
+| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | No source found |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
@@ -278,10 +278,14 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
   builds from the id and slug. Descriptions, organisers, contacts, ticket and external links and images are never
   kept. Control and format characters (bidi, zero-width, tag characters) are removed, text is NFC-normalised, title
   and place are cut at 120 characters, and e-mail-, phone- and CPF/CNPJ-shaped text is replaced by `[masked]`.
+- Schedule it early in the window (for example 02:30 UTC): a first run reads every detail page and takes about 5
+  minutes, and a run cut short by 05:50 saves nothing.
 - It writes `events/events.json` and `events/status.json` (last attempt, last success, result code) atomically. When a
   page does not have the expected structure, a field fails validation, the run is cut short, or the count is 0 or
   outside 0.3x–3x of the previous file's, it keeps the old `events.json` and exits nonzero (`code=layout_changed`, or
-  the code of what stopped it). It prints only fixed status lines with counts and the exit code, never page text.
+  the code of what stopped it). It prints only fixed status lines with counts and the exit code, never page text. If the
+  site really changes size (fewer or more than 0.3x–3x the previous count), every run keeps failing this way: check the
+  site, then delete `events/events.json` to accept the new count on the next run.
 
 The parser was built from one list page and one detail page seen on 2026-11-21; multi-day date formats and an empty
 day have not been seen yet, and the robots.txt Disallow list recorded in the script may be incomplete (see
