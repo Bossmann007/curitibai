@@ -17,7 +17,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   429 is `rate_limited`. After a failure the page is not requested again for 60 s (after a 429, the `Retry-After` wait,
   at most 1 hour).
 - `imunizaja.curitiba.pr.gov.br` added to `ALLOWED_HOSTS` (robots.txt rechecked 2026-11-21: `/locaisvacinacao/` not
-  disallowed). `fetchText` gained `sameHostOnly`, which refuses a redirect to any other host; only this tool uses it.
+  disallowed). `fetchText` gained `sameHostOnly`, which refuses a redirect to any other host, and `redirectPathPrefix`, which
+  refuses one outside a path (here `/locaisvacinacao`); only this tool uses them.
 - docs/sources.md: the full `dadosabertos.c3sl.ufpr.br/curitiba/robots.txt` (Request-rate 1/5, Visit-time 0400-0645
   UTC, `Disallow: /`, `Allow: *.html`; root and `/curitibaurbs/` 404), rechecked 2026-11-21, and the sources evaluated
   and rejected on 2026-11-21 (stale UFPR folders, EstaR and air quality, the garbage collection form, datasets with

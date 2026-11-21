@@ -220,6 +220,7 @@ function load(): Promise<Cached<VaccinationPage>> {
       timeoutMs: VACCINATION_TIMEOUT_MS,
       maxBytes: VACCINATION_MAX_BYTES,
       sameHostOnly: true,
+      redirectPathPrefix: "/locaisvacinacao",
     });
     if (!/^text\/html\b/i.test(res.contentType.trim())) throw new SourceUnavailableError("not an HTML page");
     return parseVaccinationPage(res.body);

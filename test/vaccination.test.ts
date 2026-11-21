@@ -159,6 +159,12 @@ describe("vaccination_sites_search", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("does not follow a same-host redirect outside /locaisvacinacao", async () => {
+    const calls = stubFetch(route({ status: 302, headers: { location: "/App/login.aspx" } }));
+    expect(errorOf(await call())).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+  });
+
   it("follows a same-host redirect", async () => {
     const moved = "https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/default.aspx";
     stubFetch({ ...route({ status: 302, headers: { location: moved } }), [`GET ${moved}`]: { body: page() } });

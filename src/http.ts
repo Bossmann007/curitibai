@@ -60,6 +60,8 @@ export interface FetchOptions {
   maxBytes?: number;
   /** When true, a redirect to any other host (allowed or not) is refused before it is followed. */
   sameHostOnly?: boolean;
+  /** When set, a redirect whose target path does not start with this prefix is refused before it is followed. */
+  redirectPathPrefix?: string;
 }
 
 async function readCapped(res: Response, maxBytes: number): Promise<string> {
@@ -117,6 +119,9 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       const next = new URL(location, url);
       if (options.sameHostOnly && next.hostname.toLowerCase() !== new URL(url).hostname.toLowerCase()) {
         throw new SourceUnavailableError("cross-host redirect");
+      }
+      if (options.redirectPathPrefix !== undefined && !next.pathname.startsWith(options.redirectPathPrefix)) {
+        throw new SourceUnavailableError("redirect outside the allowed path");
       }
       url = next.href;
       // 301/302/303 turn a POST into a GET, as browsers do.

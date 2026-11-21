@@ -621,7 +621,8 @@ in the city's own categories. Built.
   cleaning), with a name or address span that does not match or holds a tag (also as `&lt;`), with a schedule block that does not match the known shape, or with
   a block holding anything other than those spans, is skipped and counted (`skipped_units`); no unit, or more than 5%
   skipped, is `source_unavailable`.
-- **Guards:** host in `ALLOWED_HOSTS` exactly, https only, redirects to any other host refused (`sameHostOnly`), one
+- **Guards:** host in `ALLOWED_HOSTS` exactly, https only, redirects to any other host refused (`sameHostOnly`), and same-host redirects only to paths starting with
+  `/locaisvacinacao` (`redirectPathPrefix`), one
   GET per call at most, the parsed result cached in memory for 6 hours; after a failure no new request for 60 s (after
   a 429, the `Retry-After` wait when longer, at most 1 hour), the same error is returned instead; 1 MB cap, 15 s timeout, `text/html` required,
   HTTP 429 is `rate_limited` with the `Retry-After` wait, same User-Agent as the other tools.

@@ -91,8 +91,8 @@ The Prefeitura's official app is [Curitiba App](https://apps.apple.com/br/app/cu
 Municipal de Curitiba; App Store listing, version 4.5.2 of 2026-10-06). Its listing describes it as bringing together
 the Prefeitura's apps and services, with "consultas, agendamentos, informações sobre transportes, saúde e educação, entre
 outros". Rows marked * are features the owner noted in the app itself; the listing text does not name them (it
-says "agendamentos" but not Saúde Já). The app itself was not tested here, so "better" is used only where the
-comparison can be checked against the listing.
+says "agendamentos" but not Saúde Já). The app itself was not tested here, so no row claims CuritibAI is better:
+the listing's "entre outros" means a feature missing from it may still be in the app.
 CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login is out of scope by design.
 
 | Curitiba App feature | CuritibAI | Why |
@@ -106,7 +106,7 @@ CuritibAI is a read-only assistant tool, not a replacement: anything that needs 
 | Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
 | Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
 | Cartão Transporte * | — | Needs a login; out of scope |
-| — | better | Also in CuritibAI and not named in the listing: INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search, all answerable in plain language by an assistant |
+| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search, all answerable in plain language by an assistant |
 
 ## Deferred
 
@@ -348,7 +348,7 @@ week".
 - The server contacts exactly six hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
-  any other host are refused), on the default port and without credentials. Every redirect hop is checked
+  any other host, or outside `/locaisvacinacao`, are refused), on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a URL.
   No user text ever enters an Overpass query: the query is built from the category allowlist, and name filters are
   applied to the result.
