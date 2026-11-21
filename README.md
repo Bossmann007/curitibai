@@ -5,8 +5,8 @@ A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistant
 look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
 in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, give INMET's weather forecast and
 active weather warnings for Curitiba, search the Prefeitura's service catalog (Carta de Serviços), find public places in
-OpenStreetMap, give URBS bus lines, stops and timetables from files the user downloaded, and summarise a CSV file the
-user downloaded by hand.
+OpenStreetMap, give URBS bus lines, stops and timetables and points of interest open to the public (feiras, schools, libraries,
+public health units and more) from files the user downloaded, and summarise a CSV file the user downloaded by hand.
 
 **Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, URBS, the Ministério da Saúde,
 PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
@@ -25,7 +25,7 @@ given with `topic: "units"`. `city_services_search` also makes no network call: 
 `CURITIBAI_DATA_DIR` (see below) and returns `{data, source_url, checked_at, license_note, note}`; its errors are
 `data_not_available` (no `CURITIBAI_DATA_DIR` or no `carta-servicos.json` in it), `invalid_data` (not UTF-8 JSON, the
 wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing the file's categories) for an unknown
-`category`. The three bus tools (`bus_lines_search`, `bus_line_stops`, `bus_departures`) make no network call either:
+`category`. The three bus tools (`bus_lines_search`, `bus_line_stops`, `bus_departures`) and `city_points_search` make no network call either:
 they read URBS files you keep in `CURITIBAI_DATA_DIR/urbs/` (see below) and return the same envelope; their errors are
 `data_not_available` (no folder or no file of the kind needed), `invalid_data` (not UTF-8 JSON, not a non-empty list,
 more than 5% of the rows invalid, or over 20 MB; the message says to delete that file or change its name to fall back
@@ -49,6 +49,7 @@ wait in `note`.
 | `bus_lines_search` | optional `query` (1–100 chars; every word must appear in the line name or code, accents, case and punctuation ignored), optional `category` (one of the file's categories, accents and case ignored), `limit` ≤ 50 (default 20), `offset` | URBS bus lines: `code`, `name`, `category`, `color`, `card_only` (SOMENTE_CARTAO: S true, N false, else null); `total` and `next_offset`; with no filter, also the `categories` with counts. An exact code comes first, then by name. **No network call**; `checked_at` is the file's date, and `note` warns once it is more than 30 days old | The newest `YYYY_MM_DD_linhas.json` in `CURITIBAI_DATA_DIR/urbs/`, which **you download** (see below). Not shipped, not fetched |
 | `bus_line_stops` | `line_code` (case ignored), optional `itinerary_id` (one direction), `limit` ≤ 50 (default 50), `offset` | The line's `directions` (direction name, `itinerary_id`, stop count) and its stops in itinerary order: direction, `seq`, `stop_number`, `name` (masked as a guard, see "Privacy and safety"), `lat`/`lon` (decimal; null when empty), shelter `type` and URBS's `group`, as published | The newest `YYYY_MM_DD_pontosLinha.json`, same folder |
 | `bus_departures` | `line_code` and/or `stop_number` (at least one), optional `day` (URBS DIA code), optional `from`/`to` (HH:MM, inclusive, `from` ≤ `to`), `limit` ≤ 50 (default 20), `offset` | Published departure times, ordered by day, time, line and stop: `time`, `day` (the code), `day_type` (`weekday`, `saturday`, `sunday_or_holiday` for 1, 2, 3, **inferred from the data, not stated by URBS**; null for any other code), `line_code`, `stop_number`, `stop_name` (masked as a guard), `table` (TABELA) and `adapt` (ADAPT, the accessibility equipment), as published. Not real-time | The newest `YYYY_MM_DD_tabelaLinha.json`, same folder |
+| `city_points_search` | optional `category` (one of 23 ids, e.g. `feira`, `cambio_verde`, `library`, `cmei`, `municipal_school`, `bus_terminal`, `health_unit`, `urgent_care`; [docs/sources.md](docs/sources.md) maps each to URBS's category names), optional `name` (1–100 chars; every word must appear in the name, accents, case and punctuation ignored), optional `near` (`{lat, lon}`) with `radius_m` (default 1500, at most 10000), `limit` ≤ 50 (default 20), `offset` | Points of interest **open to the public** from URBS's export: `name` and `desc` (masked as a guard), `category` (the id), `source_category` (URBS's name), `lat`/`lon` (decimal; null when empty), and `distance_m` when `near` is given (nearest first; otherwise by name); `total` and `next_offset`; with no filter, also the `categories` with counts. **Only an allowlist of categories**: private schools and crèches, hotels, churches, supermarkets and markets, shopping centres, private clubs, newsstands, hospitals, laboratories, police and security (use `places_search`), urban equipment and any unknown category are dropped before searching. `cultural_space`, `special_education` and `vocational_education` are open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and museums, private schools); `note` says so when any match is in one of them. The file has **no days or hours** (not even for feiras). **Not for emergencies** (192 SAMU, 193). No network call; `checked_at` is the file's date | The newest `YYYY_MM_DD_pois.json`, same folder |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -203,24 +204,25 @@ Call it with no arguments to see the categories, then search by words ("iptu", "
 catalog has one, to the online service (`online_url`). The server never opens those links; they are for people. Check
 the official page before acting: the summary is only the site's short teaser, and the copy is a dated snapshot.
 
-### Bus lines, stops and timetables (URBS files you download)
+### Bus lines, stops, timetables and points of interest (URBS files you download)
 
-`bus_lines_search`, `bus_line_stops` and `bus_departures` read URBS's daily exports from the dataset "Transporte
+`bus_lines_search`, `bus_line_stops`, `bus_departures` and `city_points_search` read URBS's daily exports from the dataset "Transporte
 Coletivo de Curitiba" (publisher URBS) of the Portal de Dados Abertos de Curitiba. **The server never downloads them**:
 their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automated access (see
 [docs/sources.md](docs/sources.md)). A person downloads them in a browser:
 
 1. Make a folder named `urbs` inside the folder set by `CURITIBAI_DATA_DIR` (for example `~/curitibai-data/urbs`).
-2. Open <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> in a browser and download the three files of one day:
+2. Open <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> in a browser and download the four files of one day:
    `YYYY_MM_DD_linhas.json.xz` (lines, used by `bus_lines_search`), `YYYY_MM_DD_pontosLinha.json.xz` (stops, used by
-   `bus_line_stops`) and `YYYY_MM_DD_tabelaLinha.json.xz` (timetables, used by `bus_departures`). Save them into
-   `urbs`.
+   `bus_line_stops`), `YYYY_MM_DD_tabelaLinha.json.xz` (timetables, used by `bus_departures`) and
+   `YYYY_MM_DD_pois.json.xz` (points of interest, used by `city_points_search`). Save them into `urbs`; a tool only
+   needs its own file.
 3. Decompress them there: `xz -d ~/curitibai-data/urbs/*.json.xz` (this leaves `YYYY_MM_DD_linhas.json` and so on;
    `xz` ships with macOS and most Linux distributions). Keep the names as they are: the tools look for exactly
    `YYYY_MM_DD_<kind>.json`.
 
-Each tool reads the newest date present for its own kind, on every call (about 36 KB, 4.2 MB and 8.6 MB for the
-2026-11-20 files; at most 20 MB each), and returns that date as `checked_at`; `note` warns when the file is more than
+Each tool reads the newest date present for its own kind, on every call (about 36 KB, 4.2 MB, 8.6 MB and 380 KB for
+the 2026-11-20 files; at most 20 MB each), and returns that date as `checked_at`; `note` warns when the file is more than
 30 days old. A row that does not match the expected shape (for example a time of "24:10" or a stop number with a
 letter), or that lacks a field the tool filters or orders by (such as `CATEGORIA_SERVICO`, `SENTIDO` or `HORA`;
 docs/sources.md lists them all), is left out and counted in `note` and `data.skipped_rows`; a missing or null descriptive field (such as `GRUPO`, `TIPO`
@@ -232,6 +234,13 @@ non-empty list or more than 5% of its rows (1 in 20) are invalid; then delete th
 remaining dated file. Download a new set from time to time, since lines and timetables change; older files can stay or be
 deleted. Ask, for example: "which bus lines go to Jardim Botânico?", then "stops of line 464", then "weekday
 departures of line 464 between 07:00 and 08:00".
+
+`city_points_search` returns only an allowlist of categories open to the public (23 ids; the full mapping to URBS's 45
+category names is in [docs/sources.md](docs/sources.md)). Rows in any other category, which name private businesses
+or people, are dropped when the file is read, so no `name`, `near` or count can reach them; `note` gives how many were
+dropped and names any category id with no row at all in the file (its URBS names look missing or renamed).
+`cultural_space`, `special_education` and `vocational_education` may include private or non-profit institutions. Ask, for
+example: "feiras near -25.43, -49.27", "health units near -25.50, -49.29 within 3 km", or call it with no arguments for the counts.
 
 URBS's `DIA` codes are not explained in the files. `bus_departures` returns the code as published and, next to it,
 `day_type`: 1 `weekday`, 2 `saturday`, 3 `sunday_or_holiday`. That reading is **inferred from the data** (see
@@ -290,10 +299,12 @@ day it starts or the calendar day of the time is not verified.
 - The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files it
   changes 29 of the 6,841 stop names in `pontosLinha`, all street-number ranges read as phone numbers
   ("R. Exemplo, 1469-1411" becomes "R. Exemplo, [masked]"), and none in `tabelaLinha`. Line names are not masked.
+  `city_points_search` passes names and descriptions through the same masking; on the 2026-11-20 `pois` file it
+  changes none of the 1,219 allowlisted points. It drops every row outside its category allowlist before searching.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads, close, and listing the names in `urbs/`). CSV files are returned only as aggregates;
-  `carta-servicos.json` and the URBS files are the files whose entries are returned (a public service catalog and
-  public lines, stops and timetables, with no personal data).
+  `carta-servicos.json` and the URBS files are the files whose entries are returned (a public service catalog,
+  public lines, stops and timetables, and points of interest open to the public, with no personal data).
 - Text from the sources is returned as plain data fields with HTML removed, except INMET's text, which is passed on
   unchanged (it had no HTML when checked). It is never meant as instructions.
 
@@ -343,7 +354,7 @@ day it starts or the calendar day of the time is not verified.
   Apache-2.0 licence does not cover it) was taken on 2026-11-21 and is not refreshed; after 180 days `note` says it
   may be outdated, and a code update is needed to refresh it. Results
   are cached in memory for 10 minutes; a call reads a whole category once and filters it.
-- URBS: Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page. The bus tools return the
+- URBS: Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page. The bus tools and `city_points_search` return the
   values of your local files as published (coordinates converted from comma decimals; stop names masked as above)
   and attribute them to URBS and the portal dataset, with the file name, in `license_note`. Timetables are as
   published, not real-time, and the files can be days or weeks old.

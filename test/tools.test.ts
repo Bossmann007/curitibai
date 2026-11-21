@@ -6,13 +6,14 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the thirteen read-only tools with input and output schemas", async () => {
+  it("lists exactly the fourteen read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
       "bus_departures",
       "bus_line_stops",
       "bus_lines_search",
+      "city_points_search",
       "city_services_search",
       "dataset_files",
       "detran_pr_info",
@@ -31,7 +32,7 @@ describe("tools/list", () => {
     }
     expect(listed.find((t) => t.name === "local_csv_summary")?.annotations?.openWorldHint).toBe(false);
     expect(listed.find((t) => t.name === "detran_pr_info")?.annotations?.openWorldHint).toBe(false);
-    for (const name of ["city_services_search", "bus_lines_search", "bus_line_stops", "bus_departures"]) {
+    for (const name of ["city_services_search", "bus_lines_search", "bus_line_stops", "bus_departures", "city_points_search"]) {
       expect(listed.find((t) => t.name === name)?.annotations?.openWorldHint).toBe(false);
     }
   });

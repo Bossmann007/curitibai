@@ -2,7 +2,7 @@ import { z } from "zod";
 import { closeFile, FileTooLargeError, listDataSubdir, openDataFile, readAllCapped } from "../localfs.js";
 import { datasetUrl } from "./portal.js";
 
-// URBS daily exports (lines, stops, timetables) that the user downloads by hand into CURITIBAI_DATA_DIR/urbs/.
+// URBS daily exports (lines, stops, timetables, points of interest) that the user downloads by hand into CURITIBAI_DATA_DIR/urbs/.
 // This server never fetches them: their mirror (dadosabertos.c3sl.ufpr.br) is treated as disallowed (docs/sources.md).
 
 export const URBS_SUBDIR = "urbs";
@@ -19,9 +19,9 @@ export const URBS_LICENSE =
   "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's " +
   "portal page";
 
-export type UrbsKind = "linhas" | "pontosLinha" | "tabelaLinha";
+export type UrbsKind = "linhas" | "pontosLinha" | "tabelaLinha" | "pois";
 
-const FILE_NAME = /^(\d{4})_(\d{2})_(\d{2})_(linhas|pontosLinha|tabelaLinha)\.json$/;
+const FILE_NAME = /^(\d{4})_(\d{2})_(\d{2})_(linhas|pontosLinha|tabelaLinha|pois)\.json$/;
 
 /** The newest `YYYY_MM_DD_<kind>.json` among `names` (impossible dates such as 2026_02_30 are ignored), or null. */
 export function newestUrbsFile(names: readonly string[], kind: UrbsKind): { name: string; date: string } | null {
@@ -74,6 +74,14 @@ export const TabelaRow = z.object({
   ADAPT: optional(100),
   COD: code,
 });
+/** Points of interest (city_points_search). The category decides whether a row may be returned at all. */
+export const PoiRow = z.object({
+  POI_NAME: z.string().trim().min(1).max(300),
+  POI_CATEGORY_NAME: z.string().trim().min(1).max(100),
+  POI_LAT: coordinate.nullish().transform((v) => v ?? ""),
+  POI_LON: coordinate.nullish().transform((v) => v ?? ""),
+  POI_DESC: optional(10_000), // generous: the guard cuts what is returned at OBJECT_MAX_CHARS
+});
 
 /**
  * Descriptive fields that real exports fill in at least some rows (2026-11-20: GRUPO in 2,243 of 17,496 stops, every
@@ -83,16 +91,23 @@ export const DESCRIPTIVE_FIELDS = {
   linhas: ["NOME_COR", "SOMENTE_CARTAO"],
   pontosLinha: ["NOME", "TIPO", "GRUPO"],
   tabelaLinha: ["PONTO", "TABELA", "ADAPT"],
+  pois: [], // city_points_search: POI_DESC is empty in nearly every real row, so its absence says nothing
 } as const satisfies Record<UrbsKind, readonly string[]>;
 export type DescriptiveField = (typeof DESCRIPTIVE_FIELDS)[UrbsKind][number];
 
-const ROW_SCHEMAS = { linhas: LinhaRow, pontosLinha: PontoRow, tabelaLinha: TabelaRow } as const;
-const MAX_ROWS: Record<UrbsKind, number> = { linhas: 100_000, pontosLinha: 1_000_000, tabelaLinha: 2_000_000 };
+const ROW_SCHEMAS = { linhas: LinhaRow, pontosLinha: PontoRow, tabelaLinha: TabelaRow, pois: PoiRow } as const;
+const MAX_ROWS: Record<UrbsKind, number> = {
+  linhas: 100_000,
+  pontosLinha: 1_000_000,
+  tabelaLinha: 2_000_000,
+  pois: 100_000,
+};
 
 export type Linha = z.infer<typeof LinhaRow>;
 export type Ponto = z.infer<typeof PontoRow>;
 export type Tabela = z.infer<typeof TabelaRow>;
-type Rows = { linhas: Linha[]; pontosLinha: Ponto[]; tabelaLinha: Tabela[] };
+export type Poi = z.infer<typeof PoiRow>;
+type Rows = { linhas: Linha[]; pontosLinha: Ponto[]; tabelaLinha: Tabela[]; pois: Poi[] };
 
 /** A file with more than 1 invalid row in this many (5%) is refused as a whole. */
 export const MAX_INVALID_ONE_IN = 20;
