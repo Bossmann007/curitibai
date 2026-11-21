@@ -1,0 +1,51 @@
+{
+  "_synthetic": "Invented elements in the Overpass JSON shape, for edge cases. Not OpenStreetMap data.",
+  "version": 0.6,
+  "generator": "Overpass API (synthetic)",
+  "osm3s": {
+    "timestamp_osm_base": "2030-01-01T00:00:00Z",
+    "timestamp_areas_base": "2030-01-01T00:00:00Z",
+    "copyright": "Synthetic test data."
+  },
+  "elements": [
+    { "type": "area", "id": 3600000001 },
+    {
+      "type": "node",
+      "id": 9000000001,
+      "lat": -25.4,
+      "lon": -49.2,
+      "tags": {
+        "amenity": "library",
+        "name": "Biblioteca Ficticia Contato fulano@exemplo.com",
+        "addr:street": "Rua Ficticia",
+        "addr:housenumber": "100",
+        "addr:suburb": "Bairro Ficticio",
+        "addr:postcode": "80000-000",
+        "addr:city": "Curitiba",
+        "opening_hours": "Mo-Fr 0800-1800",
+        "website": "https://usuario:senha@exemplo.org/",
+        "phone": "+55 41 99999-8888",
+        "operator": "Operador Ficticio"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9000000002,
+      "center": { "lat": -25.41, "lon": -49.21 },
+      "tags": { "amenity": "library", "name": "Biblioteca Pública Fictícia", "website": "javascript:alert(1)" }
+    },
+    {
+      "type": "relation",
+      "id": 9000000003,
+      "center": { "lat": -25.42, "lon": -49.22 },
+      "tags": { "amenity": "library", "contact:website": "http://biblioteca.exemplo.org/horario" }
+    },
+    {
+      "type": "node",
+      "id": 9000000004,
+      "lat": -25.43,
+      "lon": -49.23,
+      "tags": { "shop": "books", "name": "Livraria Ficticia (not a library)" }
+    }
+  ]
+}

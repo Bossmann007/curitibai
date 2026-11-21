@@ -3,7 +3,8 @@
 Checked live on **2026-11-19** from a Brazilian IP with the server's own client: Node.js `fetch`,
 User-Agent `curitibai-mcp/0.1`, redirects followed by hand. The CNES API (v0.2) was checked the same day with curl and
 User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the same day with curl and User-Agent
-`curitibai-mcp/0.3`. The INMET API (v0.5) was checked the same day with curl and User-Agent `curitibai-mcp/0.5`.
+`curitibai-mcp/0.3`. The INMET API (v0.5) was checked the same day with curl and User-Agent `curitibai-mcp/0.5`. The
+Overpass API instances (v0.7) were checked on 2026-11-20 (21 November UTC) with curl and User-Agent `curitibai-mcp/0.7`.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -16,6 +17,11 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `apidadosabertos.saude.gov.br` (Ministry of Health open-data API) | 404 (HTML "404 Not Found", checked 2026-11-19) | No restriction. **Contacted** (v0.2, `health_units_search`). |
 | `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309). **Contacted** (v0.3, `procurement_search`, `/api/consulta` only) |
 | `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
+| `overpass.private.coffee` (Overpass API, OpenStreetMap; formerly `overpass.kumi.systems`) | 404, nginx HTML "404 Not Found" (checked 2026-11-21 02:43 UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). **Contacted** (v0.7, `places_search` and `bus_lines`, `POST /api/interpreter` only) |
+| `overpass-api.de` (main Overpass instance, FOSSGIS) | 200 (checked 2026-11-21 02:42 UTC): `User-agent: *`, `Disallow: /api/`, `Disallow: /munin/`, `Disallow: /achavi/`. `z.` and `lz4.overpass-api.de` serve the same file | **Disallowed. Never contacted by the server.** One `/api/status` request was sent in the same curl run as the robots.txt check, before the file was read; it timed out with no bytes |
+| `overpass.kumi.systems` | 404 (checked 2026-11-21) | Same service as `overpass.private.coffee` (same terms page); not used |
+| `maps.mail.ru` (VK Maps Overpass) | 301 to `https://maps.vk.com/`, which serves an HTML page, not a robots file (checked 2026-11-21) | Rules unreadable: **not used** |
+| `overpass.openstreetmap.fr` | 403, "This service is only available to white-listed usages" | **Not used** |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
 | `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. For the owner's local copy used by `city_services_search` (v0.6), the `/servicos/` listing pages were read on 2026-11-19/20 with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds). That copy is **not** in this repository |
@@ -186,6 +192,36 @@ Prior art (2026-11-19, `gh search repos "inmet mcp"`: no results; `gh search rep
 clients and scrapers for INMET station data, a Home Assistant alerts integration and a Telegram bot; no MCP server.
 Built: about 300 lines inside this server, reusing its HTTP client, cache and envelope.
 
+### `places_search` and `bus_lines`: OpenStreetMap via the Overpass API
+
+Checked on **2026-11-21** (02:42–03:18 UTC) with curl, User-Agent `curitibai-mcp/0.7`. Policies were read the same
+day. **The live sample is pending**: the chosen instance did not answer any Overpass request during the check (below),
+so the queries, sizes and tags (`IBGE:GEOCODIGO` on the boundary, `out center` coordinates, route member roles) are
+from the Overpass and OSM documentation, not from a live response.
+
+| Field | Value |
+|---|---|
+| Endpoint | `POST https://overpass.private.coffee/api/interpreter`, form field `data` = the Overpass QL query. Run by Private.coffee (the wiki lists it as "Previously known as overpass.kumi.systems"). POST because its terms ask for it |
+| Why not `overpass-api.de` | Its robots.txt disallows `/api/` (table above), so the repository rule excludes it. Its own manual also lists "Setting up an app for more than just OSM mappers and relying on the public instances as backend" as problematic use (<https://dev.overpass-api.de/overpass-doc/en/preface/commons.html>), with guide limits of about 10,000 requests and 1 GB per day |
+| Usage policy | Private.coffee terms (<https://overpass.private.coffee/>, "last updated 10 April 2026", read 2026-11-20): "Enjoy free and unlimited access to all features without any rate limits.", "Use our endpoints in any project requiring access to OpenStreetMap data, including commercial use.", best practices "Use a meaningful User-Agent header." and "Prefer POST requests over GET requests where possible.", and "Notify us in advance of any large operations" (over ten requests per second or ten at a time). "The service may be terminated at our sole discretion at any time". OSM wiki (<https://wiki.openstreetmap.org/wiki/Overpass_API>, public instances table): "Feel free to use our service in any project, there is no rate limit in place." |
+| Rate limits | None published by Private.coffee. The server sends one request per tool call and caches the parsed result for 10 minutes; HTTP 429 (Overpass's documented rate-limit answer) is `rate_limited` with the `Retry-After` wait, no retry |
+| Licence and attribution | ODbL 1.0. OSMF attribution guidelines (<https://osmfoundation.org/wiki/Licence/Attribution_Guidelines>): "Attribution must be to “OpenStreetMap”.", "Attribution must also make it clear that the data is available under the Open Database License." and "The historical forms of attribution “© OpenStreetMap contributors” or “© OpenStreetMap” are acceptable." <https://www.openstreetmap.org/copyright>: "you may link to this copyright page". Every result carries `attribution: "© OpenStreetMap contributors, ODbL"` and a `license_note` with that text, the copyright URL, the Overpass URL, the fetch time and the OSM data time |
+| Freshness | `osm3s.timestamp_osm_base` of each response is returned as `osm_data_as_of` and quoted in `license_note` |
+| Area | Every query starts with `area["boundary"="administrative"]["admin_level"="8"]["IBGE:GEOCODIGO"="4106902"]->.cwb;.cwb out ids;` (Curitiba's municipal boundary by its IBGE code) and filters with `(area.cwb)`. The area id is printed first: an answer without it (area not built or tag changed) is `source_unavailable`, never "nothing found" |
+| Queries | `places_search`: `nwr["<key>"="<value>"](area.cwb);out center;` for one allowlisted tag (`out center` gives node coordinates and way/relation centres). `bus_lines` list: `rel["type"="route"]["route"="bus"](area.cwb);out tags;`. `bus_lines` with `route_id`: `rel(<id>)["type"="route"]["route"="bus"](area.cwb)->.r;.r out body;(node(r.r);way(r.r:"platform");way(r.r:"platform_entry_only");way(r.r:"platform_exit_only"););out center;`; `route_id` cannot be combined with the list filters (`invalid_argument`). All carry `[out:json][timeout:25]`. No user text enters a query: the category comes from a fixed map and `route_id` is an integer; `name` and `ref` filter the parsed result |
+| Category allowlist | park (`leisure=park`), library, school, hospital, police, fire_station, community_centre, townhall, bus_station, marketplace (`amenity=<same>`). Left out on purpose: shops, offices, doctors, dentists, clinics, pharmacies and any category whose names can be a person's name |
+| Fields returned | Places: OSM type/id, `name`, category, `addr:street`, `addr:housenumber`, `addr:suburb`, `addr:postcode`, `addr:city`, lat/lon (node position or way/relation centre), `opening_hours`, `website` or `contact:website` (http(s) without credentials only), OSM URL. Routes: id, `ref`, `name`, `from`, `to`, `operator`, `network`, OSM URL; stops: name, lat/lon, OSM type/id in member order. Free text (names, street, suburb, city, route fields) passes through the PNCP masking as a guard; `opening_hours`, house number and postcode are structured and returned as tagged (the phone mask would turn "Mo-Fr 0800-1700" into "[masked]"). Phone, e-mail and every other tag are dropped |
+| Stops | Members with role `stop`, `platform` (and `_entry_only`/`_exit_only`), plus untagged-role nodes tagged `highway=bus_stop` or `public_transport=platform/stop_position` (older routes). A member with the same name as the stop just kept is merged into it (the usual stop position + platform pair). At most 300 stops |
+| Guards | 25 s server timeout in the query, 30 s client timeout, 3 MB response cap (`source_unavailable` naming the cap). A response with a `remark` (Overpass stopped early: timeout or memory) is `source_unavailable`, never a short list |
+| Live sample | **Pending.** Requests to `overpass.private.coffee` on 2026-11-21: `rel["boundary"="administrative"]["admin_level"="8"]["name"="Curitiba"];out tags;` without a bbox (02:44 UTC) answered 504 after 33 s with "The server is probably too busy to handle your request"; the same with bbox `-25.65,-49.40,-25.34,-49.18` and an `is_in(-25.4284,-49.2733)` area query each timed out (60 s and 45 s, no bytes); `/api/status` timed out (20 s) 12 times between 02:45 and 03:18 UTC, while `/robots.txt` on the same host answered in under 1 s. Before relying on the tools, run one call of each and record here: the `IBGE:GEOCODIGO` match, element counts and response sizes per category, the bus route count, and one route's stop list. Until then the size cap (3 MB) and the stop cap (300) are not measured |
+
+Prior art (2026-11-20, `gh search repos "overpass mcp"` and `"openstreetmap mcp"`): generic OSM/Overpass MCP servers
+(`jagan-shanmugam/open-streetmap-mcp` MIT, `NERVsystems/osmmcp` MIT, `cyanheads/openstreetmap-mcp-server` Apache-2.0,
+several small ones). Their descriptions offer general OSM or free Overpass queries for any place; they were not run
+and their code was not read. Adopting one would add a second server without the fixed public-place allowlist, PII
+guard and envelope this project needs. Built: two tools inside this server, reusing its
+HTTP client, cache, masking and error shapes.
+
 ### `detran_pr_info`: Detran-PR licensing calendar and units (bundled data)
 
 No network. Every value was read by hand on **2026-11-19** with curl (User-Agent `curitibai-dev-check`) and copied
@@ -290,7 +326,7 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 |---|---|
 | `open_dataset_preview` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB; needs permission or an official API. The 20-row table embedded in portal detail pages also holds individual records (156 tickets with street names; the payroll dataset names people) |
 | `city156_categories`, `city156_stats` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB. Measured: 136,902,324 bytes (2026-11-18 file), ~1 MB/s from the mirror (~140 s) and ~0.4 MB/s from `mid` (>300 s). The 156 API (`api-156.curitiba.pr.gov.br`) is not public. Owner decision (2026-11-19): no permission request will be sent; a person downloads the file and uses `local_csv_summary` |
-| Bus lines, timetables, stops | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. Alternative: see below |
+| Bus timetables, real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. OpenStreetMap has routes and stops only (`bus_lines`, v0.7). Alternative: see below |
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files exist only on the two disallowed hosts (`local_csv_summary` can count a hand-downloaded file). Health units moved to the CNES API in v0.2 |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
