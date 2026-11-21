@@ -1,0 +1,1151 @@
+{
+ "version": 0.6,
+ "generator": "Overpass API 0.7.62.11 87bfad18",
+ "osm3s": {
+  "timestamp_osm_base": "2026-11-19T21:22:20Z",
+  "timestamp_areas_base": "2026-11-19T21:22:20Z",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+ },
+ "elements": [
+  {
+   "type": "area",
+   "id": 3600297514
+  },
+  {
+   "type": "node",
+   "id": 1736634406,
+   "lat": -25.480788,
+   "lon": -49.3213113,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Castro Alves"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2591039475,
+   "lat": -25.4460641,
+   "lon": -49.2875976,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca Hideo Handa"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2678621689,
+   "lat": -25.4545537,
+   "lon": -49.2292888,
+   "tags": {
+    "addr:housenumber": "223",
+    "addr:street": "Rua Rodolpho Senff",
+    "amenity": "library",
+    "name": "Casa da Leitura"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3617303865,
+   "lat": -25.3906008,
+   "lon": -49.2260363,
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "2620",
+    "addr:street": "Rua Nicarágua",
+    "addr:suburb": "Bacacheri",
+    "amenity": "library",
+    "name": "Biblioteca Alexandria",
+    "opening_hours": "Mo-Fr 08:00-12:00,13:00-17:30; Sa 14:30-17:00"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3907824237,
+   "lat": -25.4510169,
+   "lon": -49.2322543,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Ciência e Tecnologia",
+    "opening_hours": "Mo-Fr 07:15-21:15",
+    "operator": "UFPR",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/ct/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4087367585,
+   "lat": -25.5685455,
+   "lon": -49.2847566,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber São Pedro São Paulo"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4094283330,
+   "lat": -25.4571325,
+   "lon": -49.349865,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4123639018,
+   "lat": -25.3981061,
+   "lon": -49.3308951,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4204449002,
+   "lat": -25.4252832,
+   "lon": -49.3009706,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4312537357,
+   "lat": -25.4142236,
+   "lon": -49.2062592,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4781513657,
+   "lat": -25.4259894,
+   "lon": -49.2619743,
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "370",
+    "addr:street": "Rua General Carneiro",
+    "addr:suburb": "Centro",
+    "amenity": "library",
+    "name": "Biblioteca Central - UFPR",
+    "operator": "UFPR"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4801565040,
+   "lat": -25.4233789,
+   "lon": -49.2683751,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Gibran Khalil Gibran",
+    "opening_hours": "Mo-Fr 09:00-21:00; Sa 09:00-13:00"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5693827133,
+   "lat": -25.4901408,
+   "lon": -49.3094562,
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Clarice Lispector",
+    "operator": "PMC - SME"
+   }
+  },
+  {
+   "type": "node",
+   "id": 7576562542,
+   "lat": -25.4394798,
+   "lon": -49.2691346,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca Central de Curitiba UTFPR"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8822857899,
+   "lat": -25.5117328,
+   "lon": -49.323055,
+   "tags": {
+    "amenity": "library",
+    "name": "Casa de Leitura",
+    "operator": "FCC - PMC"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10208156394,
+   "lat": -25.5014444,
+   "lon": -49.2380826,
+   "tags": {
+    "addr:housenumber": "52",
+    "addr:street": "Rua da Cidadania do Carmo",
+    "amenity": "library",
+    "name": "Casa da Leitura Wilson Martins",
+    "website": "http://www.fundacaoculturaldecuritiba.com.br/espacos-culturais/casa-da-leitura-wilson-martins/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10822856681,
+   "lat": -25.4448077,
+   "lon": -49.2384239,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Ciências Sociais Aplicadas",
+    "opening_hours": "Mo-Fr 08:00-21:00",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/sa/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10822856682,
+   "lat": -25.4449003,
+   "lon": -49.2398278,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Ciências da Saúde",
+    "opening_hours": "Mo-Fr 07:00-19:00",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/sb/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10822856687,
+   "lat": -25.4482726,
+   "lon": -49.2378713,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Ciências Florestais e da Madeira",
+    "opening_hours": "Mo-Fr 08:00-20:00",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/cf/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10866031598,
+   "lat": -25.43723,
+   "lon": -49.264066,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca do Campus Rebouças",
+    "opening_hours": "Mo-Fr 08:00-20:00",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/rb/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10866031599,
+   "lat": -25.4265086,
+   "lon": -49.2617073,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Ciências Humanas",
+    "opening_hours": "Mo-Fr 07:00-21:00",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/ch/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10942180431,
+   "lat": -25.456948,
+   "lon": -49.2361615,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca de Educação Profissional e Tecnológica",
+    "opening_hours": "Mo-Fr 08:00-21:30",
+    "operator": "UFPR",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/ep/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 11992180280,
+   "lat": -25.4299217,
+   "lon": -49.2807009,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca Sesc"
+   }
+  },
+  {
+   "type": "node",
+   "id": 12248640647,
+   "lat": -25.4766377,
+   "lon": -49.2930658,
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "3430",
+    "addr:postcode": "80610-260",
+    "addr:street": "Avenida República Argentina",
+    "addr:suburb": "Portão",
+    "amenity": "library",
+    "name": "Casa da Leitura Wilson Bueno",
+    "opening_hours": "Tu-Su 10:00-19:00",
+    "operator": "Prefeitura Municipal de Curitiba",
+    "website": "http://www.fundacaoculturaldecuritiba.com.br/espacos-culturais/casa-da-leitura-wilson-bueno-r-portao-cultural/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 12529196366,
+   "lat": -25.4304606,
+   "lon": -49.277493,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca da FEP"
+   }
+  },
+  {
+   "type": "node",
+   "id": 12649734687,
+   "lat": -25.4140748,
+   "lon": -49.251718,
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca do Ippuc"
+   }
+  },
+  {
+   "type": "way",
+   "id": 69966142,
+   "center": {
+    "lat": -25.4519077,
+    "lon": -49.2520207
+   },
+   "nodes": [
+    836044263,
+    836044196,
+    4147101269,
+    836044205,
+    836044131,
+    4147101288,
+    4147101286,
+    836044092,
+    4147101276,
+    4147101268,
+    836044270,
+    836044263
+   ],
+   "tags": {
+    "addr:housenumber": "1278",
+    "addr:street": "Rua Imaculada Conceição",
+    "amenity": "library",
+    "name": "Biblioteca Central"
+   }
+  },
+  {
+   "type": "way",
+   "id": 71654411,
+   "center": {
+    "lat": -25.4309909,
+    "lon": -49.2735081
+   },
+   "nodes": [
+    852056371,
+    852056368,
+    852056374,
+    3610730124,
+    852056358,
+    12541908157,
+    852056371
+   ],
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "133",
+    "addr:postcode": "80020-901",
+    "addr:street": "Rua Cândido Lopes",
+    "addr:suburb": "Centro",
+    "amenity": "library",
+    "name": "Biblioteca Pública do Paraná",
+    "opening_hours": "Mo-Fr 08:30-20:00; Sa 08:30-13:00",
+    "website": "https://www.bpp.pr.gov.br/"
+   }
+  },
+  {
+   "type": "way",
+   "id": 164413416,
+   "center": {
+    "lat": -25.4480676,
+    "lon": -49.3582759
+   },
+   "nodes": [
+    1760489413,
+    5029147492,
+    1760489441,
+    1760489369,
+    1760489327,
+    1760489413
+   ],
+   "tags": {
+    "amenity": "library"
+   }
+  },
+  {
+   "type": "way",
+   "id": 252987654,
+   "center": {
+    "lat": -25.4050472,
+    "lon": -49.286816
+   },
+   "nodes": [
+    2589839956,
+    2589839958,
+    2589839961,
+    2589839963,
+    2589839960,
+    2589839959,
+    5939303408,
+    9032023040,
+    2589839956
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Casa da Bruxa",
+    "opening_hours": "09:00-17:00"
+   }
+  },
+  {
+   "type": "way",
+   "id": 417919879,
+   "center": {
+    "lat": -25.4472116,
+    "lon": -49.2320694
+   },
+   "nodes": [
+    4183904035,
+    4183904041,
+    4183904063,
+    11141149677,
+    11141580242,
+    11141149671,
+    4183904035
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca do Setor de Ciências Biológicas",
+    "opening_hours": "Mo-Fr 07:30-19:30",
+    "operator": "UFPR",
+    "website": "https://bibliotecas.ufpr.br/sobre/bibliotecas/bl/"
+   }
+  },
+  {
+   "type": "way",
+   "id": 477835735,
+   "center": {
+    "lat": -25.4625505,
+    "lon": -49.3051289
+   },
+   "nodes": [
+    4573496739,
+    4573496740,
+    4573496741,
+    4573496742,
+    4573496743,
+    4573496744,
+    4573496736,
+    4573496737,
+    4573496745,
+    4573496746,
+    4573496753,
+    4573496761,
+    4573496759,
+    4573496760,
+    4573496755,
+    4573496758,
+    4573496756,
+    4573496757,
+    4573496754,
+    4573496751,
+    4573496752,
+    4573496734,
+    4573496735,
+    4573496738,
+    4573496739
+   ],
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "1455",
+    "addr:street": "Rua Curupaitis",
+    "addr:suburb": "Santa Quitéria",
+    "amenity": "library",
+    "name": "Farol do Saber Tom Jobim",
+    "operator": "PMC"
+   }
+  },
+  {
+   "type": "way",
+   "id": 544525133,
+   "center": {
+    "lat": -25.4109297,
+    "lon": -49.2922674
+   },
+   "nodes": [
+    5263631464,
+    5263631465,
+    5263631466,
+    5263631467,
+    5263631468,
+    5263631469,
+    5263631470,
+    5263631471,
+    5263631472,
+    5263631473,
+    5263631474,
+    5263631475,
+    5263631476,
+    5263631477,
+    5263631478,
+    5263631464
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Machado de Assis"
+   }
+  },
+  {
+   "type": "way",
+   "id": 583825034,
+   "center": {
+    "lat": -25.4318548,
+    "lon": -49.2735469
+   },
+   "nodes": [
+    5581534189,
+    5581534190,
+    5581534191,
+    5581534192,
+    5581534189
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Bondinho da Leitura"
+   }
+  },
+  {
+   "type": "way",
+   "id": 659813178,
+   "center": {
+    "lat": -25.53484,
+    "lon": -49.2683453
+   },
+   "nodes": [
+    6177521962,
+    6177521961,
+    6177521960,
+    6177521959,
+    6177521958,
+    6177521957,
+    6177521956,
+    6177521955,
+    6177521964,
+    6177521965,
+    6177521966,
+    6177521967,
+    6177521968,
+    6177521969,
+    6177521970,
+    6177521971,
+    6177521962
+   ],
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "3560",
+    "addr:street": "Rua Izaac Ferreira da Cruz",
+    "addr:suburb": "Sítio Cercado",
+    "amenity": "library",
+    "name": "Farol do Saber Senador Accioly Filho",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-senador-accioly-filho/18506"
+   }
+  },
+  {
+   "type": "way",
+   "id": 682131709,
+   "center": {
+    "lat": -25.5400161,
+    "lon": -49.2515949
+   },
+   "nodes": [
+    6387948775,
+    6387948776,
+    10184489372,
+    10184489371,
+    10184489373,
+    6387948777,
+    6387948778,
+    10184489368,
+    10184489369,
+    10184489366,
+    10184489370,
+    10184489367,
+    6387948775
+   ],
+   "tags": {
+    "addr:city": "curitiba",
+    "addr:housenumber": "45",
+    "addr:street": "Rua Milton Miramir Visinoni",
+    "addr:suburb": "Sítio Cercado",
+    "amenity": "library",
+    "name": "Farol do Saber Cecília Meireles",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-cecilia-meireles/18504"
+   }
+  },
+  {
+   "type": "way",
+   "id": 694064972,
+   "center": {
+    "lat": -25.3853387,
+    "lon": -49.2793598
+   },
+   "nodes": [
+    6516361227,
+    6516361228,
+    6516361229,
+    6516361230,
+    6516361227
+   ],
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "30",
+    "addr:postcode": "82130-290",
+    "addr:street": "Rua Eugênio Flor",
+    "addr:suburb": "Abranches",
+    "amenity": "library"
+   }
+  },
+  {
+   "type": "way",
+   "id": 736250235,
+   "center": {
+    "lat": -25.424473,
+    "lon": -49.3176483
+   },
+   "nodes": [
+    6892875713,
+    6892875714,
+    6892875715,
+    6892875716,
+    6892875713
+   ],
+   "tags": {
+    "amenity": "library"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1058010921,
+   "center": {
+    "lat": -25.4510285,
+    "lon": -49.2471499
+   },
+   "nodes": [
+    9721620960,
+    9721620961,
+    9721620962,
+    9721620963,
+    9721620964,
+    9721620965,
+    9721620966,
+    9721620967,
+    9721620968,
+    9721620960
+   ],
+   "tags": {
+    "amenity": "library"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1106659205,
+   "center": {
+    "lat": -25.4898926,
+    "lon": -49.2572878
+   },
+   "nodes": [
+    10126703984,
+    10126703985,
+    10126703986,
+    10126703987,
+    10126703979,
+    10126703981,
+    10126703982,
+    10126703989,
+    10126703988,
+    10126703990,
+    10126703983,
+    10126703980,
+    10126703984
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Fernando Pessoa",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-fernando-pessoa/151"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1106659206,
+   "center": {
+    "lat": -25.5019849,
+    "lon": -49.2278005
+   },
+   "nodes": [
+    10126703997,
+    10126703998,
+    10126704002,
+    10126704000,
+    10126704001,
+    10126703999,
+    10126703992,
+    10126703994,
+    10126703995,
+    10126703996,
+    10126703993,
+    10126703997
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Mário Quintana",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-mario-quintana/1144"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1107104915,
+   "center": {
+    "lat": -25.5295872,
+    "lon": -49.2458661
+   },
+   "nodes": [
+    10130400300,
+    10130400301,
+    10130400302,
+    10130400303,
+    10130400304,
+    10130400305,
+    10130400306,
+    10130400307,
+    10130400308,
+    10130400309,
+    10130400300
+   ],
+   "tags": {
+    "addr:housenumber": "94",
+    "addr:street": "Rua Ulisses Geraldo Moro",
+    "amenity": "library",
+    "name": "Farol do Saber Luís de Camões",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-luis-de-camoes/474"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1112517796,
+   "center": {
+    "lat": -25.5444934,
+    "lon": -49.2830877
+   },
+   "nodes": [
+    10178468583,
+    10178468584,
+    10178468585,
+    10178468586,
+    10178468587,
+    10178468588,
+    10178468589,
+    10178468590,
+    10178468591,
+    10178468592,
+    10178468593,
+    10178468594,
+    10178468595,
+    10178468596,
+    10178468597,
+    10178468598,
+    10178468583
+   ],
+   "tags": {
+    "addr:city": "Curitiba",
+    "addr:housenumber": "1090",
+    "addr:street": "Rua Celeste Tortato Gabardo",
+    "addr:suburb": "Sítio Cercado",
+    "amenity": "library",
+    "name": "Farol do Saber Rubem Braga",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-rubem-braga/18505"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1118471857,
+   "center": {
+    "lat": -25.436233,
+    "lon": -49.2813534
+   },
+   "nodes": [
+    10229416569,
+    10229416570,
+    10229416571,
+    10229416565,
+    10229416569
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca Especializada em Educação",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/biblioteca-especializada-em-educacao/18468"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1118477829,
+   "center": {
+    "lat": -25.5250621,
+    "lon": -49.2571262
+   },
+   "nodes": [
+    10229481365,
+    10229481366,
+    10229481367,
+    10229481368,
+    10229481369,
+    10229481370,
+    10229481371,
+    10229481372,
+    10229481373,
+    10229481374,
+    10229481375,
+    10229481365
+   ],
+   "tags": {
+    "addr:housenumber": "241",
+    "addr:street": "Rua Ayrton Pizzato Gusi",
+    "amenity": "library",
+    "name": "Farol do Saber Albert Einstein",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-albert-einstein/18513"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1120225230,
+   "center": {
+    "lat": -25.4820002,
+    "lon": -49.2136317
+   },
+   "nodes": [
+    10245718805,
+    10245718806,
+    10245718807,
+    10245718808,
+    10245723909,
+    10245723910,
+    10245723911,
+    10245723912,
+    10245723913,
+    10245723914,
+    10245723915,
+    10245718805
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber César Pernetta",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-cesar-pernetta/396"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1120375899,
+   "center": {
+    "lat": -25.478891,
+    "lon": -49.2025168
+   },
+   "nodes": [
+    10247158770,
+    10247158771,
+    10247158772,
+    10247158773,
+    10247158774,
+    10247158775,
+    10247158776,
+    10247158777,
+    10247158778,
+    10247158779,
+    10247158780,
+    10247158770
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Herbert José de Souza",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-herbert-jose-de-souza/560"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1125842441,
+   "center": {
+    "lat": -25.4699026,
+    "lon": -49.2030182
+   },
+   "nodes": [
+    10295102566,
+    10295102567,
+    10295102568,
+    10295102569,
+    10295102570,
+    10295102571,
+    10295102572,
+    10295102573,
+    10295102574,
+    10295102575,
+    10295102576,
+    10295102566
+   ],
+   "tags": {
+    "addr:housenumber": "651",
+    "addr:street": "Avenida Jornalista Aderbal Gaertner Stresser",
+    "amenity": "library",
+    "name": "Farol do Saber Emiliano Perneta",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-emiliano-perneta/18518"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1125849888,
+   "center": {
+    "lat": -25.462079,
+    "lon": -49.2138973
+   },
+   "nodes": [
+    10295147148,
+    10295147149,
+    10295147150,
+    10295147151,
+    10295147152,
+    10295147153,
+    10295147154,
+    10295147155,
+    10295147156,
+    10295147157,
+    10295147158,
+    10295147148
+   ],
+   "tags": {
+    "addr:housenumber": "780",
+    "addr:street": "Rua Paulo Frontin",
+    "amenity": "library",
+    "name": "Farol do Saber Samuel Chameki",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-samuel-chameki/18521"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1126575845,
+   "center": {
+    "lat": -25.559499,
+    "lon": -49.331872
+   },
+   "nodes": [
+    10301401057,
+    10301401058,
+    10301401059,
+    10301401060,
+    10301401061,
+    10301401062,
+    10301401063,
+    10301401064,
+    10301401065,
+    10301401066,
+    10301401067,
+    10301401057
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Dona Pompília",
+    "website": "https://www.curitiba.pr.gov.br/locais/farol-do-saber-e-inovacao-dona-pompilia/290"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1132568855,
+   "center": {
+    "lat": -25.5159729,
+    "lon": -49.2753436
+   },
+   "nodes": [
+    10560246704,
+    12229698313,
+    10560246705,
+    12229698320,
+    10560246706,
+    10560246707,
+    10560246708,
+    10560348409,
+    10560348410,
+    10560348411,
+    10560348412,
+    10560348413,
+    10560348414,
+    10560246704
+   ],
+   "tags": {
+    "addr:housenumber": "1206",
+    "addr:street": "Rua Primeiro de Maio",
+    "amenity": "library",
+    "name": "Farol do Saber Aristides Vinholes",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-aristides-vinholes/18456"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1132581833,
+   "center": {
+    "lat": -25.5237067,
+    "lon": -49.2973641
+   },
+   "nodes": [
+    10560449604,
+    10560451624,
+    10560449605,
+    10560449601,
+    10560449606,
+    10560449602,
+    10560449607,
+    10560449608,
+    10560451609,
+    10560451610,
+    10560451611,
+    10560451612,
+    10560449604
+   ],
+   "tags": {
+    "addr:housenumber": "486",
+    "addr:street": "Rua Valentin Nichele",
+    "addr:suburb": "Pinheirinho",
+    "amenity": "library",
+    "name": "Farol do Saber José de Alencar",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-jose-de-alencar/18527"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1256582628,
+   "center": {
+    "lat": -25.4289116,
+    "lon": -49.2752495
+   },
+   "nodes": [
+    11681749228,
+    11681749229,
+    11681749230,
+    11681749231,
+    11681749232,
+    11681749228
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Biblioteca Mun. Darcy Ribeiro",
+    "operator": "PMC"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1486725995,
+   "center": {
+    "lat": -25.5053882,
+    "lon": -49.3236937
+   },
+   "nodes": [
+    13628775388,
+    13628775387,
+    13628775374,
+    13628775375,
+    13628775376,
+    13628775377,
+    13628775378,
+    13628775379,
+    13628775380,
+    13628775381,
+    13628775382,
+    13628775383,
+    13628775384,
+    13628775373,
+    13628775386,
+    13628775385,
+    13628775388
+   ],
+   "tags": {
+    "addr:housenumber": "540",
+    "addr:street": "Rua Orlando Luís Lamarca",
+    "amenity": "library",
+    "name": "Farol do Saber"
+   }
+  },
+  {
+   "type": "way",
+   "id": 1527206244,
+   "center": {
+    "lat": -25.3883114,
+    "lon": -49.284567
+   },
+   "nodes": [
+    13917426244,
+    13917426245,
+    13917426246,
+    13917426247,
+    13917426248,
+    13917426249,
+    13917426250,
+    13917426251,
+    13917426252,
+    13917426253,
+    13917426254,
+    13917426255,
+    13917426256,
+    13917426257,
+    13917426258,
+    13917426259,
+    13917426260,
+    13917426261,
+    13917426262,
+    13917426263,
+    13917426244
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber e Inovação Manuel Bandeira",
+    "operator": "Secretaria Municipal da Educação de Curitiba"
+   }
+  },
+  {
+   "type": "relation",
+   "id": 15323181,
+   "center": {
+    "lat": -25.5354404,
+    "lon": -49.2967362
+   },
+   "members": [
+    {
+     "type": "way",
+     "ref": 739177048,
+     "role": "outer"
+    },
+    {
+     "type": "way",
+     "ref": 739177049,
+     "role": "outer"
+    }
+   ],
+   "tags": {
+    "amenity": "library",
+    "name": "Farol do Saber Tasso da Silveira",
+    "type": "multipolygon",
+    "website": "https://educacao.curitiba.pr.gov.br/unidade/farol-do-saber-e-inovacao-tasso-da-silveira/18528"
+   }
+  }
+ ],
+ "_trimmed": "Real Overpass answer (ovp.dresel.systems/api-sa, 2026-11-21). Only returned tags plus amenity, operator and type were kept; relation members kept. OpenStreetMap data, © OpenStreetMap contributors, ODbL."
+}

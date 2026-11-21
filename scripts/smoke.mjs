@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { fileURLToPath } from "node:url";
 
-const expected = ["city_services_search", "dataset_files", "detran_pr_info", "health_units_search", "local_csv_summary", "open_datasets_search", "procurement_search", "weather_alerts", "weather_forecast"];
+const expected = ["city_services_search", "dataset_files", "detran_pr_info", "health_units_search", "local_csv_summary", "open_datasets_search", "places_search", "procurement_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
 const dataDir = fileURLToPath(new URL("../test/fixtures/carta_servicos_synthetic/", import.meta.url));
 const transport = new StdioClientTransport({
