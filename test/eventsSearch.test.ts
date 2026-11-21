@@ -114,6 +114,7 @@ describe("buildEvents validation", () => {
     ["link id differs from id", fileWith([ev(1, "2026-11-21", "2026-11-21", { link: LINK("a", 2) })])],
     ["http link", fileWith([ev(1, "2026-11-21", "2026-11-21", { link: "http://turismo.curitiba.pr.gov.br/evento/a/1" })])],
     ["bad date", fileWith([ev(1, "2026-02-30", "2026-03-01")])],
+    ["month 13", fileWith([ev(1, "2026-13-01", "2026-13-02")])],
     ["end before start", fileWith([ev(1, "2026-11-22", "2026-11-21")])],
     ["extra field", fileWith([{ ...ev(1, "2026-11-21", "2026-11-21"), description: "x" }])],
     ["empty title", fileWith([ev(1, "2026-11-21", "2026-11-21", { title: "" })])],
@@ -160,6 +161,14 @@ describe("events_search tool", () => {
     expect(errorOf(await client.callTool({ name: "events_search", arguments: {} }))).toMatchObject({ error: "invalid_data" });
     write(JSON.stringify({ ...fileWith([]), count: 1 }));
     expect(errorOf(await client.callTool({ name: "events_search", arguments: {} }))).toMatchObject({ error: "invalid_data" });
+  });
+
+  it("invalid_argument-style error, not a crash, for a from date that does not exist", async () => {
+    write(JSON.stringify(fileWith([], new Date().toISOString())));
+    const client = await connectClient();
+    const res = await client.callTool({ name: "events_search", arguments: { from: "2026-13-01" } });
+    expect(res.isError).toBe(true);
+    expect(JSON.stringify(res.content)).toMatch(/invalid date/i);
   });
 
   it("caps limit at 50", async () => {

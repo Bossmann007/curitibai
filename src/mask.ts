@@ -74,6 +74,11 @@ export function maskObject(raw: string): { text: string; truncated: boolean } {
   return { text: `${cut.trimEnd()}…`, truncated: true };
 }
 
+/** Caps for event text fields, shared by scripts/fetch-events.mjs and events_search (code points). */
+export const EVENT_TITLE_MAX = 120;
+export const EVENT_PLACE_MAX = 120;
+export const EVENT_SHORT_MAX = 60;
+
 /** Control (Cc: C0, DEL, C1) characters; each becomes a space. */
 const CONTROL = /\p{Cc}/gu;
 /** Format (Cf) characters: bidi controls and isolates, zero-width characters, soft hyphen, tag characters; removed. */

@@ -508,7 +508,8 @@ in the city's own categories. Built.
   checked against those rules with an RFC 9309 matcher (`*` wildcard, `$` anchor, longest match wins, Allow wins
   ties; `*.asp` matches any path containing `.asp`) and against two path patterns:
   `^/eventos/\d{2}-\d{2}-\d{4}/\d+$` and `^/evento/[a-z0-9-]+/\d+$`. Any non-200 status (403, 429 and 5xx included)
-  stops the run without a retry. Caps: 512 KB per list page, 256 KB per detail page, 64 KB for robots.txt. The body is
+  stops the run without a retry. At most 10 list pages: a pager showing more stops the run (`layout_changed`) rather than
+  writing a partial file. Caps: 512 KB per list page, 256 KB per detail page, 64 KB for robots.txt. The body is
   decoded with the charset from `Content-Type`, else from a `<meta>`; UTF-8 and ISO-8859-1/Windows-1252 only.
 - **Dates:** the list date and the file's `list_date` are Curitiba's date (America/Sao_Paulo): a run at 02:30 UTC
   reads the list of the previous calendar day (23:30 in Curitiba). Event dates come only from the detail page's
