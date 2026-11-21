@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
 import { MASK } from "../src/sources/pncp.js";
 import { newestUrbsFile, URBS_SOURCE_URL } from "../src/sources/urbs.js";
-import { cityPointsSearchOutput, distanceM, FEIRA_NOTE, HEALTH_NOTE, MIXED_NOTE, POI_CATEGORIES } from "../src/tools/cityPointsSearch.js";
+import { cityPointsSearchOutput, distanceM, FEIRA_NOTE, HEALTH_NOTE, mixedNote, POI_CATEGORIES } from "../src/tools/cityPointsSearch.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Invented points in the real URBS POI export shape (test/fixtures/urbs_synthetic/pois.json); no real rows.
@@ -14,6 +14,7 @@ const FIXTURE = new URL("./fixtures/urbs_synthetic/pois.json", import.meta.url).
 const PUBLIC = 14;
 const EXCLUDED = 6;
 const CENTRE = { lat: -25.43, lon: -49.27 }; // "Feira Ficticia Alfa"
+const CULTURAL_NOTE = mixedNote(["cultural_space"]); // the fixture's only mixed-category row is in cultural_space
 
 let tmp: string;
 beforeEach(() => {
@@ -57,7 +58,15 @@ describe("city_points_search", () => {
     expect(Object.keys(counts)).toEqual(Object.keys(POI_CATEGORIES));
     expect(counts).toMatchObject({ feira: 2, library: 2, bus_terminal: 2, health_unit: 1, urgent_care: 1, cemetery: 0 });
     expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(PUBLIC);
-    expect(out.data.categories?.find((c) => c.id === "bus_terminal")?.source_categories).toContain("TERMINAL DE TRANSPORTE");
+    expect(out.data.categories?.find((c) => c.id === "bus_terminal")?.source_categories).toEqual([
+      { name: "TERMINAL DE TRANSPORTE", count: 1 },
+      { name: "TERMINAL DE TRANSPORTE - CARTÃO TRANSPORTE", count: 0 },
+      { name: "ESTAÇÃO TUBO - CARTÃO TRANSPORTE", count: 1 },
+    ]);
+    for (const c of out.data.categories ?? []) {
+      expect(c.source_categories.map((x) => x.name), c.id).toEqual(POI_CATEGORIES[c.id]);
+      expect(c.source_categories.reduce((n, x) => n + x.count, 0), c.id).toBe(c.count);
+    }
     expect(out.checked_at).toBe("2026-11-20");
     expect(out.source_url).toBe(URBS_SOURCE_URL);
     expect(out.license_note).toContain("2026_11_20_pois.json");
@@ -70,7 +79,7 @@ describe("city_points_search", () => {
     expect(out.note).toContain("their URBS names look missing or renamed");
     expect(out.note).toContain("cemetery");
     expect(out.note).not.toMatch(/\bhealth_unit\b/); // has rows, though not under every one of its URBS names
-    expect(out.note).toContain(MIXED_NOTE); // the first page holds all 14 points, Teatro Inventado included
+    expect(out.note).toContain(CULTURAL_NOTE); // the first page holds all 14 points, Teatro Inventado included
     expect(out.note).not.toContain("days ago");
   });
 
@@ -103,13 +112,38 @@ describe("city_points_search", () => {
 
   it("warns about private or non-profit institutions only when results include the mixed categories", async () => {
     useFixture();
-    expect((await search({ category: "cultural_space" })).note).toContain(MIXED_NOTE);
-    expect((await search({ name: "teatro" })).note).toContain(MIXED_NOTE);
-    expect((await search({ category: "feira" })).note).not.toContain(MIXED_NOTE);
-    expect((await search({ category: "special_education" })).note).not.toContain(MIXED_NOTE); // no rows, no results
+    expect((await search({ category: "cultural_space" })).note).toContain(CULTURAL_NOTE);
+    expect((await search({ name: "teatro" })).note).toContain(CULTURAL_NOTE);
+    expect((await search({ category: "feira" })).note).not.toContain("Some results are in");
+    expect((await search({ category: "special_education" })).note).not.toContain("Some results are in"); // no rows, no results
     const firstOnly = await search({ limit: 1 }); // by name, "Câmbio Verde…" comes first; Teatro Inventado is further on
     expect(firstOnly.data.items[0]?.category).not.toBe("cultural_space");
-    expect(firstOnly.note).toContain(MIXED_NOTE);
+    expect(firstOnly.note).toContain(CULTURAL_NOTE);
+  });
+
+  it("names in the mixed-category note only the mixed categories present among the matches", async () => {
+    const row = (POI_NAME: string, POI_CATEGORY_NAME: string) => ({ POI_NAME, POI_CATEGORY_NAME, POI_LAT: "", POI_LON: "", POI_DESC: "" });
+    write([...fixtureRows(), row("Escola Profissional Inventada", "EDUC PROFISSIONAL")]);
+    expect(CULTURAL_NOTE).toContain("Some results are in cultural_space: this category is open to the public");
+    expect(CULTURAL_NOTE).not.toContain("special_education");
+    expect((await search({ name: "inventad" })).note).toContain(
+      "Some results are in cultural_space, vocational_education: these categories are open to the public",
+    );
+    expect((await search({ category: "vocational_education" })).note).toContain(mixedNote(["vocational_education"]));
+    expect(mixedNote([])).toBe("");
+  });
+
+  it("shows a rename of one URBS name of a category only as a 0 in source_categories, without a warning", async () => {
+    const rows = fixtureRows().map((r) =>
+      r.POI_CATEGORY_NAME === "TERMINAL DE TRANSPORTE" ? { ...r, POI_CATEGORY_NAME: "TERMINAL DE TRANSPORTE RENOMEADO" } : r,
+    );
+    write(rows);
+    const out = await search({});
+    const bus = out.data.categories?.find((c) => c.id === "bus_terminal");
+    expect(bus?.count).toBe(1);
+    expect(bus?.source_categories.find((x) => x.name === "TERMINAL DE TRANSPORTE")?.count).toBe(0);
+    expect(out.note).not.toMatch(/\bbus_terminal\b/); // documented gap: only a whole id with no row is warned about
+    expect(out.note).toContain(`${EXCLUDED + 1} rows in other categories`);
   });
 
   it("matches name words with accents and case ignored", async () => {

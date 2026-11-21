@@ -281,7 +281,7 @@ describe("invalid_data", () => {
     expect(note).toBe(
       "Every valid row of this file has empty NOME_COR (`color`) and SOMENTE_CARTAO (`card_only`) fields, which real URBS " +
         "exports fill in at least some rows: these fields look missing or renamed in this file, so their empty or null " +
-        "values in the results do not come from URBS.",
+        "values in the results may not come from URBS.",
     );
     expect(out.note).toContain(note);
     expect(out.note).not.toContain(ADAPT_MISSING_NOTE);
@@ -306,7 +306,7 @@ describe("invalid_data", () => {
     expect(dep.note).toContain(ADAPT_MISSING_NOTE);
     expect(dep.note).toContain(
       "Every valid row of this file has an empty TABELA (`table`) field, which real URBS exports fill in at least some rows: " +
-        "the field looks missing or renamed in this file, so its empty or null values in the results do not come from URBS.",
+        "the field looks missing or renamed in this file, so its empty or null values in the results may not come from URBS.",
     );
     expect(emptyFieldsNote(["ADAPT"])).toBe("");
     expect(emptyFieldsNote([])).toBe("");

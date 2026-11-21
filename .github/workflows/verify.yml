@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: verify-${{ github.ref }}
-  # Cancel superseded PR runs; every push to main runs to the end.
+  # PR runs: a newer push cancels the running one. main: a running run is never cancelled, but a queued one is
+  # replaced by a newer push, so not every push to main gets its own run.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -24,7 +25,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-      # No network beyond npm ci: skip the separate npm audit step at the end of scripts/verify.
+      # Skip the separate npm audit step at the end of scripts/verify: it never changes the result, and new advisories
+      # would only add noise to unrelated runs. Dependabot (.github/dependabot.yml) covers dependency updates.
       - run: scripts/verify
         env:
           CURITIBAI_SKIP_AUDIT: "1"

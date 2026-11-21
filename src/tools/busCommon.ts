@@ -88,7 +88,7 @@ const andList = (items: readonly string[]) =>
 
 /**
  * For descriptive fields (other than ADAPT, which has ADAPT_MISSING_NOTE) that are empty in every row of the file: the
- * field looks missing or renamed, so the values it feeds (empty, or null for `card_only`) do not come from URBS. "" when none.
+ * field looks missing or renamed, so the values it feeds (empty, or null for `card_only`) may not come from URBS. "" when none.
  */
 export function emptyFieldsNote(fields: readonly DescriptiveField[]): string {
   const others = fields.filter((f) => f !== "ADAPT");
@@ -98,7 +98,7 @@ export function emptyFieldsNote(fields: readonly DescriptiveField[]): string {
     `Every valid row of this file has ${one ? "an empty" : "empty"} ` +
     `${andList(others.map((f) => `${f} (\`${OUTPUT_FIELD[f]}\`)`))} field${one ? "" : "s"}, which ` +
     `real URBS exports fill in at least some rows: ${one ? "the field looks" : "these fields look"} missing or renamed ` +
-    `in this file, so ${one ? "its" : "their"} empty or null values in the results do not come from URBS.`
+    `in this file, so ${one ? "its" : "their"} empty or null values in the results may not come from URBS.`
   );
 }
 

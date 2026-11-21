@@ -454,9 +454,13 @@ emergency note), EQUIPAMENTOS URBANOS (5), and any category not in the allowlist
 one. Reason: these are private businesses, and their names can be people's names. `note` gives the count of dropped
 rows and names each category id with no row at all in the file (its URBS names look missing or renamed). It is checked
 per id, not per URBS name, because three names have a single row in the 2026-11-20 file (Unidade Saude 24H, RUA DA
-CIDADANIA - CARTÃO TRANSPORTE, ESTAÇÃO TUBO - CARTÃO TRANSPORTE) and could vanish without a rename. When any match
-(on any page) is in `cultural_space`, `special_education` or `vocational_education`, `note` says they may include private or
-non-profit institutions.
+CIDADANIA - CARTÃO TRANSPORTE, ESTAÇÃO TUBO - CARTÃO TRANSPORTE) and could vanish without a rename. **Known gap:** a
+rename of one URBS name of an id that keeps another name is not warned about, and its rows are dropped as an unknown
+category; for example, renaming BIB FAROL DO SABER would drop 45 of the 59 `library` rows of the 2026-11-20 file while
+`library` still has 14. To make it visible, a call with no filter returns, for each id, `source_categories` as
+`{name, count}` per URBS name (matched as above), so such a rename shows as a 0 there. When any match (on any page) is
+in `cultural_space`, `special_education` or `vocational_education`, `note` says that those of them among the matches
+may include private or non-profit institutions.
 
 Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked
 text. `near` keeps points within `radius_m` (great-circle distance, mean Earth radius 6,371,008.8 m; default 1,500 m,
