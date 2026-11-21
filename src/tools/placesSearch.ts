@@ -7,6 +7,7 @@ import {
   PLACE_CATEGORIES,
   PLACE_CATEGORY_NAMES,
 } from "../sources/osm.js";
+import { dateInCuritiba } from "../sources/detran.js";
 import { fold } from "../text.js";
 import { envelope, failFrom, ok, type ToolDef } from "./common.js";
 
@@ -16,7 +17,8 @@ export const placesSearchInput = {
     .describe(
       "One fixed category of public place: " +
         PLACE_CATEGORY_NAMES.map((c) => `${c} (OSM ${PLACE_CATEGORIES[c].join("=")})`).join(", ") +
-        ". community_centre and townhall include Ruas da Cidadania where OSM tags them so.",
+        ". community_centre and townhall include Ruas da Cidadania where OSM tags them so. police and fire_station " +
+        "come from a list bundled once from OSM (no network call). Not for emergencies: call 190 or 193.",
     ),
   name: z
     .string()
@@ -57,6 +59,8 @@ export const placesSearchOutput = envelope(
     next_offset: z.number().int().nullable(),
     places: z.array(placeSchema),
     attribution: z.literal(OSM_ATTRIBUTION),
+    bundled: z.boolean().describe("True for police and fire_station: a list taken once from OSM, no network call."),
+    checked_at: z.string().nullable().describe("Day the bundled list was taken (YYYY-MM-DD); null for live categories."),
     osm_data_as_of: z.string().nullable().describe("Overpass osm3s.timestamp_osm_base: how fresh the OSM copy is."),
     note: z.string(),
   }),
@@ -67,14 +71,33 @@ const NOTE =
   "say whether a school is public or private. Confirm at the source before going. Names and addresses " +
   "pass through a contact-data mask as a guard.";
 
+/** Past this many days since the bundled list's checked_at (Curitiba time) the note says the bundled list may be outdated. */
+export const BUNDLED_MAX_AGE_DAYS = 180;
+
+export const EMERGENCY_NOTE =
+  "NOT FOR EMERGENCIES: in an emergency call 190 (Polícia Militar) or 193 (Corpo de Bombeiros); do not use this list " +
+  "to find help.";
+
+/** Note for the bundled police and fire station list: emergency warning first, then its age. */
+export function bundledNote(now: Date, checkedAt: string): string {
+  const days = Math.floor((Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${checkedAt}T00:00:00Z`)) / 86_400_000);
+  const age =
+    days > BUNDLED_MAX_AGE_DAYS
+      ? `This list was taken from OpenStreetMap on ${checkedAt}, more than ${BUNDLED_MAX_AGE_DAYS} days ago, and may be outdated.`
+      : `This list was taken once from OpenStreetMap on ${checkedAt} and is not refreshed; it may be outdated.`;
+  return `${EMERGENCY_NOTE} ${age} ${NOTE}`;
+}
+
 export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearchOutput> = {
   name: "places_search",
   title: "Public places in Curitiba (OpenStreetMap)",
   description:
     "Public places in Curitiba from OpenStreetMap, by one fixed category (park, library, school, " +
-    "community centre, town hall, bus station, marketplace), optionally filtered by words in the name. " +
+    "community centre, town hall, bus station, marketplace, police, fire station), optionally filtered by words in the name. " +
     "Returns name, address as tagged, coordinates, opening hours, website and the OSM link. No shops, offices, " +
-    "doctors, hospitals or emergency services (use health_units_search for public health units). Community data, may be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
+    "doctors or hospitals (use health_units_search for public health units). Police and fire stations come from a " +
+    "list bundled once from OSM. NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). Community data, may " +
+    "be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
   inputSchema: placesSearchInput,
   outputSchema: placesSearchOutput,
   handler: async ({ category, name, limit, offset }) => {
@@ -93,12 +116,14 @@ export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearch
           next_offset: next,
           places: page,
           attribution: OSM_ATTRIBUTION,
+          bundled: res.value.bundled,
+          checked_at: res.value.checkedAt,
           osm_data_as_of: res.value.osmBase,
-          note: NOTE,
+          note: res.value.checkedAt !== null ? bundledNote(new Date(), res.value.checkedAt) : NOTE,
         },
         source_url: OVERPASS_URL,
         fetched_at: res.fetchedAt,
-        license_note: osmLicenseNote(res.value.osmBase, res.fetchedAt),
+        license_note: osmLicenseNote(res.value.osmBase, res.fetchedAt, res.value.bundled),
       });
     } catch (err) {
       return failFrom(err);

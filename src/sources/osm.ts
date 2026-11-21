@@ -1,5 +1,6 @@
 import { sharedCache, type Cached } from "../cache.js";
 import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { OSM_BUNDLED_CHECKED_AT, OSM_BUNDLED_DATA_AS_OF, OSM_BUNDLED_ELEMENTS, OSM_BUNDLED_FETCHED_AT } from "./osmBundled.js";
 import { MASK, maskObject } from "./pncp.js";
 
 /**
@@ -23,11 +24,12 @@ export const OVERPASS_MAX_BYTES = 3 * 1024 * 1024;
 const CURITIBA_AREA = 'area["boundary"="administrative"]["admin_level"="8"]["IBGE:GEOCODIGO"="4106902"]->.cwb;.cwb out ids;';
 
 /**
- * The fixed category allowlist: public places only. Each maps to one exact OSM tag. Hospitals, police and fire
- * stations are left out on purpose: the instance's operator asks that no emergency or safety application depend on it,
- * and public health units are covered by health_units_search (CNES).
+ * The fixed category allowlist: public places only. Each maps to one exact OSM tag. Live categories are queried on the
+ * Overpass instance. Police and fire stations are served from a list bundled once (osmBundled.ts), never live: the
+ * instance's operator asks that no emergency or safety application depend on it, and no other free instance allowed
+ * it (docs/sources.md). Hospitals are left out: public health units are covered by health_units_search (CNES).
  */
-export const PLACE_CATEGORIES = {
+export const LIVE_CATEGORIES = {
   park: ["leisure", "park"],
   library: ["amenity", "library"],
   school: ["amenity", "school"],
@@ -36,16 +38,27 @@ export const PLACE_CATEGORIES = {
   bus_station: ["amenity", "bus_station"],
   marketplace: ["amenity", "marketplace"],
 } as const satisfies Record<string, readonly [string, string]>;
-export type PlaceCategory = keyof typeof PLACE_CATEGORIES;
+export const BUNDLED_CATEGORIES = {
+  police: ["amenity", "police"],
+  fire_station: ["amenity", "fire_station"],
+} as const satisfies Record<string, readonly [string, string]>;
+export const PLACE_CATEGORIES = { ...LIVE_CATEGORIES, ...BUNDLED_CATEGORIES };
+export type LiveCategory = keyof typeof LIVE_CATEGORIES;
+export type BundledCategory = keyof typeof BUNDLED_CATEGORIES;
+export type PlaceCategory = LiveCategory | BundledCategory;
 export const PLACE_CATEGORY_NAMES = Object.keys(PLACE_CATEGORIES) as [PlaceCategory, ...PlaceCategory[]];
+
+export function isBundledCategory(c: PlaceCategory): c is BundledCategory {
+  return Object.hasOwn(BUNDLED_CATEGORIES, c);
+}
 
 function header(): string {
   return `[out:json][timeout:${OVERPASS_QUERY_TIMEOUT_S}];${CURITIBA_AREA}`;
 }
 
 /** Built only from the allowlist; no user text ever enters a query. */
-export function placesQuery(category: PlaceCategory): string {
-  const [k, v] = PLACE_CATEGORIES[category];
+export function placesQuery(category: LiveCategory): string {
+  const [k, v] = LIVE_CATEGORIES[category];
   return `${header()}nwr["${k}"="${v}"](area.cwb);out center;`;
 }
 
@@ -53,10 +66,10 @@ export function osmUrl(type: string, id: number): string {
   return `https://www.openstreetmap.org/${type}/${id}`;
 }
 
-export function osmLicenseNote(osmBase: string | null, fetchedAt: string): string {
+export function osmLicenseNote(osmBase: string | null, fetchedAt: string, bundled = false): string {
   return (
     `${OSM_ATTRIBUTION} (${OSM_COPYRIGHT_URL}). Data from OpenStreetMap via the Overpass API (${OVERPASS_URL}), ` +
-    `fetched at ${fetchedAt}; OSM data as of ${osmBase ?? "an unknown time (the server did not say)"}. ` +
+    `fetched at ${fetchedAt}${bundled ? " once and bundled with this server (not refreshed)" : ""}; OSM data as of ${osmBase ?? "an unknown time (the server did not say)"}. ` +
     "OpenStreetMap is community-edited and may be incomplete or outdated. " +
     "Unofficial; not affiliated with OpenStreetMap, the OSM Foundation or Prefeitura de Curitiba."
   );
@@ -269,11 +282,40 @@ export function toPlace(e: RawElement, category: PlaceCategory): Place {
   };
 }
 
-export function getPlaces(category: PlaceCategory): Promise<Cached<{ osmBase: string | null; places: Place[] }>> {
-  const [k, v] = PLACE_CATEGORIES[category];
+export interface PlacesResult {
+  osmBase: string | null;
+  places: Place[];
+  /** True when the places come from the bundled list (no network call). */
+  bundled: boolean;
+  /** Day the bundled list was taken (YYYY-MM-DD, Curitiba time); null for live answers. */
+  checkedAt: string | null;
+}
+
+/** Police and fire stations from the bundled list: no network call, same mapping and guards as live answers. */
+const bundledCache = new Map<BundledCategory, Cached<PlacesResult>>();
+
+export function bundledPlaces(category: BundledCategory): Cached<PlacesResult> {
+  let hit = bundledCache.get(category);
+  if (!hit) {
+    const [k, v] = BUNDLED_CATEGORIES[category];
+    const places = OSM_BUNDLED_ELEMENTS.filter((e) => e.tags[k] === v).map((e) => toPlace(e, category));
+    hit = {
+      value: { osmBase: OSM_BUNDLED_DATA_AS_OF, places, bundled: true, checkedAt: OSM_BUNDLED_CHECKED_AT },
+      fetchedAt: OSM_BUNDLED_FETCHED_AT[category],
+    };
+    bundledCache.set(category, hit);
+  }
+  return hit;
+}
+
+export async function getPlaces(category: PlaceCategory): Promise<Cached<PlacesResult>> {
+  if (isBundledCategory(category)) return bundledPlaces(category);
+  const [k, v] = LIVE_CATEGORIES[category];
   return cachedQuery(placesQuery(category), (r) => ({
     osmBase: r.osmBase,
     // Keep only what the query asked for, in case the server returns anything else.
     places: r.elements.filter((e) => e.tags[k] === v).map((e) => toPlace(e, category)),
+    bundled: false,
+    checkedAt: null,
   }));
 }
