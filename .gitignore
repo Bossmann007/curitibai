@@ -5,3 +5,6 @@ dist/
 coverage/
 carta-servicos.json
 !test/fixtures/carta_servicos_synthetic/carta-servicos.json
+# URBS daily exports the user downloads into CURITIBAI_DATA_DIR/urbs/ (scripts/check-no-catalog blocks them too).
+[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_*.json
+[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_*.json.xz

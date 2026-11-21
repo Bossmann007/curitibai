@@ -1,6 +1,7 @@
 // The only module that touches the local filesystem. Read-only: realpath, stat, open for reading, fstat, positional
-// reads from that descriptor, and close. test/no-writes.test.ts enforces that these are the only `node:fs` APIs here.
-import { closeSync, constants, fstatSync, openSync, read, realpathSync, statSync } from "node:fs";
+// reads from that descriptor, close, and listing the names in one folder. test/no-writes.test.ts enforces that these
+// are the only `node:fs` APIs here.
+import { closeSync, constants, fstatSync, openSync, read, readdirSync, realpathSync, statSync } from "node:fs";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 
 export const DATA_DIR_ENV = "CURITIBAI_DATA_DIR";
@@ -59,6 +60,29 @@ export function openVerified(real: string, dir: string): number {
   }
 }
 
+/** The real path of the folder named by CURITIBAI_DATA_DIR (read on every call). */
+function dataDir(): string {
+  const raw = process.env[DATA_DIR_ENV];
+  if (raw === undefined || raw.trim() === "") throw new LocalFileError("data_dir_not_set");
+  const dir = realpathOrNull(raw);
+  if (dir === null || !statSync(dir).isDirectory()) throw new LocalFileError("data_dir_not_set");
+  return dir;
+}
+
+/**
+ * Names of the entries in the folder `sub` (one plain name, no separator) inside CURITIBAI_DATA_DIR. A missing `sub`
+ * is `file_not_found`; one that resolves outside the data folder or is not a folder is `file_not_allowed`. Only names
+ * are read; the entries are not opened or followed.
+ */
+export function listDataSubdir(sub: string): string[] {
+  const dir = dataDir();
+  if (sub === "" || sub === "." || sub === ".." || /[\\/\0]/.test(sub)) throw new LocalFileError("file_not_allowed");
+  const real = realpathOrNull(resolve(dir, sub));
+  if (real === null) throw new LocalFileError("file_not_found");
+  if (!isInside(dir, real) || !statSync(real).isDirectory()) throw new LocalFileError("file_not_allowed");
+  return readdirSync(real);
+}
+
 /**
  * Opens `name` inside the folder named by CURITIBAI_DATA_DIR (read on every call). Anything that points outside the
  * folder, lexically or after resolving symlinks, is `file_not_allowed` whether or not it exists. The target must be a
@@ -66,10 +90,7 @@ export function openVerified(real: string, dir: string): number {
  * `closeFile`.
  */
 export function openDataFile(name: string, extension = ".csv"): { fd: number; relative: string } {
-  const raw = process.env[DATA_DIR_ENV];
-  if (raw === undefined || raw.trim() === "") throw new LocalFileError("data_dir_not_set");
-  const dir = realpathOrNull(raw);
-  if (dir === null || !statSync(dir).isDirectory()) throw new LocalFileError("data_dir_not_set");
+  const dir = dataDir();
   if (name.includes("\0")) throw new LocalFileError("file_not_allowed");
   const candidate = resolve(dir, name);
   if (!isInside(dir, candidate)) throw new LocalFileError("file_not_allowed"); // before touching the path

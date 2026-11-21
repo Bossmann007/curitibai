@@ -1,12 +1,23 @@
-// Starts the built server over stdio, calls tools/list and city_services_search on the synthetic catalog fixture.
-// No network needed: neither fetches anything.
+// Starts the built server over stdio, calls tools/list, city_services_search on the synthetic catalog fixture and
+// bus_departures on the synthetic URBS fixtures. No network needed: none of them fetches anything.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const expected = ["city_services_search", "dataset_files", "detran_pr_info", "health_units_search", "local_csv_summary", "open_datasets_search", "places_search", "procurement_search", "weather_alerts", "weather_forecast"];
+const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "city_services_search", "dataset_files", "detran_pr_info", "health_units_search", "local_csv_summary", "open_datasets_search", "places_search", "procurement_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
-const dataDir = fileURLToPath(new URL("../test/fixtures/carta_servicos_synthetic/", import.meta.url));
+// The URBS fixtures have no date in their names (scripts/check-no-catalog blocks dated files), so the data folder is a
+// temporary copy: the catalog fixture plus the URBS fixtures under the dated names the server looks for.
+const fixtures = fileURLToPath(new URL("../test/fixtures/", import.meta.url));
+const dataDir = mkdtempSync(join(tmpdir(), "curitibai-smoke-"));
+mkdirSync(join(dataDir, "urbs"));
+copyFileSync(join(fixtures, "carta_servicos_synthetic", "carta-servicos.json"), join(dataDir, "carta-servicos.json"));
+for (const kind of ["linhas", "pontosLinha", "tabelaLinha"]) {
+  copyFileSync(join(fixtures, "urbs_synthetic", `${kind}.json`), join(dataDir, "urbs", `2026_11_20_${kind}.json`));
+}
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: ["dist/server.js"],
@@ -14,6 +25,8 @@ const transport = new StdioClientTransport({
   stderr: "pipe",
 });
 const client = new Client({ name: "smoke", version: "0.0.0" });
+const cleanup = () => rmSync(dataDir, { recursive: true, force: true });
+process.on("exit", cleanup); // also on a timeout or a thrown error
 const timer = setTimeout(() => {
   console.error("smoke: timeout");
   process.exit(1);
@@ -22,8 +35,10 @@ await client.connect(transport);
 const { tools } = await client.listTools();
 const names = tools.map((t) => t.name).sort();
 const cs = await client.callTool({ name: "city_services_search", arguments: { query: "ficticia", limit: 1 } });
+const bus = await client.callTool({ name: "bus_departures", arguments: { line_code: "901", day: "1" } });
 await client.close();
 clearTimeout(timer);
+cleanup();
 if (JSON.stringify(names) !== JSON.stringify(expected)) {
   console.error(`smoke: unexpected tools ${JSON.stringify(names)}`);
   process.exit(1);
@@ -32,5 +47,10 @@ if (cs.isError || !(cs.structuredContent?.data?.total > 0)) {
   console.error("smoke: city_services_search returned no services from the synthetic fixture");
   process.exit(1);
 }
+if (bus.isError || !(bus.structuredContent?.data?.total > 0)) {
+  console.error("smoke: bus_departures returned no departures from the synthetic URBS fixtures");
+  process.exit(1);
+}
+console.log(`smoke: bus_departures OK (${bus.structuredContent.data.total} synthetic weekday departures of line 901)`);
 console.log(`smoke: city_services_search OK (${cs.structuredContent.data.total} synthetic services match "ficticia")`);
 console.log(`smoke: tools/list over stdio OK (${names.length} tools: ${names.join(", ")})`);

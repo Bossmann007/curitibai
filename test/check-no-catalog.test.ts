@@ -245,6 +245,66 @@ describe("scripts/check-no-catalog", () => {
     expect(res.stderr).toContain("check-no-catalog: FAIL: not a directory");
   });
 
+  describe("URBS daily exports", () => {
+    const expectUrbsFail = (...paths: string[]) => {
+      const res = guard();
+      expect(res.status).toBe(1);
+      expect(res.stdout).not.toContain("OK");
+      expect(res.stderr).toContain("git tracks a URBS daily export");
+      for (const p of paths) expect(res.stderr).toContain(`  ${p}\n`);
+      expect(res.stderr).toContain("git rm --cached");
+      expect(res.stderr).not.toContain("city services catalog");
+    };
+
+    it.each([
+      "2026_11_20_linhas.json",
+      "urbs/2026_11_20_pontosLinha.json",
+      "data/urbs/2026_11_20_tabelaLinha.json.xz",
+      "a b/2026_11_20_TabelaLinha.JSON",
+      "test/fixtures/urbs_synthetic/2026_11_20_linhas.json", // no exemption, not even under fixtures
+      "x/2026_11_20_anything.json",
+    ])("fails when %j is force-added", (path) => {
+      add(path, "[]\n", true);
+      expectUrbsFail(path);
+    });
+
+    it("lists URBS files and a catalog file each under its own message", () => {
+      add("2026_11_20_linhas.json", "[]\n", true);
+      add("carta-servicos.json", "{}\n", true);
+      const res = guard();
+      expect(res.status).toBe(1);
+      expect(res.stderr).toContain("git tracks a URBS daily export");
+      expect(res.stderr).toContain("git tracks a city services catalog file");
+    });
+
+    it.each([
+      "test/fixtures/urbs_synthetic/linhas.json",
+      "2026-11-20_linhas.json",
+      "2026_11_20.json",
+      "x2026_11_20_linhas.json",
+      "202_11_20_linhas.json",
+      "2026_11_20_linhas.csv",
+      "2026_11_20_linhas.json.gz",
+      "2026_11_20_dir/linhas.json",
+    ])("passes for %j (not a dated URBS file name)", (path) => {
+      add(path, "[]\n", true);
+      const res = guard();
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("check-no-catalog: OK");
+    });
+
+    it("the repo .gitignore keeps a dated URBS file out of a plain git add", () => {
+      writeFileSync(join(repo, ".gitignore"), readFileSync(fileURLToPath(new URL("../.gitignore", import.meta.url))));
+      for (const path of ["urbs/2026_11_20_linhas.json", "urbs/2026_11_20_linhas.json.xz"]) {
+        mkdirSync(dirname(join(repo, path)), { recursive: true });
+        writeFileSync(join(repo, path), "[]\n");
+        const res = spawnSync("git", ["add", "--", path], { cwd: repo, env: gitEnv(), encoding: "utf8" });
+        expect(res.status).not.toBe(0);
+      }
+      expect(git("ls-files")).not.toContain("2026_11_20");
+    });
+  });
+
   it("is a step of scripts/verify", () => {
     expect(readFileSync(VERIFY, "utf8")).toMatch(/^scripts\/check-no-catalog$/m);
   });
