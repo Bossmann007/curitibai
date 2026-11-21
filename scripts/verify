@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "no tracked city services catalog (carta-servicos.json)"
+step "no tracked city services catalog (carta-servicos.json) or URBS export (YYYY_MM_DD_*.json)"
 scripts/check-no-catalog
 
 step "npm ci"
@@ -23,7 +23,7 @@ npx vitest run
 step "build"
 npm run --silent build
 
-step "stdio smoke test (tools/list, city_services_search on the synthetic fixture)"
+step "stdio smoke test (tools/list, city_services_search and bus_departures on the synthetic fixtures)"
 node scripts/smoke.mjs
 
 echo

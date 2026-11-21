@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Fails if git tracks a file named carta-servicos.json (any folder, any letter case), other than the synthetic
 # test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
+# Also fails if git tracks a URBS daily export: a file named YYYY_MM_DD_<anything>.json or .json.xz (any folder,
+# any letter case), with no exemption (the synthetic URBS fixtures have no date in their names).
 # The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256,
 # and the work-tree file at the fixture path, when present, must match the pinned sha256 too.
 # Usage: scripts/check-no-catalog [repo-dir]   (default: this repo; must be the top of a git checkout)
-# Exit: 0 OK, 1 a catalog file is tracked or the fixture is modified in the work tree,
+# Exit: 0 OK, 1 a catalog or URBS file is tracked or the fixture is modified in the work tree,
 #       2 not a directory, not the top of a git checkout, or no temp file (cannot tell what is tracked).
 set -euo pipefail
 
@@ -31,12 +33,19 @@ trap 'rm -f "$index"' EXIT
 git ls-files -s -z >"$index" || fail2 "git ls-files failed, cannot tell what is tracked"
 
 name_re='/carta-servicos\.json$'
+urbs_re='/[0-9]{4}_[0-9]{2}_[0-9]{2}_[^/]*\.json(\.xz)?$'
 found=""
+urbs_found=""
 while IFS= read -r -d '' entry; do
   path=${entry#*$'\t'}
   shopt -s nocasematch
   if [[ "/$path" =~ $name_re ]]; then match=1; else match=0; fi
+  if [[ "/$path" =~ $urbs_re ]]; then urbs=1; else urbs=0; fi
   shopt -u nocasematch
+  if [[ $urbs == 1 ]]; then
+    urbs_found+="  $path"$'\n'
+    continue
+  fi
   [[ $match == 1 ]] || continue
   if [[ "$path" == "$allowed" ]]; then
     read -r mode blob _ <<<"${entry%%$'\t'*}"
@@ -52,6 +61,14 @@ if [[ -n "$found" ]]; then
   {
     echo "check-no-catalog: FAIL: git tracks a city services catalog file (private, never committed):"
     printf '%s' "$found"
+    echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
+  } >&2
+  status=1
+fi
+if [[ -n "$urbs_found" ]]; then
+  {
+    echo "check-no-catalog: FAIL: git tracks a URBS daily export (YYYY_MM_DD_*.json; the user's download, never committed):"
+    printf '%s' "$urbs_found"
     echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
   } >&2
   status=1

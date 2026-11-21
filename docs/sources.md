@@ -25,7 +25,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `overpass.nextgis.com` (NextGIS) | 404 (checked 2026-11-21 03:26 UTC) | The endpoint needs an API key in the path (`/YOUR_API_KEY/api/interpreter`, sign-up at my.nextgis.com): **not used** (no key, no account) |
 | `overpass.openstreetmap.fr` | 403, "This service is only available to white-listed usages" | **Not used** |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
-| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched.** |
+| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) read URBS files a person downloads from there in a browser |
 | `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. For the owner's local copy used by `city_services_search` (v0.6), the `/servicos/` listing pages were read on 2026-11-19/20 with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds). That copy is **not** in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -330,6 +330,56 @@ Prior art (2026-11-19, `gh search repos`): "carta de serviços" found the federa
 (`servicosgovbr/cartas-de-servico`) and unrelated agency projects; "curitiba mcp", "curitiba servicos mcp" and
 "prefeitura curitiba servicos" found nothing. Nothing covers Curitiba's catalog. Built.
 
+### `bus_lines_search`, `bus_line_stops`, `bus_departures`: URBS daily exports (local files, not shipped)
+
+No network, and **no URBS file in this repository**. The source is the dataset "Transporte Coletivo de Curitiba" on
+the Portal de Dados Abertos de Curitiba (publisher URBS — Urbanização de Curitiba S.A.; portal page
+`/conjuntodado/detalhe?chave=ca40f13b-ef61-472b-810f-dd705f85fd2e`, used as `source_url`). Its daily exports are
+mirrored at <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> as `YYYY_MM_DD_<kind>.json.xz`. That host is treated as
+disallowed (table above), so the server never fetches them; a person downloads `linhas`, `pontosLinha` and
+`tabelaLinha` in a browser, decompresses them with `xz -d` and keeps them in `CURITIBAI_DATA_DIR/urbs/`. Licence: the
+portal footer states a Creative Commons licence; the variant is not stated (not verified further). `license_note`
+attributes URBS and the dataset and names the file.
+
+Each tool lists the names in `urbs/` (no file is opened to choose), takes the newest valid date for its own kind,
+and reads that one file through `src/localfs.ts` with the same rules as `city_services_search` (realpath inside the
+folder, regular file, read-only open, no symlink out), on every call, with a 20 MB cap. Rows are validated with zod
+(strings of bounded length, `HH:MM` times, digit-only stop numbers and day codes, comma-decimal coordinates or empty);
+any failure is `invalid_data` with a message naming the file and the first problem, never the file's text. Extra
+fields are ignored. Measured on the 2026-11-20 files with the built server: about 7 ms (linhas), 25 ms (pontosLinha)
+and 52 ms (tabelaLinha) to read and validate.
+
+| File (2026-11-20) | Rows | Fields | Notes |
+|---|---|---|---|
+| `linhas` (36 KB) | 309 | `COD`, `NOME`, `SOMENTE_CARTAO` (S/N), `CATEGORIA_SERVICO` (10 values), `NOME_COR` (7) | — |
+| `pontosLinha` (4.2 MB) | 17,496 | `NOME`, `NUM`, `LAT`, `LON` (comma decimals), `SEQ`, `GRUPO` (often empty), `SENTIDO`, `TIPO` (shelter type, 14 values, a few empty), `ITINERARY_ID`, `COD` | One `ITINERARY_ID` per direction (most lines have 2, some up to 7); `SEQ` is unique within an itinerary. Four codes have stops but no `linhas` row |
+| `tabelaLinha` (8.6 MB) | 71,085 | `HORA` (`HH:MM`, 00:00–23:59), `PONTO`, `DIA`, `NUM`, `TABELA`, `ADAPT` (ELEVADOR, RAMPA ELÉTRICA, RAMPA ELETRICA), `COD` | Times exist for 737 stop numbers (19 of them not in `pontosLinha`), not for every stop |
+
+**DIA codes.** The files do not explain them, and a web search (2026-11-21) found no URBS document that does; the
+portal's dataset page was not checked for it. The 2026-11-20 file has only 1, 2 and 3 (33,430, 20,750 and 16,905
+rows). The reading 1 weekday, 2 Saturday, 3 Sunday or holiday is inferred from the data: 60 lines have times only
+under 1, and the direct and express ones among them are reinforcement lines ("REFORÇO ...", "REF. ...") and one to
+the university campus (Centro Politécnico); the 4 lines with times only under 3 run to parks or the Batel/Mossunguê
+area (Pq. Lago Azul, Parque Náutico, Cabral / Pq. Tanguá, Batel / Mossunguê); row counts fall from 1 to 3; and URBS's
+own timetable pages and the city's holiday notices (seen in the same search) use dia útil, sábado and domingo, with
+holidays usually on the Sunday timetable. `bus_departures` therefore returns `day`
+(the code, as published) and `day_type` (the inferred label, null for any other code), and its note says the label is
+inferred.
+
+Privacy: lines, stops and timetables are public transport data with no personal data. As a guard, stop names
+(`NOME`, `PONTO`) pass through the PNCP object masking (`maskObject`, via `guardedSummary`); a name is returned as
+published unless the mask hides something. On the 2026-11-20 files that happens to 29 of the 6,841 distinct stop
+names in `pontosLinha`, all street-number ranges ("1469-1411") read as phone numbers, and to none in `tabelaLinha`.
+Line names, directions and types are not masked.
+
+Search: `bus_lines_search` folds accents and case and requires every query word in the code or name; an exact code
+comes first, then pt-BR name order. `category` is compared the same way and must be one of the file's categories.
+Line codes are compared case-insensitively. Results are capped at 50 per call, with `offset` paging.
+
+Prior art (2026-11-21, `gh search repos "urbs curitiba"`, `gh search code "pontosLinha tabelaLinha"`): one 2020 GPS
+map-matching project (`lucianourgal/BusMapMatching`, no licence), nothing that reads these exports for an assistant.
+The GTFS options below need a feed built from the same disallowed mirror. Built.
+
 ### `local_csv_summary`: a file the user downloaded
 
 No network. The user downloads a file in a browser (for example the 156 CSV from the portal, about 137 MB) into the
@@ -360,7 +410,7 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 |---|---|
 | `open_dataset_preview` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB; needs permission or an official API. The 20-row table embedded in portal detail pages also holds individual records (156 tickets with street names; the payroll dataset names people) |
 | `city156_categories`, `city156_stats` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB. Measured: 136,902,324 bytes (2026-11-18 file), ~1 MB/s from the mirror (~140 s) and ~0.4 MB/s from `mid` (>300 s). The 156 API (`api-156.curitiba.pr.gov.br`) is not public. Owner decision (2026-11-19): no permission request will be sent; a person downloads the file and uses `local_csv_summary` |
-| Bus lines, stops, timetables, real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. Planned for v0.8 from URBS files the user keeps locally (separate change). Alternative: see below |
+| Bus lines, timetables, stops fetched by the server; real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. The export mirror is treated as disallowed. Since v0.8 the bus tools read the exports from local files instead (above) |
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files exist only on the two disallowed hosts (`local_csv_summary` can count a hand-downloaded file). Health units moved to the CNES API in v0.2 |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
