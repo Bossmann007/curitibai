@@ -75,6 +75,17 @@ export const TabelaRow = z.object({
   COD: code,
 });
 
+/**
+ * Descriptive fields that real exports fill in at least some rows (2026-11-20: GRUPO in 2,243 of 17,496 stops, every
+ * other one in nearly all rows). When one is empty in every valid row of a file, it is probably missing or renamed.
+ */
+export const DESCRIPTIVE_FIELDS = {
+  linhas: ["NOME_COR", "SOMENTE_CARTAO"],
+  pontosLinha: ["NOME", "TIPO", "GRUPO"],
+  tabelaLinha: ["PONTO", "TABELA", "ADAPT"],
+} as const satisfies Record<UrbsKind, readonly string[]>;
+export type DescriptiveField = (typeof DESCRIPTIVE_FIELDS)[UrbsKind][number];
+
 const ROW_SCHEMAS = { linhas: LinhaRow, pontosLinha: PontoRow, tabelaLinha: TabelaRow } as const;
 const MAX_ROWS: Record<UrbsKind, number> = { linhas: 100_000, pontosLinha: 1_000_000, tabelaLinha: 2_000_000 };
 
@@ -112,14 +123,14 @@ export function fallbackHint(file: string): string {
 /**
  * Validates parsed JSON row by row. Rows that do not match are skipped and counted. The whole file is rejected only
  * when it is not a non-empty array within the row cap, or when more than 1 in MAX_INVALID_ONE_IN (5%) of its rows are invalid.
- * Messages name the file and the problem, never the file's text. `adaptMissing` is true for a timetable whose every
- * row has an empty ADAPT: real exports always fill it, so the field is probably missing or renamed.
+ * Messages name the file and the problem, never the file's text. `emptyFields` lists the DESCRIPTIVE_FIELDS of `kind`
+ * that are empty (or whitespace) in every valid row: real exports fill each in some rows, so it is probably missing or renamed.
  */
 export function parseUrbs<K extends UrbsKind>(
   kind: K,
   file: string,
   json: unknown,
-): { rows: Rows[K]; skipped: number; adaptMissing: boolean } {
+): { rows: Rows[K]; skipped: number; emptyFields: DescriptiveField[] } {
   if (!Array.isArray(json) || json.length === 0 || json.length > MAX_ROWS[kind]) {
     const why = !Array.isArray(json) ? "is not a list of rows" : json.length === 0 ? "has no rows" : "has too many rows";
     throw new InvalidUrbsDataError(`${file} does not have the expected ${kind} shape (it ${why}).${fallbackHint(file)}`);
@@ -127,12 +138,16 @@ export function parseUrbs<K extends UrbsKind>(
   const schema = ROW_SCHEMAS[kind];
   const rows: unknown[] = [];
   let firstBad = -1;
-  let anyAdapt = false;
+  const fields: readonly DescriptiveField[] = DESCRIPTIVE_FIELDS[kind];
+  const filled = new Set<DescriptiveField>();
   for (const [i, raw] of json.entries()) {
     const parsed = schema.safeParse(raw);
     if (parsed.success) {
       rows.push(parsed.data);
-      if (!anyAdapt && kind === "tabelaLinha") anyAdapt = (parsed.data as Tabela).ADAPT.trim() !== "";
+      if (filled.size < fields.length) {
+        const row = parsed.data as Partial<Record<DescriptiveField, string>>;
+        for (const f of fields) if (row[f]?.trim()) filled.add(f);
+      }
     } else if (firstBad < 0) firstBad = i;
   }
   const skipped = json.length - rows.length;
@@ -142,7 +157,7 @@ export function parseUrbs<K extends UrbsKind>(
         `(first at row ${firstBad}).${fallbackHint(file)}`,
     );
   }
-  return { rows: rows as Rows[K], skipped, adaptMissing: kind === "tabelaLinha" && !anyAdapt };
+  return { rows: rows as Rows[K], skipped, emptyFields: fields.filter((f) => !filled.has(f)) };
 }
 
 export interface UrbsFile<K extends UrbsKind> {
@@ -153,8 +168,8 @@ export interface UrbsFile<K extends UrbsKind> {
   date: string;
   /** Rows left out because they did not match the expected shape. */
   skipped: number;
-  /** Timetable only: every row has an empty ADAPT (see parseUrbs). Always false for the other kinds. */
-  adaptMissing: boolean;
+  /** Descriptive fields empty in every valid row, so probably missing or renamed (see parseUrbs). */
+  emptyFields: DescriptiveField[];
 }
 
 /**

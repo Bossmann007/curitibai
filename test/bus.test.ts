@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
 import { MASK } from "../src/sources/pncp.js";
 import { newestUrbsFile, parseUrbs, URBS_MAX_BYTES, URBS_SOURCE_URL, type UrbsKind } from "../src/sources/urbs.js";
-import { ADAPT_MISSING_NOTE } from "../src/tools/busCommon.js";
+import { ADAPT_MISSING_NOTE, emptyFieldsNote } from "../src/tools/busCommon.js";
 import { busDeparturesOutput } from "../src/tools/busDepartures.js";
 import { busLineStopsOutput } from "../src/tools/busLineStops.js";
 import { busLinesSearchOutput } from "../src/tools/busLinesSearch.js";
@@ -264,8 +264,52 @@ describe("invalid_data", () => {
     expect(out.data.items[0]?.adapt).toBe("");
     expect(out.note).toContain(ADAPT_MISSING_NOTE);
     expect(out.note).toContain("looks missing or renamed");
-    expect(parseUrbs("tabelaLinha", "f.json", fixtureRows("tabelaLinha")).adaptMissing).toBe(false);
-    expect(parseUrbs("linhas", "f.json", fixtureRows("linhas")).adaptMissing).toBe(false);
+    expect(parseUrbs("tabelaLinha", "f.json", fixtureRows("tabelaLinha")).emptyFields).toEqual([]);
+    expect(parseUrbs("linhas", "f.json", fixtureRows("linhas")).emptyFields).toEqual([]);
+  });
+
+  it("says a descriptive field looks missing or renamed when it is empty, null or absent in every valid row", async () => {
+    const without = (r: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== key));
+    // NOME_COR: "", null or whitespace; SOMENTE_CARTAO: absent (as if renamed). One invalid row (no NOME) has both filled.
+    const linhas = padded("linhas").map((r, i) => ({ ...without(r, "SOMENTE_CARTAO"), NOME_COR: [" ", "", null][i % 3] }));
+    const invalid = { COD: "BAD", SOMENTE_CARTAO: "S", CATEGORIA_SERVICO: "A", NOME_COR: "Azul" };
+    write(JSON.stringify([...linhas, invalid]));
+    const out = await lines({ query: "901" });
+    expect(out.data.skipped_rows).toBe(1);
+    expect(out.data.items[0]).toMatchObject({ code: "901", color: expect.stringMatching(/^\s*$/), card_only: null });
+    const note = emptyFieldsNote(["NOME_COR", "SOMENTE_CARTAO"]);
+    expect(note).toBe(
+      "Every row of this file has an empty NOME_COR (`color`) and SOMENTE_CARTAO (`card_only`) fields, which real URBS " +
+        "exports fill in at least some rows: these fields look missing or renamed in this file, so their empty or null " +
+        "values in the results do not come from URBS.",
+    );
+    expect(out.note).toContain(note);
+    expect(out.note).not.toContain(ADAPT_MISSING_NOTE);
+
+    // One filled row anywhere in the file is enough: no note for that field.
+    write(JSON.stringify(fixtureRows("linhas").map((r, i) => (i === 3 ? r : { ...r, NOME_COR: "" }))));
+    expect((await lines({ query: "901" })).note).not.toContain("looks missing or renamed");
+
+    // The check covers the whole file, not only the line asked for: GRUPO is filled on another line only.
+    const stopsRows = fixtureRows("pontosLinha");
+    const otherLine = stopsRows.map((r) => ({ ...r, COD: "999", GRUPO: "G1" }));
+    write(JSON.stringify([...stopsRows.map((r) => ({ ...r, GRUPO: "" })), ...otherLine]), "pontosLinha");
+    expect((await stops({ line_code: "901" })).note).not.toContain("missing or renamed");
+    write(JSON.stringify(stopsRows.map((r) => ({ ...without(r, "GRUPO"), TIPO: null }))), "pontosLinha");
+    const stopsOut = await stops({ line_code: "901" });
+    expect(stopsOut.note).toContain(emptyFieldsNote(["TIPO", "GRUPO"]));
+    expect(stopsOut.note).toContain("TIPO (`type`) and GRUPO (`group`) fields");
+
+    // A timetable with both TABELA and ADAPT empty: the ADAPT note plus the generic one for TABELA alone.
+    write(JSON.stringify(fixtureRows("tabelaLinha").map((r) => ({ ...r, TABELA: "", ADAPT: "" }))), "tabelaLinha");
+    const dep = await departures({ line_code: "901" });
+    expect(dep.note).toContain(ADAPT_MISSING_NOTE);
+    expect(dep.note).toContain(
+      "Every row of this file has an empty TABELA (`table`) field, which real URBS exports fill in at least some rows: " +
+        "the field looks missing or renamed in this file, so its empty or null values in the results do not come from URBS.",
+    );
+    expect(emptyFieldsNote(["ADAPT"])).toBe("");
+    expect(emptyFieldsNote([])).toBe("");
   });
 
   it("skips rows without a field a tool filters or orders by (CATEGORIA_SERVICO, SENTIDO)", () => {

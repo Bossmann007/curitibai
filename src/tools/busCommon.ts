@@ -11,6 +11,7 @@ import {
   URBS_SOURCE_URL,
   URBS_SUBDIR,
   UrbsFileMissingError,
+  type DescriptiveField,
   type UrbsFile,
   type UrbsKind,
 } from "../sources/urbs.js";
@@ -56,8 +57,8 @@ export function urbsLicenseNote(file: string): string {
   );
 }
 
-/** Where a tool's rows came from: the file, its date, how many invalid rows were skipped, and whether ADAPT looks absent. */
-export type UrbsSource = Pick<UrbsFile<UrbsKind>, "file" | "date" | "skipped" | "adaptMissing">;
+/** Where a tool's rows came from: the file, its date, how many invalid rows were skipped, and which fields look absent. */
+export type UrbsSource = Pick<UrbsFile<UrbsKind>, "file" | "date" | "skipped" | "emptyFields">;
 
 /** `skipped_rows` in each bus tool's data: rows of the file left out because they did not match the expected shape. */
 export const skippedRowsOutput = z
@@ -70,11 +71,42 @@ export const ADAPT_MISSING_NOTE =
   "Every row of this file has an empty ADAPT (accessibility) field, which real URBS exports always fill: the field " +
   "looks missing or renamed in this file, so an empty `adapt` does not mean the bus has no accessibility equipment.";
 
+/** The result field each descriptive URBS field is returned as. */
+const OUTPUT_FIELD: Record<DescriptiveField, string> = {
+  NOME_COR: "color",
+  SOMENTE_CARTAO: "card_only",
+  NOME: "name",
+  TIPO: "type",
+  GRUPO: "group",
+  PONTO: "stop_name",
+  TABELA: "table",
+  ADAPT: "adapt",
+};
+
+const andList = (items: readonly string[]) =>
+  items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
 /**
- * Base note, plus the count of skipped rows when there are any, plus ADAPT_MISSING_NOTE when it applies, plus an age
- * warning once more than URBS_MAX_AGE_DAYS have passed since the file's date.
+ * For descriptive fields (other than ADAPT, which has ADAPT_MISSING_NOTE) that are empty in every row of the file: the
+ * field looks missing or renamed, so the empty (or, for `card_only`, null) values do not come from URBS. "" when none.
  */
-export function urbsNote({ file, date, skipped, adaptMissing }: UrbsSource, now: Date): string {
+export function emptyFieldsNote(fields: readonly DescriptiveField[]): string {
+  const others = fields.filter((f) => f !== "ADAPT");
+  if (others.length === 0) return "";
+  const one = others.length === 1;
+  return (
+    `Every row of this file has an empty ${andList(others.map((f) => `${f} (\`${OUTPUT_FIELD[f]}\`)`))} field${one ? "" : "s"}, which ` +
+    `real URBS exports fill in at least some rows: ${one ? "the field looks" : "these fields look"} missing or renamed ` +
+    `in this file, so ${one ? "its" : "their"} empty or null values in the results do not come from URBS.`
+  );
+}
+
+/**
+ * Base note, plus the count of skipped rows when there are any, plus ADAPT_MISSING_NOTE and emptyFieldsNote when they
+ * apply, plus an age warning once more than URBS_MAX_AGE_DAYS have passed since the file's date.
+ */
+export function urbsNote({ file, date, skipped, emptyFields }: UrbsSource, now: Date): string {
+  const missing = emptyFieldsNote(emptyFields);
   const days = (Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000;
   const stale =
     days > URBS_MAX_AGE_DAYS
@@ -87,7 +119,8 @@ export function urbsNote({ file, date, skipped, adaptMissing }: UrbsSource, now:
     (skipped > 0
       ? ` ${skipped} row${skipped === 1 ? "" : "s"} of the file did not match the expected shape and ${skipped === 1 ? "was" : "were"} left out.`
       : "") +
-    (adaptMissing ? ` ${ADAPT_MISSING_NOTE}` : "") +
+    (emptyFields.includes("ADAPT") ? ` ${ADAPT_MISSING_NOTE}` : "") +
+    (missing ? ` ${missing}` : "") +
     stale
   );
 }
