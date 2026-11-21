@@ -295,7 +295,7 @@ describe("places_search police and fire_station (bundled list, no network)", () 
     expect(police.data.note).toContain(POLICE_NOTE);
     expect(police.data.note.startsWith("NOT FOR EMERGENCIES")).toBe(true);
     expect(fire.data.note).not.toContain("Guarda Municipal");
-    expect(placesSearch.description).toContain("includes Guarda Municipal, identification institutes and some non-police offices");
+    expect(placesSearch.description).toContain(POLICE_NOTE);
   });
 
   it("the bundled list keeps only returned tags", () => {
@@ -304,9 +304,9 @@ describe("places_search police and fire_station (bundled list, no network)", () 
   });
 
   it("the note warns once the list is more than 180 days old (Curitiba time)", () => {
-    expect(bundledNote(new Date("2027-05-20T12:00:00Z"), OSM_BUNDLED_CHECKED_AT)).toMatch(/is not refreshed; it may be outdated/); // day 180
-    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT)).toMatch(/more than 180 days ago, and may be outdated/);
-    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT).startsWith("NOT FOR EMERGENCIES")).toBe(true);
+    expect(bundledNote(new Date("2027-05-20T12:00:00Z"), OSM_BUNDLED_CHECKED_AT, "fire_station")).toMatch(/is not refreshed; it may be outdated/); // day 180
+    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT, "fire_station")).toMatch(/more than 180 days ago, and may be outdated/);
+    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT, "fire_station").startsWith("NOT FOR EMERGENCIES")).toBe(true);
   });
 
   it("live categories say bundled false and checked_at null", async () => {
