@@ -293,6 +293,7 @@ describe("places_search police and fire_station (bundled list, no network)", () 
     const police = placesSearchOutput.parse((await call("places_search", { category: "police" })).structuredContent);
     const fire = placesSearchOutput.parse((await call("places_search", { category: "fire_station" })).structuredContent);
     expect(police.data.note).toContain(POLICE_NOTE);
+    expect(police.data.note.indexOf(POLICE_NOTE)).toBeLessThan(police.data.note.indexOf("This list was taken"));
     expect(police.data.note.startsWith("NOT FOR EMERGENCIES")).toBe(true);
     expect(fire.data.note).not.toContain("Guarda Municipal");
     expect(placesSearch.description).toContain(POLICE_NOTE);
