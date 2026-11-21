@@ -7,6 +7,7 @@ import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/port
 import { CNES_TYPES_URL, establishmentsUrl } from "../src/sources/cnes.js";
 import { publicationUrl } from "../src/sources/pncp.js";
 import { ALERTS_URL, FORECAST_URL } from "../src/sources/inmet.js";
+import { OVERPASS_URL, placesQuery } from "../src/sources/osm.js";
 
 export function fixture(name: string): string {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -18,11 +19,15 @@ export interface Route {
   contentType?: string;
   headers?: Record<string, string>;
   error?: boolean;
+  /** POST only: routes keyed by the form field `data` (Overpass queries all go to one URL). */
+  byData?: Record<string, Route>;
 }
 
 export interface FetchCall {
   url: string;
   method: string;
+  /** The form field `data` of a POST, when present. */
+  data?: string;
 }
 
 /** Replaces global fetch with a router keyed by "METHOD url". Unknown requests fail the test. */
@@ -33,8 +38,10 @@ export function stubFetch(routes: Record<string, Route>): FetchCall[] {
     vi.fn(async (input: string | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";
-      calls.push({ url, method });
-      const route = routes[`${method} ${url}`];
+      const data = init?.body instanceof URLSearchParams ? (init.body.get("data") ?? undefined) : undefined;
+      calls.push(data === undefined ? { url, method } : { url, method, data });
+      const outer = routes[`${method} ${url}`];
+      const route = outer?.byData ? (data === undefined ? undefined : outer.byData[data]) : outer;
       if (!route) throw new Error(`unexpected network call in test: ${method} ${url}`);
       if (route.error) throw new TypeError("fetch failed");
       const status = route.status ?? 200;
@@ -62,6 +69,18 @@ export function happyRoutes(): Record<string, Route> {
     ...cnesRoutes(),
     ...pncpRoutes(),
     ...inmetRoutes(),
+    ...osmRoutes(),
+  };
+}
+
+/** Overpass routes (one URL, keyed by query) backed by the synthetic fixtures. */
+export function osmRoutes(): Record<string, Route> {
+  return {
+    [`POST ${OVERPASS_URL}`]: {
+      byData: {
+        [placesQuery("library")]: { body: fixture("osm_edges_synthetic.json"), contentType: JSON_TYPE },
+      },
+    },
   };
 }
 
@@ -137,6 +156,7 @@ export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[
   { name: "procurement_search", arguments: { from: PNCP_FROM, to: PNCP_TO } },
   { name: "weather_forecast", arguments: {} },
   { name: "weather_alerts", arguments: {} },
+  { name: "places_search", arguments: { category: "library" } },
 ];
 
 /** Error results carry their JSON in the text content only. */
