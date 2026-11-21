@@ -166,6 +166,9 @@ describe("weather_alerts", () => {
     expect(out.data.alerts).toEqual([]);
     expect(out.data.note).toMatch(/^No active INMET warning covers Curitiba in INMET's lists for today or upcoming as of /);
     expect(out.data.note).toContain(out.fetched_at);
+    expect(out.data.note).toContain("may lag INMET by up to 10 minutes");
+    expect(out.data.note).toContain("not an official alert service");
+    expect(out.data.note).toContain("Defesa Civil (199)");
   });
 
   it("accepts geocodes served as an array", () => {

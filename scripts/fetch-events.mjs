@@ -15,7 +15,7 @@ export const HOST = "turismo.curitiba.pr.gov.br";
 /** The only hosts this script contacts (exact match). Separate from the server's ALLOWED_HOSTS on purpose. */
 export const ALLOWED_HOSTS = Object.freeze([HOST]);
 export const ORIGIN = `https://${HOST}`;
-export const USER_AGENT = "curitibai-mcp/0.10";
+export const USER_AGENT = "curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)";
 
 /** Requests start only between 02:00 and 05:50 UTC (robots.txt Visit-time 0200-0600, with a 10-minute margin). */
 export const WINDOW_START_MIN = 2 * 60;

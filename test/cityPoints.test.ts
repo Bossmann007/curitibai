@@ -71,6 +71,7 @@ describe("city_points_search", () => {
     expect(out.source_url).toBe(URBS_SOURCE_URL);
     expect(out.license_note).toContain("2026_11_20_pois.json");
     expect(out.license_note).toContain("CC BY 4.0");
+    expect(out.license_note).toContain("O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.");
     expect(out.note).toContain("no network call");
     expect(out.note).toContain(`${EXCLUDED} rows in other categories`);
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");

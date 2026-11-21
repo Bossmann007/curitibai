@@ -10,7 +10,8 @@ import { MASK, maskObject } from "./pncp.js";
  */
 export const OVERPASS_URL = "https://ovp.dresel.systems/api-sa/interpreter";
 export const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
-export const OSM_ATTRIBUTION = "© OpenStreetMap contributors, ODbL";
+export const OSM_ATTRIBUTION = "© OpenStreetMap contributors (ODbL 1.0)";
+export const ODBL_URL = "https://opendatacommons.org/licenses/odbl/1-0/";
 /** The server-side limit written into every query; the client waits a little longer for the answer to arrive. */
 export const OVERPASS_QUERY_TIMEOUT_S = 25;
 export const OVERPASS_TIMEOUT_MS = 30_000;
@@ -68,7 +69,7 @@ export function osmUrl(type: string, id: number): string {
 
 export function osmLicenseNote(osmBase: string | null, fetchedAt: string, bundled = false): string {
   return (
-    `${OSM_ATTRIBUTION} (${OSM_COPYRIGHT_URL}). Data from OpenStreetMap via the Overpass API (${OVERPASS_URL}), ` +
+    `${OSM_ATTRIBUTION}, ${ODBL_URL}; see ${OSM_COPYRIGHT_URL}. Data from OpenStreetMap via the Overpass API (${OVERPASS_URL}), ` +
     `fetched at ${fetchedAt}${bundled ? " once and bundled with this server (not refreshed)" : ""}; OSM data as of ${osmBase ?? "an unknown time (the server did not say)"}. ` +
     "OpenStreetMap is community-edited and may be incomplete or outdated. " +
     "Unofficial; not affiliated with OpenStreetMap, the OSM Foundation or Prefeitura de Curitiba."

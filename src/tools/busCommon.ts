@@ -15,6 +15,7 @@ import {
   type UrbsFile,
   type UrbsKind,
 } from "../sources/urbs.js";
+import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fail } from "./common.js";
 
 /** Shared by the three bus tools and city_points_search: `{data, source_url, checked_at, license_note, note}`. */
@@ -56,8 +57,8 @@ export function urbsLicenseNote(...files: string[]): string {
     "downloaded by the user from the portal's mirror " +
     `(${URBS_MIRROR_URL}). ${URBS_LICENSE}. Values are ` +
     "returned as published, except that coordinates are converted to decimal numbers and e-mail-, phone- and " +
-    "CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. Unofficial; not affiliated with URBS or the " +
-    "Prefeitura de Curitiba."
+    `CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. ${PORTAL_DISCLAIMER} Unofficial; not ` +
+    "affiliated with URBS or the Prefeitura de Curitiba."
   );
 }
 

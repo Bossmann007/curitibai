@@ -66,7 +66,8 @@ describe("each tool returns the envelope, valid against its output schema", () =
       expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
     } else if (call.name === "places_search") {
       expect(new URL(parsed.source_url).hostname).toBe("ovp.dresel.systems");
-      expect(parsed.license_note).toContain("© OpenStreetMap contributors, ODbL");
+      expect(parsed.license_note).toContain("© OpenStreetMap contributors (ODbL 1.0)");
+      expect(parsed.license_note).toContain("https://opendatacommons.org/licenses/odbl/1-0/");
       expect(parsed.license_note).toContain(`fetched at ${parsed.fetched_at}`);
     } else if (call.name.startsWith("weather_")) {
       expect(new URL(parsed.source_url).hostname).toBe("apiprevmet3.inmet.gov.br");

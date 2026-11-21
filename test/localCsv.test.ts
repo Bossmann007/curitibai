@@ -170,6 +170,7 @@ describe("local_csv_summary", () => {
       ],
       other_count: 1, // "Lixo" has 1 row: below the minimum group size
     });
+    expect(parsed.note).toContain("O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.");
     const text = JSON.stringify(res);
     for (const leak of ["Rua Fictícia", "duas linhas", '"Fictícia"']) expect(text).not.toContain(leak);
   });

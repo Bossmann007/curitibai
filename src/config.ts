@@ -1,4 +1,4 @@
-export const USER_AGENT = "curitibai-mcp/0.7";
+export const USER_AGENT = "curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)";
 export const FETCH_TIMEOUT_MS = 10_000;
 export const CACHE_TTL_MS = 10 * 60 * 1000;
 export const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;

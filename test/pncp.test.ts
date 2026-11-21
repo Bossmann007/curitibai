@@ -56,8 +56,8 @@ const PLANTED = [
   "niFornecedor",
   "nomeRazaoSocialFornecedor",
   "fornecedor",
-  "12345678909",
-  "98765432100",
+  "12345678900",
+  "98765432101",
   "FORNECEDORA PESSOA FICTICIA",
   // people named in objects of direct awards
   "FULANO FICTICIO PRIMEIRO",
@@ -65,7 +65,7 @@ const PLANTED = [
   "DOCENTE FICTICIA TERCEIRA",
   "EPSILON FICTICIO",
   // CPF, CNPJ, e-mail and phone inside a competitive object
-  "123.456.789-09",
+  "123.456.789-00",
   "12.345.678/0001-95",
   "fulana.ficticia@example.invalid",
   "3333-0000",
@@ -116,6 +116,27 @@ describe("PNCP host allowlist", () => {
     const res = await search();
     expect(dataOf(res).items.length).toBeGreaterThan(0);
     expect(calls.map((c) => c.url)).toEqual([pncpUrl(), moved]);
+  });
+});
+
+/** True when an 11-digit string passes the CPF check-digit rule (computed here, independent of src/). */
+function validCpf(digits: string): boolean {
+  const d = [...digits].map(Number);
+  const check = (n: number) => ((d.slice(0, n).reduce((t, x, i) => t + x * (n + 1 - i), 0) * 10) % 11) % 10;
+  return check(9) === d[9] && check(10) === d[10];
+}
+
+describe("PNCP fixture", () => {
+  it("rule check: 123.456.789-09 is a valid CPF, 123.456.789-00 is not", () => {
+    expect(validCpf("12345678909")).toBe(true);
+    expect(validCpf("12345678900")).toBe(false);
+  });
+
+  it("has no CPF-shaped value with a valid check digit (no real person's number can be planted)", () => {
+    const text = fixture("pncp_contratacoes_synthetic.json");
+    const cpfs = [...text.matchAll(/(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)/g)].map((m) => m.slice(1).join(""));
+    expect(cpfs.length).toBeGreaterThanOrEqual(3);
+    expect(cpfs.filter(validCpf)).toEqual([]);
   });
 });
 

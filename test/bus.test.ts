@@ -91,6 +91,7 @@ describe("file selection", () => {
     expect(out.license_note).toContain(
       "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page",
     );
+    expect(out.license_note).toContain("O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.");
     expect(out.note).toContain("no network call");
     expect(out.note).not.toContain("days ago");
   });

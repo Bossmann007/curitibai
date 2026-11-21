@@ -10,6 +10,7 @@ import {
 } from "../sources/cnes.js";
 import { fold } from "../text.js";
 import { RateLimitedError } from "../http.js";
+import { HEALTH_NOTE } from "./cityPointsSearch.js";
 import { envelope, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 /** Upstream pages requested per call, at most. Curitiba has thousands of units; one call never walks them all. */
@@ -102,7 +103,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
               next_skip: 0,
               partial: false,
               discarded: 0,
-              note: `No CNES unit type matches unit_type. ${SCOPE_NOTE}`,
+              note: `No CNES unit type matches unit_type. ${SCOPE_NOTE} ${HEALTH_NOTE}`,
             },
             source_url: establishmentsUrl(page, null),
             fetched_at: types.fetchedAt,
@@ -168,7 +169,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
         }
         p++;
       }
-      const notes = [SCOPE_NOTE];
+      const notes = [SCOPE_NOTE, HEALTH_NOTE];
       if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);
       return ok({

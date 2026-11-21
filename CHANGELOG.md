@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.13.2
+
+Legal hygiene: attribution, notices and facts only. No new tool, source or host.
+
+- URBS bus and points-of-interest results (`urbsLicenseNote`, `city_points_search`) and the `local_csv_summary` note
+  now carry the Portal de Dados Abertos de Curitiba's required sentence ("O Portal de Dados Abertos de Curitiba e o
+  órgão ou entidade ... uso secundário."), as `PORTAL_LICENSE_NOTE` already did.
+- `places_search`: `attribution` is now "© OpenStreetMap contributors (ODbL 1.0)" (was "© OpenStreetMap contributors,
+  ODbL"), and `license_note` adds the ODbL 1.0 URI (https://opendatacommons.org/licenses/odbl/1-0/) next to the
+  copyright page, for live and bundled categories.
+- `weather_alerts`: the "no warning" note says the answer may lag INMET by up to 10 minutes (in-memory cache), that it
+  is not an official alert service, and to follow Defesa Civil (199).
+- `health_units_search`: every note ends with the emergency line the city-points tool already had ("NOT FOR
+  EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).").
+- User-Agent: the server and the events collector append the repository as contact
+  (`curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)`, `curitibai-mcp/0.10 (+...)`). robots.txt groups are
+  still matched on the `curitibai-mcp` product token.
+- Events: confirmed facts only (title, dates, time, place, address, category, link). The collector never reads the
+  description; a test now pins that neither `events.json` nor the detail cache holds it.
+- Test fixture: the CPF-shaped values in `pncp_contratacoes_synthetic.json` now have invalid check digits; a test
+  checks that no value there passes the CPF rule.
+- README: one block on independence, names, "as is" data and emergency numbers (190/192/193/199); the comparison table
+  is dated (2026-11-21, public sources) and its "extra" row loses the promotional wording; new "Privacy notice" and
+  "Collection rules"; "License" becomes "Licences (code and data)" (URBS CC BY 4.0 with changes made, OSM extract as a
+  separate ODbL 1.0 database, terms inherited from PNCP, INMET and CNES, fixtures with real third-party content). The
+  Carta de Serviços capture text is reworded.
+
 ## 0.13.1
 
 - Fixed: times after midnight now follow the service day. URBS files a late-night trip under the day its service

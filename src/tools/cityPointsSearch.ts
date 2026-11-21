@@ -10,6 +10,7 @@ import {
   type Poi,
 } from "../sources/urbs.js";
 import { MASK, OBJECT_MAX_CHARS } from "../sources/pncp.js";
+import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fold } from "../text.js";
 import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, skippedRowsOutput } from "./busCommon.js";
 import { guardedSummary, queryWords } from "./cityServicesSearch.js";
@@ -200,7 +201,7 @@ function poiLicenseNote(file: string): string {
     "returned; values are returned as published, except that coordinates are converted to decimal numbers, " +
     "categories get a short id, e-mail-, phone- and CPF/CNPJ-shaped text in a name or description would be " +
     `replaced by [masked], and such a field over ${OBJECT_MAX_CHARS} characters would be cut with "…". ` +
-    "Unofficial; not affiliated with URBS or the Prefeitura de Curitiba."
+    `${PORTAL_DISCLAIMER} Unofficial; not affiliated with URBS or the Prefeitura de Curitiba.`
   );
 }
 

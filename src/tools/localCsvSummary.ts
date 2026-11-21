@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CsvParser, detectDelimiter } from "../csv.js";
 import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
+import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fold } from "../text.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -60,7 +61,8 @@ export const LOCAL_NOTE =
   "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
   "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused; the check is by name only. " +
-  "The data keeps its publisher's licence: cite the source of the file.";
+  "The data keeps its publisher's licence: cite the source of the file. " +
+  `For a file from the Portal de Dados Abertos de Curitiba, the portal's rules ask for this notice: ${PORTAL_DISCLAIMER}`;
 
 export const localCsvSummaryInput = {
   file: z.string().min(1).max(255).describe("CSV file name (or relative path) inside the folder set by CURITIBAI_DATA_DIR."),
