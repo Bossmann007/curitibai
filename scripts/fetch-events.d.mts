@@ -1,10 +1,9 @@
 // Types for scripts/fetch-events.mjs, so the tests can import it (the script itself is plain JavaScript).
 
 export interface RobotsGroup {
+  lines: string[];
   allow: string[];
   disallow: string[];
-  visitTime: string[];
-  requestRate: string[];
   specific: boolean;
 }
 export interface EventRecord {
@@ -24,6 +23,11 @@ export interface RunDeps {
   sleep: (ms: number) => Promise<void>;
   env: Record<string, string | undefined>;
   log: (line: string) => void;
+  recordedRobots?: readonly string[];
+}
+export interface CacheEntry {
+  fetched_at: string;
+  event: EventRecord;
 }
 export interface RunResult {
   code: string;
@@ -49,7 +53,15 @@ export const PLACE_MAX: number;
 export const SHORT_MAX: number;
 export const MIN_RATIO: number;
 export const MAX_RATIO: number;
-export const RECORDED_ROBOTS: { readonly disallow: readonly string[]; readonly visitTime: string; readonly requestRate: string };
+export const ROBOTS_RECORDED_ON: string;
+export const RECORDED_ROBOTS: readonly string[];
+export const CACHE_FILE: string;
+export const CACHE_MAX_BYTES: number;
+export const REFRESH_AGE_MS: number;
+export const REFRESH_SOON_DAYS: number;
+export const REFRESH_MIN_AGE_MS: number;
+export const LOCK_FILE: string;
+export const LOCK_STALE_MS: number;
 export const NO_EVENTS_MARKER: string | null;
 
 export class StopError extends Error {
@@ -61,9 +73,10 @@ export class StopError extends Error {
 export function inWindow(now: Date): boolean;
 export function curitibaDate(now: Date): string;
 export function listPath(isoDate: string, page: number): string;
-export function parseRobots(text: string): { agents: string[]; allow: string[]; disallow: string[]; visitTime: string[]; requestRate: string[] }[];
+export function parseRobots(text: string): { agents: string[]; rules: [string, string][] }[];
 export function robotsGroupFor(groups: ReturnType<typeof parseRobots>): RobotsGroup | null;
-export function robotsMatchesRecorded(group: RobotsGroup | null, recorded?: typeof RECORDED_ROBOTS): boolean;
+export function robotsMatchesRecorded(group: RobotsGroup | null, recorded?: readonly string[]): boolean;
+export function politeGapMs(group: Pick<RobotsGroup, "lines">): number;
 export function robotsPatternMatches(pattern: string, path: string): boolean;
 export function robotsAllows(group: Pick<RobotsGroup, "allow" | "disallow">, path: string): boolean;
 export function declaredCharset(contentType: string | null, bytes: Uint8Array): string | null;
@@ -76,5 +89,9 @@ export function validEvent(e: unknown): boolean;
 export function eventsDir(env: Record<string, string | undefined>): string;
 export function writeAtomic(dir: string, name: string, text: string): void;
 export function readPrevious(dir: string): { format: 1; events: EventRecord[] } | null;
+export function readCache(dir: string): Map<number, CacheEntry>;
+export function writeCache(dir: string, cache: Map<number, CacheEntry>): void;
+export function needsDetail(entry: CacheEntry | undefined, item: { id: number; slug: string }, today: string, nowMs: number): boolean;
+export function acquireLock(dir: string, now: Date): () => void;
 export function run(deps: RunDeps): Promise<RunResult>;
 export function decodeHtml(s: string): string;
