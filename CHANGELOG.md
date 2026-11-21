@@ -6,7 +6,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 - Added `places_search`: public places in Curitiba from OpenStreetMap by a fixed category allowlist (park, library, school, hospital, police, fire station, community centre, town hall, bus station, marketplace), optional name words, `limit` ≤ 20 and `offset`. No shops, offices, doctors, dentists or clinics.
 - Added `bus_lines`: OpenStreetMap bus route relations in Curitiba (ref, name, from/to, operator, network) with ref/name filters; with `route_id`, one route's stops in order with coordinates. No timetables.
-- New host `overpass.private.coffee` (Overpass API, robots.txt 404); `overpass-api.de` is not used because its robots.txt disallows `/api/`. One POST per call, 30 s timeout, 3 MB cap.
+- New host `ovp.dresel.systems` (Overpass API, South America region; robots.txt 404, free, no API key). `overpass-api.de` is not used because its robots.txt disallows `/api/`; `overpass.private.coffee` was down when checked and NextGIS needs an API key. One POST per call, one request at a time, 30 s timeout, 3 MB cap.
 - Every OSM result carries "© OpenStreetMap contributors, ODbL" and the OSM data timestamp (`osm3s.timestamp_osm_base`); names and other free text pass through the existing PII masking as a guard.
 - User-Agent is now `curitibai-mcp/0.7` for every host.
 

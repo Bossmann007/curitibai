@@ -13,8 +13,8 @@ export const busLinesInput = {
     .describe("OSM relation id of one route (osm_id from a list call): returns that route with its ordered stops. Use alone."),
   ref: z.string().trim().min(1).max(20).optional().describe("Line number/code, exact (case ignored), e.g. \"022\"."),
   name: z.string().trim().min(2).max(100).optional().describe("Words that must all appear in the route name."),
-  limit: z.number().int().min(1).max(20).default(10),
-  offset: z.number().int().min(0).max(10_000).default(0),
+  limit: z.number().int().min(1).max(20).optional().describe("List mode only; default 10."),
+  offset: z.number().int().min(0).max(10_000).optional().describe("List mode only; default 0."),
 };
 
 const routeSchema = z.object({
@@ -76,7 +76,7 @@ export const busLines: ToolDef<typeof busLinesInput, typeof busLinesOutput> = {
   handler: async ({ route_id, ref, name, limit, offset }) => {
     try {
       if (route_id !== undefined) {
-        if (ref !== undefined || name !== undefined || limit !== 10 || offset !== 0) {
+        if (ref !== undefined || name !== undefined || limit !== undefined || offset !== undefined) {
           return fail("invalid_argument", "route_id cannot be combined with ref, name, limit or offset.");
         }
         const res = await getBusRoute(route_id);
@@ -96,6 +96,8 @@ export const busLines: ToolDef<typeof busLinesInput, typeof busLinesOutput> = {
           license_note: osmLicenseNote(res.value.osmBase, res.fetchedAt),
         });
       }
+      const lim = limit ?? 10;
+      const off = offset ?? 0;
       const res = await getBusRoutes();
       const wantRef = ref ? fold(ref) : null;
       const words = name ? fold(name).split(/\s+/).filter(Boolean) : [];
@@ -106,8 +108,8 @@ export const busLines: ToolDef<typeof busLinesInput, typeof busLinesOutput> = {
       return ok({
         data: {
           total: matches.length,
-          next_offset: offset + limit < matches.length ? offset + limit : null,
-          routes: matches.slice(offset, offset + limit),
+          next_offset: off + lim < matches.length ? off + lim : null,
+          routes: matches.slice(off, off + lim),
           route: null,
           attribution: OSM_ATTRIBUTION,
           osm_data_as_of: res.value.osmBase,

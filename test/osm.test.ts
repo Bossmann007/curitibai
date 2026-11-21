@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   busRouteQuery,
   busRoutesQuery,
   MAX_STOPS,
+  oneAtATime,
   orderedStops,
+  OVERPASS_MAX_QUEUE_WAIT_MS,
+  resetOverpassCooldown,
   OSM_ATTRIBUTION,
   OVERPASS_MAX_BYTES,
   OVERPASS_URL,
@@ -81,7 +84,7 @@ describe("places_search", () => {
     expect(n.address).toEqual({ street: "Rua Ficticia", housenumber: "100", suburb: "Bairro Ficticio", postcode: "80000-000", city: "Curitiba" });
     expect(n.opening_hours).toBe("Mo-Fr 0800-1800"); // structured: never through the phone mask
     expect(n.osm_url).toBe("https://www.openstreetmap.org/node/9000000001");
-    expect(byId[9000000002]!.website).toBeNull(); // javascript:
+    expect(byId[9000000002]!.website).toBe("https://outra.exemplo.org/"); // javascript: website dropped, contact:website used
     expect(byId[9000000002]!.lat).toBe(-25.41); // way center
     expect(byId[9000000003]!.website).toBe("http://biblioteca.exemplo.org/horario"); // contact:website
     expect(byId[9000000003]!.name).toBeNull();
@@ -128,6 +131,7 @@ describe("places_search", () => {
       error: "rate_limited",
       message: "The source is limiting requests; wait 30 s before trying again.",
     });
+    resetOverpassCooldown();
     stubFetch(overpass({ [q]: { status: 504 } }));
     expect(errorOf(await call("places_search", { category: "park" }))).toEqual({ error: "source_unavailable" });
     stubFetch(overpass({ [q]: { body: JSON.stringify({ elements: [], remark: "runtime error" }), contentType: JSON_TYPE } }));
@@ -202,9 +206,143 @@ describe("bus_lines", () => {
     expect(mk(MAX_STOPS + 1)).toMatchObject({ truncated: true });
   });
 
+  it("route_id with an explicit limit is invalid_argument too", async () => {
+    stubFetch({});
+    expect(errorOf(await call("bus_lines", { route_id: ROUTE_ID, limit: 10 }))).toMatchObject({ error: "invalid_argument" });
+  });
+
   it.each([{ route_id: 0 }, { route_id: 1.5 }, { name: "x" }, { limit: 0 }, { ref: "" }])("rejects %j without a request", async (args) => {
     const calls = stubFetch({});
     expect((await call("bus_lines", args)).isError).toBe(true);
     expect(calls).toHaveLength(0);
+  });
+});
+
+// Trimmed real responses from ovp.dresel.systems/api-sa, recorded 2026-11-21 (OSM data as of 2026-11-19T21:22:20Z).
+// OpenStreetMap data, © OpenStreetMap contributors, ODbL.
+describe("recorded Overpass responses (real OSM data)", () => {
+  const OSM_BASE = "2026-11-19T21:22:20Z";
+
+  it("places_search library: Curitiba area found, every element returned, nodes keep coordinates", async () => {
+    stubFetch(overpass({ [placesQuery("library")]: { body: fixture("osm_library_recorded.json"), contentType: JSON_TYPE } }));
+    const out = placesSearchOutput.parse((await call("places_search", { category: "library", limit: 20 })).structuredContent);
+    expect(out.data.total).toBe(56);
+    expect(out.data.osm_data_as_of).toBe(OSM_BASE);
+    expect(out.data.places.every((p) => p.lat !== null && p.lon !== null)).toBe(true);
+    expect(out.data.places.every((p) => p.name === null || !p.name.includes("[masked]"))).toBe(true);
+    const one = placesSearchOutput.parse((await call("places_search", { category: "library", name: "hideo handa" })).structuredContent);
+    expect(one.data.places.map((p) => [p.osm_type, p.osm_id, p.name])).toEqual([["node", 2591039475, "Biblioteca Hideo Handa"]]);
+    expect(one.data.places[0]!.lat).toBeCloseTo(-25.446, 3);
+  });
+
+  it("bus_lines list: real route tags, filtered by ref", async () => {
+    stubFetch(overpass({ [busRoutesQuery()]: { body: fixture("osm_bus_routes_recorded.json"), contentType: JSON_TYPE } }));
+    const out = busLinesOutput.parse((await call("bus_lines", { ref: "022" })).structuredContent);
+    expect(out.data.routes).toEqual([
+      {
+        osm_id: 3512649,
+        ref: "022",
+        name: "Inter 2 (Horário)",
+        from: "Terminal Portão (022)",
+        to: "Terminal Portão (022)",
+        operator: null,
+        network: null,
+        osm_url: "https://www.openstreetmap.org/relation/3512649",
+      },
+    ]);
+    const all = busLinesOutput.parse((await call("bus_lines", { limit: 20 })).structuredContent);
+    expect(all.data.total).toBe(25);
+    expect(all.data.routes.slice(0, 3).map((r) => r.ref)).toEqual(["010", "011", "020"]);
+  });
+
+  it("bus_lines route_id 3512649 (Inter 2): the 12 stops in member order", async () => {
+    stubFetch(overpass({ [busRouteQuery(3512649)]: { body: fixture("osm_bus_route_3512649_recorded.json"), contentType: JSON_TYPE } }));
+    const out = busLinesOutput.parse((await call("bus_lines", { route_id: 3512649 })).structuredContent);
+    const r = out.data.route!;
+    expect(r.stops.map((s) => s.name)).toEqual([
+      "Terminal Cabral (022/220)",
+      "Estação Prisma Solar Agrárias",
+      "Estação Tubo Praça das Nações (022/307)",
+      "Terminal Capão da Imbuia (022)",
+      "Terminal Hauer (022)",
+      "Estação Tubo Xaxim (022)",
+      "Terminal Capão Raso (022)",
+      "Terminal Portão (022)",
+      "Estação Tubo Santa Quitéria (022/702)",
+      "Estação Tubo Praça das Mercês (022/307)",
+      "Estação Tubo Praça da Bandeira (022)",
+      "Estação Tubo Centro Cívico - Assembleia",
+    ]);
+    expect(r.stops.every((s) => s.lat !== null && s.osm_type === "node")).toBe(true);
+    expect(r.stops_truncated).toBe(false);
+    expect(out.license_note).toContain(`OSM data as of ${OSM_BASE}`);
+  });
+});
+
+describe("Overpass politeness", () => {
+  it("parallel calls for different categories never overlap their requests", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const body = fixture("osm_edges_synthetic.json");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((r) => setTimeout(r, 20));
+        inFlight--;
+        return new Response(body, { status: 200, headers: { "content-type": JSON_TYPE } });
+      }),
+    );
+    const client = await connectClient();
+    const results = await Promise.all(
+      (["library", "park", "school", "police", "hospital"] as const).map((category) =>
+        client.callTool({ name: "places_search", arguments: { category } }),
+      ),
+    );
+    expect(results.every((r) => !r.isError)).toBe(true);
+    expect(maxInFlight).toBe(1);
+  });
+});
+
+describe("Overpass queue", () => {
+  it("after a 429, later calls answer rate_limited without a request until the wait is over", async () => {
+    const calls = stubFetch(overpass({ [placesQuery("park")]: { status: 429, headers: { "retry-after": "30" } } }));
+    expect(errorOf(await call("places_search", { category: "park" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await call("places_search", { category: "library" }))).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("keeps going after a failed request", async () => {
+    stubFetch(
+      overpass({
+        [placesQuery("park")]: { status: 504 },
+        [placesQuery("library")]: { body: fixture("osm_edges_synthetic.json"), contentType: JSON_TYPE },
+      }),
+    );
+    const client = await connectClient();
+    const [a, b] = await Promise.all([
+      client.callTool({ name: "places_search", arguments: { category: "park" } }),
+      client.callTool({ name: "places_search", arguments: { category: "library" } }),
+    ]);
+    expect(errorOf(a)).toEqual({ error: "source_unavailable" });
+    expect(b.isError).toBeFalsy();
+  });
+
+  it("a call that waited too long for its turn gives up without running", async () => {
+    let t = 0;
+    const now = () => t;
+    let ran = false;
+    const slow = oneAtATime(async () => {
+      t += OVERPASS_MAX_QUEUE_WAIT_MS + 1; // the first request takes longer than the wait cap
+      return 1;
+    }, now);
+    const late = oneAtATime(async () => {
+      ran = true;
+      return 2;
+    }, now);
+    await expect(slow).resolves.toBe(1);
+    await expect(late).rejects.toThrow(/source_unavailable/);
+    expect(ran).toBe(false);
   });
 });
