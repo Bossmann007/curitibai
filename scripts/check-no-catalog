@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fails if git tracks a file named carta-servicos.json (any folder, any letter case), other than the synthetic
 # test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
-# Also fails if git tracks a URBS daily export: a file named YYYY_MM_DD_<anything>.json or .json.xz (any folder,
+# Also fails if git tracks a URBS daily export (linhas, pontosLinha, tabelaLinha, pois or any other kind): a file
+# named YYYY_MM_DD_<anything>.json or .json.xz (any folder,
 # any letter case), with no exemption (the synthetic URBS fixtures have no date in their names).
 # The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256,
 # and the work-tree file at the fixture path, when present, must match the pinned sha256 too.

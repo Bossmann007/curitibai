@@ -263,6 +263,8 @@ describe("scripts/check-no-catalog", () => {
       "a b/2026_11_20_TabelaLinha.JSON",
       "test/fixtures/urbs_synthetic/2026_11_20_linhas.json", // no exemption, not even under fixtures
       "x/2026_11_20_anything.json",
+      "urbs/2026_11_20_pois.json",
+      "urbs/2026_11_20_pois.json.xz",
     ])("fails when %j is force-added", (path) => {
       add(path, "[]\n", true);
       expectUrbsFail(path);

@@ -25,7 +25,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `overpass.nextgis.com` (NextGIS) | 404 (checked 2026-11-21 03:26 UTC) | The endpoint needs an API key in the path (`/YOUR_API_KEY/api/interpreter`, sign-up at my.nextgis.com): **not used** (no key, no account) |
 | `overpass.openstreetmap.fr` | 403, "This service is only available to white-listed usages" | **Not used** |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
-| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) read URBS files a person downloads from there in a browser |
+| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser |
 | `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. For the owner's local copy used by `city_services_search` (v0.6), the `/servicos/` listing pages were read on 2026-11-19/20 with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds). That copy is **not** in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -397,6 +397,77 @@ Line codes are compared case-insensitively. Results are capped at 50 per call, w
 Prior art (2026-11-21, `gh search repos "urbs curitiba"`, `gh search code "pontosLinha tabelaLinha"`): one 2020 GPS
 map-matching project (`lucianourgal/BusMapMatching`, no licence), nothing that reads these exports for an assistant.
 The GTFS options below need a feed built from the same disallowed mirror. Built.
+
+### `city_points_search`: URBS points-of-interest export (local file, not shipped)
+
+No network, and **no URBS file in this repository**. Same source, mirror, folder, licence and reading rules as the bus
+tools above: the newest `YYYY_MM_DD_pois.json` in `CURITIBAI_DATA_DIR/urbs/`, downloaded by a person from
+<https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> and decompressed with `xz -d`, read through `src/localfs.ts` with
+the 20 MB cap, rows validated with zod one by one (`POI_NAME` and `POI_CATEGORY_NAME` required, `POI_LAT`/`POI_LON`
+comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint. `license_note`
+credits URBS and the dataset "Transporte Coletivo de Curitiba" (CC BY 4.0 as linked from its portal page) and names
+the file. That the portal page lists the POI export itself was not checked (the server never opens the mirror); the
+file sits in the same mirror folder as the bus exports.
+
+| File (2026-11-20) | Rows | Fields | Notes |
+|---|---|---|---|
+| `pois` (380 KB) | 2,536 | `POI_NAME`, `POI_CATEGORY_NAME` (45 values), `POI_LAT`, `POI_LON` (comma decimals, none empty), `POI_DESC` | `POI_DESC` is empty in 2,499 rows; the rest are transit-card notes ("Local que comercializa cartão avulso…") and office hours. No days or hours for feiras |
+
+**Category allowlist.** Only these URBS categories are returned, each under a short id (counts in the 2026-11-20
+file). Category names are compared with accents, case and repeated spaces ignored; nothing else is matched.
+
+| id | URBS category (rows) |
+|---|---|
+| `feira` | ABAST FEIRA (115) |
+| `cambio_verde` | ABAST CAMBIO VERDE (88) |
+| `restaurante_popular` | ABAST RESTAURANTE POP (4) |
+| `regional_office` | ADM REGIONAL (9) |
+| `rua_da_cidadania` | ADM RUA DA CIDADANIA (7), RUA DA CIDADANIA - CARTÃO TRANSPORTE (1) |
+| `city_office` | ADM UNID PREFEITURA (49) |
+| `library` | BIB CASA DA LEITURA (14), BIB FAROL DO SABER (45) |
+| `cemetery` | CEMITERIO (3) |
+| `cmei` | EDUC CMEI (184) |
+| `cmae` | EDUC CMAE (8) |
+| `municipal_school` | EDUC ESCOLA MUNICIPAL (178) |
+| `state_school` | EDUC ESCOLA ESTADUAL (158) |
+| `special_education` | EDUC ESPECIAL (37) |
+| `adult_education` | EDUC JOVENS E ADULTOS (8) |
+| `vocational_education` | EDUC PROFISSIONAL (13) |
+| `cultural_space` | ESPACO CULTURAL (116) |
+| `bus_terminal` | TERMINAL DE TRANSPORTE (23), TERMINAL DE TRANSPORTE - CARTÃO TRANSPORTE (8), ESTAÇÃO TUBO - CARTÃO TRANSPORTE (1) |
+| `transit_card_office` | POSTOS DE ATENDIMENTO URBS - CARTÃO TRANSPORTE (8) |
+| `health_unit` | Unidade Saude Basica (50), Unidade Saude Familia (54) |
+| `urgent_care` | Unidade Saude 24H (1), Unidade Saude CMUM (7) |
+| `specialized_health_unit` | Unidade Saude Especializada (7), Unidade Saude Complexa (4) |
+| `caps` | SAUDE CAPS (10) |
+| `health_district` | SAUDE DIST SANITARIO (9) |
+
+Total 1,219 rows. "Public-facing" is the test, not "publicly owned": `cultural_space` also holds commercial cinemas
+and private theatres and museums, and `special_education` and `vocational_education` hold private or non-profit
+schools. They are institutions open to the public, listed by the city under its own categories, not people.
+
+**Excluded** (1,317 rows), dropped when the file is read, before any search, distance or count: EDUC CRECHE (401),
+EDUC ESCOLA PARTICULAR (179), HOTEL (152), IGREJA (108), ABAST SUPER MERCADO (174), ABAST MERCADO (49), ECON SHOPPING
+(22), ESPORTE CLUBE PART (58), BANCA DE REVISTA - CARTÃO TRANSPORTE (14), SAUDE HOSPITAL (73), SAUDE LABORATORIO (1),
+SEG DEFESA SOCIAL (21), SEG POLICIA CIVIL (44), SEG POLICIA MILITAR (16) (police is in `places_search`, with its
+emergency note), EQUIPAMENTOS URBANOS (5), and any category not in the allowlist above, including a new or renamed
+one. Reason: these are private businesses, and their names can be people's names. `note` gives the count of dropped
+rows and names any allowlisted id with no row in the file (its URBS name looks missing or renamed).
+
+Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked
+text. `near` keeps points within `radius_m` (great-circle distance, mean Earth radius 6,371,008.8 m; default 1,500 m,
+at most 10,000 m), nearest first, with `distance_m` rounded to whole metres; a point with an empty coordinate never
+matches `near`. Otherwise results are in pt-BR name order; ties keep file order, so paging is stable. Results are
+capped at 50 per call, with `offset`. `note` always says the file has no days or hours and that the tool is not for
+emergencies (192 SAMU, 193).
+
+Guard: names and descriptions pass through the PNCP masking and are returned as published unless it hides something.
+On the 2026-11-20 file it changes none of the 1,219 public names and none of their 18 non-empty descriptions.
+Measured with the built server on that file: about 11–33 ms to read, validate and filter.
+
+Prior art: same as the bus tools (no project reads these exports for an assistant); `places_search` covers some of the
+same kinds of place from OpenStreetMap (libraries, schools, bus stations, marketplaces), as tagged there rather than
+in the city's own categories. Built.
 
 ### `local_csv_summary`: a file the user downloaded
 
