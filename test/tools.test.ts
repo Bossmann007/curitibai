@@ -6,7 +6,7 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the sixteen read-only tools with input and output schemas", async () => {
+  it("lists exactly the seventeen read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -24,6 +24,7 @@ describe("tools/list", () => {
       "open_datasets_search",
       "places_search",
       "procurement_search",
+      "vaccination_sites_search",
       "weather_alerts",
       "weather_forecast",
     ]);
