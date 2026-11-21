@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseCoordinate, URBS_SOURCE_URL, type Ponto } from "../sources/urbs.js";
-import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, urbsLicenseNote, urbsNote } from "./busCommon.js";
+import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -67,7 +67,7 @@ export function lineStops(rows: readonly Ponto[], lineCode: string): Ponto[] {
   return rows.filter((r) => r.COD.toUpperCase() === wanted);
 }
 
-export function busLineStopsResult(line: readonly Ponto[], file: string, date: string, args: BusLineStopsArgs, now: Date) {
+export function busLineStopsResult(line: readonly Ponto[], src: UrbsSource, args: BusLineStopsArgs, now: Date) {
   const dirs = directions(line);
   const order = new Map(dirs.map((d, i) => [d.itinerary_id, i]));
   const selected = line
@@ -92,10 +92,10 @@ export function busLineStopsResult(line: readonly Ponto[], file: string, date: s
       })),
     },
     source_url: URBS_SOURCE_URL,
-    checked_at: date,
-    license_note: urbsLicenseNote(file),
+    checked_at: src.date,
+    license_note: urbsLicenseNote(src.file),
     note:
-      urbsNote(file, date, now) +
+      urbsNote(src, now) +
       " Stops are in itinerary order (`seq`) for each direction; `type` is the stop's shelter type and `group` is " +
       "URBS's GRUPO field, both as published (empty when URBS leaves them empty).",
   };
@@ -121,6 +121,6 @@ export const busLineStops: ToolDef<typeof busLineStopsInput, typeof busLineStops
     if (args.itinerary_id !== undefined && !line.some((r) => r.ITINERARY_ID === args.itinerary_id)) {
       return fail("invalid_argument", "itinerary_id is not one of this line's directions; call without it to list them.");
     }
-    return ok(busLineStopsResult(line, loaded.file, loaded.date, args, new Date()));
+    return ok(busLineStopsResult(line, loaded, args, new Date()));
   },
 };

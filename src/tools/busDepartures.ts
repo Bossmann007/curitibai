@@ -1,10 +1,17 @@
 import { z } from "zod";
 import { DAY_TYPE_NOTE, DAY_TYPES, URBS_SOURCE_URL, type Tabela } from "../sources/urbs.js";
-import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote } from "./busCommon.js";
+import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** What is known about times after midnight (checked on the 2026-11-20 file), and what is not. */
+export const MIDNIGHT_NOTE =
+  "Times are returned as published: HH:MM from 00:00 to 23:59, each under its row's DIA code. The file has no field " +
+  "that ties a time after midnight to the previous evening's service, so this server does not move or reinterpret " +
+  "such times (a 00:30 departure stays under its own day code, and `from`/`to` never wrap past midnight). Whether " +
+  "URBS files a late-night trip under the day it starts or the calendar day of the time is not verified.";
 
 export const busDeparturesInput = {
   line_code: lineCodeInput.optional(),
@@ -55,7 +62,7 @@ export interface BusDeparturesArgs {
   offset: number;
 }
 
-export function busDeparturesResult(rows: readonly Tabela[], file: string, date: string, args: BusDeparturesArgs, now: Date) {
+export function busDeparturesResult(rows: readonly Tabela[], src: UrbsSource, args: BusDeparturesArgs, now: Date) {
   const line = args.line_code?.trim().toUpperCase();
   const matches = rows.filter(
     (r) =>
@@ -90,11 +97,11 @@ export function busDeparturesResult(rows: readonly Tabela[], file: string, date:
       })),
     },
     source_url: URBS_SOURCE_URL,
-    checked_at: date,
-    license_note: urbsLicenseNote(file),
+    checked_at: src.date,
+    license_note: urbsLicenseNote(src.file),
     note:
-      `${urbsNote(file, date, now)} ${DAY_TYPE_NOTE} Times are as published, only for the stops URBS lists ` +
-      "in the timetable (not every stop of a line). `table` is URBS's TABELA (the vehicle schedule) and `adapt` its ADAPT field " +
+      `${urbsNote(src, now)} ${DAY_TYPE_NOTE} ${MIDNIGHT_NOTE} Times exist only for the stops URBS lists in the ` +
+      "timetable (not every stop of a line). `table` is URBS's TABELA (the vehicle schedule) and `adapt` its ADAPT field " +
       "(the accessibility equipment), both as published.",
   };
 }
@@ -118,6 +125,6 @@ export const busDepartures: ToolDef<typeof busDeparturesInput, typeof busDepartu
     }
     const loaded = await loadUrbsOrFail("tabelaLinha");
     if (isFailure(loaded)) return loaded;
-    return ok(busDeparturesResult(loaded.rows, loaded.file, loaded.date, args, new Date()));
+    return ok(busDeparturesResult(loaded.rows, loaded, args, new Date()));
   },
 };

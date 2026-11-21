@@ -1,12 +1,12 @@
 import { z } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { FileTooLargeError, LocalFileError } from "../localfs.js";
+import { LocalFileError } from "../localfs.js";
 import { dateInCuritiba } from "../sources/detran.js";
 import {
   InvalidUrbsDataError,
   loadUrbs,
+  URBS_LICENSE,
   URBS_MAX_AGE_DAYS,
-  URBS_MAX_BYTES,
   URBS_MIRROR_URL,
   URBS_SOURCE_URL,
   URBS_SUBDIR,
@@ -49,15 +49,21 @@ export function urbsLicenseNote(file: string): string {
   return (
     "Source: URBS — Urbanização de Curitiba S.A., dataset \"Transporte Coletivo de Curitiba\" on the Portal de Dados " +
     `Abertos de Curitiba (${URBS_SOURCE_URL}), daily export ${file}, downloaded by the user from the portal's mirror ` +
-    `(${URBS_MIRROR_URL}). The portal footer states a Creative Commons licence without naming the variant. Values are ` +
+    `(${URBS_MIRROR_URL}). ${URBS_LICENSE}. Values are ` +
     "returned as published, except that coordinates are converted to decimal numbers and e-mail-, phone- and " +
     "CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. Unofficial; not affiliated with URBS or the " +
     "Prefeitura de Curitiba."
   );
 }
 
-/** Base note plus an age warning once more than URBS_MAX_AGE_DAYS have passed since the file's date. */
-export function urbsNote(file: string, date: string, now: Date): string {
+/** Where a tool's rows came from: the file, its date and how many invalid rows were skipped. */
+export type UrbsSource = Pick<UrbsFile<UrbsKind>, "file" | "date" | "skipped">;
+
+/**
+ * Base note, plus the count of skipped rows when there are any, plus an age warning once more than URBS_MAX_AGE_DAYS
+ * have passed since the file's date.
+ */
+export function urbsNote({ file, date, skipped }: UrbsSource, now: Date): string {
   const days = (Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000;
   const stale =
     days > URBS_MAX_AGE_DAYS
@@ -67,6 +73,9 @@ export function urbsNote(file: string, date: string, now: Date): string {
     `Read from the local file ${URBS_SUBDIR}/${file} in CURITIBAI_DATA_DIR (the newest of its kind there); this tool ` +
     "makes no network call. Each bus tool reads the newest file of its own kind, so their dates can differ: compare " +
     "`checked_at`. Published timetables, not real-time positions. Confirm with URBS before relying on it." +
+    (skipped > 0
+      ? ` ${skipped} row${skipped === 1 ? "" : "s"} of the file did not match the expected shape and ${skipped === 1 ? "was" : "were"} left out.`
+      : "") +
     stale
   );
 }
@@ -85,9 +94,6 @@ export async function loadUrbsOrFail<K extends UrbsKind>(kind: K): Promise<UrbsF
       return err.code === "file_not_allowed" ? fail("file_not_allowed") : fail("data_not_available", NOT_AVAILABLE(kind));
     }
     if (err instanceof UrbsFileMissingError) return fail("data_not_available", NOT_AVAILABLE(kind));
-    if (err instanceof FileTooLargeError) {
-      return fail("invalid_data", `The newest ${kind} file is larger than ${URBS_MAX_BYTES / (1024 * 1024)} MB.`);
-    }
     if (err instanceof InvalidUrbsDataError) return fail("invalid_data", err.message);
     return fail("invalid_data", `The newest ${kind} file could not be read.`);
   }

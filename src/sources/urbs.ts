@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { closeFile, listDataSubdir, openDataFile, readAllCapped } from "../localfs.js";
+import { closeFile, FileTooLargeError, listDataSubdir, openDataFile, readAllCapped } from "../localfs.js";
 import { datasetUrl } from "./portal.js";
 
 // URBS daily exports (lines, stops, timetables) that the user downloads by hand into CURITIBAI_DATA_DIR/urbs/.
@@ -14,6 +14,10 @@ export const URBS_MAX_AGE_DAYS = 30;
 export const URBS_DATASET_ID = "ca40f13b-ef61-472b-810f-dd705f85fd2e";
 export const URBS_SOURCE_URL = datasetUrl(URBS_DATASET_ID);
 export const URBS_MIRROR_URL = "https://dadosabertos.c3sl.ufpr.br/curitibaurbs/";
+/** As linked from the dataset's portal page ("Conteúdo licenciado sob uma Licença Creative Commons", badge by/4.0). */
+export const URBS_LICENSE =
+  "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's " +
+  "portal page";
 
 export type UrbsKind = "linhas" | "pontosLinha" | "tabelaLinha";
 
@@ -34,45 +38,45 @@ export function newestUrbsFile(names: readonly string[], kind: UrbsKind): { name
 }
 
 const text = (max: number) => z.string().max(max);
+/** A field a row can do without: missing or null becomes "" instead of rejecting the row. */
+const optional = (max: number) => z.string().max(max).nullish().transform((v) => v ?? "");
 const code = z.string().trim().min(1).max(10);
 const digits = z.string().regex(/^\d{1,10}$/);
 /** Comma decimals as published ("-25,412345678901"); an empty value is kept as "no coordinate". */
 const coordinate = z.string().regex(/^(-?\d{1,3}([,.]\d{1,20})?)?$/);
 
+// Fields a tool selects or orders by are required; descriptive ones are optional. A row that fails is skipped.
 export const LinhaRow = z.object({
   COD: code,
   NOME: text(200),
-  SOMENTE_CARTAO: text(5),
-  CATEGORIA_SERVICO: text(100),
-  NOME_COR: text(50),
+  SOMENTE_CARTAO: optional(5),
+  CATEGORIA_SERVICO: optional(100),
+  NOME_COR: optional(50),
 });
 export const PontoRow = z.object({
-  NOME: text(300),
+  NOME: optional(300),
   NUM: digits,
-  LAT: coordinate,
-  LON: coordinate,
+  LAT: coordinate.nullish().transform((v) => v ?? ""),
+  LON: coordinate.nullish().transform((v) => v ?? ""),
   SEQ: z.string().regex(/^\d{1,5}$/),
-  GRUPO: text(20),
-  SENTIDO: text(200),
-  TIPO: text(100),
-  ITINERARY_ID: text(20),
+  GRUPO: optional(20),
+  SENTIDO: optional(200),
+  TIPO: optional(100),
+  ITINERARY_ID: z.string().trim().min(1).max(20),
   COD: code,
 });
 export const TabelaRow = z.object({
   HORA: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  PONTO: text(300),
+  PONTO: optional(300),
   DIA: z.string().regex(/^\d{1,2}$/),
   NUM: digits,
-  TABELA: text(20),
-  ADAPT: text(100),
+  TABELA: optional(20),
+  ADAPT: optional(100),
   COD: code,
 });
 
-const SCHEMAS = {
-  linhas: z.array(LinhaRow).max(100_000),
-  pontosLinha: z.array(PontoRow).max(1_000_000),
-  tabelaLinha: z.array(TabelaRow).max(2_000_000),
-} as const;
+const ROW_SCHEMAS = { linhas: LinhaRow, pontosLinha: PontoRow, tabelaLinha: TabelaRow } as const;
+const MAX_ROWS: Record<UrbsKind, number> = { linhas: 100_000, pontosLinha: 1_000_000, tabelaLinha: 2_000_000 };
 
 export type Linha = z.infer<typeof LinhaRow>;
 export type Ponto = z.infer<typeof PontoRow>;
@@ -94,14 +98,40 @@ export class UrbsFileMissingError extends Error {
   }
 }
 
-/** Validates parsed JSON against the kind's shape. Messages name the file and the problem, never the file's text. */
-export function parseUrbs<K extends UrbsKind>(kind: K, file: string, json: unknown): Rows[K] {
-  const parsed = SCHEMAS[kind].safeParse(json);
-  if (!parsed.success) {
-    const where = parsed.error.issues[0]?.path.join(".") || "(root)";
-    throw new InvalidUrbsDataError(`${file} does not have the expected ${kind} shape (first problem at ${where}).`);
+/** Appended to every rejection of a file: how to use the next newest one instead. */
+export function fallbackHint(file: string): string {
+  return (
+    ` To use an older file instead, delete ${file} or change its name (for example to ${file}.bad) in the ` +
+    `${URBS_SUBDIR} folder; the tool then reads the newest remaining dated file.`
+  );
+}
+
+/**
+ * Validates parsed JSON row by row. Rows that do not match are skipped and counted. The whole file is rejected only
+ * when it is not a non-empty array within the row cap, or when more than half of its rows are invalid. Messages name
+ * the file and the problem, never the file's text.
+ */
+export function parseUrbs<K extends UrbsKind>(kind: K, file: string, json: unknown): { rows: Rows[K]; skipped: number } {
+  if (!Array.isArray(json) || json.length === 0 || json.length > MAX_ROWS[kind]) {
+    const why = !Array.isArray(json) ? "is not a list of rows" : json.length === 0 ? "has no rows" : "has too many rows";
+    throw new InvalidUrbsDataError(`${file} does not have the expected ${kind} shape (it ${why}).${fallbackHint(file)}`);
   }
-  return parsed.data as Rows[K];
+  const schema = ROW_SCHEMAS[kind];
+  const rows: unknown[] = [];
+  let firstBad = -1;
+  for (const [i, raw] of json.entries()) {
+    const parsed = schema.safeParse(raw);
+    if (parsed.success) rows.push(parsed.data);
+    else if (firstBad < 0) firstBad = i;
+  }
+  const skipped = json.length - rows.length;
+  if (skipped * 2 > json.length) {
+    throw new InvalidUrbsDataError(
+      `${file} does not have the expected ${kind} shape: ${skipped} of ${json.length} rows are invalid ` +
+        `(first at row ${firstBad}).${fallbackHint(file)}`,
+    );
+  }
+  return { rows: rows as Rows[K], skipped };
 }
 
 export interface UrbsFile<K extends UrbsKind> {
@@ -110,6 +140,8 @@ export interface UrbsFile<K extends UrbsKind> {
   file: string;
   /** The date in the file name (YYYY-MM-DD); `checked_at` and the age warning use it. */
   date: string;
+  /** Rows left out because they did not match the expected shape. */
+  skipped: number;
 }
 
 /**
@@ -123,6 +155,13 @@ export async function loadUrbs<K extends UrbsKind>(kind: K): Promise<UrbsFile<K>
   let bytes: Buffer;
   try {
     bytes = await readAllCapped(fd, URBS_MAX_BYTES);
+  } catch (err) {
+    if (err instanceof FileTooLargeError) {
+      throw new InvalidUrbsDataError(
+        `${newest.name} is larger than ${URBS_MAX_BYTES / (1024 * 1024)} MB.${fallbackHint(newest.name)}`,
+      );
+    }
+    throw err;
   } finally {
     closeFile(fd);
   }
@@ -130,9 +169,11 @@ export async function loadUrbs<K extends UrbsKind>(kind: K): Promise<UrbsFile<K>
   try {
     json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
-    throw new InvalidUrbsDataError(`${newest.name} is not valid UTF-8 JSON (decompress the .json.xz file with xz -d).`);
+    throw new InvalidUrbsDataError(
+      `${newest.name} is not valid UTF-8 JSON (decompress the .json.xz file with xz -d).${fallbackHint(newest.name)}`,
+    );
   }
-  return { rows: parseUrbs(kind, newest.name, json), file: newest.name, date: newest.date };
+  return { ...parseUrbs(kind, newest.name, json), file: newest.name, date: newest.date };
 }
 
 /** "-25,412345678901" -> -25.412345678901; empty or out of range -> null. */

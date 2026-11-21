@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { URBS_SOURCE_URL, type Linha } from "../sources/urbs.js";
 import { fold } from "../text.js";
-import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote } from "./busCommon.js";
+import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
 import { queryWords } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -52,7 +52,7 @@ function categories(rows: readonly Linha[]) {
   return names.map((name) => ({ name, count: rows.filter((r) => r.CATEGORIA_SERVICO === name).length }));
 }
 
-export function busLinesSearchResult(rows: readonly Linha[], file: string, date: string, args: BusLinesSearchArgs, now: Date) {
+export function busLinesSearchResult(rows: readonly Linha[], src: UrbsSource, args: BusLinesSearchArgs, now: Date) {
   const words = args.query === undefined ? [] : queryWords(args.query);
   const category = args.category === undefined ? undefined : fold(args.category);
   const exactCode = args.query === undefined ? "" : fold(args.query.trim());
@@ -79,10 +79,10 @@ export function busLinesSearchResult(rows: readonly Linha[], file: string, date:
       ...(noFilter ? { categories: categories(rows) } : {}),
     },
     source_url: URBS_SOURCE_URL,
-    checked_at: date,
-    license_note: urbsLicenseNote(file),
+    checked_at: src.date,
+    license_note: urbsLicenseNote(src.file),
     note:
-      urbsNote(file, date, now) +
+      urbsNote(src, now) +
       " `card_only` is URBS's SOMENTE_CARTAO flag (S = card payment only; null for any other value).",
   };
 }
@@ -110,6 +110,6 @@ export const busLinesSearch: ToolDef<typeof busLinesSearchInput, typeof busLines
         return fail("invalid_argument", `category must be one of: ${all.map((c) => c.name).join("; ")}.`);
       }
     }
-    return ok(busLinesSearchResult(loaded.rows, loaded.file, loaded.date, args, new Date()));
+    return ok(busLinesSearchResult(loaded.rows, loaded, args, new Date()));
   },
 };

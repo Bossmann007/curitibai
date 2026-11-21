@@ -87,7 +87,9 @@ describe("file selection", () => {
     expect(out.source_url).toBe(URBS_SOURCE_URL);
     expect(out.license_note).toContain("2026_11_20_linhas.json");
     expect(out.license_note).toContain("URBS");
-    expect(out.license_note).toContain("Creative Commons licence without naming the variant");
+    expect(out.license_note).toContain(
+      "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page",
+    );
     expect(out.note).toContain("no network call");
     expect(out.note).not.toContain("days ago");
   });
@@ -142,49 +144,110 @@ describe("file selection", () => {
   });
 });
 
+const fixtureRows = (kind: UrbsKind) => JSON.parse(readFileSync(join(FIXTURES, `${kind}.json`), "utf8")) as Record<string, unknown>[];
+const FALLBACK = "To use an older file instead, delete 2026_11_20_linhas.json or change its name (for example to 2026_11_20_linhas.json.bad)";
+
 describe("invalid_data", () => {
-  function write(content: string | Buffer, kind: UrbsKind = "linhas") {
+  function write(content: string | Buffer, kind: UrbsKind = "linhas", prefix = "2026_11_20") {
     mkdirSync(join(tmp, "urbs"), { recursive: true });
-    writeFileSync(join(tmp, "urbs", `2026_11_20_${kind}.json`), content);
+    writeFileSync(join(tmp, "urbs", `${prefix}_${kind}.json`), content);
   }
   const message = async () => (errorOf(await call("bus_lines_search", {})) as { error: string; message: string });
 
-  it("not JSON (e.g. an .xz file renamed) names the fix", async () => {
+  it("not JSON (e.g. an .xz file renamed) names the fix and the fallback", async () => {
     write(Buffer.from([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0xff]));
-    expect(await message()).toEqual({ error: "invalid_data", message: expect.stringContaining("xz -d") });
+    const err = await message();
+    expect(err.error).toBe("invalid_data");
+    expect(err.message).toContain("xz -d");
+    expect(err.message).toContain(FALLBACK);
   });
 
   it.each([
-    ["an object", { COD: "1" }],
-    ["a row without NOME", [{ COD: "1", SOMENTE_CARTAO: "S", CATEGORIA_SERVICO: "A", NOME_COR: "B" }]],
-    ["a number as COD", [{ COD: 1, NOME: "X", SOMENTE_CARTAO: "S", CATEGORIA_SERVICO: "A", NOME_COR: "B" }]],
-  ])("the wrong shape (%s), without echoing the file's text", async (_n, json) => {
+    ["an object", { COD: "1" }, " (it is not a list of rows)"],
+    ["an empty list", [], " (it has no rows)"],
+    ["only rows without NOME", [{ COD: "1", SOMENTE_CARTAO: "S", CATEGORIA_SERVICO: "A", NOME_COR: "B" }], ": 1 of 1 rows are invalid (first at row 0)"],
+    ["only a number as COD", [{ COD: 1, NOME: "X" }], ": 1 of 1 rows are invalid (first at row 0)"],
+  ])("the wrong shape (%s), with the fallback and without echoing the file's text", async (_n, json, why) => {
     write(JSON.stringify(json));
     const err = await message();
     expect(err.error).toBe("invalid_data");
-    expect(err.message).toMatch(/^2026_11_20_linhas\.json does not have the expected linhas shape/);
+    expect(err.message).toBe(
+      `2026_11_20_linhas.json does not have the expected linhas shape${why}. ${FALLBACK} in the urbs folder; ` +
+        "the tool then reads the newest remaining dated file.",
+    );
+  });
+
+  it("rejects a file when more than half its rows are invalid, not at exactly half", async () => {
+    const [good] = fixtureRows("linhas");
+    const bad = { ...good, COD: "TOO-LONG-CODE" };
+    write(JSON.stringify([good, bad, bad]));
+    expect((await message()).message).toContain("2 of 3 rows are invalid (first at row 1)");
+    write(JSON.stringify([good, bad]));
+    const out = await lines({});
+    expect(out.data.total).toBe(1);
+    expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
+  });
+
+  it("after removing the newest bad file, the next newest is read", async () => {
+    write("not json");
+    write(readFileSync(join(FIXTURES, "linhas.json")), "linhas", "2026_11_19");
+    expect((await message()).error).toBe("invalid_data");
+    rmSync(join(tmp, "urbs", "2026_11_20_linhas.json"));
+    expect((await lines({})).checked_at).toBe("2026-11-19");
   });
 
   it.each([
-    ["HORA 24:00", { HORA: "24:00" }],
+    ["HORA 24:10", { HORA: "24:10" }],
     ["HORA without a leading zero", { HORA: "7:05" }],
-    ["NUM with letters", { NUM: "12a" }],
-  ])("timetable rows are checked (%s)", async (_n, patch) => {
-    const rows = JSON.parse(readFileSync(join(FIXTURES, "tabelaLinha.json"), "utf8")) as object[];
-    write(JSON.stringify([{ ...rows[0], ...patch }]), "tabelaLinha");
-    expect(errorOf(await call("bus_departures", { line_code: "901" }))).toMatchObject({ error: "invalid_data" });
+    ["NUM with letters", { NUM: "12A" }],
+    ["a long COD", { COD: "X".repeat(11) }],
+    ["a missing DIA", { DIA: undefined }],
+  ])("skips a bad timetable row (%s) and counts it in the note", async (_n, patch) => {
+    const rows = fixtureRows("tabelaLinha");
+    write(JSON.stringify([...rows, { ...rows[0], HORA: "12:34", ...patch }]), "tabelaLinha");
+    const out = await departures({ line_code: "901", limit: 50 });
+    expect(out.data.total).toBe(9); // the fixture's own departures of line 901
+    expect(out.data.items.map((d) => d.time)).not.toContain("12:34");
+    expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
   });
 
-  it("refuses coordinates that are not numbers", () => {
-    const rows = JSON.parse(readFileSync(join(FIXTURES, "pontosLinha.json"), "utf8")) as object[];
-    expect(() => parseUrbs("pontosLinha", "f.json", [{ ...rows[0], LAT: "-25,4x" }])).toThrow(/expected pontosLinha shape/);
+  it("skips a stop row with a long name or a bad coordinate", async () => {
+    const rows = fixtureRows("pontosLinha");
+    write(JSON.stringify([...rows, { ...rows[0], NOME: "N".repeat(301) }, { ...rows[1], SEQ: "9", LAT: "-25,4x" }]), "pontosLinha");
+    const out = await stops({ line_code: "901" });
+    expect(out.data.total).toBe(5);
+    expect(out.note).toContain("2 rows of the file did not match the expected shape and were left out.");
   });
 
-  it(`a file over ${URBS_MAX_BYTES / (1024 * 1024)} MB is refused without parsing`, async () => {
+  it("keeps a row that lacks only a descriptive field (GRUPO, TIPO, ADAPT, null NOME_COR) and says nothing", async () => {
+    const without = (r: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== key));
+    const stopsRows = fixtureRows("pontosLinha").map((r, i) => (i === 0 ? { ...without(r, "GRUPO"), TIPO: null } : without(r, "GRUPO")));
+    write(JSON.stringify(stopsRows), "pontosLinha");
+    const out = await stops({ line_code: "901", limit: 50 });
+    expect(out.data.total).toBe(5);
+    expect(out.data.items.every((s) => s.group === "")).toBe(true);
+    expect(out.note).not.toContain("left out");
+    write(JSON.stringify(fixtureRows("linhas").map((r) => ({ ...r, NOME_COR: null }))));
+    expect((await lines({ query: "901" })).data.items[0]).toMatchObject({ code: "901", color: "" });
+    write(JSON.stringify(fixtureRows("tabelaLinha").map((r) => without(r, "ADAPT"))), "tabelaLinha");
+    expect((await departures({ line_code: "901" })).data.items[0]?.adapt).toBe("");
+  });
+
+  it("parseUrbs reports the skipped count", () => {
+    const rows = fixtureRows("pontosLinha");
+    expect(parseUrbs("pontosLinha", "f.json", [...rows, { ...rows[0], LAT: "-25,4x" }]).skipped).toBe(1);
+    expect(() => parseUrbs("pontosLinha", "f.json", [{ ...rows[0], LAT: "-25,4x" }])).toThrow(/1 of 1 rows are invalid/);
+  });
+
+  it(`a file over ${URBS_MAX_BYTES / (1024 * 1024)} MB is refused without parsing, with the fallback`, async () => {
     write(Buffer.alloc(URBS_MAX_BYTES + 1, 0x20));
-    expect(await message()).toEqual({ error: "invalid_data", message: "The newest linhas file is larger than 20 MB." });
+    const err = await message();
+    expect(err.error).toBe("invalid_data");
+    expect(err.message).toMatch(/^2026_11_20_linhas\.json is larger than 20 MB\. /);
+    expect(err.message).toContain(FALLBACK);
   });
 });
+
 
 describe("bus_lines_search", () => {
   beforeEach(() => {
@@ -349,6 +412,8 @@ describe("bus_departures", () => {
       adapt: "ELEVADOR",
     });
     expect(out.note).toContain("inferred from the data, not stated by URBS");
+    expect(out.note).toContain("this server does not move or reinterpret such times");
+    expect(out.note).toContain("is not verified");
   });
 
   it("filters by stop, day and an inclusive time window", async () => {
@@ -362,7 +427,7 @@ describe("bus_departures", () => {
   it("masks phone-shaped text in a stop name", async () => {
     const [d] = (await departures({ stop_number: "990004" })).data.items;
     expect(d?.stop_name).toContain(MASK);
-    expect(d?.stop_name).not.toContain("3333");
+    expect(d?.stop_name).not.toContain("0000-0000");
   });
 
   it("pages", async () => {
