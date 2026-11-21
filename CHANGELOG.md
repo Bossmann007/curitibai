@@ -2,6 +2,12 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.8.1
+
+- `places_search` `police`: the result `note` and the tool description say the category is as tagged in OSM and includes Guarda Municipal, identification institutes and some non-police offices. The bundled list is unchanged.
+- Licence: `package.json` `license` is now `(Apache-2.0 AND ODbL-1.0)`; `LICENSE`, the README and the `src/sources/osmBundled.ts` header point to the ODbL 1.0 text (<https://opendatacommons.org/licenses/odbl/1-0/>) for the bundled OSM list.
+- Docs: corrected why police and fire stations are bundled, in the code comment and the README: `overpass.private.coffee` allowed that use but was not reachable (0.7.0 said no other free instance allowed it).
+
 ## 0.8.0
 
 - Added `bus_lines_search`, `bus_line_stops` and `bus_departures`: Curitiba bus lines (search by name or code, accents and case ignored, and category), a line's ordered stops per direction with coordinates, and published departure times by line and/or stop, day code and time window. They read URBS daily exports (`YYYY_MM_DD_linhas.json`, `_pontosLinha.json`, `_tabelaLinha.json`) that the user downloads into `CURITIBAI_DATA_DIR/urbs/`, the newest date of each; no network call. `checked_at` is the file's date; the note warns after 30 days. Results are capped at 50 with paging.

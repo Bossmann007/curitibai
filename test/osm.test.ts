@@ -14,7 +14,7 @@ import {
 } from "../src/sources/osm.js";
 import { USER_AGENT } from "../src/config.js";
 import { RateLimitedError } from "../src/http.js";
-import { bundledNote, placesSearchOutput } from "../src/tools/placesSearch.js";
+import { bundledNote, placesSearch, placesSearchOutput, POLICE_NOTE } from "../src/tools/placesSearch.js";
 import { OSM_BUNDLED_CHECKED_AT, OSM_BUNDLED_ELEMENTS } from "../src/sources/osmBundled.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
@@ -286,6 +286,16 @@ describe("places_search police and fire_station (bundled list, no network)", () 
     expect([police.fetched_at, fire.fetched_at]).toEqual(["2026-11-21T03:28:00Z", "2026-11-21T03:26:00Z"]);
     const cic = placesSearchOutput.parse((await call("places_search", { category: "fire_station", name: "cic" })).structuredContent);
     expect(cic.data.places.map((p) => [p.osm_type, p.osm_id, p.name])).toEqual([["node", 614282456, "Corpo de Bombeiros da CIC"]]);
+  });
+
+  it("police results and the tool description say the category is as tagged in OSM; fire stations do not", async () => {
+    stubFetch({});
+    const police = placesSearchOutput.parse((await call("places_search", { category: "police" })).structuredContent);
+    const fire = placesSearchOutput.parse((await call("places_search", { category: "fire_station" })).structuredContent);
+    expect(police.data.note).toContain(POLICE_NOTE);
+    expect(police.data.note.startsWith("NOT FOR EMERGENCIES")).toBe(true);
+    expect(fire.data.note).not.toContain("Guarda Municipal");
+    expect(placesSearch.description).toContain("includes Guarda Municipal, identification institutes and some non-police offices");
   });
 
   it("the bundled list keeps only returned tags", () => {

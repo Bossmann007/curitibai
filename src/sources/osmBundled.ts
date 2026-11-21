@@ -1,6 +1,6 @@
 // Curitiba police and fire stations, taken once from OpenStreetMap for places_search (v0.7). No network call.
-// Data © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0):
-// https://www.openstreetmap.org/copyright. This file is a derived database of that data and is under the ODbL;
+// Data © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0,
+// https://opendatacommons.org/licenses/odbl/1-0/); see https://www.openstreetmap.org/copyright. This file is a derived database of that data and is under the ODbL;
 // the Apache-2.0 licence of this repository does not apply to it.
 // Source: POST https://ovp.dresel.systems/api-sa/interpreter on 2026-11-21 (fire stations 03:26 UTC, police about 03:28 UTC),
 // query `nwr["amenity"="<fire_station|police>"](area.cwb);out center;` with the Curitiba area (IBGE 4106902);

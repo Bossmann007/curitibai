@@ -257,8 +257,8 @@ day it starts or the calendar day of the time is not verified.
   tagged), and a name filter matches the masked text only. The category allowlist leaves
   out shops, offices, doctors, dentists and clinics, whose names can be people's names. Hospitals are left out too
   (`health_units_search` covers public health units). Police and fire stations are never queried live, because the
-  Overpass operator asks that no emergency or safety application depend on the service and no other free instance
-  allowed it: they come from a list taken once from OSM and bundled, and every such result starts with "NOT FOR
+  Overpass operator asks that no emergency or safety application depend on the service, and the only other free
+  instance that allowed it (`overpass.private.coffee`) was not reachable: they come from a list taken once from OSM and bundled, and every such result starts with "NOT FOR
   EMERGENCIES" and the numbers 190 and 193. The list is as tagged in OSM: `police` includes the Guarda Municipal,
   identification institutes and the odd mis-tagged office (one veterinary council seat when taken).
   OSM does not reliably say whether a school is public, so `school` can include private ones (their names are
@@ -382,4 +382,5 @@ must run at the top of a checkout (exit 2 elsewhere).
 
 Code: [Apache-2.0](LICENSE). The Apache-2.0 licence covers the code only; the data belongs to its publishers under
 their own terms (see above). `src/sources/osmBundled.ts` (and its compiled copy in `dist/`) is OpenStreetMap data,
-© OpenStreetMap contributors, under the [ODbL](https://www.openstreetmap.org/copyright), not Apache-2.0. The Carta de Serviços catalog and the URBS files are not part of this repository.
+© OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) (see
+<https://www.openstreetmap.org/copyright>), not Apache-2.0. The Carta de Serviços catalog and the URBS files are not part of this repository.
