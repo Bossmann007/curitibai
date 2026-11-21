@@ -362,7 +362,8 @@ week".
   width) removed, is NFC-normalised, masked like the events fields and length-capped. Coordinates are read from the
   map link only when it is a `https://maps.google.com/?q=lat,lon` link inside Curitiba, and no link from the page is
   returned; `source_url` is the page itself. A unit that does not fit the known structure is skipped and counted; more
-  than 5% skipped, or no unit at all, is `source_unavailable`.
+  than 5% skipped, or no unit at all, is `source_unavailable`. After a failure the page is not requested again for 60 s
+  (after a 429, the `Retry-After` wait, at most 1 hour).
 - `places_search` returns only the tags listed in the table; phone, e-mail, operator and other contact tags of
   places are never returned. Names, street, suburb and city pass through the same masking as PNCP objects as a guard (opening hours, house number and postcode are returned as
   tagged), and a name filter matches the masked text only. The category allowlist leaves

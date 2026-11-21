@@ -17,15 +17,19 @@ async function search(args: Record<string, unknown> = {}) {
   return vaccinationSitesSearchOutput.parse(res.structuredContent);
 }
 
+const P = "ContentPlaceHolder1_rptRegionais_";
+const HOURS = "<span style='font-weight:normal'>Horário : Das 7h às 19h</span>";
+const block = (u: number, k: number, inner: string, sibling = true) =>
+  `<span id="${P}rptUnidades_0_rptHorarios_${u}_lblEstrategia_${k}"><b>${inner}</b></span>` +
+  (sibling ? `<span id="${P}rptUnidades_0_rptHorarios_${u}_lblHorario_${k}"></span>` : "");
+
 /** A page of `n` well-formed units in one regional; `bad` of them have an unknown tag in their schedule block. */
 function generated(n: number, bad: number): string {
-  const P = "ContentPlaceHolder1_rptRegionais_";
   const units = Array.from({ length: n }, (_, u) => {
-    const sched = u < bad ? "<i>x</i>" : "<span style='font-weight:normal'>Horário : Das 7h às 19h</span>";
     return (
       `<span id="${P}rptUnidades_0_lblUnidadeNome_${u}">Unidade Gerada ${u}</span>` +
-      `<span id="${P}rptUnidades_0_rptHorarios_${u}_lblEstrategia_0"><b>${sched}</b></span>` +
-      `<span id="${P}rptUnidades_0_rptHorarios_${u}_lblHorario_0"></span>`
+      `<span id="${P}rptUnidades_0_lblUnidadeEndereco_${u}">Rua Gerada, ${u}</span>` +
+      block(u, 0, u < bad ? "<i>x</i>" : HOURS)
     );
   });
   return `<span id="${P}lblRegional_0">Regional Gerada</span>${units.join("\n")}`;
@@ -85,6 +89,7 @@ describe("vaccination_sites_search", () => {
       "Unidade de Saúde Ficticia Epsilon",
     ]);
     expect((await search({ text: "ficticia sul" })).data.total).toBe(3);
+    expect((await search({ text: "Regional Fictícia Sul" })).data.total).toBe(3);
     expect((await search({ vaccine: "COVID 12 anos" })).data.items.map((s) => s.name)).toEqual(["Unidade de Saúde Ficticia Alfa"]);
     // Every vaccine word must be in the same line: Delta has "Covid-19 (6 meses a 4 anos)" and "Vacinas (12 anos ou mais)".
     expect((await search({ vaccine: "covid" })).data.items.map((s) => s.name.split(" ").pop())).toEqual(["Alfa", "Gama", "Delta"]);
@@ -132,6 +137,20 @@ describe("vaccination_sites_search", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("does not ask the site again for 60 s after a failure", async () => {
+    const calls = stubFetch(route({ status: 500 }));
+    expect(errorOf(await call())).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call())).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("honours Retry-After after a 429 without a new request", async () => {
+    const calls = stubFetch(route({ status: 429, headers: { "retry-after": "90" } }));
+    await call();
+    expect(errorOf(await call())).toMatchObject({ error: "rate_limited", message: expect.stringMatching(/(89|90) s/) });
+    expect(calls).toHaveLength(1);
+  });
+
   it("follows a same-host redirect", async () => {
     const moved = "https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/default.aspx";
     stubFetch({ ...route({ status: 302, headers: { location: moved } }), [`GET ${moved}`]: { body: page() } });
@@ -155,6 +174,18 @@ describe("parseVaccinationPage", () => {
     expect(() => parseVaccinationPage(html)).toThrow(/source_unavailable/);
     const one = generated(40, 0).replace(">Unidade Gerada 5<", "><");
     expect(parseVaccinationPage(one).skipped).toBe(1);
+  });
+
+  it.each<[string, (html: string) => string]>([
+    ["a name holding a tag", (h) => h.replace(">Unidade Gerada 5<", "><b>Nova</b> Unidade<")],
+    ["an address holding a tag", (h) => h.replace(">Rua Gerada, 5<", ">Rua Gerada, 5<br/>Bairro<")],
+    ["a second schedule block that does not fit", (h) => h.replace(block(5, 0, HOURS), block(5, 0, HOURS) + block(5, 1, HOURS, false))],
+    ["an hours line of format characters only", (h) => h.replace(block(5, 0, HOURS), block(5, 0, "<span style='font-weight:normal'>&#x200B;&#x202E;</span>"))],
+  ])("counts a unit with %s as skipped, never returns it", (_, edit) => {
+    const r = parseVaccinationPage(edit(generated(40, 0)));
+    expect(r.skipped).toBe(1);
+    expect(r.sites.map((s) => s.name)).not.toContain("Unidade Gerada 5");
+    expect(r.sites).toHaveLength(39);
   });
 
   it("caps long fields", () => {

@@ -14,7 +14,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 - The page is read by known element ids only; every text field is cleaned (control and format characters, NFC), masked
   and capped. A unit that does not fit is skipped and counted (`skipped_units`); no unit or more than 5% skipped is
   `source_unavailable`. One GET per call at most, parsed result cached 6 hours, 1 MB cap, 15 s timeout, HTML only,
-  429 is `rate_limited`.
+  429 is `rate_limited`. After a failure the page is not requested again for 60 s (after a 429, the `Retry-After` wait,
+  at most 1 hour).
 - `imunizaja.curitiba.pr.gov.br` added to `ALLOWED_HOSTS` (robots.txt rechecked 2026-11-21: `/locaisvacinacao/` not
   disallowed). `fetchText` gained `sameHostOnly`, which refuses a redirect to any other host; only this tool uses it.
 - docs/sources.md: the full `dadosabertos.c3sl.ufpr.br/curitiba/robots.txt` (Request-rate 1/5, Visit-time 0400-0645

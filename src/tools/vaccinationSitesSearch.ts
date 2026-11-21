@@ -79,7 +79,7 @@ export function vaccinationSitesResult(
   let noCoords = 0;
   const matches: { site: VaccinationSite; distance: number | null }[] = [];
   for (const site of res.value.sites) {
-    const hay = fold(`${site.name} ${site.address ?? ""} ${site.regional}`);
+    const hay = fold(`${site.name} ${site.address ?? ""} Regional ${site.regional}`);
     const vaccineOk =
       vaccineWords.length === 0 || site.vaccines.some((v) => vaccineWords.every((w) => fold(v).includes(w)));
     if (!textWords.every((w) => hay.includes(w)) || !vaccineOk) continue;

@@ -613,11 +613,14 @@ in the city's own categories. Built.
   NFC, PII masking as for events, length caps 60/120/160/100). The prefix "Regional " is dropped from the regional.
   A non-empty `lblHorario` is added as one more hours line. Coordinates are read only when the map link matches
   `https://maps.google.com/?q=<lat>,<lon>` exactly and falls inside a box around Curitiba (lat −25.7 to −25.3, lon
-  −49.45 to −49.15); otherwise they are null. **No link from the page is returned**; `source_url` is the page URL. A unit
-  without a name, regional or hours line, or with a schedule block holding anything other than those spans, is skipped
-  and counted (`skipped_units`); no unit, or more than 5% skipped, is `source_unavailable`.
+  −49.45 to −49.15); otherwise they are null. **No link from the page is returned**; `source_url` is the page URL. Units
+  are counted by their name-span id, whatever the span holds. A unit without a name, regional or hours line (after
+  cleaning), with a tag inside its name or address, with a schedule block that does not match the known shape, or with
+  a block holding anything other than those spans, is skipped and counted (`skipped_units`); no unit, or more than 5%
+  skipped, is `source_unavailable`.
 - **Guards:** host in `ALLOWED_HOSTS` exactly, https only, redirects to any other host refused (`sameHostOnly`), one
-  GET per call at most, the parsed result cached in memory for 6 hours, 1 MB cap, 15 s timeout, `text/html` required,
+  GET per call at most, the parsed result cached in memory for 6 hours; after a failure no new request for 60 s (after
+  a 429, the `Retry-After` wait, at most 1 hour), the same error is returned instead; 1 MB cap, 15 s timeout, `text/html` required,
   HTTP 429 is `rate_limited` with the `Retry-After` wait, same User-Agent as the other tools.
 - **Terms / licence:** none found on the page or the site; the page metadata says `copyright: Prefeitura de Curitiba`.
   Only facts are returned, with `attribution` "Prefeitura Municipal de Curitiba, Secretaria Municipal da Saúde,
