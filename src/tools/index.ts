@@ -12,6 +12,7 @@ import { localCsvSummary } from "./localCsvSummary.js";
 import { openDatasetsSearch } from "./openDatasetsSearch.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
+import { vaccinationSitesSearch } from "./vaccinationSitesSearch.js";
 import { weatherAlerts } from "./weatherAlerts.js";
 import { weatherForecast } from "./weatherForecast.js";
 
@@ -32,4 +33,5 @@ export const tools = [
   busStopsNear,
   cityPointsSearch,
   eventsSearch,
+  vaccinationSitesSearch,
 ] as const;

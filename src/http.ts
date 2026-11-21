@@ -58,6 +58,14 @@ export interface FetchOptions {
   timeoutMs?: number;
   /** Body size cap; defaults to MAX_RESPONSE_BYTES and can only lower it. */
   maxBytes?: number;
+  /** When true, a redirect to any other host (allowed or not) is refused before it is followed. */
+  sameHostOnly?: boolean;
+  /**
+   * When set, a redirect is followed only when its target path is this prefix or below it ("/a" accepts "/a" and
+   * "/a/x", not "/ab"), compared ignoring case (IIS paths are case-insensitive); a path with an encoded slash or
+   * backslash is refused. Checks the path only: use it with `sameHostOnly`.
+   */
+  redirectPathPrefix?: string;
 }
 
 async function readCapped(res: Response, maxBytes: number): Promise<string> {
@@ -112,7 +120,17 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       // Release the connection before the next hop; the redirect body is never read.
       await res.body?.cancel().catch(() => undefined);
       if (!location) throw new SourceUnavailableError("redirect without location");
-      url = new URL(location, url).href;
+      const next = new URL(location, url);
+      if (options.sameHostOnly && next.hostname.toLowerCase() !== new URL(url).hostname.toLowerCase()) {
+        throw new SourceUnavailableError("cross-host redirect");
+      }
+      if (options.redirectPathPrefix !== undefined) {
+        const path = next.pathname.toLowerCase();
+        const prefix = options.redirectPathPrefix.toLowerCase();
+        const inside = path === prefix || path.startsWith(`${prefix}/`);
+        if (!inside || /%2f|%5c|\\/i.test(next.pathname)) throw new SourceUnavailableError("redirect outside the allowed path");
+      }
+      url = next.href;
       // 301/302/303 turn a POST into a GET, as browsers do.
       if (res.status !== 307 && res.status !== 308) {
         method = "GET";

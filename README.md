@@ -7,7 +7,7 @@ in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its
 active weather warnings for Curitiba, search the Prefeitura's service catalog (Carta de Serviços), find public places in
 OpenStreetMap, give URBS bus lines, stops and timetables and points of interest open to the public (feiras, schools, libraries,
 public health units and more) from files the user downloaded, search Curitiba's events calendar from a file written by a
-separate collector script, and summarise a CSV file the user downloaded by hand.
+separate collector script, list the Prefeitura's public vaccination sites (Imuniza Já), and summarise a CSV file the user downloaded by hand.
 
 **Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, URBS, the Ministério da Saúde,
 PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
@@ -16,7 +16,9 @@ Data comes from the sources as it is; always confirm important information at th
 
 ## Tools
 
-All tools are read-only. The seven network tools return `{data, source_url, fetched_at, license_note}`.
+All tools are read-only. Seven of the eight network tools return `{data, source_url, fetched_at, license_note}`;
+`vaccination_sites_search` returns `{data, source_url, checked_at, attribution, license_note, note}`, with `checked_at`
+the time the server read the page.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
@@ -59,6 +61,7 @@ wait in `note`.
 | `bus_stops_near` | `near` (`{lat, lon}`, required), `radius_m` (default 400, at most 2000), optional `line_code` (only stops that line serves; case ignored), `limit` ≤ 50 (default 20), `offset` | "Which buses stop near me": the stops within the radius, nearest first, **one item per stop number** however many lines serve it: `stop_number`, `stop_name` (masked as a guard), `lat`/`lon`, `distance_m` (straight line, not walking), shelter `type`, and `lines` (`line_code`, `line_name` from the lines file, null when the code is not there, and `direction` = SENTIDO), one entry per line and direction; `total` (stops, not rows) and `next_offset`. A stop's name, position and type come from its first row with coordinates; stops with no coordinates are never returned. Not real-time: for times, call `bus_departures` with the `stop_number`. No network call; `checked_at` is the stops file's date, and `note` names the lines file when its date differs. About 50 ms per call (median; the first call in a process about 105 ms) on the 17,496-row 2026-11-20 file (Apple M4); `scripts/verify` fails above 400 ms on 17,496 generated rows | The newest `YYYY_MM_DD_pontosLinha.json` and `YYYY_MM_DD_linhas.json`, same folder (both needed) |
 | `city_points_search` | optional `category` (one of 23 ids, e.g. `feira`, `cambio_verde`, `library`, `cmei`, `municipal_school`, `bus_terminal`, `health_unit`, `urgent_care`; [docs/sources.md](docs/sources.md) maps each to URBS's category names), optional `name` (1–100 chars; every word must appear in the name, accents, case and punctuation ignored), optional `near` (`{lat, lon}`) with `radius_m` (default 1500, at most 10000), `limit` ≤ 50 (default 20), `offset` | Points of interest **open to the public** from URBS's export: `name` and `desc` (masked as a guard), `category` (the id), `source_category` (URBS's name), `lat`/`lon` (decimal; null when empty), and `distance_m` when `near` is given (nearest first; otherwise by name); `total` and `next_offset`; with no filter, also the `categories` with counts, each split per URBS name (`source_categories`: `{name, count}`). **Only an allowlist of categories**: private schools and crèches, hotels, churches, supermarkets and markets, shopping centres, private clubs, newsstands, hospitals, laboratories, police and security (use `places_search`), urban equipment and any unknown category are dropped before searching. `cultural_space`, `special_education` and `vocational_education` are open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and museums, private schools); `note` says so, naming only those among the matches. `note` warns when a whole category id has no row in the file, but **not** when only one of its URBS names is renamed: renaming BIB FAROL DO SABER would drop 45 of the 59 libraries in the 2026-11-20 file with no warning, so check `source_categories` for a 0 after downloading a new file. The file has **no days or hours** (not even for feiras). **Not for emergencies** (192 SAMU, 193). No network call; `checked_at` is the file's date | The newest `YYYY_MM_DD_pois.json`, same folder |
 | `events_search` | optional `from`/`to` (YYYY-MM-DD; default today to 7 days ahead, Curitiba time), optional `text` (2–100 chars; every word must appear in the title, place, address or category, accents and case ignored), optional `category` (as published, accents and case ignored), `limit` ≤ 50 (default 20), `offset` | Events overlapping the range, earliest first: `id`, `title`, `start_date`, `end_date`, `time`, `place`, `address`, `category` and `link` (the event page); `checked_at` (when the collector ran) and `stale: true` after 3 days. Every field is untrusted third-party text | Instituto Municipal de Turismo de Curitiba, public events calendar (`turismo.curitiba.pr.gov.br/eventos/`), via `scripts/fetch-events.mjs`; not affiliated; the site publishes no licence, so only facts and links are kept |
+| `vaccination_sites_search` | optional `text` (2–100 chars; every word must appear in the unit name, the address, which ends with the neighbourhood, or the regional; accents and case ignored), optional `vaccine` (2–100 chars; every word must appear in the same vaccine line), optional `near` (`{lat, lon}`), `limit` ≤ 50 (default 20), `offset` | Curitiba's public vaccination sites (about 100 municipal health units): `name`, `address`, `regional`, `hours` and `vaccines` **as published** (e.g. "Horário (segunda a sexta) : Das 7h às 19h", "Vacinas (12 anos ou mais)"), `lat`/`lon` (read from the page's map link, which is never returned; null when missing or outside Curitiba), and `distance_m` with `near` (nearest first, straight line; sites without coordinates are left out and counted in `note`); `total`, `next_offset`, `skipped_units`. Every text field is untrusted third-party text, cleaned and masked. The page shows **no update date**: `note` says to confirm by phone or with the 156 before going. **Not for emergencies** (192 SAMU). One page read per call at most, cached 6 hours | The Prefeitura's "Imuniza Já" page (`GET imunizaja.curitiba.pr.gov.br/locaisvacinacao/`, HTML, checked 2026-11-21); no licence found |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -82,6 +85,29 @@ A warning the server cannot read makes the tool return `source_unavailable` rath
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](docs/sources.md).
 
+## Compared with the Curitiba App
+
+The Prefeitura's official app is [Curitiba App](https://apps.apple.com/br/app/curitiba-app/id1447887852) (Prefeitura
+Municipal de Curitiba; App Store listing, version 4.5.2 of 2026-10-06). Its listing describes it as bringing together
+the Prefeitura's apps and services, with "consultas, agendamentos, informações sobre transportes, saúde e educação, entre
+outros". Rows marked * are features the owner noted in the app itself; the listing text does not name them (it
+says "agendamentos" but not Saúde Já). The app itself was not tested here, so no row claims CuritibAI is better:
+the listing's "entre outros" means a feature missing from it may still be in the app.
+CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login is out of scope by design.
+
+| Curitiba App feature | CuritibAI | Why |
+|---|---|---|
+| Consultas / services catalogue | ✓ | `city_services_search` searches the Carta de Serviços by words and category (from a copy you keep) |
+| Transport information | ✓ | `bus_stops_near`, `bus_departures` and `bus_line_stops` answer "which bus stops near me and when" in one question, from the URBS timetables you download; no real-time positions |
+| Health information | ✓ | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
+| Education information | ✓ | Municipal and state schools and CMEIs from the URBS points export (`city_points_search`); no enrolment |
+| Events * | ✓ | `events_search` over the Instituto Municipal de Turismo calendar (through the separate collector) |
+| 156 * (requests and their protocols) | — | Opening and following 156 requests needs a login; out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
+| Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
+| Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
+| Cartão Transporte * | — | Needs a login; out of scope |
+| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search, all answerable in plain language by an assistant |
+
 ## Deferred
 
 | Tool | Reason |
@@ -92,7 +118,7 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 | Real-time bus positions and fares | Not in the daily exports the bus tools read |
 | `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
-| `garbage_collection_by_street` | No source found |
+| `garbage_collection_by_street` | Only an undocumented form (`coletalixo.curitiba.pr.gov.br`), no published dataset or API; not used |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
 | Detran-PR fees by vehicle, debts, fines and IPVA by plate | The Detran-PR pages that show them need a login and a CAPTCHA; automating them would bypass that, and the results are about one owner's vehicle |
 | Detran-PR statistics (Qlik panel) | An interactive Qlik dashboard, not a published dataset; not used |
@@ -317,10 +343,12 @@ week".
 - No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
   (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/` (`events.json`,
   `status.json`, its detail cache `details.json` and its lock `.lock`). The cache is in
-  memory only (10 minutes) and is keyed by the request sent to the source.
-- The server contacts exactly five hosts, `https://dadosabertos.curitiba.pr.gov.br`,
-  `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br` and
-  `https://ovp.dresel.systems`, on the default port and without credentials. Every redirect hop is checked
+  memory only (10 minutes; 6 hours for the vaccination page, parsed result only) and is keyed by the request sent to
+  the source.
+- The server contacts exactly six hosts, `https://dadosabertos.curitiba.pr.gov.br`,
+  `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
+  `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
+  any other host, or outside `/locaisvacinacao`, are refused), on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a URL.
   No user text ever enters an Overpass query: the query is built from the category allowlist, and name filters are
   applied to the result.
@@ -328,9 +356,16 @@ week".
   `https://turismo.curitiba.pr.gov.br`, from its own allowlist, and only paths of the list and event pages plus
   robots.txt.
 - Requests use a generic User-Agent, `curitibai-mcp/0.7`, a 10 s timeout per request (25 s for PNCP, which is slow;
-  15 s for INMET; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB response cap (1 MB for the
-  INMET forecast, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
+  15 s for INMET and the vaccination page; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
+  response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
   with a message naming the cap.
+- `vaccination_sites_search` reads the page by its known element ids only (region headers, unit name, address,
+  schedule spans, map link), never its whole text. Each text field has control and format characters (bidi, zero
+  width) removed, is NFC-normalised, masked like the events fields and length-capped. Coordinates are read from the
+  map link only when it is a `https://maps.google.com/?q=lat,lon` link inside Curitiba, and no link from the page is
+  returned; `source_url` is the page itself. A unit that does not fit the known structure is skipped and counted; more
+  than 5% skipped, or no unit at all, is `source_unavailable`. After a failure the page is not requested again for 60 s
+  (after a 429, the `Retry-After` wait, at most 1 hour).
 - `places_search` returns only the tags listed in the table; phone, e-mail, operator and other contact tags of
   places are never returned. Names, street, suburb and city pass through the same masking as PNCP objects as a guard (opening hours, house number and postcode are returned as
   tagged), and a name filter matches the masked text only. The category allowlist leaves

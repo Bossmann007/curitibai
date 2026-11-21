@@ -4,7 +4,9 @@ Checked live on **2026-11-19** from a Brazilian IP with the server's own client:
 User-Agent `curitibai-mcp/0.1`, redirects followed by hand. The CNES API (v0.2) was checked the same day with curl and
 User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the same day with curl and User-Agent
 `curitibai-mcp/0.3`. The INMET API (v0.5) was checked the same day with curl and User-Agent `curitibai-mcp/0.5`. The
-Overpass API instances (v0.7) were checked on 2026-11-21 (UTC) with curl and User-Agent `curitibai-mcp/0.7`.
+Overpass API instances (v0.7) were checked on 2026-11-21 (UTC) with curl and User-Agent `curitibai-mcp/0.7`. The
+"Imuniza Já" vaccination page (v0.12) was checked on 2026-11-21 (UTC) with curl and then with Node.js `fetch` and
+User-Agent `curitibai-mcp/0.7`.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -25,7 +27,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `overpass.nextgis.com` (NextGIS) | 404 (checked 2026-11-21 03:26 UTC) | The endpoint needs an API key in the path (`/YOUR_API_KEY/api/interpreter`, sign-up at my.nextgis.com): **not used** (no key, no account) |
 | `overpass.openstreetmap.fr` | 403, "This service is only available to white-listed usages" | **Not used** |
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
-| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | `/robots.txt` 404, but `/curitiba/robots.txt` has the same text as above (`Disallow: /`) | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser |
+| `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
+| `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
 | `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | The host answers 403 to non-browser clients such as curl, so **the server never contacts it**. For the owner's local copy used by `city_services_search` (v0.6), the `/servicos/` listing pages were read on 2026-11-19/20 with a scripted browser session (a real browser, one listing page at a time, about one page every few seconds). That copy is **not** in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -587,6 +590,53 @@ in the city's own categories. Built.
   today to 7 days ahead in Curitiba), words and category. `checked_at` is the collector's run time; `stale: true` after
   3 days; `data_not_available` after 7 days or when the file is missing.
 
+### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
+
+- **Source:** <https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/>, the Secretaria Municipal da Saúde's public list
+  of vaccination sites ("Imuniza Já", Prefeitura de Curitiba). ASP.NET HTML page; the owner found no feed, API or dataset with hours
+  (not searched again here). No personal data: units, addresses, hours and vaccine groups only.
+- **Checked live on 2026-11-21** at 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`,
+  the server's own client): 200, `text/html; charset=utf-8`, 299,365 bytes (curl, `Content-Length`), 0.25 s (Node.js
+  `fetch`), an `ASP.NET_SessionId` cookie (never
+  sent back), no rate-limit headers. The page is **not** in this repository; the parser was run on a local copy outside
+  it: 101 units, 10 regionals, 0 skipped, 0 masked fields, coordinates for all 101. One live call of the built tool
+  followed at 15:58 UTC (101 sites). Requests to the host on 2026-11-21: robots.txt twice and the page three times. The
+  UFPR robots check was three requests (root, `/curitiba/`, `/curitibaurbs/`) within about a second.
+- **Structure** (ids of an ASP.NET repeater): per regional `<span id="ContentPlaceHolder1_rptRegionais_lblRegional_R">`
+  ("Regional Bairro Novo"); per unit `..._rptUnidades_R_lblUnidadeNome_U` (name), `..._lblUnidadeEndereco_U` (street,
+  number and neighbourhood in one string, no separator), a schedule block `..._rptHorarios_U_lblEstrategia_K` followed by
+  its sibling `..._lblHorario_K` (empty in all 101), and `<a href="https://maps.google.com/?q=LAT,LON"
+  id="..._lblVerNoMapa_U">`. Inside the schedule block, normal-weight spans form hours lines ("Horário (segunda a sexta)
+  : Das 7h às 19h"; 93 units 7h–19h, 6 units 7h–17h, one 8h–17h, one 7h–22h) and bold spans form vaccine lines
+  ("Vacinas (Zero a 11 anos)", "Vacinas (12 anos ou mais)", "Covid-19 (6 meses a 4 anos)", "Covid (12 anos ou mais)"),
+  separated by `<br/>`. The page shows **no update date**. Its header asks people to arrive at least 15 minutes before
+  the unit closes. A `<select>` filters by regional on the page itself; the tool filters locally instead.
+- **Extraction:** by those ids only, never the whole page text. Regional, name, address and each hours or vaccine
+  line go through `cleanField` (control characters to spaces, format characters such as bidi and zero-width removed,
+  NFC, PII masking as for events, length caps 60/120/160/100). The prefix "Regional " is dropped from the regional.
+  A non-empty `lblHorario` is added as one more hours line. Coordinates are read only when the map link matches
+  `https://maps.google.com/?q=<lat>,<lon>` exactly and falls inside a box around Curitiba (lat −25.7 to −25.3, lon
+  −49.45 to −49.15); otherwise they are null. **No link from the page is returned**; `source_url` is the page URL. Units
+  are counted by their name-span id, whatever the span holds. A unit without a name, regional or hours line (after
+  cleaning), with a name or address span that does not match or holds a tag (also as `&lt;`), with a schedule block that does not match the known shape, or with
+  a block holding anything other than those spans, is skipped and counted (`skipped_units`); no unit, or more than 5%
+  skipped, is `source_unavailable`.
+- **Guards:** host in `ALLOWED_HOSTS` exactly, https only, redirects to any other host refused (`sameHostOnly`), and same-host redirects only to `/locaisvacinacao` or a path
+  below it, case ignored, no encoded slash or backslash (`redirectPathPrefix`), one
+  GET per call at most, the parsed result cached in memory for 6 hours; after a failure no new request for 60 s (after
+  a 429, the `Retry-After` wait when longer, at most 1 hour), the same error is returned instead; 1 MB cap, 15 s timeout, `text/html` required,
+  HTTP 429 is `rate_limited` with the `Retry-After` wait, same User-Agent as the other tools.
+- **Terms / licence:** none found on the page or the site; the page metadata says `copyright: Prefeitura de Curitiba`.
+  Only facts are returned, with `attribution` "Prefeitura Municipal de Curitiba, Secretaria Municipal da Saúde,
+  "Imuniza Já" (not affiliated)" and the page link.
+- **Fixture:** `test/fixtures/imunizaja_locais_synthetic.html` is **synthetic** (invented units, addresses and
+  coordinates in the real structure), with planted cases: a phone in a name, bidi and zero-width characters, an
+  instruction-like vaccine line, a `javascript:` map link, a map link outside Curitiba, a map link on another host,
+  text and a link outside the known structure.
+- **Prior art** (2026-11-21, `gh search repos imunizaja` and `"vacinacao curitiba"`): one repository without a
+  description (`Arthurrfreire/imunizaja-vacinas`, not opened); the search found no MCP server or API client. Built inside this server, reusing its
+  HTTP client, cache, masking and paging.
+
 ### `local_csv_summary`: a file the user downloaded
 
 No network. The user downloads a file in a browser (for example the 156 CSV from the portal, about 137 MB) into the
@@ -621,14 +671,15 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `schools_search`, `markets_fairs_list` | Covered since v0.9 by `city_points_search` (URBS `pois` export: feiras, Câmbio Verde, CMEIs, municipal and state schools and more), with no days or hours for feiras. The other sources are stale (below). Health units moved to the CNES API in v0.2 |
 | `culture_agenda` | Covered since v0.10 by `events_search` (Instituto Municipal de Turismo calendar, local file written by the separate collector). The portal's "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
-| `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
+| `garbage_collection_by_street` | No published dataset or API (portal searches for "lixo", "coleta", "residuos"). Only an undocumented form exists, `coletalixo.curitiba.pr.gov.br` (owner's finding, 2026-11-21); not used |
 | Detran-PR fees by vehicle, debts, fines and IPVA by plate | Behind login and CAPTCHA on Detran-PR; per-owner data. Not accessed |
 | Detran-PR statistics (Qlik panel) | Interactive dashboard, not a published dataset. Not accessed |
 | PNCP suppliers, contracts, price-registration minutes (`/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` stays on the procurement notice, which has no supplier field |
 
 ### Sources evaluated, not used (2026-11-21)
 
-Recorded so they are not checked again.
+Recorded so they are not checked again. Rows marked "owner's finding" were evaluated by the owner on 2026-11-21 and
+are recorded as reported, not re-checked here.
 
 | Source | Finding | Decision |
 |---|---|---|
@@ -636,6 +687,12 @@ Recorded so they are not checked again.
 | UFPR mirror `/curitiba/AgendaPMC/` | Files stop at 2024-12-17 | Not used: stale |
 | UFPR mirror `/curitiba/FeirasCuritiba/` | Newest file 2017-03-29 (`.xls`) | Not used: stale |
 | Portal searches "Feiras" and "Escolas" | 0 datasets | Feiras, Câmbio Verde and schools come from the URBS `pois` export via `city_points_search` (no days or hours for feiras) |
+| UFPR mirror `/curitiba/MobiliarioUrbano/` | Newest data 2014 (owner's finding) | Not used: stale |
+| UFPR mirror `/curitiba/PesquisaLinhaTurismo/` | Newest data 2013/2014 (owner's finding) | Not used: stale |
+| UFPR mirror `/curitiba/UnidadesAtendimentoCuritiba/` | Newest data 2022 (owner's finding) | Not used: stale |
+| EstaR (parking) and air quality | No open source found (owner's finding) | Not used |
+| Garbage collection (`coletalixo.curitiba.pr.gov.br`) | Only an undocumented form, no dataset or API (owner's finding) | Not used |
+| `Sigesguarda` (Guarda Municipal) and `PretendentesCohab` (housing applicants) datasets | Personal-data risk (owner's finding) | Avoided |
 | URBS mirror `dadosabertos.c3sl.ufpr.br/curitibaurbs/` | Daily exports since 2017: `linhas`, `pois`, `pontosLinha`, `shapeLinha`, `tabelaLinha`, `tabelaVeiculo`, `trechosItinerarios`, `veiculos`. Root `/robots.txt` 404, none in `/curitibaurbs/`; `/curitiba/robots.txt` asks `Request-rate: 1/5` (and `Disallow: /`, table above) | Treated as disallowed; never fetched. `linhas`, `pontosLinha`, `tabelaLinha` and `pois` are read from local copies a person downloads; the other four are not used |
 
 ### Bus alternative checked, not adopted
