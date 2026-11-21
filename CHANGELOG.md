@@ -2,6 +2,12 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.8.2
+
+- Bus tools: when a descriptive field is empty (or whitespace, null or absent) in every valid row of the file, `note` says the field looks missing or renamed and names the result field it feeds (`NOME_COR` → `color`, `SOMENTE_CARTAO` → `card_only`, `NOME` → `name`, `TIPO` → `type`, `GRUPO` → `group`, `PONTO` → `stop_name`, `TABELA` → `table`). The check covers the whole file, not only the rows returned. `ADAPT` keeps its 0.8.0 accessibility note.
+- CI: `.github/workflows/verify.yml` runs `scripts/verify` on pull requests and on pushes to `main` (Ubuntu, Node 26.13.1 from the new `.nvmrc`, actions pinned by commit SHA, `contents: read`, no secrets, 10-minute timeout, older runs of the same ref cancelled).
+- `scripts/verify`: `CURITIBAI_SKIP_AUDIT=1` skips the separate `npm audit` step (CI sets it, so `npm ci` is the only network use).
+
 ## 0.8.1
 
 - `places_search` `police`: the result `note` and the tool description say the category is as tagged in OSM and includes Guarda Municipal, identification institutes and some non-police offices. The bundled list is unchanged.

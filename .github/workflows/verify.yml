@@ -1,0 +1,30 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  # Cancel superseded PR runs; every push to main runs to the end.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # No network beyond npm ci: skip the separate npm audit step at the end of scripts/verify.
+      - run: scripts/verify
+        env:
+          CURITIBAI_SKIP_AUDIT: "1"

@@ -224,8 +224,10 @@ Each tool reads the newest date present for its own kind, on every call (about 3
 30 days old. A row that does not match the expected shape (for example a time of "24:10" or a stop number with a
 letter), or that lacks a field the tool filters or orders by (such as `CATEGORIA_SERVICO`, `SENTIDO` or `HORA`;
 docs/sources.md lists them all), is left out and counted in `note` and `data.skipped_rows`; a missing or null descriptive field (such as `GRUPO`, `TIPO`
-or `ADAPT`) becomes an empty string. Real exports always fill `ADAPT`, so when every timetable row has it empty `note`
-says the accessibility field looks missing or renamed. The whole file is refused (`invalid_data`) only when it is not a
+or `ADAPT`) becomes an empty string. Real exports fill each descriptive field (`NOME_COR`, `SOMENTE_CARTAO`, `NOME`,
+`TIPO`, `GRUPO`, `PONTO`, `TABELA`, `ADAPT`) in at least some rows, so when one is empty in every valid row of the file
+`note` says that field looks missing or renamed (for `ADAPT`, that an empty `adapt` does not mean no accessibility
+equipment). The whole file is refused (`invalid_data`) only when it is not a
 non-empty list or more than 5% of its rows (1 in 20) are invalid; then delete that file or change its name (for example add `.bad`) and the tool reads the newest
 remaining dated file. Download a new set from time to time, since lines and timetables change; older files can stay or be
 deleted. Ask, for example: "which bus lines go to Jardim Botânico?", then "stops of line 464", then "weekday
@@ -356,6 +358,10 @@ day it starts or the calendar day of the time is not verified.
 ```sh
 scripts/verify   # no tracked carta-servicos.json or URBS export, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
+
+CI (`.github/workflows/verify.yml`) runs `scripts/verify` on every pull request and on pushes to `main`: one Ubuntu
+job, Node from `.nvmrc`, actions pinned by commit SHA, read-only token, no secrets, 10-minute timeout. It sets
+`CURITIBAI_SKIP_AUDIT=1`, so the separate `npm audit` step is skipped there and the only network use is `npm ci`.
 
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
 trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:
