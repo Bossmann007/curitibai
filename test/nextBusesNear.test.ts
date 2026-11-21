@@ -61,6 +61,7 @@ const timeRows = () => [
   time("08:30", "1", "990201", "x91"), // code in lower case
   time("08:10", "2", "990201", "901"), // Saturday
   time("08:40", "2", "990202", "901"), // a stop the stops file does not list for 901
+  time("08:45", "2", "990202", "555"), // a line only in the timetable
   time("08:10", "3", "990201", "901"), // Sunday
   time("08:00", "1", "990203", "903"), // outside the radius
   time("23:59", "1", "990201", "901", "3"),
@@ -85,10 +86,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function dataDir({ times = "2026_11_20" as string | null, stops = "2026_11_20", lines = "2026_11_20" } = {}) {
+function dataDir({ times = "2026_11_20" as string | null, stops = "2026_11_20", lines = "2026_11_20", blank = false } = {}) {
   mkdirSync(join(tmp, "urbs"), { recursive: true });
-  if (times !== null) writeFileSync(join(tmp, "urbs", `${times}_tabelaLinha.json`), JSON.stringify(timeRows()));
-  writeFileSync(join(tmp, "urbs", `${stops}_pontosLinha.json`), JSON.stringify(stopRows()));
+  // blank: NOME and ADAPT empty in every row, as if URBS had renamed them.
+  const t = blank ? timeRows().map((r) => ({ ...r, ADAPT: "" })) : timeRows();
+  const p = blank ? stopRows().map((r) => ({ ...r, NOME: "" })) : stopRows();
+  if (times !== null) writeFileSync(join(tmp, "urbs", `${times}_tabelaLinha.json`), JSON.stringify(t));
+  writeFileSync(join(tmp, "urbs", `${stops}_pontosLinha.json`), JSON.stringify(p));
   copyFileSync(join(FIXTURES, "linhas.json"), join(tmp, "urbs", `${lines}_linhas.json`));
 }
 
@@ -146,6 +150,7 @@ describe("next_buses_near", () => {
     expect(out.checked_at).toBe("2026-11-20");
     expect(out.note).toContain("not real-time");
     expect(out.note).not.toContain("was inferred from today's weekday");
+    expect(out.note).toContain("Holidays are not detected");
     expect(out.note).toContain("1 row of the file did not match");
     expect(out.license_note).toContain("2026_11_20_tabelaLinha.json, 2026_11_20_pontosLinha.json and 2026_11_20_linhas.json");
     expect(out.license_note).toContain("CC BY 4.0");
@@ -220,7 +225,8 @@ describe("next_buses_near", () => {
     const all = await next({ at: "08:00", day: "2" });
     const one = await next({ at: "08:00", day: "2", line_code: "901" });
     expect(brief(one.data.items)).toEqual(["2 08:10 +10 901@990201", "2 08:40 +40 901@990202"]);
-    expect(brief(one.data.items)).toEqual(brief(all.data.items));
+    expect(brief(all.data.items)).toEqual([...brief(one.data.items), "2 08:45 +45 555@990202"]);
+    expect(brief((await next({ at: "08:00", day: "2", line_code: "555" })).data.items)).toEqual(["2 08:45 +45 555@990202"]);
     expect(one.data.items[1]?.directions).toEqual([]);
     expect(one.data).toMatchObject({ stops_considered: 3, stops_with_times: 2 });
   });
@@ -240,6 +246,15 @@ describe("next_buses_near", () => {
     expect(out.checked_at).toBe("2026-11-20");
     expect(out.note).toContain("2026_11_19_pontosLinha.json (dated 2026-11-19)");
     expect(out.note).toContain("2026_11_18_linhas.json (dated 2026-11-18)");
+  });
+
+  it("says when NOME or ADAPT look missing or renamed (every row empty)", async () => {
+    dataDir({ blank: true });
+    const out = await next({ at: "08:00", day: "1" });
+    expect(out.data.items[0]).toMatchObject({ stop_name: "", adapt: "" });
+    expect(out.note).toContain("Every valid row of 2026_11_20_pontosLinha.json has an empty NOME field");
+    expect(out.note).toContain("an empty `stop_name` may not come from URBS");
+    expect(out.note).toContain("an empty `adapt` does not mean the bus has no accessibility equipment");
   });
 
   it("validates its input", async () => {

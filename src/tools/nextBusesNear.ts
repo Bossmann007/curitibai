@@ -224,8 +224,9 @@ export function nextBusesNearResult(
       "Timetable as published, not real-time: a bus can be early, late or not run. " +
       (dayInferred
         ? "`day` was inferred from today's weekday in Curitiba (America/Sao_Paulo): Monday to Friday 1, Saturday 2, " +
-          "Sunday 3. Holidays are not detected: on a holiday pass the day code URBS announces (usually 3). "
+          "Sunday 3. "
         : "") +
+      "Holidays are not detected: on a holiday pass the day code URBS announces (usually 3). " +
       `${DAY_TYPE_NOTE} ` +
       "`minutes_from_now` counts from `at` (HH:MM, seconds ignored), not from the moment of the call when `at` is given; " +
       "`at` is a time on today's date, so for a time after midnight tonight also pass the next day's code. " +
@@ -270,8 +271,12 @@ export const nextBusesNear: ToolDef<typeof nextBusesNearInput, typeof nextBusesN
     if (isFailure(stops)) return stops;
     if (isFailure(lines)) return lines;
     const wanted = args.line_code?.trim().toUpperCase();
-    if (wanted !== undefined && !stops.rows.some((r) => r.COD.toUpperCase() === wanted)) {
-      return fail("invalid_argument", `line_code has no stops in ${stops.file}; find the code with bus_lines_search.`);
+    const has = (r: { COD: string }) => r.COD.toUpperCase() === wanted;
+    if (wanted !== undefined && !stops.rows.some(has) && !times.rows.some(has)) {
+      return fail(
+        "invalid_argument",
+        `line_code is in neither ${stops.file} nor ${times.file}; find the code with bus_lines_search.`,
+      );
     }
     return ok(
       nextBusesNearResult(
