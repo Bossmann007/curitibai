@@ -464,10 +464,14 @@ export function eventsDir(env) {
   }
 }
 
-/** Writes `name` in `dir` atomically: a temp file in the same folder, then rename over the old file. */
+/**
+ * Writes `name` in `dir` atomically: a new temp file in the same folder (exclusive create, so an existing file or
+ * symbolic link there is never followed or overwritten), then rename over the old file (which replaces a link itself,
+ * not its target).
+ */
 export function writeAtomic(dir, name, text) {
-  const tmp = join(dir, `.${name}.tmp-${process.pid}`);
-  writeFileSync(tmp, text, { encoding: "utf8", mode: 0o644 });
+  const tmp = join(dir, `.${name}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 10)}`);
+  writeFileSync(tmp, text, { encoding: "utf8", mode: 0o644, flag: "wx" });
   renameSync(tmp, join(dir, name));
 }
 

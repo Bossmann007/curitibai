@@ -496,6 +496,15 @@ describe("run", () => {
     expect(readdirSync(join(dataDir, "events")).sort()).toEqual(["events.json", "status.json"]);
   });
 
+  it("replaces a symlinked events.json with a file instead of writing through it", async () => {
+    mkdirSync(join(dataDir, "events"));
+    writeFileSync(join(root, "target.json"), "untouched");
+    symlinkSync(join(root, "target.json"), join(dataDir, "events", "events.json"));
+    expect((await run(harness(siteRoutes([ids(3)])).deps)).code).toBe("ok");
+    expect(readFileSync(join(root, "target.json"), "utf8")).toBe("untouched");
+    expect(readJson(eventsFile()).count).toBe(3);
+  });
+
   it("refuses an events folder that is a symlink out of the data folder", async () => {
     mkdirSync(join(root, "elsewhere"));
     symlinkSync(join(root, "elsewhere"), join(dataDir, "events"));
