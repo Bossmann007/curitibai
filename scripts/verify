@@ -23,8 +23,11 @@ npx vitest run
 step "build"
 npm run --silent build
 
-step "stdio smoke test (tools/list, city_services_search, bus_departures and city_points_search on the synthetic fixtures)"
+step "stdio smoke test (tools/list, city_services_search, bus_departures, bus_stops_near and city_points_search on the synthetic fixtures)"
 node scripts/smoke.mjs
+
+step "bus_stops_near timing guard (17,496 generated stop rows, budget about 100 ms, fails over 400 ms)"
+node scripts/perf-bus-stops-near.mjs
 
 echo
 echo "verify: OK"

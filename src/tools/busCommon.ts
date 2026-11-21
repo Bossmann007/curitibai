@@ -46,10 +46,14 @@ export function page<T>(rows: readonly T[], offset: number, limit: number) {
   return { total: rows.length, offset, next_offset: end < rows.length ? end : null, items };
 }
 
-export function urbsLicenseNote(file: string): string {
+const andList = (items: readonly string[]) =>
+  items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+export function urbsLicenseNote(...files: string[]): string {
   return (
     "Source: URBS — Urbanização de Curitiba S.A., dataset \"Transporte Coletivo de Curitiba\" on the Portal de Dados " +
-    `Abertos de Curitiba (${URBS_SOURCE_URL}), daily export ${file}, downloaded by the user from the portal's mirror ` +
+    `Abertos de Curitiba (${URBS_SOURCE_URL}), daily export${files.length > 1 ? "s" : ""} ${andList(files)}, ` +
+    "downloaded by the user from the portal's mirror " +
     `(${URBS_MIRROR_URL}). ${URBS_LICENSE}. Values are ` +
     "returned as published, except that coordinates are converted to decimal numbers and e-mail-, phone- and " +
     "CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. Unofficial; not affiliated with URBS or the " +
@@ -82,9 +86,6 @@ const OUTPUT_FIELD: Record<DescriptiveField, string> = {
   TABELA: "table",
   ADAPT: "adapt",
 };
-
-const andList = (items: readonly string[]) =>
-  items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
 /**
  * For descriptive fields (other than ADAPT, which has ADAPT_MISSING_NOTE) that are empty in every row of the file: the
