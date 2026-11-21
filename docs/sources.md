@@ -30,6 +30,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
+| `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200 (as handed over by the owner on 2026-11-21, not refetched in this change): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0200-0600`, disallows `/bin`, `/Imagem`, `*.pdf`, `*.asp` and more (the list was given truncated), `Allow: *.aspx` | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after checking robots.txt on every run |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -477,6 +478,63 @@ Measured with the built server on that file: about 11–33 ms to read, validate 
 Prior art: same as the bus tools (no project reads these exports for an assistant); `places_search` covers some of the
 same kinds of place from OpenStreetMap (libraries, schools, bus stations, marketplaces), as tagged there rather than
 in the city's own categories. Built.
+
+### `events_search`: Instituto Municipal de Turismo events calendar (local file written by a separate collector)
+
+- **Source:** <https://turismo.curitiba.pr.gov.br/eventos/>, the public events calendar of the Instituto Municipal de
+  Turismo de Curitiba. An ASP.NET HTML site (IIS); no feed or API was found. List pages are
+  `GET /eventos/DD-MM-AAAA/N` (10 events per page, about 5 pages, from that date onwards); detail pages are
+  `GET /evento/<slug>/<id>`. No licence or terms of use were found, so only facts (title, dates, time, place, address,
+  category) and the event link are kept. `attribution`: "Instituto Municipal de Turismo de Curitiba (not affiliated)";
+  `license_note`: "the site publishes no licence; facts and links only".
+- **Structure seen on 2026-11-21** (one list page and one detail page, fetched at 05:21 UTC inside the visit window
+  with User-Agent `curitibai-mcp/0.10`; neither page is in the repository). Both answered `Content-Type: text/html;
+  charset=utf-8` (not ISO-8859-1 as expected); the detail description writes accents as named HTML entities.
+  - List: the date filter `<input ... value="DD-MM-AAAA" id="cphMasterPortal_txtFiltroDataInicio" />`; one
+    `<div class="itemEventoConteudo">` per event with day and month spans (no year), `<span class="categoria">` and
+    `<h4><a id="cphMasterPortal_rptEventos_hlkEvento_N" href="/evento/<slug>/<id>">title</a></h4>`; the pager
+    `<ul id="cphMasterPortal_ucPaginador_ulsPaginacao">` with page numbers.
+  - Detail: spans `cphMasterPortal_lblCategoriaEvento`, `lblTitulo`, `lblDatas` (`DD/MM/AAAA`), `lblHorario` (free
+    text such as "10h30.") and, when present, `lblLocal` ("place | address"). Also on the page, and never read:
+    `lblDescricao` (free HTML: programme, prices, organiser notes), `lblIngresso`, `lblClassificacao`, `hlkSite` (an
+    external link), the image gallery and share buttons.
+- **Collector** (`scripts/fetch-events.mjs`, Node built-ins only, run by the user): its own exact host allowlist
+  (`turismo.curitiba.pr.gov.br`, not in `src/config.ts` `ALLOWED_HOSTS`), https only, `redirect: "manual"` with any
+  3xx treated as a stop, User-Agent `curitibai-mcp/0.10`, never a browser's. The window (02:00–05:50 UTC, inside the
+  robots.txt `Visit-time` with a 10-minute margin) and the 10-minute run deadline are checked before every request;
+  15 s per request; at least 5 s from the end of one request to the start of the next. robots.txt is fetched first on
+  every run and the run aborts (`robots_changed`) unless the group for `*` has exactly the recorded Disallow set,
+  `Visit-time: 0200-0600` and `Request-rate: 1/5` (a group naming `curitibai-mcp` would also abort it). Each path is
+  checked against those rules with an RFC 9309 matcher (`*` wildcard, `$` anchor, longest match wins, Allow wins
+  ties; `*.asp` matches any path containing `.asp`) and against two path patterns:
+  `^/eventos/\d{2}-\d{2}-\d{4}/\d+$` and `^/evento/[a-z0-9-]+/\d+$`. Any non-200 status (403, 429 and 5xx included)
+  stops the run without a retry. Caps: 512 KB per list page, 256 KB per detail page, 64 KB for robots.txt. The body is
+  decoded with the charset from `Content-Type`, else from a `<meta>`; UTF-8 and ISO-8859-1/Windows-1252 only.
+- **Dates:** the list date and the file's `list_date` are Curitiba's date (America/Sao_Paulo): a run at 02:30 UTC
+  reads the list of the previous calendar day (23:30 in Curitiba). Event dates come only from the detail page's
+  `lblDatas`; every valid `DD/MM/AAAA` there is read and the earliest and latest become `start_date` and `end_date`.
+- **Kept fields:** `id` (numeric), `title`, `start_date`, `end_date`, `time`, `place`, `address`, `category`, `link`.
+  The link is built as `https://turismo.curitiba.pr.gov.br/evento/<slug>/<id>` from the slug and id read from the
+  list link and validated (`[a-z0-9-]+`, digits), never copied from an href. Text fields: HTML entities decoded,
+  Unicode Cc characters turned into spaces and Cf characters (bidi controls, zero-width, tag characters) removed, NFC,
+  whitespace collapsed, the existing PII mask (e-mail, phone, CPF/CNPJ shapes → `[masked]`), then cut at 120 code
+  points (title, place, address) or 60 (time, category). `place` and `address` are split at the first " | " of
+  `lblLocal`. Details are fetched only for ids not in the previous `events.json`.
+- **Failure rule:** the old `events.json` is kept, and the script exits 1 with a code, when a page lacks a known
+  element or repeats it (`layout_changed`), a field fails validation, the run is cut short (`window_closed`,
+  `deadline`, `http_error`, `redirect`, `too_large`, `timeout`, `network`), or the event count is 0 or outside 0.3x–3x
+  of the previous file's (`layout_changed`). `status.json` records `attempt`, `success` (the last successful run) and
+  `code` (and `http_status` when one stopped the run). Output is limited to fixed status lines.
+- **Needs a live check** (decided from one sample of each page): the robots.txt Disallow list recorded in the script
+  (`/bin`, `/Imagem`, `*.pdf`, `*.asp`) is the truncated list handed over, so the first real run may abort with
+  `robots_changed` until the full list is recorded; the text of an empty list page is unknown, so a count of 0 always
+  stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
+  kept fields have not been seen.
+- **Tool** (`events_search`, no network): reads `events/events.json` through `openDataFile` and `readAllCapped` (2 MB
+  cap), validates it with zod on every call (`invalid_data`: wrong shape, extra fields, a link that is not the event
+  page of its own id, `count` not matching), sanitizes the text fields again, and filters by date overlap (default
+  today to 7 days ahead in Curitiba), words and category. `checked_at` is the collector's run time; `stale: true` after
+  3 days; `data_not_available` after 7 days or when the file is missing.
 
 ### `local_csv_summary`: a file the user downloaded
 

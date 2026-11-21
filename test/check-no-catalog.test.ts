@@ -307,6 +307,50 @@ describe("scripts/check-no-catalog", () => {
     });
   });
 
+  describe("events output and HTML captures", () => {
+    it.each(["events/events.json", "data/events/status.json", "x/Events/anything.txt"])("fails when %j is force-added", (path) => {
+      add(path, "{}\n", true);
+      const res = guard();
+      expect(res.status).toBe(1);
+      expect(res.stdout).not.toContain("OK");
+      expect(res.stderr).toContain("git tracks a file in an events folder");
+      expect(res.stderr).toContain(`  ${path}\n`);
+    });
+
+    it.each(["evento.html", "captures/eventos-21-11-2026.HTM", "page.mhtml", "session.har", "docs/x.html"])(
+      "fails when the capture %j is force-added outside test/fixtures/",
+      (path) => {
+        add(path, "<html></html>\n", true);
+        const res = guard();
+        expect(res.status).toBe(1);
+        expect(res.stderr).toContain("git tracks an HTML capture outside test/fixtures/");
+        expect(res.stderr).toContain(`  ${path}\n`);
+      },
+    );
+
+    it.each(["test/fixtures/events_synthetic/list_page.html", "events_synthetic.json", "src/events.ts", "x/myevents/a.json", "page.html.md"])(
+      "passes for %j",
+      (path) => {
+        add(path, "x\n", true);
+        const res = guard();
+        expect(res.status).toBe(0);
+        expect(res.stdout).toContain("check-no-catalog: OK");
+      },
+    );
+
+    it("the repo .gitignore keeps the events folder and HTML captures out of a plain git add, but not the fixtures", () => {
+      writeFileSync(join(repo, ".gitignore"), readFileSync(fileURLToPath(new URL("../.gitignore", import.meta.url))));
+      for (const path of ["events/events.json", "data/events/status.json", "capture.html", "a/b.har"]) {
+        mkdirSync(dirname(join(repo, path)), { recursive: true });
+        writeFileSync(join(repo, path), "x\n");
+        const res = spawnSync("git", ["add", "--", path], { cwd: repo, env: gitEnv(), encoding: "utf8" });
+        expect(res.status).not.toBe(0);
+      }
+      add("test/fixtures/events_synthetic/list_page.html", "<html></html>\n");
+      expect(git("ls-files")).toBe("test/fixtures/events_synthetic/list_page.html\n");
+    });
+  });
+
   it("is a step of scripts/verify", () => {
     expect(readFileSync(VERIFY, "utf8")).toMatch(/^scripts\/check-no-catalog$/m);
   });
