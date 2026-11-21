@@ -22,14 +22,15 @@ export const OVERPASS_MAX_BYTES = 3 * 1024 * 1024;
  */
 const CURITIBA_AREA = 'area["boundary"="administrative"]["admin_level"="8"]["IBGE:GEOCODIGO"="4106902"]->.cwb;.cwb out ids;';
 
-/** The fixed category allowlist: public places only. Each maps to one exact OSM tag. */
+/**
+ * The fixed category allowlist: public places only. Each maps to one exact OSM tag. Hospitals, police and fire
+ * stations are left out on purpose: the instance's operator asks that no emergency or safety application depend on it,
+ * and public health units are covered by health_units_search (CNES).
+ */
 export const PLACE_CATEGORIES = {
   park: ["leisure", "park"],
   library: ["amenity", "library"],
   school: ["amenity", "school"],
-  hospital: ["amenity", "hospital"],
-  police: ["amenity", "police"],
-  fire_station: ["amenity", "fire_station"],
   community_centre: ["amenity", "community_centre"],
   townhall: ["amenity", "townhall"],
   bus_station: ["amenity", "bus_station"],
@@ -121,6 +122,8 @@ export function parseOverpass(json: unknown): OverpassResult {
 export const OVERPASS_MAX_QUEUE_WAIT_MS = 20_000;
 /** Pause after an HTTP 429 without Retry-After. */
 const DEFAULT_COOLDOWN_S = 60;
+/** A Retry-After longer than this is capped, so a bogus or huge value cannot switch the tool off for days. */
+export const MAX_COOLDOWN_S = 3600;
 
 let queue: Promise<unknown> = Promise.resolve();
 /** Until this time (ms) no request is sent: calls answer rate_limited at once. Set by an HTTP 429. */
@@ -139,7 +142,7 @@ export function oneAtATime<T>(task: () => Promise<T>, now: () => number = Date.n
     try {
       return await task();
     } catch (err) {
-      if (err instanceof RateLimitedError) cooldownUntil = now() + (err.retryAfterS ?? DEFAULT_COOLDOWN_S) * 1000;
+      if (err instanceof RateLimitedError) cooldownUntil = now() + Math.min(err.retryAfterS ?? DEFAULT_COOLDOWN_S, MAX_COOLDOWN_S) * 1000;
       throw err;
     }
   };
@@ -178,7 +181,20 @@ function cachedQuery<T>(query: string, map: (r: OverpassResult) => T): Promise<C
 export function guarded(v: string | undefined): string | null {
   if (v === undefined || v.trim() === "") return null;
   const m = maskObject(v);
-  return m.text.includes(MASK) || m.truncated ? m.text : v;
+  return wouldMask(m) ? m.text : v;
+}
+
+function wouldMask(m: { text: string; truncated: boolean }): boolean {
+  return m.text.includes(MASK) || m.truncated;
+}
+
+/** Percent-decoded text, or null when it is not valid percent-encoding. */
+function decoded(s: string): string | null {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return null;
+  }
 }
 
 /** Structured values (opening hours, house number, postcode) as tagged; the phone mask would eat "0800-1700". */
@@ -186,15 +202,24 @@ function plain(v: string | undefined): string | null {
   return v === undefined || v.trim() === "" ? null : v;
 }
 
-/** http(s) only, no username or password; anything else is dropped. */
+/**
+ * http(s) only, no username or password, and nothing the PII guard would mask in the tag as written or in the
+ * percent-decoded link (a wa.me/55... link carries a phone number, `%40` an e-mail): such a link is dropped whole,
+ * never returned half-masked. Fails closed: a link with a long digit run (some social-media ids, dated paths) or over
+ * 300 characters is dropped too.
+ */
 export function safeWebsite(v: string | undefined): string | null {
   if (v === undefined) return null;
+  let u: URL;
   try {
-    const u = new URL(v.trim());
-    return (u.protocol === "https:" || u.protocol === "http:") && u.username === "" && u.password === "" ? u.href : null;
+    u = new URL(v.trim());
   } catch {
     return null;
   }
+  if ((u.protocol !== "https:" && u.protocol !== "http:") || u.username !== "" || u.password !== "") return null;
+  const plainHref = decoded(u.href);
+  if (plainHref === null) return null;
+  return [v, u.href, plainHref].some((x) => wouldMask(maskObject(x))) ? null : u.href;
 }
 
 function coords(e: RawElement): { lat: number; lon: number } | null {

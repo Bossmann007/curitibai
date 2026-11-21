@@ -1147,5 +1147,5 @@
    }
   }
  ],
- "_trimmed": "Real Overpass answer (ovp.dresel.systems/api-sa, 2026-11-21); tags the tools never return were removed. OpenStreetMap data, © OpenStreetMap contributors, ODbL."
+ "_trimmed": "Real Overpass answer (ovp.dresel.systems/api-sa, 2026-11-21). Only returned tags plus amenity, operator and type were kept; relation members kept. OpenStreetMap data, © OpenStreetMap contributors, ODbL."
 }
