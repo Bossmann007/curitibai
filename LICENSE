@@ -200,3 +200,5 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 
+
+Exception: src/sources/osmBundled.ts (and its compiled copy in dist/) is OpenStreetMap data under the ODbL 1.0 (https://opendatacommons.org/licenses/odbl/1-0/), not this License; see the README "License" section.

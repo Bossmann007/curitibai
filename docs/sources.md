@@ -245,7 +245,9 @@ Order tried:
    Mulher Brasileira and one mis-tagged office ("Sede CRMV-PR"); the list is not hand-edited. The PII mask changed
    none of the 79 entries. Results go through the same mapping and guards as
    live answers, with `fetched_at` 03:28 (police) or 03:26 (fire stations), set `bundled: true` and `checked_at: "2026-11-21"` (Curitiba date of the capture), and their `note` starts with "NOT FOR
-   EMERGENCIES: in an emergency call 190 (Polícia Militar) or 193 (Corpo de Bombeiros)". After 180 days (Curitiba
+   EMERGENCIES: in an emergency call 190 (Polícia Militar) or 193 (Corpo de Bombeiros)"; for `police` it then says the
+   category is as tagged in OSM and includes Guarda Municipal, identification institutes and some non-police offices
+   (0.8.1). After 180 days (Curitiba
    time) the note says the list may be outdated; refreshing it needs a code update.
 3. A local OSM extract file was not considered (owner: ask first).
 
