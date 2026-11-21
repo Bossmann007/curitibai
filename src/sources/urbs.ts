@@ -50,7 +50,7 @@ export const LinhaRow = z.object({
   COD: code,
   NOME: text(200),
   SOMENTE_CARTAO: optional(5),
-  CATEGORIA_SERVICO: optional(100),
+  CATEGORIA_SERVICO: text(100),
   NOME_COR: optional(50),
 });
 export const PontoRow = z.object({
@@ -60,7 +60,7 @@ export const PontoRow = z.object({
   LON: coordinate.nullish().transform((v) => v ?? ""),
   SEQ: z.string().regex(/^\d{1,5}$/),
   GRUPO: optional(20),
-  SENTIDO: optional(200),
+  SENTIDO: text(200),
   TIPO: optional(100),
   ITINERARY_ID: z.string().trim().min(1).max(20),
   COD: code,

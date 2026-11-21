@@ -95,7 +95,11 @@ export async function loadUrbsOrFail<K extends UrbsKind>(kind: K): Promise<UrbsF
     }
     if (err instanceof UrbsFileMissingError) return fail("data_not_available", NOT_AVAILABLE(kind));
     if (err instanceof InvalidUrbsDataError) return fail("invalid_data", err.message);
-    return fail("invalid_data", `The newest ${kind} file could not be read.`);
+    return fail(
+      "invalid_data",
+      `The newest ${kind} file could not be read. To use an older file instead, delete it or change its name (for ` +
+        `example add .bad) in the ${URBS_SUBDIR} folder.`,
+    );
   }
 }
 

@@ -337,22 +337,22 @@ the Portal de Dados Abertos de Curitiba (publisher URBS — Urbanização de Cur
 `/conjuntodado/detalhe?chave=ca40f13b-ef61-472b-810f-dd705f85fd2e`, used as `source_url`). Its daily exports are
 mirrored at <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> as `YYYY_MM_DD_<kind>.json.xz`. That host is treated as
 disallowed (table above), so the server never fetches them; a person downloads `linhas`, `pontosLinha` and
-`tabelaLinha` in a browser, decompresses them with `xz -d` and keeps them in `CURITIBAI_DATA_DIR/urbs/`. Licence:
-licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal
-page (its body reads "Dados Abertos - Conteúdo licenciado sob uma Licença Creative Commons." with the by/4.0 badge;
-checked 2026-11-21 with one GET). `license_note`
+`tabelaLinha` in a browser, decompresses them with `xz -d` and keeps them in `CURITIBAI_DATA_DIR/urbs/`. Licensed
+under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page.
+That page's body reads "Dados Abertos - Conteúdo licenciado sob uma Licença Creative Commons." with the by/4.0 badge
+(checked 2026-11-21 with one GET). `license_note`
 attributes URBS and the dataset and names the file.
 
 Each tool lists the names in `urbs/` (no file is opened to choose), takes the newest valid date for its own kind,
 and reads that one file through `src/localfs.ts` with the same rules as `city_services_search` (realpath inside the
 folder, regular file, read-only open, no symlink out), on every call, with a 20 MB cap. Rows are validated with zod
 row by row (strings of bounded length, `HH:MM` times, digit-only stop numbers and day codes, comma-decimal
-coordinates or empty). Fields a tool selects or orders by are required (`COD`, `NOME` in linhas; `NUM`, `SEQ`,
-`ITINERARY_ID`, `COD` in pontosLinha; `HORA`, `DIA`, `NUM`, `COD` in tabelaLinha); the descriptive ones may be missing
+coordinates or empty). Fields a tool selects or orders by are required (`COD`, `NOME`, `CATEGORIA_SERVICO` in linhas;
+`NUM`, `SEQ`, `SENTIDO`, `ITINERARY_ID`, `COD` in pontosLinha; `HORA`, `DIA`, `NUM`, `COD` in tabelaLinha); the descriptive ones may be missing
 or null and become "". A row that fails is skipped and the count is given in `note`. The file is `invalid_data` only
 when it is not UTF-8 JSON, not a non-empty list (within a row cap), more than half of its rows are invalid, or over
-20 MB; the message names the file and the problem (never the file's text) and says to remove or rename the file so
-the next newest dated one is read. Extra fields are ignored. On the 2026-11-20 files no row is skipped. Measured on the 2026-11-20 files with the built server: about 4 ms (linhas), 32 ms (pontosLinha)
+20 MB; the message names the file and the problem (never the file's text) and says to delete the file or change its
+name (for example add `.bad`) so the next newest dated one is read. Extra fields are ignored. On the 2026-11-20 files no row is skipped. Measured on the 2026-11-20 files with the built server: about 4 ms (linhas), 32 ms (pontosLinha)
 and 54 ms (tabelaLinha) to read and validate.
 
 | File (2026-11-20) | Rows | Fields | Notes |

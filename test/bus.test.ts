@@ -233,6 +233,14 @@ describe("invalid_data", () => {
     expect((await departures({ line_code: "901" })).data.items[0]?.adapt).toBe("");
   });
 
+  it("skips rows without a field a tool filters or orders by (CATEGORIA_SERVICO, SENTIDO)", () => {
+    const lines = fixtureRows("linhas");
+    const noCategory = Object.fromEntries(Object.entries(lines[0]!).filter(([k]) => k !== "CATEGORIA_SERVICO"));
+    expect(parseUrbs("linhas", "f.json", [...lines, noCategory]).skipped).toBe(1);
+    const stops = fixtureRows("pontosLinha");
+    expect(parseUrbs("pontosLinha", "f.json", [...stops, { ...stops[0], SENTIDO: null }]).skipped).toBe(1);
+  });
+
   it("parseUrbs reports the skipped count", () => {
     const rows = fixtureRows("pontosLinha");
     expect(parseUrbs("pontosLinha", "f.json", [...rows, { ...rows[0], LAT: "-25,4x" }]).skipped).toBe(1);
