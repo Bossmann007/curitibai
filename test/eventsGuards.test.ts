@@ -41,7 +41,7 @@ describe("events collector boundaries", () => {
     expect(SCRIPT).not.toMatch(/["'](node:)?(net|dgram|http|https|http2|tls|worker_threads|cluster)["']/);
   });
 
-  it("the collector writes only through writeAtomic and mkdir of the events folder", () => {
+  it("the collector writes only through writeAtomic, mkdir of the events folder and its lock file", () => {
     const fsImport = /^import \{([^}]*)\} from "node:fs";$/m.exec(SCRIPT);
     expect(fsImport?.[1]!.split(",").map((s) => s.trim()).sort()).toEqual([
       "lstatSync",
@@ -49,17 +49,29 @@ describe("events collector boundaries", () => {
       "readFileSync",
       "realpathSync",
       "renameSync",
+      "unlinkSync",
       "writeFileSync",
     ]);
     const count = (re: RegExp) => (SCRIPT.match(re) ?? []).length;
-    expect(count(/\bwriteFileSync\(/g)).toBe(1);
-    expect(count(/\brenameSync\(/g)).toBe(1);
+    // writeAtomic's temp file and the lock, both created exclusively (wx: never through an existing file or link).
+    expect(count(/\bwriteFileSync\(/g)).toBe(2);
+    expect(count(/\bwriteFileSync\([^)]*flag: "wx" \}\)/g)).toBe(2);
     expect(count(/\bmkdirSync\(/g)).toBe(1);
+    // Besides writeAtomic's rename, rename and unlink touch only the lock: inside acquireLock, on `path`
+    // (join(dir, LOCK_FILE)) or `aside` (a stale lock moved next to it).
+    const lockFn = SCRIPT.slice(SCRIPT.indexOf("export function acquireLock("), SCRIPT.indexOf("// ---------- run ----------"));
+    expect(lockFn).toContain("const path = join(dir, LOCK_FILE);");
+    expect(lockFn).toContain("const aside = join(dir, `${LOCK_FILE}.stale-");
+    expect(count(/\brenameSync\(/g)).toBe(3);
+    expect(lockFn.match(/\brenameSync\([^)]*\)/g)).toEqual(["renameSync(path, aside)", "renameSync(aside, path)"]);
+    expect(count(/\bunlinkSync\(/g)).toBe(2);
+    expect(lockFn.match(/\bunlinkSync\([^)]*\)/g)).toEqual(["unlinkSync(path)", "unlinkSync(aside)"]);
     expect(SCRIPT).toContain('const dir = join(base, "events");');
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "events\.json",/);
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "status\.json",/);
-    expect(count(/\bwriteAtomic\(/g)).toBe(3); // the definition and the two calls
-    expect(SCRIPT).not.toMatch(/\b(appendFile|createWriteStream|unlink|rmSync|rm\(|copyFile|symlink|chmod|truncate|openSync)\b/);
+    expect(SCRIPT).toMatch(/writeAtomic\(dir, CACHE_FILE,/);
+    expect(count(/\bwriteAtomic\(/g)).toBe(4); // the definition and the three calls
+    expect(SCRIPT).not.toMatch(/\b(appendFile|createWriteStream|unlink\(|rmSync|rm\(|copyFile|symlink|chmod|truncate|openSync)\b/);
   });
 
   it("the collector prints only through the log function", () => {

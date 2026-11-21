@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Collector for the events_search tool: reads the public events calendar of the Instituto Municipal de Turismo de
-// Curitiba (turismo.curitiba.pr.gov.br) and writes CURITIBAI_DATA_DIR/events/events.json and events/status.json.
+// Curitiba (turismo.curitiba.pr.gov.br) and writes CURITIBAI_DATA_DIR/events/events.json and events/status.json, plus
+// its own detail cache (events/details.json) and run lock (events/.lock).
 // Run by hand (or by a scheduler) inside the window the site's robots.txt asks for; the MCP server never contacts
 // this host (it is not in src/config.ts ALLOWED_HOSTS). Node built-ins only. See README "Events" and docs/sources.md.
 //
 // Prints only fixed status lines, counts and the exit code: never page text, titles or HTML.
-import { lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, relative, isAbsolute, sep } from "node:path";
 import { cleanField, EVENT_PLACE_MAX, EVENT_SHORT_MAX, EVENT_TITLE_MAX } from "../src/mask.ts";
 import { decodeEntities } from "../src/text.ts";
@@ -19,9 +20,13 @@ export const USER_AGENT = "curitibai-mcp/0.10";
 /** Requests start only between 02:00 and 05:50 UTC (robots.txt Visit-time 0200-0600, with a 10-minute margin). */
 export const WINDOW_START_MIN = 2 * 60;
 export const WINDOW_END_MIN = 5 * 60 + 50;
-export const DEADLINE_MS = 10 * 60 * 1000;
+/** Whole-run deadline; the window end (05:50 UTC) still stops a run that started late. */
+export const DEADLINE_MS = 30 * 60 * 1000;
 export const TIMEOUT_MS = 15_000;
-/** robots.txt Request-rate 1/5: at least 5 s between the end of one request and the start of the next. */
+/**
+ * robots.txt Request-rate 1/5: at least 5 s between the end of one request and the start of the next. A recorded
+ * Crawl-delay or Request-rate asking for more raises the gap (politeGapMs).
+ */
 export const GAP_MS = 5_000;
 export const LIST_MAX_BYTES = 512 * 1024;
 export const DETAIL_MAX_BYTES = 256 * 1024;
@@ -35,21 +40,42 @@ export const SHORT_MAX = EVENT_SHORT_MAX;
 export const MIN_RATIO = 0.3;
 export const MAX_RATIO = 3;
 
-/**
- * robots.txt rules for `User-agent: *` as recorded on 2026-11-21 (docs/sources.md). The run stops before any page
- * request when the live file differs in Disallow, Visit-time or Request-rate. NEEDS A LIVE CHECK: the Disallow list
- * was handed over truncated ("/bin, /Imagem, *.pdf, *.asp..."), so the first real run may stop with robots_changed
- * until the full list is recorded here.
- */
-export const RECORDED_ROBOTS = Object.freeze({
-  disallow: Object.freeze(["/bin", "/Imagem", "*.pdf", "*.asp"]),
-  visitTime: "0200-0600",
-  requestRate: "1/5",
-});
+/** The day RECORDED_ROBOTS was read from https://turismo.curitiba.pr.gov.br/robots.txt (docs/sources.md). */
+export const ROBOTS_RECORDED_ON = "2026-11-21";
 
 /**
- * Text that marks an empty list page, which would allow a count of 0. NEEDS A LIVE CHECK: no empty page has been seen,
- * so it is null and a count of 0 always stops with layout_changed.
+ * The whole `User-agent: *` group of the site's robots.txt as read on ROBOTS_RECORDED_ON: one "key: value" per
+ * directive, key in lower case, comment removed, in file order. Every run compares the live group with this list as a
+ * whole (order ignored, repeats counted): any added, removed or changed directive, Crawl-delay and Allow included,
+ * stops the run with robots_changed before any page. To accept a change, edit this list (README "Events").
+ */
+export const RECORDED_ROBOTS = Object.freeze([
+  "request-rate: 1/5",
+  "visit-time: 0200-0600",
+  "disallow: /App_Browsers",
+  "disallow: /App_Themes",
+  "disallow: /bin",
+  "disallow: /Cache",
+  "disallow: /Imagem",
+  "disallow: /Include",
+  "disallow: *.mdb",
+  "disallow: *.pdf",
+  "disallow: *.dll",
+  "disallow: *.log",
+  "disallow: *.asp",
+  "disallow: *.config",
+  "disallow: *.jpg",
+  "disallow: *.gif",
+  "disallow: *.ascx",
+  "allow: *.aspx",
+  "allow: *.html",
+  "allow: *.htm",
+  "disallow: /es/contenido/*/categoria/*/conteudos/*",
+]);
+
+/**
+ * Text that marks an empty list page, which would allow a count of 0. No empty page has been seen, so it is null and a
+ * day with no events stops with layout_changed (README "Events" explains it).
  */
 export const NO_EVENTS_MARKER = null;
 
@@ -94,12 +120,16 @@ export function listPath(isoDate, page) {
 
 // ---------- robots.txt ----------
 
-/** Groups of `User-agent` lines with their rules. Comments and unknown lines are ignored. */
+/**
+ * Groups of `User-agent` lines with every directive that follows them, as `[key, value]` (key in lower case, value
+ * trimmed, comments removed; unknown keys and empty values kept). Lines without a colon are ignored.
+ */
 export function parseRobots(text) {
   const groups = [];
   let current = null;
   let lastWasAgent = false;
-  for (const rawLine of text.split(/\r\n|\r|\n/)) {
+  // A UTF-8 byte order mark, decoded as UTF-8 or as Windows-1252, would hide the first User-agent line.
+  for (const rawLine of text.replace(/^(?:\uFEFF|\u00EF\u00BB\u00BF)/, "").split(/\r\n|\r|\n/)) {
     const line = rawLine.replace(/#.*/, "").trim();
     const colon = line.indexOf(":");
     if (colon < 0) continue;
@@ -107,7 +137,7 @@ export function parseRobots(text) {
     const value = line.slice(colon + 1).trim();
     if (key === "user-agent") {
       if (!lastWasAgent || current === null) {
-        current = { agents: [], allow: [], disallow: [], visitTime: [], requestRate: [] };
+        current = { agents: [], rules: [] };
         groups.push(current);
       }
       current.agents.push(value.toLowerCase());
@@ -115,11 +145,7 @@ export function parseRobots(text) {
       continue;
     }
     lastWasAgent = false;
-    if (current === null) continue;
-    if (key === "allow" && value !== "") current.allow.push(value);
-    else if (key === "disallow" && value !== "") current.disallow.push(value);
-    else if (key === "visit-time") current.visitTime.push(value);
-    else if (key === "request-rate") current.requestRate.push(value);
+    if (current !== null) current.rules.push([key, value]);
   }
   return groups;
 }
@@ -129,11 +155,12 @@ export function robotsGroupFor(groups) {
   const pick = (pred) => {
     const hits = groups.filter((g) => g.agents.some(pred));
     if (hits.length === 0) return null;
+    const rules = hits.flatMap((g) => g.rules);
+    const values = (key) => rules.filter(([k, v]) => k === key && v !== "").map(([, v]) => v);
     return {
-      allow: hits.flatMap((g) => g.allow),
-      disallow: hits.flatMap((g) => g.disallow),
-      visitTime: hits.flatMap((g) => g.visitTime),
-      requestRate: hits.flatMap((g) => g.requestRate),
+      lines: rules.map(([k, v]) => `${k}: ${v}`),
+      allow: values("allow"),
+      disallow: values("disallow"),
       specific: pred !== isStar,
     };
   };
@@ -141,22 +168,31 @@ export function robotsGroupFor(groups) {
   return pick((a) => a === "curitibai-mcp" || a.startsWith("curitibai-mcp/")) ?? pick(isStar);
 }
 
-const sameSet = (a, b) => {
-  const x = [...new Set(a)].sort();
-  const y = [...new Set(b)].sort();
-  return x.length === y.length && x.every((v, i) => v === y[i]);
-};
-
-/** True when the applicable group has exactly the recorded Disallow, Visit-time and Request-rate. */
+/** True when the applicable group is the `*` group and has exactly the recorded directives (order ignored). */
 export function robotsMatchesRecorded(group, recorded = RECORDED_ROBOTS) {
   if (group === null || group.specific) return false;
-  return (
-    sameSet(group.disallow, recorded.disallow) &&
-    group.visitTime.length === 1 &&
-    group.visitTime[0] === recorded.visitTime &&
-    group.requestRate.length === 1 &&
-    group.requestRate[0] === recorded.requestRate
-  );
+  const a = [...group.lines].sort();
+  const b = [...recorded].sort();
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/**
+ * Milliseconds to wait between requests: GAP_MS, or more when the group's Crawl-delay (seconds) or Request-rate
+ * (`n/s`, optional unit s, m or h) asks for a longer gap. Values in another format are ignored here (the group already
+ * matched the recorded one).
+ */
+export function politeGapMs(group) {
+  let gap = GAP_MS;
+  for (const line of group.lines) {
+    const delay = /^crawl-delay: (\d{1,5}(?:\.\d{1,3})?)$/.exec(line);
+    if (delay) gap = Math.max(gap, Math.ceil(Number(delay[1]) * 1000));
+    const rate = /^request-rate: (\d{1,5})\/(\d{1,5})([smh]?)$/.exec(line);
+    if (rate && Number(rate[1]) > 0) {
+      const unit = { "": 1, s: 1, m: 60, h: 3600 }[rate[3]];
+      gap = Math.max(gap, Math.ceil(((Number(rate[2]) * unit) / Number(rate[1])) * 1000));
+    }
+  }
+  return gap;
 }
 
 /**
@@ -242,12 +278,13 @@ async function readCapped(res, maxBytes) {
 
 /**
  * One polite client: every request checks the path allowlist, robots rules (once loaded), the window and the
- * deadline, waits GAP_MS after the previous request, sends only GET with this script's User-Agent, follows no
+ * deadline, waits GAP_MS (or the larger robots delay) after the previous request, sends only GET with this script's User-Agent, follows no
  * redirect, and stops (no retry) on any non-200 status.
  */
 export function createClient({ fetch, now, sleep, startedAt }) {
   let lastEnd = null;
   let robots = null;
+  let gapMs = GAP_MS;
   let requests = 0;
   const check = () => {
     const t = now();
@@ -263,7 +300,7 @@ export function createClient({ fetch, now, sleep, startedAt }) {
     }
     check();
     if (lastEnd !== null) {
-      const wait = lastEnd + GAP_MS - now().getTime();
+      const wait = lastEnd + gapMs - now().getTime();
       if (wait > 0) await sleep(wait);
       check(); // the window or the deadline may have passed while waiting
     }
@@ -297,6 +334,7 @@ export function createClient({ fetch, now, sleep, startedAt }) {
     get,
     setRobots(group) {
       robots = group;
+      gapMs = politeGapMs(group);
     },
     get requests() {
       return requests;
@@ -477,7 +515,7 @@ export function writeAtomic(dir, name, text) {
   renameSync(tmp, join(dir, name));
 }
 
-/** The previous events.json, or null when missing or not in the expected shape (then no cache and no ratio check). */
+/** The previous events.json, or null when missing or not in the expected shape (then no ratio check). */
 export function readPrevious(dir) {
   try {
     const json = JSON.parse(readFileSync(join(dir, "events.json"), "utf8"));
@@ -497,25 +535,177 @@ function readStatus(dir) {
   }
 }
 
+// ---------- detail cache ----------
+
+/** Detail records read so far, with when each was read: kept across runs, so a run cut short keeps its progress. */
+export const CACHE_FILE = "details.json";
+export const CACHE_MAX_BYTES = 4 * 1024 * 1024;
+/** A cached detail older than this is read again. */
+export const REFRESH_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+/** A cached detail of an event starting today or in the next REFRESH_SOON_DAYS days is read again... */
+export const REFRESH_SOON_DAYS = 3;
+/** ...unless it was read less than this ago, so a second run on the same night does not read it twice. */
+export const REFRESH_MIN_AGE_MS = 20 * 60 * 60 * 1000;
+
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/**
+ * The detail cache as a Map from id to `{fetched_at, event}`. Missing, too large, not a regular file, or not in the
+ * expected shape: an empty cache (every detail is read again). Invalid entries are dropped one by one.
+ */
+export function readCache(dir) {
+  const cache = new Map();
+  try {
+    const path = join(dir, CACHE_FILE);
+    const st = lstatSync(path);
+    if (!st.isFile() || st.size > CACHE_MAX_BYTES) return cache;
+    const json = JSON.parse(readFileSync(path, "utf8"));
+    if (json?.format !== 1 || !Array.isArray(json.details)) return cache;
+    for (const d of json.details) {
+      if (typeof d?.fetched_at !== "string" || !ISO_INSTANT.test(d.fetched_at) || !Number.isFinite(Date.parse(d.fetched_at))) continue;
+      if (!validEvent(d.event)) continue;
+      cache.set(d.event.id, { fetched_at: d.fetched_at, event: d.event });
+    }
+  } catch {
+    // no cache
+  }
+  return cache;
+}
+
+/** Writes the cache atomically; a failure stops the run with write_failed. */
+export function writeCache(dir, cache) {
+  const details = [...cache.values()].sort((a, b) => a.event.id - b.event.id);
+  try {
+    writeAtomic(dir, CACHE_FILE, `${JSON.stringify({ format: 1, details })}\n`);
+  } catch {
+    throw new StopError("write_failed");
+  }
+}
+
+/** YYYY-MM-DD plus `days` calendar days. */
+function addDays(isoDate, days) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * True when the detail page of `item` must be read: no cached record for its id (or one with another link), or a
+ * record read REFRESH_AGE_MS ago or more, or an event starting from `today` to `today` + REFRESH_SOON_DAYS; but never a
+ * record read less than REFRESH_MIN_AGE_MS ago.
+ */
+export function needsDetail(entry, item, today, nowMs) {
+  if (entry === undefined || entry.event.link !== eventLink(item.slug, item.id)) return true;
+  const age = nowMs - Date.parse(entry.fetched_at);
+  if (!(age >= 0)) return true; // read "in the future": the clock changed, read it again
+  if (age < REFRESH_MIN_AGE_MS) return false;
+  if (age >= REFRESH_AGE_MS) return true;
+  return entry.event.start_date >= today && entry.event.start_date <= addDays(today, REFRESH_SOON_DAYS);
+}
+
+// ---------- lock ----------
+
+export const LOCK_FILE = ".lock";
+/** A lock older than this is left by a run that died, and is removed. */
+export const LOCK_STALE_MS = 60 * 60 * 1000;
+
+/**
+ * Takes the run lock: DIR/.lock created exclusively (flag wx, never through an existing file or link). An existing lock
+ * stops the run with `locked`, unless it is stale: its `started` time (else, when the file is unreadable, its mtime) is
+ * LOCK_STALE_MS or more before `now`. A stale lock is moved aside and removed only if it is still the one judged stale,
+ * then the create is tried once more (only one of two racing runs can create it). Returns a release function that
+ * removes the lock only while it still holds this run's content.
+ */
+export function acquireLock(dir, now) {
+  const path = join(dir, LOCK_FILE);
+  const body = `${JSON.stringify({ started: now.toISOString(), pid: process.pid, token: Math.random().toString(36).slice(2, 12) })}\n`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      writeFileSync(path, body, { encoding: "utf8", mode: 0o644, flag: "wx" });
+      return () => {
+        try {
+          if (lstatSync(path).isFile() && readFileSync(path, "utf8") === body) unlinkSync(path);
+        } catch {
+          // already gone
+        }
+      };
+    } catch (err) {
+      if (err?.code !== "EEXIST") throw new StopError("write_failed");
+    }
+    let st;
+    let seen = null;
+    let started = NaN;
+    try {
+      st = lstatSync(path);
+      if (st.isFile()) {
+        seen = readFileSync(path, "utf8");
+        try {
+          started = Date.parse(JSON.parse(seen).started);
+        } catch {
+          // unreadable: use the mtime below
+        }
+      }
+      if (!Number.isFinite(started)) started = st.mtimeMs;
+    } catch {
+      continue; // removed meanwhile: try again
+    }
+    // Fresh, or dated in the future (another clock, or this one set back): fail closed.
+    if (now.getTime() - started < LOCK_STALE_MS) break;
+    // Stale: move it aside (one atomic step), then check that what moved is the lock judged stale. If another run
+    // replaced it meanwhile, put that run's lock back and stop.
+    const aside = join(dir, `${LOCK_FILE}.stale-${process.pid}-${Math.random().toString(36).slice(2, 10)}`);
+    try {
+      renameSync(path, aside);
+    } catch {
+      continue; // removed meanwhile: try again
+    }
+    let same = false;
+    try {
+      const moved = lstatSync(aside);
+      same = moved.mtimeMs === st.mtimeMs && (moved.isFile() ? readFileSync(aside, "utf8") === seen : seen === null);
+    } catch {
+      // unreadable: treat as not the same
+    }
+    if (!same) {
+      try {
+        renameSync(aside, path);
+      } catch {
+        // nothing more to do
+      }
+      break;
+    }
+    try {
+      unlinkSync(aside);
+    } catch {
+      // removed meanwhile
+    }
+  }
+  throw new StopError("locked");
+}
+
 // ---------- run ----------
 
 /**
- * One collector run. Returns `{code, exit, counts}`; writes events.json only when the whole run succeeded and the
- * result passed validation, and always tries to write status.json. Network, clock and sleep are injectable for tests.
+ * One collector run. Returns `{code, exit, counts}`. Takes the lock first (a locked run makes no request and writes
+ * nothing). Each detail read is added to the detail cache at once; events.json is written only when the whole run
+ * succeeded and the result passed validation; status.json is always tried. Network, clock, sleep and the recorded
+ * robots rules are injectable for tests.
  */
-export async function run({ fetch, now, sleep, env, log }) {
+export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORDED_ROBOTS }) {
   const startedAt = now();
   const counts = { pages: 0, listed: 0, fetched: 0, cached: 0, events: 0 };
   let dir = null;
+  let release = null;
   let code = "ok";
   let httpStatus;
   try {
     dir = eventsDir(env);
+    release = acquireLock(dir, startedAt);
     if (!inWindow(startedAt)) throw new StopError("window_closed");
     const client = createClient({ fetch, now, sleep, startedAt });
 
-    const robots = robotsGroupFor(parseRobots(await client.get("/robots.txt", ROBOTS_MAX_BYTES, "utf-8")));
-    if (!robotsMatchesRecorded(robots)) throw new StopError("robots_changed");
+    // The site serves robots.txt as text/plain with no charset and Latin-1 comments: Windows-1252 decodes any byte.
+    const robots = robotsGroupFor(parseRobots(await client.get("/robots.txt", ROBOTS_MAX_BYTES, "windows-1252")));
+    if (!robotsMatchesRecorded(robots, recordedRobots)) throw new StopError("robots_changed");
     client.setRobots(robots);
 
     const date = curitibaDate(startedAt);
@@ -533,23 +723,26 @@ export async function run({ fetch, now, sleep, env, log }) {
     }
     counts.listed = listed.size;
 
-    const previous = readPrevious(dir);
-    const cache = new Map((previous?.events ?? []).map((e) => [e.id, e]));
+    const cache = readCache(dir);
     const events = [];
     for (const item of listed.values()) {
-      const old = cache.get(item.id);
-      if (old !== undefined && old.link === eventLink(item.slug, item.id)) {
-        events.push(old);
+      const entry = cache.get(item.id);
+      if (!needsDetail(entry, item, date, now().getTime())) {
+        events.push(entry.event);
         counts.cached += 1;
         continue;
       }
       const html = await client.get(`/evento/${item.slug}/${item.id}`, DETAIL_MAX_BYTES);
-      events.push(parseDetailPage(html, item));
+      const event = parseDetailPage(html, item);
+      if (!validEvent(event)) throw new StopError("layout_changed");
+      cache.set(item.id, { fetched_at: now().toISOString(), event });
+      writeCache(dir, cache); // a run stopped later (deadline, window, error) keeps this detail
+      events.push(event);
       counts.fetched += 1;
     }
 
-    if (!events.every(validEvent)) throw new StopError("layout_changed");
     if (events.length === 0 && !noEvents) throw new StopError("layout_changed");
+    const previous = readPrevious(dir);
     const prevCount = previous?.events.length ?? 0;
     if (prevCount > 0 && events.length > 0) {
       const ratio = events.length / prevCount;
@@ -565,6 +758,9 @@ export async function run({ fetch, now, sleep, env, log }) {
       count: events.length,
       events,
     };
+    // Only ids still listed stay in the cache once a run succeeds.
+    for (const id of [...cache.keys()]) if (!listed.has(id)) cache.delete(id);
+    writeCache(dir, cache);
     try {
       writeAtomic(dir, "events.json", `${JSON.stringify(doc, null, 1)}\n`);
     } catch {
@@ -575,7 +771,8 @@ export async function run({ fetch, now, sleep, env, log }) {
     httpStatus = err instanceof StopError ? err.httpStatus : undefined;
   }
   const exit = code === "ok" ? 0 : code === "data_dir_not_set" ? 2 : 1;
-  if (dir !== null) {
+  // A locked run leaves status.json to the run holding the lock.
+  if (dir !== null && code !== "locked") {
     const status = {
       attempt: startedAt.toISOString(),
       success: code === "ok" ? now().toISOString() : readStatus(dir),
@@ -588,6 +785,7 @@ export async function run({ fetch, now, sleep, env, log }) {
       // status is best effort; the exit code still reports the run
     }
   }
+  release?.();
   log(`fetch-events: code=${code}${httpStatus === undefined ? "" : ` http_status=${httpStatus}`}`);
   log(
     `fetch-events: pages=${counts.pages} listed=${counts.listed} details_fetched=${counts.fetched} ` +
