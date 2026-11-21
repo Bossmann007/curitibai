@@ -2,6 +2,13 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.9.1
+
+- `city_points_search`: with no filter, each entry of `categories` now gives `source_categories` as `{name, count}` per URBS name instead of a list of names, so a rename of one URBS name of a category shows as a 0 there. Such a partial rename is still not warned about in `note` (only a whole category id with no row is); README and docs/sources.md now say so (renaming BIB FAROL DO SABER would drop 45 of the 59 libraries in the 2026-11-20 file). The mixed-category line in `note` names only the categories among the matches (`cultural_space`, `special_education`, `vocational_education`).
+- Bus tools: the missing-or-renamed field note says the empty or null values "may not come from URBS" (was "do not").
+- Node.js: `engines` is now `>=26.13.1`, the version CI tests (`.nvmrc`); it was `>=22.12`, which no job tested. This narrows the stated support in a patch release.
+- CI: added `.github/dependabot.yml` (weekly npm and GitHub Actions updates, at most 3 and 2 open PRs). Corrected the workflow and README comments: CI skips `npm audit` because it adds noise to unrelated runs, not for lack of network (0.8.2 said the latter), and a queued run on `main` is replaced by a newer push, so not every push to `main` runs.
+
 ## 0.9.0
 
 - Added `city_points_search`: points of interest open to the public in Curitiba from URBS's points-of-interest export (`YYYY_MM_DD_pois.json`), which the user downloads into `CURITIBAI_DATA_DIR/urbs/` like the bus files; no network call. Filters: `category` (23 ids such as `feira`, `cambio_verde`, `library`, `cmei`, `municipal_school`, `bus_terminal`, `health_unit`), words in `name` (accents and case ignored), and `near` `{lat, lon}` with `radius_m` (default 1500, at most 10000), which sorts by distance and returns `distance_m`. `limit` ≤ 50 and `offset`; with no filter it lists the categories with counts. Same envelope, errors, 5% rule, `skipped_rows`, fallback hint and CC BY 4.0 `license_note` as the bus tools; `checked_at` is the file's date.

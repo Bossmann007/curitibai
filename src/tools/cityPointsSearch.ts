@@ -100,7 +100,13 @@ export const cityPointsSearchOutput = busEnvelope(
     skipped_rows: skippedRowsOutput,
     items: z.array(Point),
     categories: z
-      .array(z.object({ id: z.enum(CATEGORY_IDS), source_categories: z.array(z.string()), count: z.number().int() }))
+      .array(
+        z.object({
+          id: z.enum(CATEGORY_IDS),
+          source_categories: z.array(z.object({ name: z.string(), count: z.number().int() })),
+          count: z.number().int(),
+        }),
+      )
       .optional(),
   }),
 );
@@ -177,7 +183,13 @@ export const MIXED_CATEGORIES: readonly PoiCategoryId[] = ["cultural_space", "sp
 const MIXED_DETAIL =
   "open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and " +
   "museums, private schools)";
-export const MIXED_NOTE = `Some results are in ${MIXED_CATEGORIES.join(", ")}: these are ${MIXED_DETAIL}.`;
+/** The note for the mixed categories present among the matches (in MIXED_CATEGORIES order); "" when none. */
+export function mixedNote(present: readonly PoiCategoryId[]): string {
+  const ids = MIXED_CATEGORIES.filter((id) => present.includes(id));
+  if (ids.length === 0) return "";
+  const one = ids.length === 1;
+  return `Some results are in ${ids.join(", ")}: ${one ? "this category is" : "these categories are"} ${MIXED_DETAIL}.`;
+}
 export const HEALTH_NOTE = "NOT FOR EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).";
 
 function poiLicenseNote(file: string): string {
@@ -192,7 +204,7 @@ function poiLicenseNote(file: string): string {
   );
 }
 
-function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], mixed: boolean, now: Date): string {
+function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], mixed: string, now: Date): string {
   const days = (Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${src.date}T00:00:00Z`)) / 86_400_000;
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
@@ -205,7 +217,7 @@ function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], mixed: boolean
     (src.skipped > 0
       ? ` ${plural(src.skipped, "row", "rows")} of the file did not match the expected shape and ${src.skipped === 1 ? "was" : "were"} left out.`
       : "") +
-    (mixed ? ` ${MIXED_NOTE}` : "") +
+    (mixed === "" ? "" : ` ${mixed}`) +
     (empty.length === CATEGORY_IDS.length
       ? " No row of this file is in any category on the list: the URBS category names look missing or renamed in this file."
       : empty.length > 0
@@ -238,9 +250,16 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
     a.name.localeCompare(b.name, "pt-BR") || a.category.localeCompare(b.category) || a.index - b.index;
   matches.sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0) || byName(a, b));
   const p = page(matches, args.offset, args.limit);
-  const tally = new Map<PoiCategoryId, number>();
-  for (const x of points) tally.set(x.category, (tally.get(x.category) ?? 0) + 1);
-  const counts = CATEGORY_IDS.map((id) => ({ id, source_categories: [...POI_CATEGORIES[id]], count: tally.get(id) ?? 0 }));
+  // Per URBS name (as matched: accents, case and spaces ignored), so one renamed name of an id shows as a 0.
+  const tally = new Map<string, number>();
+  for (const x of points) {
+    const key = normCategory(x.source_category);
+    tally.set(key, (tally.get(key) ?? 0) + 1);
+  }
+  const counts = CATEGORY_IDS.map((id) => {
+    const sources = POI_CATEGORIES[id].map((name) => ({ name, count: tally.get(normCategory(name)) ?? 0 }));
+    return { id, source_categories: sources, count: sources.reduce((n, c) => n + c.count, 0) };
+  });
   const noFilter = args.category === undefined && args.name === undefined && near === undefined;
   return {
     data: {
@@ -263,7 +282,7 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
     note: poiNote(
       src,
       counts.filter((c) => c.count === 0).map((c) => c.id),
-      matches.some((x) => MIXED_CATEGORIES.includes(x.category)),
+      mixedNote(matches.map((x) => x.category)),
       now,
     ),
   };
