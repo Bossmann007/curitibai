@@ -69,7 +69,14 @@ const timeRows = () => [
   time("00:00", "2", "990201", "901", "4"),
   time("00:20", "2", "990201", "901", "4"),
   time("00:00", "3", "990201", "901", "5"),
-  time("23:55", "3", "990201", "901", "5"),
+  time("23:55", "3", "990201", "901", "5"), // after its table's 00:00, so that 00:00 is Sunday's early trip
+  // Friday night in table 7: 23:51 at a stop outside the radius, then the wrap past midnight at the nearby stop.
+  time("23:51", "1", "990203", "901", "7"),
+  time("00:03", "1", "990201", "901", "7"),
+  time("00:35", "1", "990201", "901", "7"),
+  // Saturday night in table 8: its 00:40 runs early on Sunday.
+  time("23:40", "2", "990203", "901", "8"),
+  time("00:40", "2", "990201", "901", "8"),
   time("25:00", "1", "990201", "901"), // invalid row: skipped and counted
   ...Array.from({ length: 20 }, (_, i) => time("12:00", "1", "991000", "903", String(i))),
 ];
@@ -134,13 +141,14 @@ describe("next_buses_near", () => {
       stop_name: "Parada Fictícia 990201",
       distance_m: 100,
       adapt: "ELEVADOR",
+      after_midnight: false,
     });
     expect(out.data).toMatchObject({
       at: "08:00",
       day: "1",
       day_type: "weekday",
       day_inferred: false,
-      windows: [{ day: "1", day_type: "weekday", from: "08:00", to: "09:00" }],
+      windows: [{ day: "1", day_type: "weekday", from: "08:00", to: "09:00", after_midnight: false }],
       cut_at_midnight: false,
       stops_considered: 3,
       stops_with_times: 2,
@@ -176,38 +184,87 @@ describe("next_buses_near", () => {
     expect(brief((await next({ window_min: 15 })).data.items)).toEqual(["3 08:10 +10 901@990201"]);
   });
 
-  it("past 24:00 reads the next calendar day's code: Friday night into Saturday, by Curitiba's clock not UTC's", async () => {
+  it("past 24:00 reads the same service day's after-midnight trips and the next day's early ones (Friday into Saturday)", async () => {
     dataDir();
     vi.setSystemTime(new Date("2026-11-21T02:30:00Z")); // Saturday in UTC, Friday 23:30 in Curitiba
     const out = await next({});
     expect(out.data).toMatchObject({ at: "23:30", day: "1", day_inferred: true });
     expect(out.data.windows).toEqual([
-      { day: "1", day_type: "weekday", from: "23:30", to: "23:59" },
-      { day: "2", day_type: "saturday", from: "00:00", to: "00:30" },
+      { day: "1", day_type: "weekday", from: "23:30", to: "23:59", after_midnight: false },
+      { day: "1", day_type: "weekday", from: "00:00", to: "00:30", after_midnight: true },
+      { day: "2", day_type: "saturday", from: "00:00", to: "00:30", after_midnight: false },
     ]);
     expect(out.data.cut_at_midnight).toBe(false);
-    // The weekday 00:00 row stays under code 1 and is not read as Saturday's.
+    // 00:00 and 00:03 under code 1 follow 23:xx in their tables (the 23:51 at a stop outside the radius): Friday night.
+    // 00:00 and 00:20 under code 2 open a table with no wrap: Saturday's early trips. 00:40 under 2 is Saturday night.
     expect(brief(out.data.items)).toEqual([
       "1 23:59 +29 901@990201",
+      "1 00:00 +30 901@990201",
       "2 00:00 +30 901@990201",
+      "1 00:03 +33 901@990201",
       "2 00:20 +50 901@990201",
     ]);
+    expect(out.data.items.map((d) => d.after_midnight)).toEqual([false, true, false, true, false]);
+    expect(out.note).toContain("under the day its service starts");
   });
 
-  it("Sunday night into Monday; a window ending exactly at 24:00 includes 00:00 of the next day", async () => {
+  it("at 00:30 on Saturday reads Friday night's after-midnight trips, not Saturday night's", async () => {
+    dataDir();
+    vi.setSystemTime(new Date("2026-11-21T03:30:00Z")); // Saturday 00:30 in Curitiba
+    const out = await next({});
+    expect(out.data).toMatchObject({ at: "00:30", day: "2", day_inferred: true, cut_at_midnight: false });
+    expect(out.data.windows).toEqual([
+      { day: "1", day_type: "weekday", from: "00:30", to: "01:30", after_midnight: true },
+      { day: "2", day_type: "saturday", from: "00:30", to: "01:30", after_midnight: false },
+    ]);
+    expect(brief(out.data.items)).toEqual(["1 00:35 +5 901@990201"]);
+  });
+
+  it("a table with no wrap keeps its 00:xx rows as that day's early trips (Sunday 00:00)", async () => {
+    dataDir();
+    vi.setSystemTime(new Date("2026-11-22T03:00:00Z")); // Sunday 00:00 in Curitiba
+    const out = await next({});
+    expect(out.data.windows.map((w) => `${w.day} ${w.from}-${w.to} ${w.after_midnight}`)).toEqual([
+      "2 00:00-01:00 true",
+      "3 00:00-01:00 false",
+    ]);
+    // Sunday's 00:00 (table 5, no wrap) and Saturday night's 00:40; not Saturday's own early 00:00 and 00:20.
+    expect(brief(out.data.items)).toEqual(["3 00:00 +0 901@990201", "2 00:40 +40 901@990201"]);
+    expect(out.data.items.map((d) => d.after_midnight)).toEqual([false, true]);
+  });
+
+  it("Sunday night into Monday: a window ending at 24:00 reads 00:00, and weekday night trips are not Monday's", async () => {
     dataDir();
     vi.setSystemTime(new Date("2026-11-23T02:50:00Z")); // Sunday 23:50
     const out = await next({ window_min: 10 });
-    expect(out.data.windows.map((w) => `${w.day} ${w.from}-${w.to}`)).toEqual(["3 23:50-23:59", "1 00:00-00:00"]);
-    expect(brief(out.data.items)).toEqual(["3 23:55 +5 901@990201", "1 00:00 +10 901@990201"]);
+    expect(out.data.windows.map((w) => `${w.day} ${w.from}-${w.to} ${w.after_midnight}`)).toEqual([
+      "3 23:50-23:59 false",
+      "3 00:00-00:00 true",
+      "1 00:00-00:00 false",
+    ]);
+    expect(brief(out.data.items)).toEqual(["3 23:55 +5 901@990201"]);
   });
 
-  it("with an explicit day the window stops at 23:59 and says so", async () => {
+  it("an explicit day is the service day: its after-midnight trips are read, the next day's early trips are not", async () => {
     dataDir();
     const out = await next({ at: "23:30", day: "1" });
-    expect(out.data).toMatchObject({ cut_at_midnight: true, windows: [{ day: "1", from: "23:30", to: "23:59" }] });
-    expect(brief(out.data.items)).toEqual(["1 23:59 +29 901@990201"]);
-    expect(out.note).toContain("call again with at 00:00");
+    expect(out.data).toMatchObject({
+      cut_at_midnight: true,
+      windows: [
+        { day: "1", from: "23:30", to: "23:59", after_midnight: false },
+        { day: "1", from: "00:00", to: "00:30", after_midnight: true },
+      ],
+    });
+    expect(brief(out.data.items)).toEqual(["1 23:59 +29 901@990201", "1 00:00 +30 901@990201", "1 00:03 +33 901@990201"]);
+    expect(out.note).toContain("`day` was given, so it is read as the service day");
+    expect(out.note).not.toContain("call again with at 00:00");
+    // Before 04:00 an explicit day reads both kinds of its rows, each labelled.
+    const early = await next({ at: "00:30", day: "1" });
+    expect(early.data.windows.map((w) => `${w.day} ${w.from}-${w.to} ${w.after_midnight}`)).toEqual([
+      "1 00:30-01:30 true",
+      "1 00:30-01:30 false",
+    ]);
+    expect(brief(early.data.items)).toEqual(["1 00:35 +5 901@990201"]);
   });
 
   it("line_code keeps one line (case ignored); an unknown code is invalid_argument", async () => {

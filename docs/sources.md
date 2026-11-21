@@ -368,9 +368,11 @@ SENTIDO listed for that line at that stop, not one direction. Timetables cover f
 checked (Praça Tiradentes, Rua XV, Batel, Portão, Boqueirão, Santa Felicidade, CIC), 55 of 73, 5 of 31, 2 of 14, 13 of
 30, 5 of 15, 0 of 7 and 3 of 12 stops had times, hence `stops_with_times` next to `stops_considered`. The day code,
 when not given, comes from today's weekday in Curitiba (America/Sao_Paulo), with the inferred reading below; holidays
-are not detected. Past 24:00 the window reads the times from 00:00 under the next calendar day's code (inferred the
-same way), never moving a time between codes (as `bus_departures`); with an explicit `day` that code is unknown, so
-the window stops at 23:59 and `cut_at_midnight` says so. Measured on the 2026-11-20 files with the built tool (Apple
+are not detected. Since 0.13.1 the window follows the service day (see "Times after midnight" below): past 24:00 it
+reads that day's after-midnight rows and the next calendar day's other rows before 04:00 (code inferred the same way);
+starting before 04:00 with an inferred day, it reads the previous day's after-midnight rows and today's other rows.
+An explicit `day` is the service day: its after-midnight rows are read, the next day's early rows are not, and
+`cut_at_midnight` says so. No time is moved between codes; `windows` lists each part with `after_midnight`. Measured on the 2026-11-20 files with the built tool (Apple
 M4, 15 calls, 400 m around Praça Tiradentes, 08:00 weekday, 60 min): median 73 ms, first call 134 ms; reading and
 validating the three files is most of it.
 
@@ -408,10 +410,19 @@ holidays usually on the Sunday timetable. `bus_departures` therefore returns `da
 (the code, as published) and `day_type` (the inferred label, null for any other code), and its note says the label is
 inferred.
 
-**Times after midnight.** `HORA` runs from 00:00 to 23:59 (1,186 rows of the 2026-11-20 file are before 03:00, under
-all three codes), and no field ties a time after midnight to the previous evening's service. `bus_departures`
-returns times as published under their row's code and never moves them; `from`/`to` do not wrap past midnight.
-Whether URBS files a late-night trip under the day it starts or the calendar day of the time is not verified.
+**Times after midnight.** `HORA` runs from 00:00 to 23:59, none at 24:00 or later (1,186 rows of the 2026-11-20 file
+are before 03:00 and 1,291 before 04:00, under all three codes); no field ties a time after midnight to the previous
+evening. The file order does (checked 2026-11-21 on the 2026-11-20 file, 71,085 rows): reading each table (same `COD`,
+`DIA` and `TABELA`; its rows are interleaved with other tables' and move from stop to stop) in file order, times rise
+through the day, and in 677 tables the sequence drops once, every time from 23:xx to 00:xx (for example a weekday
+table going 23:51 then 00:03, at the next stop of the same trip). So URBS files a late-night trip under the day its
+service starts, at the end of that day's table. Since 0.13.1 a row before 04:00 that comes after such a drop in its
+table is an after-midnight row (`after_midnight: true` in `bus_departures` and `next_buses_near`): 993 of the 1,291
+rows before 04:00 (972 of them at 00:xx). The other 298 are read as early trips of their own code's day; the file
+does not say so, so this reading is not verified: 36 of them sit in 9 tables with no row at or after 04:00 (all-night
+service). A different count, by position, agrees: 1,063 of the 1,291 rows sit in the second half of their table and
+228 in the first. The drop is found over the whole file before any filter, since the row before it can be at another
+stop. Times are never moved: each stays under its row's code.
 
 Privacy: lines, stops and timetables are public transport data with no personal data. As a guard, stop names
 (`NOME`, `PONTO`) pass through the PNCP object masking (`maskObject`, via `guardedSummary`); a name is returned as

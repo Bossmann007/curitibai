@@ -497,10 +497,27 @@ describe("bus_departures", () => {
       stop_name: "TERMINAL IMAGINARIO",
       table: "1",
       adapt: "ELEVADOR",
+      after_midnight: false,
     });
     expect(out.note).toContain("inferred from the data, not stated by URBS");
-    expect(out.note).toContain("this server does not move or reinterpret such times");
-    expect(out.note).toContain("is not verified");
+    expect(out.note).toContain("under the day its service starts");
+    expect(out.note).not.toContain("Whether URBS files");
+    expect(out.data.items.map((d) => d.after_midnight)).toEqual([true, false, false, false, false, false, false, false, false]);
+  });
+
+  it("marks after_midnight from the whole file's order, before the stop filter", async () => {
+    // Table 5 under code 2 wraps from 23:50 at one stop to 00:10 at another; table 6 has no wrap.
+    const row = (HORA: string, NUM: string, TABELA: string) => ({ HORA, PONTO: "PARADA FICTICIA", DIA: "2", NUM, TABELA, ADAPT: "ELEVADOR", COD: "901" });
+    writeFileSync(
+      join(tmp, "urbs", "2026_11_20_tabelaLinha.json"),
+      JSON.stringify([row("23:50", "990004", "5"), row("00:30", "990001", "6"), row("00:10", "990001", "5"), row("05:00", "990001", "6")]),
+    );
+    const out = await departures({ stop_number: "990001", day: "2" });
+    expect(out.data.items.map((d) => `${d.time} ${d.table} ${d.after_midnight}`)).toEqual([
+      "00:10 5 true",
+      "00:30 6 false",
+      "05:00 6 false",
+    ]);
   });
 
   it("filters by stop, day and an inclusive time window", async () => {
