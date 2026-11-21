@@ -9,12 +9,13 @@ import {
   OVERPASS_MAX_BYTES,
   OVERPASS_URL,
   parseOverpass,
-  PLACE_CATEGORY_NAMES,
+  LIVE_CATEGORIES,
   placesQuery,
 } from "../src/sources/osm.js";
 import { USER_AGENT } from "../src/config.js";
 import { RateLimitedError } from "../src/http.js";
-import { placesSearchOutput } from "../src/tools/placesSearch.js";
+import { bundledNote, placesSearchOutput } from "../src/tools/placesSearch.js";
+import { OSM_BUNDLED_CHECKED_AT, OSM_BUNDLED_ELEMENTS } from "../src/sources/osmBundled.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
 const JSON_TYPE = "application/json";
@@ -30,7 +31,7 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 
 describe("Overpass queries", () => {
   it("are built from the allowlist only, limited to Curitiba's area, with a server timeout", () => {
-    for (const c of PLACE_CATEGORY_NAMES) {
+    for (const c of Object.keys(LIVE_CATEGORIES) as (keyof typeof LIVE_CATEGORIES)[]) {
       const q = placesQuery(c);
       expect(q).toMatch(/^\[out:json\]\[timeout:25\];area\["boundary"="administrative"\]\["admin_level"="8"\]\["IBGE:GEOCODIGO"="4106902"\]->\.cwb;\.cwb out ids;/);
       expect(q).toMatch(/\(area\.cwb\);out center;$/);
@@ -105,8 +106,6 @@ describe("places_search", () => {
     { category: "clinic" },
     { category: "dentist" },
     { category: "hospital" },
-    { category: "police" },
-    { category: "fire_station" },
     { category: "library", limit: 21 },
     { category: "library", name: "x" },
     { category: "library", offset: -1 },
@@ -260,5 +259,50 @@ describe("safeWebsite", () => {
     expect(safeWebsite("https://x.org/%E0%A4%A")).toBeNull(); // broken encoding
     // Fails closed: a long numeric id drops a harmless link too (documented).
     expect(safeWebsite("https://www.facebook.com/profile.php?id=100064123456789")).toBeNull();
+  });
+});
+
+describe("places_search police and fire_station (bundled list, no network)", () => {
+  it.each(["police", "fire_station"] as const)("%s: no request, bundled, emergency numbers first in the note", async (category) => {
+    const calls = stubFetch({});
+    const res = await call("places_search", { category, limit: 20 });
+    expect(res.isError).toBeFalsy();
+    const out = placesSearchOutput.parse(res.structuredContent);
+    expect(calls).toHaveLength(0);
+    expect(out.data.bundled).toBe(true);
+    expect(out.data.checked_at).toBe(OSM_BUNDLED_CHECKED_AT);
+    expect(out.data.osm_data_as_of).toBe("2026-11-19T21:22:20Z");
+    expect(out.data.note.startsWith("NOT FOR EMERGENCIES: in an emergency call 190 (Polícia Militar) or 193 (Corpo de Bombeiros)")).toBe(true);
+    expect(out.data.attribution).toBe(OSM_ATTRIBUTION);
+    expect(out.license_note).toContain("once and bundled with this server");
+    expect(out.data.places.every((p) => p.category === category && p.lat !== null && p.osm_url.startsWith("https://www.openstreetmap.org/"))).toBe(true);
+  });
+
+  it("totals match the bundled list (69 police, 10 fire stations) and name search works", async () => {
+    stubFetch({});
+    const police = placesSearchOutput.parse((await call("places_search", { category: "police" })).structuredContent);
+    const fire = placesSearchOutput.parse((await call("places_search", { category: "fire_station" })).structuredContent);
+    expect([police.data.total, fire.data.total]).toEqual([69, 10]);
+    expect([police.fetched_at, fire.fetched_at]).toEqual(["2026-11-21T03:28:00Z", "2026-11-21T03:26:00Z"]);
+    const cic = placesSearchOutput.parse((await call("places_search", { category: "fire_station", name: "cic" })).structuredContent);
+    expect(cic.data.places.map((p) => [p.osm_type, p.osm_id, p.name])).toEqual([["node", 614282456, "Corpo de Bombeiros da CIC"]]);
+  });
+
+  it("the bundled list keeps only returned tags", () => {
+    const allowed = new Set(["name", "amenity", "addr:street", "addr:housenumber", "addr:suburb", "addr:postcode", "addr:city", "opening_hours", "website", "contact:website"]);
+    for (const e of OSM_BUNDLED_ELEMENTS) for (const k of Object.keys(e.tags)) expect({ k, ok: allowed.has(k) }).toEqual({ k, ok: true });
+  });
+
+  it("the note warns once the list is more than 180 days old (Curitiba time)", () => {
+    expect(bundledNote(new Date("2027-05-20T12:00:00Z"), OSM_BUNDLED_CHECKED_AT)).toMatch(/is not refreshed; it may be outdated/); // day 180
+    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT)).toMatch(/more than 180 days ago, and may be outdated/);
+    expect(bundledNote(new Date("2027-05-21T12:00:00Z"), OSM_BUNDLED_CHECKED_AT).startsWith("NOT FOR EMERGENCIES")).toBe(true);
+  });
+
+  it("live categories say bundled false and checked_at null", async () => {
+    stubFetch(overpass({ [placesQuery("library")]: { body: fixture("osm_edges_synthetic.json"), contentType: JSON_TYPE } }));
+    const out = placesSearchOutput.parse((await call("places_search", { category: "library" })).structuredContent);
+    expect([out.data.bundled, out.data.checked_at]).toEqual([false, null]);
+    expect(out.data.note).not.toMatch(/190/);
   });
 });
