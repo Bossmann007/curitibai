@@ -1,4 +1,3 @@
-import { busLines } from "./busLines.js";
 import { cityServicesSearch } from "./cityServicesSearch.js";
 import { datasetFiles } from "./datasetFiles.js";
 import { detranPrInfo } from "./detranPrInfo.js";
@@ -21,5 +20,4 @@ export const tools = [
   weatherAlerts,
   cityServicesSearch,
   placesSearch,
-  busLines,
 ] as const;

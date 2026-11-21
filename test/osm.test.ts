@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  busRouteQuery,
-  busRoutesQuery,
-  MAX_STOPS,
   oneAtATime,
-  orderedStops,
   OVERPASS_MAX_QUEUE_WAIT_MS,
   resetOverpassCooldown,
   OSM_ATTRIBUTION,
@@ -15,9 +11,8 @@ import {
   placesQuery,
 } from "../src/sources/osm.js";
 import { USER_AGENT } from "../src/config.js";
-import { busLinesOutput } from "../src/tools/busLines.js";
 import { placesSearchOutput } from "../src/tools/placesSearch.js";
-import { connectClient, errorOf, fixture, osmRoutes, stubFetch, type Route } from "./helpers.js";
+import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
 const JSON_TYPE = "application/json";
 
@@ -30,8 +25,6 @@ async function call(name: string, args: Record<string, unknown> = {}) {
   return client.callTool({ name, arguments: args });
 }
 
-const ROUTE_ID = 9100000001;
-
 describe("Overpass queries", () => {
   it("are built from the allowlist only, limited to Curitiba's area, with a server timeout", () => {
     for (const c of PLACE_CATEGORY_NAMES) {
@@ -39,11 +32,6 @@ describe("Overpass queries", () => {
       expect(q).toMatch(/^\[out:json\]\[timeout:25\];area\["boundary"="administrative"\]\["admin_level"="8"\]\["IBGE:GEOCODIGO"="4106902"\]->\.cwb;\.cwb out ids;/);
       expect(q).toMatch(/\(area\.cwb\);out center;$/);
     }
-    expect(busRoutesQuery()).toContain('rel["type"="route"]["route"="bus"](area.cwb);out tags;');
-    expect(busRouteQuery(42)).toContain('rel(42)["type"="route"]["route"="bus"](area.cwb)->.r;');
-    expect(busRouteQuery(42)).toContain('way(r.r:"platform_entry_only");way(r.r:"platform_exit_only")');
-    expect(() => busRouteQuery(1.5)).toThrow();
-    expect(() => busRouteQuery(0)).toThrow();
   });
 
   it("parseOverpass fails closed on a remark (cut result) or an unknown shape", () => {
@@ -144,80 +132,6 @@ describe("places_search", () => {
   });
 });
 
-describe("bus_lines", () => {
-  it("route_id: stops in member order, stop/platform pairs merged, PTv1 stops kept, phones masked", async () => {
-    const calls = stubFetch(overpass({ [busRouteQuery(ROUTE_ID)]: { body: fixture("osm_route_synthetic.json"), contentType: JSON_TYPE } }));
-    const res = await call("bus_lines", { route_id: ROUTE_ID });
-    expect(res.isError).toBeFalsy();
-    const out = busLinesOutput.parse(res.structuredContent);
-    expect(calls).toHaveLength(1);
-    const r = out.data.route!;
-    expect(r).toMatchObject({ ref: "999", from: "Terminal A", to: "Terminal B", operator: "Operadora Ficticia", network: "Rede Ficticia" });
-    expect(r.stops.map((s) => [s.seq, s.name, s.osm_type, s.osm_id])).toEqual([
-      [1, "Terminal A", "node", 9100000011],
-      [2, "Estação Tubo Ficticia", "way", 9100000021],
-      [3, "Ponto Ficticio 1", "node", 9100000013],
-      [4, null, "node", 9100000014],
-      [5, "Ponto [masked]", "node", 9100000015],
-      [6, "Terminal B", "node", 9100000016],
-    ]);
-    expect(r.stops[1]).toMatchObject({ lat: -25.405, lon: -49.205 });
-    expect(r.stops_truncated).toBe(false);
-    expect(out.data.note).toMatch(/No timetables/);
-    expect(out.data.note).toMatch(/outdated/);
-    expect(out.data.attribution).toBe(OSM_ATTRIBUTION);
-  });
-
-  it("route_id not found in Curitiba: route null, says so", async () => {
-    const empty = JSON.stringify({ osm3s: { timestamp_osm_base: "2030-01-01T00:00:00Z" }, elements: [{ type: "area", id: 3600000001 }] });
-    stubFetch(overpass({ [busRouteQuery(123)]: { body: empty, contentType: JSON_TYPE } }));
-    const out = busLinesOutput.parse((await call("bus_lines", { route_id: 123 })).structuredContent);
-    expect(out.data.route).toBeNull();
-    expect(out.data.total).toBe(0);
-    expect(out.data.note).toMatch(/No OSM bus route with id 123 in Curitiba/);
-  });
-
-  it("route_id combined with a filter is invalid_argument, without a request", async () => {
-    const calls = stubFetch({});
-    expect(errorOf(await call("bus_lines", { route_id: ROUTE_ID, ref: "022" }))).toEqual({
-      error: "invalid_argument",
-      message: "route_id cannot be combined with ref, name, limit or offset.",
-    });
-    expect(calls).toHaveLength(0);
-  });
-
-  it("list mode filters by ref (exact) and name words, sorted by ref", async () => {
-    stubFetch(osmRoutes());
-    const out = busLinesOutput.parse((await call("bus_lines", { ref: "999" })).structuredContent);
-    expect(out.data.routes.map((r) => r.osm_id)).toEqual([ROUTE_ID]);
-    expect(out.data.route).toBeNull();
-    expect(busLinesOutput.parse((await call("bus_lines", { ref: "99" })).structuredContent).data.total).toBe(0);
-    expect(busLinesOutput.parse((await call("bus_lines", { name: "terminal b" })).structuredContent).data.total).toBe(1);
-  });
-
-  it("stops_truncated only when stops were actually left out", () => {
-    const mk = (n: number) => {
-      const nodes = Array.from({ length: n }, (_, i) => ({ type: "node" as const, id: i + 1, lat: 0, lon: 0, tags: { name: `S${i}` } }));
-      const rel = { type: "relation" as const, id: 1, tags: {}, members: nodes.map((x) => ({ type: "node", ref: x.id, role: "stop" })) };
-      return orderedStops(rel, nodes);
-    };
-    expect(mk(MAX_STOPS)).toMatchObject({ truncated: false });
-    expect(mk(MAX_STOPS).stops).toHaveLength(MAX_STOPS);
-    expect(mk(MAX_STOPS + 1)).toMatchObject({ truncated: true });
-  });
-
-  it("route_id with an explicit limit is invalid_argument too", async () => {
-    stubFetch({});
-    expect(errorOf(await call("bus_lines", { route_id: ROUTE_ID, limit: 10 }))).toMatchObject({ error: "invalid_argument" });
-  });
-
-  it.each([{ route_id: 0 }, { route_id: 1.5 }, { name: "x" }, { limit: 0 }, { ref: "" }])("rejects %j without a request", async (args) => {
-    const calls = stubFetch({});
-    expect((await call("bus_lines", args)).isError).toBe(true);
-    expect(calls).toHaveLength(0);
-  });
-});
-
 // Trimmed real responses from ovp.dresel.systems/api-sa, recorded 2026-11-21 (OSM data as of 2026-11-19T21:22:20Z).
 // OpenStreetMap data, © OpenStreetMap contributors, ODbL.
 describe("recorded Overpass responses (real OSM data)", () => {
@@ -235,48 +149,6 @@ describe("recorded Overpass responses (real OSM data)", () => {
     expect(one.data.places[0]!.lat).toBeCloseTo(-25.446, 3);
   });
 
-  it("bus_lines list: real route tags, filtered by ref", async () => {
-    stubFetch(overpass({ [busRoutesQuery()]: { body: fixture("osm_bus_routes_recorded.json"), contentType: JSON_TYPE } }));
-    const out = busLinesOutput.parse((await call("bus_lines", { ref: "022" })).structuredContent);
-    expect(out.data.routes).toEqual([
-      {
-        osm_id: 3512649,
-        ref: "022",
-        name: "Inter 2 (Horário)",
-        from: "Terminal Portão (022)",
-        to: "Terminal Portão (022)",
-        operator: null,
-        network: null,
-        osm_url: "https://www.openstreetmap.org/relation/3512649",
-      },
-    ]);
-    const all = busLinesOutput.parse((await call("bus_lines", { limit: 20 })).structuredContent);
-    expect(all.data.total).toBe(25);
-    expect(all.data.routes.slice(0, 3).map((r) => r.ref)).toEqual(["010", "011", "020"]);
-  });
-
-  it("bus_lines route_id 3512649 (Inter 2): the 12 stops in member order", async () => {
-    stubFetch(overpass({ [busRouteQuery(3512649)]: { body: fixture("osm_bus_route_3512649_recorded.json"), contentType: JSON_TYPE } }));
-    const out = busLinesOutput.parse((await call("bus_lines", { route_id: 3512649 })).structuredContent);
-    const r = out.data.route!;
-    expect(r.stops.map((s) => s.name)).toEqual([
-      "Terminal Cabral (022/220)",
-      "Estação Prisma Solar Agrárias",
-      "Estação Tubo Praça das Nações (022/307)",
-      "Terminal Capão da Imbuia (022)",
-      "Terminal Hauer (022)",
-      "Estação Tubo Xaxim (022)",
-      "Terminal Capão Raso (022)",
-      "Terminal Portão (022)",
-      "Estação Tubo Santa Quitéria (022/702)",
-      "Estação Tubo Praça das Mercês (022/307)",
-      "Estação Tubo Praça da Bandeira (022)",
-      "Estação Tubo Centro Cívico - Assembleia",
-    ]);
-    expect(r.stops.every((s) => s.lat !== null && s.osm_type === "node")).toBe(true);
-    expect(r.stops_truncated).toBe(false);
-    expect(out.license_note).toContain(`OSM data as of ${OSM_BASE}`);
-  });
 });
 
 describe("Overpass politeness", () => {
