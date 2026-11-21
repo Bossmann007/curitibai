@@ -64,17 +64,17 @@ export const placesSearchOutput = envelope(
 
 const NOTE =
   "OpenStreetMap is community-edited data: places can be missing, misplaced or outdated, and OSM does not reliably " +
-  "say whether a school or hospital is public or private. Confirm at the source before going. Names and addresses " +
+  "say whether a school is public or private. Confirm at the source before going. Names and addresses " +
   "pass through a contact-data mask as a guard.";
 
 export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearchOutput> = {
   name: "places_search",
   title: "Public places in Curitiba (OpenStreetMap)",
   description:
-    "Public places in Curitiba from OpenStreetMap, by one fixed category (park, library, school, hospital, police, " +
-    "fire station, community centre, town hall, bus station, marketplace), optionally filtered by words in the name. " +
-    "Returns name, address as tagged, coordinates, opening hours, website and the OSM link. No shops, offices or " +
-    "doctors. Community data, may be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
+    "Public places in Curitiba from OpenStreetMap, by one fixed category (park, library, school, " +
+    "community centre, town hall, bus station, marketplace), optionally filtered by words in the name. " +
+    "Returns name, address as tagged, coordinates, opening hours, website and the OSM link. No shops, offices, " +
+    "doctors, hospitals or emergency services (use health_units_search for public health units). Community data, may be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
   inputSchema: placesSearchInput,
   outputSchema: placesSearchOutput,
   handler: async ({ category, name, limit, offset }) => {

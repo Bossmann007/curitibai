@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  MAX_COOLDOWN_S,
   oneAtATime,
   OVERPASS_MAX_QUEUE_WAIT_MS,
   resetOverpassCooldown,
+  safeWebsite,
   OSM_ATTRIBUTION,
   OVERPASS_MAX_BYTES,
   OVERPASS_URL,
@@ -11,6 +13,7 @@ import {
   placesQuery,
 } from "../src/sources/osm.js";
 import { USER_AGENT } from "../src/config.js";
+import { RateLimitedError } from "../src/http.js";
 import { placesSearchOutput } from "../src/tools/placesSearch.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
@@ -101,6 +104,9 @@ describe("places_search", () => {
     { category: "doctors" },
     { category: "clinic" },
     { category: "dentist" },
+    { category: "hospital" },
+    { category: "police" },
+    { category: "fire_station" },
     { category: "library", limit: 21 },
     { category: "library", name: "x" },
     { category: "library", offset: -1 },
@@ -168,7 +174,7 @@ describe("Overpass politeness", () => {
     );
     const client = await connectClient();
     const results = await Promise.all(
-      (["library", "park", "school", "police", "hospital"] as const).map((category) =>
+      (["library", "park", "school", "townhall", "marketplace"] as const).map((category) =>
         client.callTool({ name: "places_search", arguments: { category } }),
       ),
     );
@@ -182,6 +188,26 @@ describe("Overpass queue", () => {
     const calls = stubFetch(overpass({ [placesQuery("park")]: { status: 429, headers: { "retry-after": "30" } } }));
     expect(errorOf(await call("places_search", { category: "park" }))).toMatchObject({ error: "rate_limited" });
     expect(errorOf(await call("places_search", { category: "library" }))).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("a huge Retry-After is capped at 1 hour", async () => {
+    let t = 0;
+    const now = () => t;
+    await expect(oneAtATime(() => Promise.reject(new RateLimitedError(10 ** 6)), now)).rejects.toThrow();
+    t = MAX_COOLDOWN_S * 1000 - 1;
+    await expect(oneAtATime(async () => 1, now)).rejects.toBeInstanceOf(RateLimitedError);
+    t = MAX_COOLDOWN_S * 1000;
+    await expect(oneAtATime(async () => 1, now)).resolves.toBe(1);
+  });
+
+  it("a real HTTP 429 with a huge Retry-After pauses at most 1 hour, without new requests", async () => {
+    const calls = stubFetch(overpass({ [placesQuery("park")]: { status: 429, headers: { "retry-after": "999999" } } }));
+    expect(errorOf(await call("places_search", { category: "park" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await call("places_search", { category: "library" }))).toEqual({
+      error: "rate_limited",
+      message: "The source is limiting requests; wait about 60 minutes before trying again.",
+    });
     expect(calls).toHaveLength(1);
   });
 
@@ -216,5 +242,23 @@ describe("Overpass queue", () => {
     await expect(slow).resolves.toBe(1);
     await expect(late).rejects.toThrow(/source_unavailable/);
     expect(ran).toBe(false);
+  });
+});
+
+describe("safeWebsite", () => {
+  it("drops links the PII guard would mask, whole", () => {
+    expect(safeWebsite("https://wa.me/5541999998888")).toBeNull();
+    expect(safeWebsite("https://api.whatsapp.com/send?phone=5541999998888")).toBeNull();
+    expect(safeWebsite("https://exemplo.org/contato/fulano@exemplo.com")).toBeNull();
+    expect(safeWebsite(`https://exemplo.org/${"a".repeat(400)}`)).toBeNull();
+    expect(safeWebsite("https://bibliotecas.ufpr.br/sobre/bibliotecas/ct/")).toBe("https://bibliotecas.ufpr.br/sobre/bibliotecas/ct/");
+    expect(safeWebsite("ftp://exemplo.org/")).toBeNull();
+    // Spaced or percent-encoded contact data is checked on the decoded link too.
+    expect(safeWebsite("https://api.whatsapp.com/send?phone=55 41 99999 8888")).toBeNull();
+    expect(safeWebsite("https://wa.me/55 41 3333 4444")).toBeNull();
+    expect(safeWebsite("https://x.org/?email=fulano%40exemplo.com")).toBeNull();
+    expect(safeWebsite("https://x.org/%E0%A4%A")).toBeNull(); // broken encoding
+    // Fails closed: a long numeric id drops a harmless link too (documented).
+    expect(safeWebsite("https://www.facebook.com/profile.php?id=100064123456789")).toBeNull();
   });
 });
