@@ -14,5 +14,5 @@ export const ALLOWED_HOSTS = [
   "apidadosabertos.saude.gov.br",
   "pncp.gov.br",
   "apiprevmet3.inmet.gov.br",
-  "overpass.private.coffee",
+  "ovp.dresel.systems",
 ] as const;

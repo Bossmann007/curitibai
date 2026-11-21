@@ -1,20 +1,21 @@
 import { sharedCache, type Cached } from "../cache.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
 import { MASK, maskObject } from "./pncp.js";
 
 /**
- * Overpass instance run by Private.coffee (formerly overpass.kumi.systems). Its robots.txt is 404 and its terms allow
- * use "in any project". overpass-api.de is not used: its robots.txt disallows /api/. See docs/sources.md.
+ * Overpass instance run by dresel.systems, South America region (holds Brazil). Its robots.txt is 404; free, no API key,
+ * 4 parallel queries per IP, asks for an identifying User-Agent. overpass-api.de is not used: its robots.txt disallows
+ * /api/. overpass.private.coffee did not answer on 2026-11-21. See docs/sources.md.
  */
-export const OVERPASS_URL = "https://overpass.private.coffee/api/interpreter";
+export const OVERPASS_URL = "https://ovp.dresel.systems/api-sa/interpreter";
 export const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
 export const OSM_ATTRIBUTION = "© OpenStreetMap contributors, ODbL";
 /** The server-side limit written into every query; the client waits a little longer for the answer to arrive. */
 export const OVERPASS_QUERY_TIMEOUT_S = 25;
 export const OVERPASS_TIMEOUT_MS = 30_000;
-/** Not measured: the instance did not answer during the 2026-11-21 check. 3 MB is a guess with room; see docs/sources.md. */
+/** The largest category (park) was 450 KB and the bus route list 139 KB on 2026-11-21; 3 MB leaves room to grow. */
 export const OVERPASS_MAX_BYTES = 3 * 1024 * 1024;
-/** Stops returned for one route at most (a bound, not measured on real Curitiba routes). */
+/** Stops returned for one route at most (route 022 had 12 on 2026-11-21; a bound, not a measured maximum). */
 export const MAX_STOPS = 300;
 
 /**
@@ -136,18 +137,51 @@ export function parseOverpass(json: unknown): OverpassResult {
   return { osmBase: base, areaFound, elements };
 }
 
+/** A call that waited this long for its turn gives up without a request, so it ends well inside a 60 s client timeout. */
+export const OVERPASS_MAX_QUEUE_WAIT_MS = 20_000;
+/** Pause after an HTTP 429 without Retry-After. */
+const DEFAULT_COOLDOWN_S = 60;
+
+let queue: Promise<unknown> = Promise.resolve();
+/** Until this time (ms) no request is sent: calls answer rate_limited at once. Set by an HTTP 429. */
+let cooldownUntil = 0;
+
 /**
- * One POST per call (Private.coffee asks for POST). Only the mapped result is cached (in memory), keyed by the query.
+ * Never more than one Overpass request in flight from this server process (the instance allows 4 parallel per IP).
+ * After a 429 every queued call answers rate_limited without a request until the wait is over.
+ */
+export function oneAtATime<T>(task: () => Promise<T>, now: () => number = Date.now): Promise<T> {
+  const queuedAt = now();
+  const guarded = async (): Promise<T> => {
+    const t = now();
+    if (t < cooldownUntil) throw new RateLimitedError(Math.ceil((cooldownUntil - t) / 1000));
+    if (t - queuedAt > OVERPASS_MAX_QUEUE_WAIT_MS) throw new SourceUnavailableError("waited too long for the Overpass queue");
+    try {
+      return await task();
+    } catch (err) {
+      if (err instanceof RateLimitedError) cooldownUntil = now() + (err.retryAfterS ?? DEFAULT_COOLDOWN_S) * 1000;
+      throw err;
+    }
+  };
+  const run = queue.then(guarded, guarded);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+/** Tests only: forget a 429 pause. */
+export function resetOverpassCooldown(): void {
+  cooldownUntil = 0;
+}
+
+/**
+ * One POST per call. Only the mapped result is cached (in memory), keyed by the query.
  * No Curitiba area in the answer means the instance could not resolve it: source_unavailable, never "nothing found".
  */
 function cachedQuery<T>(query: string, map: (r: OverpassResult) => T): Promise<Cached<T>> {
   return sharedCache.getOrLoad(`POST ${OVERPASS_URL} data=${query}`, async () => {
-    const res = await fetchText(OVERPASS_URL, {
-      method: "POST",
-      form: { data: query },
-      timeoutMs: OVERPASS_TIMEOUT_MS,
-      maxBytes: OVERPASS_MAX_BYTES,
-    });
+    const res = await oneAtATime(() =>
+      fetchText(OVERPASS_URL, { method: "POST", form: { data: query }, timeoutMs: OVERPASS_TIMEOUT_MS, maxBytes: OVERPASS_MAX_BYTES }),
+    );
     let json: unknown;
     try {
       json = JSON.parse(res.body);
@@ -225,7 +259,7 @@ export function toPlace(e: RawElement, category: PlaceCategory): Place {
     lat: c?.lat ?? null,
     lon: c?.lon ?? null,
     opening_hours: plain(t.opening_hours),
-    website: safeWebsite(t.website ?? t["contact:website"]),
+    website: safeWebsite(t.website) ?? safeWebsite(t["contact:website"]),
     osm_url: osmUrl(e.type, e.id),
   };
 }

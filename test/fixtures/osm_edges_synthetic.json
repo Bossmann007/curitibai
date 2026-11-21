@@ -32,7 +32,7 @@
       "type": "way",
       "id": 9000000002,
       "center": { "lat": -25.41, "lon": -49.21 },
-      "tags": { "amenity": "library", "name": "Biblioteca Pública Fictícia", "website": "javascript:alert(1)" }
+      "tags": { "amenity": "library", "name": "Biblioteca Pública Fictícia", "website": "javascript:alert(1)", "contact:website": "https://outra.exemplo.org/" }
     },
     {
       "type": "relation",
