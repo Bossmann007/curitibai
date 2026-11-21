@@ -28,8 +28,8 @@ wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing 
 `category`. The three bus tools (`bus_lines_search`, `bus_line_stops`, `bus_departures`) make no network call either:
 they read URBS files you keep in `CURITIBAI_DATA_DIR/urbs/` (see below) and return the same envelope; their errors are
 `data_not_available` (no folder or no file of the kind needed), `invalid_data` (not UTF-8 JSON, not a non-empty list,
-more than half of the rows invalid, or over 20 MB; the message says to delete that file or change its name to fall back
-to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid rows are skipped and counted in `note`. `procurement_search` also returns `invalid_date_range`
+more than 5% of the rows invalid, or over 20 MB; the message says to delete that file or change its name to fall back
+to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid rows are skipped, counted in `note` and in `data.skipped_rows`. `procurement_search` also returns `invalid_date_range`
 (`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
 to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
 `procurement_search`, `health_units_search` and `open_datasets_search` return what they found as `partial`, with the
@@ -223,9 +223,10 @@ Each tool reads the newest date present for its own kind, on every call (about 3
 2026-11-20 files; at most 20 MB each), and returns that date as `checked_at`; `note` warns when the file is more than
 30 days old. A row that does not match the expected shape (for example a time of "24:10" or a stop number with a
 letter), or that lacks a field the tool filters or orders by (such as `CATEGORIA_SERVICO`, `SENTIDO` or `HORA`;
-docs/sources.md lists them all), is left out and counted in `note`; a missing or null descriptive field (such as `GRUPO`, `TIPO` or `ADAPT`)
-becomes an empty string. The whole file is refused (`invalid_data`) only when it is not a non-empty list or more than
-half of its rows are invalid; then delete that file or change its name (for example add `.bad`) and the tool reads the newest
+docs/sources.md lists them all), is left out and counted in `note` and `data.skipped_rows`; a missing or null descriptive field (such as `GRUPO`, `TIPO`
+or `ADAPT`) becomes an empty string. Real exports always fill `ADAPT`, so when every timetable row has it empty `note`
+says the accessibility field looks missing or renamed. The whole file is refused (`invalid_data`) only when it is not a
+non-empty list or more than 5% of its rows (1 in 20) are invalid; then delete that file or change its name (for example add `.bad`) and the tool reads the newest
 remaining dated file. Download a new set from time to time, since lines and timetables change; older files can stay or be
 deleted. Ask, for example: "which bus lines go to Jardim Botânico?", then "stops of line 464", then "weekday
 departures of line 464 between 07:00 and 08:00".

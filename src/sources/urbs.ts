@@ -83,6 +83,9 @@ export type Ponto = z.infer<typeof PontoRow>;
 export type Tabela = z.infer<typeof TabelaRow>;
 type Rows = { linhas: Linha[]; pontosLinha: Ponto[]; tabelaLinha: Tabela[] };
 
+/** A file with more than 1 invalid row in this many (5%) is refused as a whole. */
+export const MAX_INVALID_ONE_IN = 20;
+
 export class InvalidUrbsDataError extends Error {
   constructor(message: string) {
     super(message);
@@ -108,10 +111,15 @@ export function fallbackHint(file: string): string {
 
 /**
  * Validates parsed JSON row by row. Rows that do not match are skipped and counted. The whole file is rejected only
- * when it is not a non-empty array within the row cap, or when more than half of its rows are invalid. Messages name
- * the file and the problem, never the file's text.
+ * when it is not a non-empty array within the row cap, or when more than 1 in MAX_INVALID_ONE_IN (5%) of its rows are invalid.
+ * Messages name the file and the problem, never the file's text. `adaptMissing` is true for a timetable whose every
+ * row has an empty ADAPT: real exports always fill it, so the field is probably missing or renamed.
  */
-export function parseUrbs<K extends UrbsKind>(kind: K, file: string, json: unknown): { rows: Rows[K]; skipped: number } {
+export function parseUrbs<K extends UrbsKind>(
+  kind: K,
+  file: string,
+  json: unknown,
+): { rows: Rows[K]; skipped: number; adaptMissing: boolean } {
   if (!Array.isArray(json) || json.length === 0 || json.length > MAX_ROWS[kind]) {
     const why = !Array.isArray(json) ? "is not a list of rows" : json.length === 0 ? "has no rows" : "has too many rows";
     throw new InvalidUrbsDataError(`${file} does not have the expected ${kind} shape (it ${why}).${fallbackHint(file)}`);
@@ -119,19 +127,22 @@ export function parseUrbs<K extends UrbsKind>(kind: K, file: string, json: unkno
   const schema = ROW_SCHEMAS[kind];
   const rows: unknown[] = [];
   let firstBad = -1;
+  let anyAdapt = false;
   for (const [i, raw] of json.entries()) {
     const parsed = schema.safeParse(raw);
-    if (parsed.success) rows.push(parsed.data);
-    else if (firstBad < 0) firstBad = i;
+    if (parsed.success) {
+      rows.push(parsed.data);
+      if (!anyAdapt && kind === "tabelaLinha") anyAdapt = (parsed.data as Tabela).ADAPT.trim() !== "";
+    } else if (firstBad < 0) firstBad = i;
   }
   const skipped = json.length - rows.length;
-  if (skipped * 2 > json.length) {
+  if (skipped * MAX_INVALID_ONE_IN > json.length) {
     throw new InvalidUrbsDataError(
       `${file} does not have the expected ${kind} shape: ${skipped} of ${json.length} rows are invalid ` +
         `(first at row ${firstBad}).${fallbackHint(file)}`,
     );
   }
-  return { rows: rows as Rows[K], skipped };
+  return { rows: rows as Rows[K], skipped, adaptMissing: kind === "tabelaLinha" && !anyAdapt };
 }
 
 export interface UrbsFile<K extends UrbsKind> {
@@ -142,6 +153,8 @@ export interface UrbsFile<K extends UrbsKind> {
   date: string;
   /** Rows left out because they did not match the expected shape. */
   skipped: number;
+  /** Timetable only: every row has an empty ADAPT (see parseUrbs). Always false for the other kinds. */
+  adaptMissing: boolean;
 }
 
 /**

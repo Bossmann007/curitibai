@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseCoordinate, URBS_SOURCE_URL, type Ponto } from "../sources/urbs.js";
-import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
+import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, urbsLicenseNote, skippedRowsOutput, urbsNote, type UrbsSource } from "./busCommon.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -35,6 +35,7 @@ export const busLineStopsOutput = busEnvelope(
     total: z.number().int(),
     offset: z.number().int(),
     next_offset: z.number().int().nullable(),
+    skipped_rows: skippedRowsOutput,
     items: z.array(Stop),
   }),
 );
@@ -79,6 +80,7 @@ export function busLineStopsResult(line: readonly Ponto[], src: UrbsSource, args
       line_code: line[0]?.COD ?? args.line_code.toUpperCase(),
       directions: dirs,
       ...p,
+      skipped_rows: src.skipped,
       items: p.items.map((r) => ({
         direction: r.SENTIDO,
         itinerary_id: r.ITINERARY_ID,

@@ -56,14 +56,25 @@ export function urbsLicenseNote(file: string): string {
   );
 }
 
-/** Where a tool's rows came from: the file, its date and how many invalid rows were skipped. */
-export type UrbsSource = Pick<UrbsFile<UrbsKind>, "file" | "date" | "skipped">;
+/** Where a tool's rows came from: the file, its date, how many invalid rows were skipped, and whether ADAPT looks absent. */
+export type UrbsSource = Pick<UrbsFile<UrbsKind>, "file" | "date" | "skipped" | "adaptMissing">;
+
+/** `skipped_rows` in each bus tool's data: rows of the file left out because they did not match the expected shape. */
+export const skippedRowsOutput = z
+  .number()
+  .int()
+  .min(0)
+  .describe("Rows of the file left out because they did not match the expected shape (also stated in `note`).");
+
+export const ADAPT_MISSING_NOTE =
+  "Every row of this file has an empty ADAPT (accessibility) field, which real URBS exports always fill: the field " +
+  "looks missing or renamed in this file, so an empty `adapt` does not mean the bus has no accessibility equipment.";
 
 /**
- * Base note, plus the count of skipped rows when there are any, plus an age warning once more than URBS_MAX_AGE_DAYS
- * have passed since the file's date.
+ * Base note, plus the count of skipped rows when there are any, plus ADAPT_MISSING_NOTE when it applies, plus an age
+ * warning once more than URBS_MAX_AGE_DAYS have passed since the file's date.
  */
-export function urbsNote({ file, date, skipped }: UrbsSource, now: Date): string {
+export function urbsNote({ file, date, skipped, adaptMissing }: UrbsSource, now: Date): string {
   const days = (Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000;
   const stale =
     days > URBS_MAX_AGE_DAYS
@@ -76,6 +87,7 @@ export function urbsNote({ file, date, skipped }: UrbsSource, now: Date): string
     (skipped > 0
       ? ` ${skipped} row${skipped === 1 ? "" : "s"} of the file did not match the expected shape and ${skipped === 1 ? "was" : "were"} left out.`
       : "") +
+    (adaptMissing ? ` ${ADAPT_MISSING_NOTE}` : "") +
     stale
   );
 }

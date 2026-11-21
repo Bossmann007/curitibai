@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { URBS_SOURCE_URL, type Linha } from "../sources/urbs.js";
 import { fold } from "../text.js";
-import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
+import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, skippedRowsOutput, urbsNote, type UrbsSource } from "./busCommon.js";
 import { queryWords } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -35,6 +35,7 @@ export const busLinesSearchOutput = busEnvelope(
     total: z.number().int(),
     offset: z.number().int(),
     next_offset: z.number().int().nullable(),
+    skipped_rows: skippedRowsOutput,
     items: z.array(Line),
     categories: z.array(z.object({ name: z.string(), count: z.number().int() })).optional(),
   }),
@@ -69,6 +70,7 @@ export function busLinesSearchResult(rows: readonly Linha[], src: UrbsSource, ar
   return {
     data: {
       ...p,
+      skipped_rows: src.skipped,
       items: p.items.map((r) => ({
         code: r.COD,
         name: r.NOME,

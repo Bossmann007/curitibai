@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
 import { MASK } from "../src/sources/pncp.js";
 import { newestUrbsFile, parseUrbs, URBS_MAX_BYTES, URBS_SOURCE_URL, type UrbsKind } from "../src/sources/urbs.js";
+import { ADAPT_MISSING_NOTE } from "../src/tools/busCommon.js";
 import { busDeparturesOutput } from "../src/tools/busDepartures.js";
 import { busLineStopsOutput } from "../src/tools/busLineStops.js";
 import { busLinesSearchOutput } from "../src/tools/busLinesSearch.js";
@@ -145,6 +146,11 @@ describe("file selection", () => {
 });
 
 const fixtureRows = (kind: UrbsKind) => JSON.parse(readFileSync(join(FIXTURES, `${kind}.json`), "utf8")) as Record<string, unknown>[];
+/** The fixture plus `n` valid rows of another line ("PAD", or P0, P1... in linhas), so a few bad rows stay under 5%. */
+const padded = (kind: UrbsKind, n = 40) => {
+  const rows = fixtureRows(kind);
+  return [...rows, ...Array.from({ length: n }, (_, i) => ({ ...rows[0], COD: kind === "linhas" ? `P${i}` : "PAD" }))];
+};
 const FALLBACK = "To use an older file instead, delete 2026_11_20_linhas.json or change its name (for example to 2026_11_20_linhas.json.bad)";
 
 describe("invalid_data", () => {
@@ -177,14 +183,23 @@ describe("invalid_data", () => {
     );
   });
 
-  it("rejects a file when more than half its rows are invalid, not at exactly half", async () => {
+  it("rejects a file when more than 5% of its rows are invalid, not at exactly 5%", async () => {
     const [good] = fixtureRows("linhas");
     const bad = { ...good, COD: "TOO-LONG-CODE" };
-    write(JSON.stringify([good, bad, bad]));
-    expect((await message()).message).toContain("2 of 3 rows are invalid (first at row 1)");
-    write(JSON.stringify([good, bad]));
-    const out = await lines({});
-    expect(out.data.total).toBe(1);
+    const goods = (n: number) => Array.from({ length: n }, (_, i) => ({ ...good, COD: `G${i}` }));
+    write(JSON.stringify([...goods(18), bad])); // 1 of 19: over 5%
+    const err = await message();
+    expect(err.error).toBe("invalid_data");
+    expect(err.message).toContain("1 of 19 rows are invalid (first at row 18)");
+    expect(err.message).toContain(FALLBACK);
+    write(JSON.stringify([...goods(38), bad, bad])); // 2 of 40: exactly 5%, kept
+    let out = await lines({});
+    expect(out.data.total).toBe(38);
+    expect(out.data.skipped_rows).toBe(2);
+    write(JSON.stringify([...goods(19), bad])); // 1 of 20: exactly 5%, kept
+    out = await lines({});
+    expect(out.data.total).toBe(19);
+    expect(out.data.skipped_rows).toBe(1);
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
   });
 
@@ -203,23 +218,25 @@ describe("invalid_data", () => {
     ["a long COD", { COD: "X".repeat(11) }],
     ["a missing DIA", { DIA: undefined }],
   ])("skips a bad timetable row (%s) and counts it in the note", async (_n, patch) => {
-    const rows = fixtureRows("tabelaLinha");
+    const rows = padded("tabelaLinha");
     write(JSON.stringify([...rows, { ...rows[0], HORA: "12:34", ...patch }]), "tabelaLinha");
     const out = await departures({ line_code: "901", limit: 50 });
     expect(out.data.total).toBe(9); // the fixture's own departures of line 901
+    expect(out.data.skipped_rows).toBe(1);
     expect(out.data.items.map((d) => d.time)).not.toContain("12:34");
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
   });
 
   it("skips a stop row with a long name or a bad coordinate", async () => {
-    const rows = fixtureRows("pontosLinha");
+    const rows = padded("pontosLinha");
     write(JSON.stringify([...rows, { ...rows[0], NOME: "N".repeat(301) }, { ...rows[1], SEQ: "9", LAT: "-25,4x" }]), "pontosLinha");
     const out = await stops({ line_code: "901" });
     expect(out.data.total).toBe(5);
+    expect(out.data.skipped_rows).toBe(2);
     expect(out.note).toContain("2 rows of the file did not match the expected shape and were left out.");
   });
 
-  it("keeps a row that lacks only a descriptive field (GRUPO, TIPO, ADAPT, null NOME_COR) and says nothing", async () => {
+  it("keeps a row that lacks only a descriptive field (GRUPO, TIPO, ADAPT, null NOME_COR)", async () => {
     const without = (r: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== key));
     const stopsRows = fixtureRows("pontosLinha").map((r, i) => (i === 0 ? { ...without(r, "GRUPO"), TIPO: null } : without(r, "GRUPO")));
     write(JSON.stringify(stopsRows), "pontosLinha");
@@ -227,22 +244,40 @@ describe("invalid_data", () => {
     expect(out.data.total).toBe(5);
     expect(out.data.items.every((s) => s.group === "")).toBe(true);
     expect(out.note).not.toContain("left out");
+    expect(out.data.skipped_rows).toBe(0);
     write(JSON.stringify(fixtureRows("linhas").map((r) => ({ ...r, NOME_COR: null }))));
-    expect((await lines({ query: "901" })).data.items[0]).toMatchObject({ code: "901", color: "" });
-    write(JSON.stringify(fixtureRows("tabelaLinha").map((r) => without(r, "ADAPT"))), "tabelaLinha");
-    expect((await departures({ line_code: "901" })).data.items[0]?.adapt).toBe("");
+    const lineOut = await lines({ query: "901" });
+    expect(lineOut.data.items[0]).toMatchObject({ code: "901", color: "" });
+    expect(lineOut.data.skipped_rows).toBe(0);
+    expect(lineOut.note).not.toContain("left out");
+    expect(lineOut.note).not.toContain(ADAPT_MISSING_NOTE);
+    const tabela = fixtureRows("tabelaLinha");
+    write(JSON.stringify(tabela.map((r, i) => (i === 0 ? r : without(r, "ADAPT")))), "tabelaLinha");
+    const some = await departures({ line_code: "901", limit: 50 });
+    expect(some.data.items.some((d) => d.adapt === "")).toBe(true);
+    expect(some.note).not.toContain("accessibility) field");
+  });
+
+  it("says the accessibility field looks missing or renamed when every timetable row has an empty ADAPT", async () => {
+    write(JSON.stringify(fixtureRows("tabelaLinha").map((r, i) => ({ ...r, ADAPT: i % 2 ? "" : null }))), "tabelaLinha");
+    const out = await departures({ line_code: "901" });
+    expect(out.data.items[0]?.adapt).toBe("");
+    expect(out.note).toContain(ADAPT_MISSING_NOTE);
+    expect(out.note).toContain("looks missing or renamed");
+    expect(parseUrbs("tabelaLinha", "f.json", fixtureRows("tabelaLinha")).adaptMissing).toBe(false);
+    expect(parseUrbs("linhas", "f.json", fixtureRows("linhas")).adaptMissing).toBe(false);
   });
 
   it("skips rows without a field a tool filters or orders by (CATEGORIA_SERVICO, SENTIDO)", () => {
-    const lines = fixtureRows("linhas");
+    const lines = padded("linhas");
     const noCategory = Object.fromEntries(Object.entries(lines[0]!).filter(([k]) => k !== "CATEGORIA_SERVICO"));
     expect(parseUrbs("linhas", "f.json", [...lines, noCategory]).skipped).toBe(1);
-    const stops = fixtureRows("pontosLinha");
+    const stops = padded("pontosLinha");
     expect(parseUrbs("pontosLinha", "f.json", [...stops, { ...stops[0], SENTIDO: null }]).skipped).toBe(1);
   });
 
   it("parseUrbs reports the skipped count", () => {
-    const rows = fixtureRows("pontosLinha");
+    const rows = padded("pontosLinha");
     expect(parseUrbs("pontosLinha", "f.json", [...rows, { ...rows[0], LAT: "-25,4x" }]).skipped).toBe(1);
     expect(() => parseUrbs("pontosLinha", "f.json", [{ ...rows[0], LAT: "-25,4x" }])).toThrow(/1 of 1 rows are invalid/);
   });

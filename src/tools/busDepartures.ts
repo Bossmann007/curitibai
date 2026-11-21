@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DAY_TYPE_NOTE, DAY_TYPES, URBS_SOURCE_URL, type Tabela } from "../sources/urbs.js";
-import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, urbsNote, type UrbsSource } from "./busCommon.js";
+import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, skippedRowsOutput, urbsNote, type UrbsSource } from "./busCommon.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -48,6 +48,7 @@ export const busDeparturesOutput = busEnvelope(
     total: z.number().int(),
     offset: z.number().int(),
     next_offset: z.number().int().nullable(),
+    skipped_rows: skippedRowsOutput,
     items: z.array(Departure),
   }),
 );
@@ -85,6 +86,7 @@ export function busDeparturesResult(rows: readonly Tabela[], src: UrbsSource, ar
   return {
     data: {
       ...p,
+      skipped_rows: src.skipped,
       items: p.items.map((r) => ({
         time: r.HORA,
         day: r.DIA,

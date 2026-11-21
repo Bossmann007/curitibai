@@ -349,8 +349,10 @@ folder, regular file, read-only open, no symlink out), on every call, with a 20 
 row by row (strings of bounded length, `HH:MM` times, digit-only stop numbers and day codes, comma-decimal
 coordinates or empty). Fields a tool selects or orders by are required (`COD`, `NOME`, `CATEGORIA_SERVICO` in linhas;
 `NUM`, `SEQ`, `SENTIDO`, `ITINERARY_ID`, `COD` in pontosLinha; `HORA`, `DIA`, `NUM`, `COD` in tabelaLinha); the descriptive ones may be missing
-or null and become "". A row that fails is skipped and the count is given in `note`. The file is `invalid_data` only
-when it is not UTF-8 JSON, not a non-empty list (within a row cap), more than half of its rows are invalid, or over
+or null and become ""; when every tabelaLinha row has an empty `ADAPT` (real rows always fill it), `note` says the
+accessibility field looks missing or renamed. A row that fails is skipped and the count is given in `note` and in
+`data.skipped_rows`. The file is `invalid_data` only
+when it is not UTF-8 JSON, not a non-empty list (within a row cap), more than 5% of its rows are invalid, or over
 20 MB; the message names the file and the problem (never the file's text) and says to delete the file or change its
 name (for example add `.bad`) so the next newest dated one is read. Extra fields are ignored. On the 2026-11-20 files no row is skipped. Measured on the 2026-11-20 files with the built server: about 4 ms (linhas), 32 ms (pontosLinha)
 and 54 ms (tabelaLinha) to read and validate.
