@@ -501,12 +501,25 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `open_dataset_preview` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB; needs permission or an official API. The 20-row table embedded in portal detail pages also holds individual records (156 tickets with street names; the payroll dataset names people) |
 | `city156_categories`, `city156_stats` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB. Measured: 136,902,324 bytes (2026-11-18 file), ~1 MB/s from the mirror (~140 s) and ~0.4 MB/s from `mid` (>300 s). The 156 API (`api-156.curitiba.pr.gov.br`) is not public. Owner decision (2026-11-19): no permission request will be sent; a person downloads the file and uses `local_csv_summary` |
 | Bus lines, timetables, stops fetched by the server; real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. The export mirror is treated as disallowed. Since v0.8 the bus tools read the exports from local files instead (above) |
-| `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files exist only on the two disallowed hosts (`local_csv_summary` can count a hand-downloaded file). Health units moved to the CNES API in v0.2 |
+| `schools_search`, `markets_fairs_list` | Covered since v0.9 by `city_points_search` (URBS `pois` export: feiras, Câmbio Verde, CMEIs, municipal and state schools and more), with no days or hours for feiras. The other sources are stale (below). Health units moved to the CNES API in v0.2 |
+| `culture_agenda` | No current source: "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
 | Detran-PR fees by vehicle, debts, fines and IPVA by plate | Behind login and CAPTCHA on Detran-PR; per-owner data. Not accessed |
 | Detran-PR statistics (Qlik panel) | Interactive dashboard, not a published dataset. Not accessed |
 | PNCP suppliers, contracts, price-registration minutes (`/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` stays on the procurement notice, which has no supplier field |
+
+### Sources evaluated, not used (2026-11-21)
+
+Recorded so they are not checked again.
+
+| Source | Finding | Decision |
+|---|---|---|
+| "Eventos PMC" (portal dataset `471e0496-6f97-4c20-a32f-76af61372584`, daily CSV on `mid-dadosabertos`) | Regenerated daily but frozen. On the 2026-11-20 file (Latin-1, `;`-separated): 1,595 events, starts from 2015 to 2022, newest `EVE_DATA_CADASTRO` 2022-04-18 | Not used: stale |
+| UFPR mirror `/curitiba/AgendaPMC/` | Files stop at 2024-12-17 | Not used: stale |
+| UFPR mirror `/curitiba/FeirasCuritiba/` | Newest file 2017-03-29 (`.xls`) | Not used: stale |
+| Portal searches "Feiras" and "Escolas" | 0 datasets | Feiras, Câmbio Verde and schools come from the URBS `pois` export via `city_points_search` (no days or hours for feiras) |
+| URBS mirror `dadosabertos.c3sl.ufpr.br/curitibaurbs/` | Daily exports since 2017: `linhas`, `pois`, `pontosLinha`, `shapeLinha`, `tabelaLinha`, `tabelaVeiculo`, `trechosItinerarios`, `veiculos`. Root `/robots.txt` 404, none in `/curitibaurbs/`; `/curitiba/robots.txt` asks `Request-rate: 1/5` (and `Disallow: /`, table above) | Treated as disallowed; never fetched. `linhas`, `pontosLinha`, `tabelaLinha` and `pois` are read from local copies a person downloads; the other four are not used |
 
 ### Bus alternative checked, not adopted
 
