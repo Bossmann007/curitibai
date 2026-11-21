@@ -1,28 +1,4 @@
 {
- "displayFieldName": "TEMA",
- "fieldAliases": {
-  "objectid": "OBJECTID",
-  "nome": "NOME",
-  "nome_completo": "NOME_COMPLETO",
-  "nome_mapa": "NOME_MAPA",
-  "nome_rua": "NOME_RUA",
-  "num_pred": "NUM_PRED",
-  "compl_end": "COMPL_END",
-  "divulgar_endereco": "DIVULGAR_ENDERECO",
-  "bairro": "BAIRRO",
-  "regional": "REGIONAL",
-  "func_manha": "FUNC_MANHA",
-  "func_tarde": "FUNC_TARDE",
-  "func_noite": "FUNC_NOITE",
-  "func_24hr": "FUNC_24HR",
-  "telefone": "TELEFONE",
-  "ramal": "RAMAL",
-  "email": "EMAIL",
-  "site": "SITE",
-  "dt_atualiz": "DT_ATUALIZ",
-  "observacao": "OBSERVACAO",
-  "fonte": "FONTE"
- },
  "geometryType": "esriGeometryPoint",
  "spatialReference": {
   "wkid": 4326,
@@ -39,10 +15,6 @@
   },
   {
    "name": "nome_completo",
-   "type": "esriFieldTypeString"
-  },
-  {
-   "name": "nome_mapa",
    "type": "esriFieldTypeString"
   },
   {
@@ -90,15 +62,7 @@
    "type": "esriFieldTypeString"
   },
   {
-   "name": "ramal",
-   "type": "esriFieldTypeString"
-  },
-  {
    "name": "email",
-   "type": "esriFieldTypeString"
-  },
-  {
-   "name": "site",
    "type": "esriFieldTypeString"
   },
   {
@@ -108,19 +72,18 @@
   {
    "name": "observacao",
    "type": "esriFieldTypeString"
-  },
-  {
-   "name": "fonte",
-   "type": "esriFieldTypeString"
   }
  ],
  "features": [
   {
+   "geometry": {
+    "x": -49.32678476159982,
+    "y": -25.478047866943133
+   },
    "attributes": {
     "objectid": 291,
     "nome": "Fazendinha / Portão",
     "nome_completo": "Rua da Cidadania Fazendinha / Portão",
-    "nome_mapa": "Rua da Cidadania Fazendinha / Portão",
     "nome_rua": "R. CARLOS KLEMTZ",
     "num_pred": "1700",
     "compl_end": "CEP: 81.320-490",
@@ -132,24 +95,20 @@
     "func_noite": "Não",
     "func_24hr": "Não",
     "telefone": "(41) 3350-3787",
-    "ramal": null,
     "email": "arportaosgm@curitiba.pr.gov.br",
-    "site": null,
     "dt_atualiz": 1739453944000,
-    "observacao": "Abriga os seguintes equipamentos urbanos:\r\n-Administração Regional Portão\r\n-Agência de Atendimento COHAB\r\n-Armazém da Família Fazendinha\r\n-Casa da Leitura Jamil Snege\r\n-Centro de Esporte e Lazer Rua da Cidadania Fazendinha/Portão\r\n-Conselho Tutelar Portão\r\n-Distrito Sanitário Portão\r\n-Empório Metropolitano Fazendinha\r\n-Espaço Empreendedor Fazendinha/Portão\r\n-Junta de Serviço Militar Fazendinha\r\n-Liceu de Ofícios Fazendinha\r\n-Módulo da Guarda Municipal Rua da Cidadania Fazendinha/Portão\r\n-Núcleo Regional da Educação Portão\r\n-Núcleo Regional do Esporte, Lazer e Juventude Portão\r\n-Núcleo Regional de Arte e Cultura Portão\r\n-Núcleo Regional da Fundação de Ação Social Portão\r\n-Núcleo Regional de Planejamento, Finanças e Orçamento Portão\r\n-Núcleo Regional de Segurança Alimentar e Nutricional Portão\r\n-Núcleo Regional do Urbanismo Portão\r\n-Posto de Atendimento COPEL\r\n-Posto de Atendimento Instituto de Identificação do Paraná\r\n-Posto de Atendimento SANEPAR\r\n-Posto de Atendimento URBS Portão\r\n-Unidade de Atendimento SINE Fazendinha\r\n-Sanitários Públicos Gratuitos",
-    "fonte": "Secretaria do Governo Municipal"
-   },
-   "geometry": {
-    "x": -49.32678476159982,
-    "y": -25.478047866943133
+    "observacao": "Abriga os seguintes equipamentos urbanos:\r\n-Administração Regional Portão\r\n-Agência de Atendimento COHAB\r\n-Armazém da Família Fazendinha\r\n-Casa da Leitura Jamil Snege\r\n-Centro de Esporte e Lazer Rua da Cidadania Fazendinha/Portão\r\n-Conselho Tutelar Portão\r\n-Distrito Sanitário Portão\r\n-Empório Metropolitano Fazendinha\r\n-Espaço Empreendedor Fazendinha/Portão\r\n-Junta de Serviço Militar Fazendinha\r\n-Liceu de Ofícios Fazendinha\r\n-Módulo da Guarda Municipal Rua da Cidadania Fazendinha/Portão\r\n-Núcleo Regional da Educação Portão\r\n-Núcleo Regional do Esporte, Lazer e Juventude Portão\r\n-Núcleo Regional de Arte e Cultura Portão\r\n-Núcleo Regional da Fundação de Ação Social Portão\r\n-Núcleo Regional de Planejamento, Finanças e Orçamento Portão\r\n-Núcleo Regional de Segurança Alimentar e Nutricional Portão\r\n-Núcleo Regional do Urbanismo Portão\r\n-Posto de Atendimento COPEL\r\n-Posto de Atendimento Instituto de Identificação do Paraná\r\n-Posto de Atendimento SANEPAR\r\n-Posto de Atendimento URBS Portão\r\n-Unidade de Atendimento SINE Fazendinha\r\n-Sanitários Públicos Gratuitos"
    }
   },
   {
+   "geometry": {
+    "x": -49.2950526473009,
+    "y": -25.513916212847672
+   },
    "attributes": {
     "objectid": 1032,
     "nome": "Pinheirinho",
     "nome_completo": "Rua da Cidadania Pinheirinho",
-    "nome_mapa": "Rua da Cidadania Pinheirinho",
     "nome_rua": "AV. WINSTON CHURCHILL",
     "num_pred": "2033",
     "compl_end": "CEP: 81.130-400",
@@ -161,16 +120,9 @@
     "func_noite": "Não",
     "func_24hr": "Não",
     "telefone": "(41) 3313-5402 / 3313-5455",
-    "ramal": null,
     "email": "arpinheirinhosgm@curitiba.pr.gov.br",
-    "site": "https://regionais.curitiba.pr.gov.br/conteudo/pinheirinho/1177",
     "dt_atualiz": 1739456957000,
-    "observacao": "Abriga os seguintes equipamentos urbanos:\r\n-Administração Regional Pinheirinho\r\n-Agência de Atendimento COHAB Pinheirinho\r\n-Casa da Leitura Osman Lins\r\n-Centro de Esporte e Lazer Rua da Cidadania Pinheirinho\r\n-Empório Pinheirinho\r\n-Espaço Empreendedor Pinheirinho\r\n-Liceu de Ofícios Pinheirinho\r\n-Módulo da Guarda Municipal Rua da Cidadania Pinheirinho\r\n-Núcleo Regional da Educação Pinheirinho\r\n-Núcleo Regional do Esporte, Lazer e Juventude Pinheirinho\r\n-Núcleo Regional de Arte e Cultura Pinheirinho\r\n-Núcleo Regional da Fundação de Ação Social Pinheirinho\r\n-Núcleo Regional da Guarda Municipal Pinheirinho\r\n-Núcleo Regional do Meio Ambiente Pinheirinho\r\n-Núcleo Regional de Planejamento, Finanças e Orçamento Pinheirinho\r\n-Núcleo Regional de Segurança Alimentar e Nutricional Pinheirinho\r\n-Núcleo Regional do Urbanismo Pinheirinho\r\n-Posto de Atendimento Instituto de Identificação do Paraná\r\n-Posto de Atendimento SANEPAR\r\n-Posto de Atendimento URBS Pinheirinho\r\n-Unidade de Atendimento SINE Pinheirinho\r\n-Sanitários Públicos Gratuitos",
-    "fonte": "Secretaria do Governo Municipal"
-   },
-   "geometry": {
-    "x": -49.2950526473009,
-    "y": -25.513916212847672
+    "observacao": "Abriga os seguintes equipamentos urbanos:\r\n-Administração Regional Pinheirinho\r\n-Agência de Atendimento COHAB Pinheirinho\r\n-Casa da Leitura Osman Lins\r\n-Centro de Esporte e Lazer Rua da Cidadania Pinheirinho\r\n-Empório Pinheirinho\r\n-Espaço Empreendedor Pinheirinho\r\n-Liceu de Ofícios Pinheirinho\r\n-Módulo da Guarda Municipal Rua da Cidadania Pinheirinho\r\n-Núcleo Regional da Educação Pinheirinho\r\n-Núcleo Regional do Esporte, Lazer e Juventude Pinheirinho\r\n-Núcleo Regional de Arte e Cultura Pinheirinho\r\n-Núcleo Regional da Fundação de Ação Social Pinheirinho\r\n-Núcleo Regional da Guarda Municipal Pinheirinho\r\n-Núcleo Regional do Meio Ambiente Pinheirinho\r\n-Núcleo Regional de Planejamento, Finanças e Orçamento Pinheirinho\r\n-Núcleo Regional de Segurança Alimentar e Nutricional Pinheirinho\r\n-Núcleo Regional do Urbanismo Pinheirinho\r\n-Posto de Atendimento Instituto de Identificação do Paraná\r\n-Posto de Atendimento SANEPAR\r\n-Posto de Atendimento URBS Pinheirinho\r\n-Unidade de Atendimento SINE Pinheirinho\r\n-Sanitários Públicos Gratuitos"
    }
   }
  ]

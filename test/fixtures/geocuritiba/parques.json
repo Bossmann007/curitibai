@@ -14,10 +14,6 @@
    "type": "esriFieldTypeString"
   },
   {
-   "name": "ctba_localizacao",
-   "type": "esriFieldTypeString"
-  },
-  {
    "name": "ctba_bairro",
    "type": "esriFieldTypeSmallInteger"
   },
@@ -36,48 +32,45 @@
  ],
  "features": [
   {
+   "centroid": {
+    "x": -49.27445458994294,
+    "y": -25.38357629217522
+   },
    "attributes": {
     "objectid": 74,
     "nome": "Bosque Professor Erwin Gröger",
-    "ctba_localizacao": " ",
     "ctba_bairro": 50,
     "ctba_regional": 4,
     "ctba_tipounidprotinteg_smuc": 6,
     "areaoficial": null
-   },
-   "centroid": {
-    "x": -49.27445458994294,
-    "y": -25.38357629217522
    }
   },
   {
+   "centroid": {
+    "x": -49.30486310050556,
+    "y": -25.396760385546784
+   },
    "attributes": {
     "objectid": 7,
     "nome": "Parque Tingui",
-    "ctba_localizacao": " ",
     "ctba_bairro": 48,
     "ctba_regional": 5,
     "ctba_tipounidprotinteg_smuc": 2,
     "areaoficial": "38,00 ha"
-   },
-   "centroid": {
-    "x": -49.30486310050556,
-    "y": -25.396760385546784
    }
   },
   {
+   "centroid": {
+    "x": -49.265382753780486,
+    "y": -25.353035037246084
+   },
    "attributes": {
     "objectid": 10,
     "nome": "Parque Municipal Nascentes do Rio Belém",
-    "ctba_localizacao": " ",
     "ctba_bairro": 51,
     "ctba_regional": 4,
     "ctba_tipounidprotinteg_smuc": 2,
     "areaoficial": null
-   },
-   "centroid": {
-    "x": -49.265382753780486,
-    "y": -25.353035037246084
    }
   }
  ]

@@ -707,8 +707,9 @@ in the city's own categories. Built.
     `nome`, `areaoficial`, `ctba_tipounidprotinteg_smuc`, `ctba_bairro`, `ctba_regional`, ..., plus `created_user` and
     `last_edited_user`, never read), layer 2 "BAIRRO". Neighbourhood, regional and kind are coded values; the codes
     and names are copied into `src/sources/geocuritiba.ts` as published on 2026-11-21, except three neighbourhood
-    names written in their usual spelling ("Prado velho" → "Prado Velho", "Barrerinha" → "Barreirinha", "Sitio
-    Cercado" → "Sítio Cercado"). An unknown code is `null`.
+    names written as the urban-equipment layers write them in `bairro` (checked in the Academia ao Ar Livre layer:
+    "Prado velho" → "Prado Velho", "Barrerinha" → "Barreirinha", "Sitio Cercado" → "Sítio Cercado"), so one `bairro`
+    filter matches both services. An unknown code is `null`.
 - **Layers used** (id: name, record count on 2026-11-21): MapServer 2 Mercado Municipal (4), 3 Armazém da Família (33),
   4 Sacolão da Família (13), 5 Câmbio Verde (103), 6 Restaurante Popular (6), 8 Feira (80), 14 Rua da Cidadania (10),
   28 Sanitário Público (37), 34 CRAS (39), 54 Museu (38), 55 Teatro (37), 63 Farol do Saber (43), 64 Biblioteca Geral
@@ -717,8 +718,8 @@ in the city's own categories. Built.
   Atendimento URBS (11), 162 Posto de Informações Turísticas (3), 163 Feira Turística (27); FeatureServer 0 Estrutura
   Cicloviária (838, all `operacional` 1 and `situacaofisica` 5 "Construída") and 1 Parques e Bosques (53). The
   largest answer was about 250 KB (layer 0 with simplified geometry). Layers left out on purpose: health units (see
-  `health_units_search`), schools, terminals, police and other layers outside "where can I go for this" use, and
-  layers whose records may be people (religion, private registries).
+  `health_units_search`), schools, bus terminals, police, administrative offices and every other layer not in the
+  list (not surveyed).
 - **Query:** one fixed URL per layer: `where=1=1`, a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
   `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with
   `returnGeometry=true`; parks with `returnCentroid=true` and no geometry; bike lanes with geometry simplified
@@ -745,16 +746,20 @@ in the city's own categories. Built.
   e-mails at `curitiba.pr.gov.br` or a subdomain, lowercased, at most 3. Dropped: mobiles, 0800 numbers, other area
   codes, any part not understood, and every other e-mail domain (state and federal government addresses too). A
   landline of a non-municipal institution (an association, a university) is kept. `ramal` and `site` are not read.
+  The kept e-mails of all 24 point layers (136 distinct on 2026-11-21) were listed: role or unit mailboxes (CRAS,
+  Conselho Tutelar, Faróis do Saber named after their patrons, cemeteries, regional offices). Known limit: the local
+  part of a city address is not checked, and 2 of them could not be told apart from a person's initials and name.
 - **Distance:** straight line; to the point, to a park's centroid (not its edge or gate), to the nearest point of a
   bike segment (local flat projection). `radius_m` at most 3,000.
 - **Terms / licence:** none found on the services, the REST directory or IPPUC's GeoCuritiba pages (owner's research,
   2026-11-21). Facts only, with `source` "IPPUC / GeoCuritiba", the layer URL and `license_note` "No licence found;
   facts only; IPPUC cited."
 - **Requests to the host on 2026-11-21:** the two layer lists (once each), 27 count queries and 27 small samples or
-  contact surveys while building, one live call of the built tool (Ecocidadão: 40 records, 26 landlines kept, no
-  mobile and no webmail address returned) and robots.txt once; at most one request per 5 s.
+  contact surveys while building, three live calls of the built tool (Ecocidadão: 40 records, 26 landlines kept, no
+  mobile and no webmail address returned; Parques within 3 km of the centre: 5; Estrutura Cicloviária within 3 km: 215)
+  and robots.txt once; at most one request per 5 s.
 - **Fixtures:** `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json` and `ciclovia.json` are
-  real records (4, 2, 3 and 4) trimmed to the fields read; they hold only institutional contacts ("156", landlines,
+  real records (4, 2, 3 and 4) trimmed to the fields the tool reads (plus geometry or centroid); they hold only institutional contacts ("156", landlines,
   curitiba.pr.gov.br addresses). `ecocidadao_synthetic.json` is **synthetic**, with planted cases: a mobile, a webmail
   address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.

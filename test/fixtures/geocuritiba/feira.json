@@ -1,28 +1,4 @@
 {
- "displayFieldName": "TEMA",
- "fieldAliases": {
-  "objectid": "OBJECTID",
-  "nome": "NOME",
-  "nome_completo": "NOME_COMPLETO",
-  "nome_mapa": "NOME_MAPA",
-  "nome_rua": "NOME_RUA",
-  "num_pred": "NUM_PRED",
-  "compl_end": "COMPL_END",
-  "divulgar_endereco": "DIVULGAR_ENDERECO",
-  "bairro": "BAIRRO",
-  "regional": "REGIONAL",
-  "func_manha": "FUNC_MANHA",
-  "func_tarde": "FUNC_TARDE",
-  "func_noite": "FUNC_NOITE",
-  "func_24hr": "FUNC_24HR",
-  "telefone": "TELEFONE",
-  "ramal": "RAMAL",
-  "email": "EMAIL",
-  "site": "SITE",
-  "dt_atualiz": "DT_ATUALIZ",
-  "observacao": "OBSERVACAO",
-  "fonte": "FONTE"
- },
  "geometryType": "esriGeometryPoint",
  "spatialReference": {
   "wkid": 4326,
@@ -39,10 +15,6 @@
   },
   {
    "name": "nome_completo",
-   "type": "esriFieldTypeString"
-  },
-  {
-   "name": "nome_mapa",
    "type": "esriFieldTypeString"
   },
   {
@@ -90,15 +62,7 @@
    "type": "esriFieldTypeString"
   },
   {
-   "name": "ramal",
-   "type": "esriFieldTypeString"
-  },
-  {
    "name": "email",
-   "type": "esriFieldTypeString"
-  },
-  {
-   "name": "site",
    "type": "esriFieldTypeString"
   },
   {
@@ -108,19 +72,18 @@
   {
    "name": "observacao",
    "type": "esriFieldTypeString"
-  },
-  {
-   "name": "fonte",
-   "type": "esriFieldTypeString"
   }
  ],
  "features": [
   {
+   "geometry": {
+    "x": -49.330182342923266,
+    "y": -25.379845129194987
+   },
    "attributes": {
     "objectid": 18,
     "nome": "Jardim Pinheiros",
     "nome_completo": "Feira Livre Diurna Jardim Pinheiros",
-    "nome_mapa": "Feira Livre Diurna Jd. Pinheiros",
     "nome_rua": "R. PE. JOSÉ MARTINI",
     "num_pred": "S/N",
     "compl_end": "Entre a Rua Rômulo César Alves e a Rua São Carlos",
@@ -132,24 +95,20 @@
     "func_noite": "Não",
     "func_24hr": "Não",
     "telefone": "156",
-    "ramal": null,
     "email": "smsan@curitiba.pr.gov.br",
-    "site": "https://www.curitiba.pr.gov.br/servicos/feiras-livres-diurnas-de-curitiba/79",
     "dt_atualiz": 1708437415000,
-    "observacao": "Atendimento:\r\n-Sábado, das 7h às 13h",
-    "fonte": "Secretaria Municipal de Abastecimento Alimentar"
-   },
-   "geometry": {
-    "x": -49.330182342923266,
-    "y": -25.379845129194987
+    "observacao": "Atendimento:\r\n-Sábado, das 7h às 13h"
    }
   },
   {
+   "geometry": {
+    "x": -49.294763031368014,
+    "y": -25.49560085410182
+   },
    "attributes": {
     "objectid": 278,
     "nome": "Capão Raso",
     "nome_completo": "Feira Livre Noturna Capão Raso",
-    "nome_mapa": "Feira Livre Noturna Capão Raso",
     "nome_rua": "LG. PE. ALBINO VICO",
     "num_pred": "S/N",
     "compl_end": "Entre a Rua Pedro Gusso e a Avenida Winston Churchill",
@@ -161,24 +120,20 @@
     "func_noite": "Sim",
     "func_24hr": "Não",
     "telefone": "156",
-    "ramal": null,
     "email": "smsan@curitiba.pr.gov.br",
-    "site": "https://www.curitiba.pr.gov.br/servicos/feiras-livres-noturnas-de-curitiba/80",
     "dt_atualiz": 1708437986000,
-    "observacao": "Atendimento:\r\n-6ª feira, das 17h às 22h",
-    "fonte": "Secretaria Municipal de Abastecimento Alimentar"
-   },
-   "geometry": {
-    "x": -49.294763031368014,
-    "y": -25.49560085410182
+    "observacao": "Atendimento:\r\n-6ª feira, das 17h às 22h"
    }
   },
   {
+   "geometry": {
+    "x": -49.27675684502392,
+    "y": -25.43831816333172
+   },
    "attributes": {
     "objectid": 4013,
     "nome": "Produtor",
     "nome_completo": "Feira do Produtor",
-    "nome_mapa": "Feira Livre Diurna Produtor",
     "nome_rua": "R. DR. PEDROSA",
     "num_pred": "257",
     "compl_end": null,
@@ -190,24 +145,20 @@
     "func_noite": "Não",
     "func_24hr": "Não",
     "telefone": null,
-    "ramal": null,
     "email": null,
-    "site": null,
     "dt_atualiz": 1771939606000,
-    "observacao": null,
-    "fonte": "Secretaria Municipal de Abastecimento Alimentar"
-   },
-   "geometry": {
-    "x": -49.27675684502392,
-    "y": -25.43831816333172
+    "observacao": null
    }
   },
   {
+   "geometry": {
+    "x": -49.23213049941596,
+    "y": -25.385110924564014
+   },
    "attributes": {
     "objectid": 7422,
     "nome": "Boa Vista",
     "nome_completo": "Ponto do Pescado Boa Vista",
-    "nome_mapa": "Ponto do Pescado Boa Vista",
     "nome_rua": "AV. PARANÁ",
     "num_pred": "3600",
     "compl_end": "Rua da Cidadania Boa Vista",
@@ -219,16 +170,9 @@
     "func_noite": "Não",
     "func_24hr": "Não",
     "telefone": "156",
-    "ramal": null,
     "email": "smsan@curitiba.pr.gpv.br",
-    "site": "https://www.curitiba.pr.gov.br/servicos/pontos-de-pescado/623",
     "dt_atualiz": 1708435396000,
-    "observacao": "Atendimento:\r\n-5ª feira, das 8h às 17h\r\n-Sábado, das 7h às 13h",
-    "fonte": "Secretaria Municipal de Abastecimento Alimentar"
-   },
-   "geometry": {
-    "x": -49.23213049941596,
-    "y": -25.385110924564014
+    "observacao": "Atendimento:\r\n-5ª feira, das 8h às 17h\r\n-Sábado, das 7h às 13h"
    }
   }
  ]
