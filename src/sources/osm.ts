@@ -26,8 +26,8 @@ const CURITIBA_AREA = 'area["boundary"="administrative"]["admin_level"="8"]["IBG
 /**
  * The fixed category allowlist: public places only. Each maps to one exact OSM tag. Live categories are queried on the
  * Overpass instance. Police and fire stations are served from a list bundled once (osmBundled.ts), never live: the
- * instance's operator asks that no emergency or safety application depend on it, and no other free instance allowed
- * it (docs/sources.md). Hospitals are left out: public health units are covered by health_units_search (CNES).
+ * instance's operator asks that no emergency or safety application depend on it, and the only other free instance
+ * that allowed it (overpass.private.coffee) was not reachable (docs/sources.md). Hospitals are left out: public health units are covered by health_units_search (CNES).
  */
 export const LIVE_CATEGORIES = {
   park: ["leisure", "park"],
