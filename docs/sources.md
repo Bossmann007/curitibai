@@ -404,7 +404,7 @@ No network, and **no URBS file in this repository**. Same source, mirror, folder
 tools above: the newest `YYYY_MM_DD_pois.json` in `CURITIBAI_DATA_DIR/urbs/`, downloaded by a person from
 <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> and decompressed with `xz -d`, read through `src/localfs.ts` with
 the 20 MB cap, rows validated with zod one by one (`POI_NAME` and `POI_CATEGORY_NAME` required, `POI_LAT`/`POI_LON`
-comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint (both count every row of the file, excluded categories included). `license_note`
+comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint (both count every row of the file, excluded categories included). There is no missing-field note for `POI_DESC` (the 0.8.2 check), since real rows almost never fill it. `license_note`
 credits URBS and the dataset "Transporte Coletivo de Curitiba" (CC BY 4.0 as linked from its portal page) and names
 the file. That the portal page lists the POI export itself was not checked (the server never opens the mirror); the
 file sits in the same mirror folder as the bus exports.
