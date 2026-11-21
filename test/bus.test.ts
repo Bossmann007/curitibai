@@ -279,7 +279,7 @@ describe("invalid_data", () => {
     expect(out.data.items[0]).toMatchObject({ code: "901", color: expect.stringMatching(/^\s*$/), card_only: null });
     const note = emptyFieldsNote(["NOME_COR", "SOMENTE_CARTAO"]);
     expect(note).toBe(
-      "Every row of this file has an empty NOME_COR (`color`) and SOMENTE_CARTAO (`card_only`) fields, which real URBS " +
+      "Every valid row of this file has empty NOME_COR (`color`) and SOMENTE_CARTAO (`card_only`) fields, which real URBS " +
         "exports fill in at least some rows: these fields look missing or renamed in this file, so their empty or null " +
         "values in the results do not come from URBS.",
     );
@@ -305,7 +305,7 @@ describe("invalid_data", () => {
     const dep = await departures({ line_code: "901" });
     expect(dep.note).toContain(ADAPT_MISSING_NOTE);
     expect(dep.note).toContain(
-      "Every row of this file has an empty TABELA (`table`) field, which real URBS exports fill in at least some rows: " +
+      "Every valid row of this file has an empty TABELA (`table`) field, which real URBS exports fill in at least some rows: " +
         "the field looks missing or renamed in this file, so its empty or null values in the results do not come from URBS.",
     );
     expect(emptyFieldsNote(["ADAPT"])).toBe("");
