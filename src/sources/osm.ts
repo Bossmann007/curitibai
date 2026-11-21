@@ -13,10 +13,8 @@ export const OSM_ATTRIBUTION = "© OpenStreetMap contributors, ODbL";
 /** The server-side limit written into every query; the client waits a little longer for the answer to arrive. */
 export const OVERPASS_QUERY_TIMEOUT_S = 25;
 export const OVERPASS_TIMEOUT_MS = 30_000;
-/** The largest category (park) was 450 KB and the bus route list 139 KB on 2026-11-21; 3 MB leaves room to grow. */
+/** The largest category (park) was 450 KB on 2026-11-21; 3 MB leaves room to grow. */
 export const OVERPASS_MAX_BYTES = 3 * 1024 * 1024;
-/** Stops returned for one route at most (route 022 had 12 on 2026-11-21; a bound, not a measured maximum). */
-export const MAX_STOPS = 300;
 
 /**
  * Curitiba's municipal boundary (admin_level 8, IBGE 4106902). Overpass derives an area from it; every query is
@@ -50,16 +48,6 @@ export function placesQuery(category: PlaceCategory): string {
   return `${header()}nwr["${k}"="${v}"](area.cwb);out center;`;
 }
 
-export function busRoutesQuery(): string {
-  return `${header()}rel["type"="route"]["route"="bus"](area.cwb);out tags;`;
-}
-
-/** One route by relation id (an integer, never text), its member nodes and its platform ways (any platform role). */
-export function busRouteQuery(id: number): string {
-  if (!Number.isSafeInteger(id) || id <= 0) throw new RangeError("bad relation id");
-  return `${header()}rel(${id})["type"="route"]["route"="bus"](area.cwb)->.r;.r out body;(node(r.r);way(r.r:"platform");way(r.r:"platform_entry_only");way(r.r:"platform_exit_only"););out center;`;
-}
-
 export function osmUrl(type: string, id: number): string {
   return `https://www.openstreetmap.org/${type}/${id}`;
 }
@@ -69,7 +57,7 @@ export function osmLicenseNote(osmBase: string | null, fetchedAt: string): strin
     `${OSM_ATTRIBUTION} (${OSM_COPYRIGHT_URL}). Data from OpenStreetMap via the Overpass API (${OVERPASS_URL}), ` +
     `fetched at ${fetchedAt}; OSM data as of ${osmBase ?? "an unknown time (the server did not say)"}. ` +
     "OpenStreetMap is community-edited and may be incomplete or outdated. " +
-    "Unofficial; not affiliated with OpenStreetMap, the OSM Foundation, URBS or Prefeitura de Curitiba."
+    "Unofficial; not affiliated with OpenStreetMap, the OSM Foundation or Prefeitura de Curitiba."
   );
 }
 
@@ -80,7 +68,6 @@ interface RawElement {
   lon?: number;
   center?: { lat: number; lon: number };
   tags: Record<string, string>;
-  members?: { type: string; ref: number; role: string }[];
 }
 
 export interface OverpassResult {
@@ -125,13 +112,6 @@ export function parseOverpass(json: unknown): OverpassResult {
       out.lon = e.lon;
     }
     if (isObject(e.center) && finite(e.center.lat) && finite(e.center.lon)) out.center = { lat: e.center.lat, lon: e.center.lon };
-    if (Array.isArray(e.members)) {
-      out.members = e.members.flatMap((m) =>
-        isObject(m) && typeof m.type === "string" && Number.isSafeInteger(m.ref)
-          ? [{ type: m.type, ref: m.ref as number, role: typeof m.role === "string" ? m.role : "" }]
-          : [],
-      );
-    }
     elements.push(out);
   }
   return { osmBase: base, areaFound, elements };
@@ -271,92 +251,4 @@ export function getPlaces(category: PlaceCategory): Promise<Cached<{ osmBase: st
     // Keep only what the query asked for, in case the server returns anything else.
     places: r.elements.filter((e) => e.tags[k] === v).map((e) => toPlace(e, category)),
   }));
-}
-
-export interface BusRoute {
-  osm_id: number;
-  ref: string | null;
-  name: string | null;
-  from: string | null;
-  to: string | null;
-  operator: string | null;
-  network: string | null;
-  osm_url: string;
-}
-
-function isBusRoute(e: RawElement): boolean {
-  return e.type === "relation" && e.tags.type === "route" && e.tags.route === "bus";
-}
-
-export function toBusRoute(e: RawElement): BusRoute {
-  const t = e.tags;
-  return {
-    osm_id: e.id,
-    ref: guarded(t.ref),
-    name: guarded(t.name),
-    from: guarded(t.from),
-    to: guarded(t.to),
-    operator: guarded(t.operator),
-    network: guarded(t.network),
-    osm_url: osmUrl("relation", e.id),
-  };
-}
-
-export function getBusRoutes(): Promise<Cached<{ osmBase: string | null; routes: BusRoute[] }>> {
-  return cachedQuery(busRoutesQuery(), (r) => ({ osmBase: r.osmBase, routes: r.elements.filter(isBusRoute).map(toBusRoute) }));
-}
-
-export interface BusStop {
-  seq: number;
-  name: string | null;
-  lat: number | null;
-  lon: number | null;
-  osm_type: "node" | "way";
-  osm_id: number;
-}
-
-const STOP_ROLE = /^(stop|platform)(_entry_only|_exit_only)?$/;
-
-function looksLikeStop(e: RawElement): boolean {
-  const t = e.tags;
-  return t.highway === "bus_stop" || t.public_transport === "platform" || t.public_transport === "stop_position";
-}
-
-/**
- * The route's stops in member order: members whose role is stop/platform (PTv2), or untagged-role nodes that are
- * bus stops (older PTv1 routes). A stop position and its platform usually come as a pair with the same name; a
- * member with the same name as the one just kept is merged into it.
- */
-export function orderedStops(route: RawElement, elements: RawElement[]): { stops: BusStop[]; truncated: boolean } {
-  const byKey = new Map(elements.filter((e) => e.type !== "relation").map((e) => [`${e.type}/${e.id}`, e]));
-  const stops: BusStop[] = [];
-  let lastName: string | null = null;
-  let truncated = false;
-  for (const m of route.members ?? []) {
-    if (m.type !== "node" && m.type !== "way") continue;
-    const e = byKey.get(`${m.type}/${m.ref}`);
-    if (!e) continue;
-    if (!STOP_ROLE.test(m.role) && !(m.type === "node" && looksLikeStop(e))) continue;
-    const name = guarded(e.tags.name);
-    if (name !== null && name === lastName) continue;
-    if (stops.length >= MAX_STOPS) {
-      truncated = true;
-      break;
-    }
-    lastName = name;
-    const c = coords(e);
-    stops.push({ seq: stops.length + 1, name, lat: c?.lat ?? null, lon: c?.lon ?? null, osm_type: m.type, osm_id: m.ref });
-  }
-  return { stops, truncated };
-}
-
-export function getBusRoute(
-  id: number,
-): Promise<Cached<{ osmBase: string | null; route: (BusRoute & { stops: BusStop[]; stops_truncated: boolean }) | null }>> {
-  return cachedQuery(busRouteQuery(id), (r) => {
-    const rel = r.elements.find((e) => isBusRoute(e) && e.id === id);
-    if (!rel) return { osmBase: r.osmBase, route: null };
-    const { stops, truncated } = orderedStops(rel, r.elements);
-    return { osmBase: r.osmBase, route: { ...toBusRoute(rel), stops, stops_truncated: truncated } };
-  });
 }

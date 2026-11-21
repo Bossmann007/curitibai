@@ -7,7 +7,7 @@ import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/port
 import { CNES_TYPES_URL, establishmentsUrl } from "../src/sources/cnes.js";
 import { publicationUrl } from "../src/sources/pncp.js";
 import { ALERTS_URL, FORECAST_URL } from "../src/sources/inmet.js";
-import { busRoutesQuery, OVERPASS_URL, placesQuery } from "../src/sources/osm.js";
+import { OVERPASS_URL, placesQuery } from "../src/sources/osm.js";
 
 export function fixture(name: string): string {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -79,7 +79,6 @@ export function osmRoutes(): Record<string, Route> {
     [`POST ${OVERPASS_URL}`]: {
       byData: {
         [placesQuery("library")]: { body: fixture("osm_edges_synthetic.json"), contentType: JSON_TYPE },
-        [busRoutesQuery()]: { body: fixture("osm_route_synthetic.json"), contentType: JSON_TYPE },
       },
     },
   };
@@ -158,7 +157,6 @@ export const SAMPLE_CALLS: { name: string; arguments: Record<string, unknown> }[
   { name: "weather_forecast", arguments: {} },
   { name: "weather_alerts", arguments: {} },
   { name: "places_search", arguments: { category: "library" } },
-  { name: "bus_lines", arguments: {} },
 ];
 
 /** Error results carry their JSON in the text content only. */
