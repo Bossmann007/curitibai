@@ -9,6 +9,7 @@ import { detranPrInfo } from "./detranPrInfo.js";
 import { eventsSearch } from "./eventsSearch.js";
 import { healthUnitsSearch } from "./healthUnitsSearch.js";
 import { localCsvSummary } from "./localCsvSummary.js";
+import { nextBusesNear } from "./nextBusesNear.js";
 import { openDatasetsSearch } from "./openDatasetsSearch.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
@@ -31,6 +32,7 @@ export const tools = [
   busLineStops,
   busDepartures,
   busStopsNear,
+  nextBusesNear,
   cityPointsSearch,
   eventsSearch,
   vaccinationSitesSearch,

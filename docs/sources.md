@@ -336,7 +336,7 @@ Prior art (2026-11-19, `gh search repos`): "carta de serviços" found the federa
 (`servicosgovbr/cartas-de-servico`) and unrelated agency projects; "curitiba mcp", "curitiba servicos mcp" and
 "prefeitura curitiba servicos" found nothing. Nothing covers Curitiba's catalog. Built.
 
-### `bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`: URBS daily exports (local files, not shipped)
+### `bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near`: URBS daily exports (local files, not shipped)
 
 No network, and **no URBS file in this repository**. The source is the dataset "Transporte Coletivo de Curitiba" on
 the Portal de Dados Abertos de Curitiba (publisher URBS — Urbanização de Curitiba S.A.; portal page
@@ -347,7 +347,7 @@ disallowed (table above), so the server never fetches them; a person downloads `
 under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page.
 That page's body reads "Dados Abertos - Conteúdo licenciado sob uma Licença Creative Commons." with the by/4.0 badge
 (checked 2026-11-21 with one GET). `license_note`
-attributes URBS and the dataset and names the file (`bus_stops_near`, since 0.11.0, names both files it reads).
+attributes URBS and the dataset and names the file (`bus_stops_near`, since 0.11.0, and `next_buses_near`, since 0.13.0, name every file they read).
 
 `bus_stops_near` (0.11.0) reads the newest `pontosLinha` and the newest `linhas` (their dates may differ; `checked_at`
 is the stops file's, and `note` names the lines file when its date differs) and groups the stop rows by `NUM`. On the
@@ -357,6 +357,22 @@ takes a stop's name, position and type from its first row in the file with both 
 (line, SENTIDO) pair once; 297 stops have the same pair in more than one row (another itinerary of the same
 direction). Distance is the haversine distance of `city_points_search`. Grouping and distance run on every call;
 reading and validating the 4.2 MB file is most of the time.
+
+`next_buses_near` (0.13.0) reads the newest `tabelaLinha`, `pontosLinha` and `linhas` (dates may differ; `checked_at`
+is the timetable's, and `note` names the other files when their date differs). It finds the stops within the radius
+the way `bus_stops_near` does (same grouping and distance), then makes one pass over the timetable rows, keeping those
+at a nearby stop under the day code and time range of the window. On the 2026-11-20 files, of the 896 (line, stop)
+pairs in the timetable, 621 (51,849 rows, 73%) are at stops where the stops file lists that line in more than one
+SENTIDO (terminals and tube stations), 225 in exactly one and 50 in none; so each departure carries `directions`, every
+SENTIDO listed for that line at that stop, not one direction. Timetables cover few stops: within 400 m of seven points
+checked (Praça Tiradentes, Rua XV, Batel, Portão, Boqueirão, Santa Felicidade, CIC), 55 of 73, 5 of 31, 2 of 14, 13 of
+30, 5 of 15, 0 of 7 and 3 of 12 stops had times, hence `stops_with_times` next to `stops_considered`. The day code,
+when not given, comes from today's weekday in Curitiba (America/Sao_Paulo), with the inferred reading below; holidays
+are not detected. Past 24:00 the window reads the times from 00:00 under the next calendar day's code (inferred the
+same way), never moving a time between codes (as `bus_departures`); with an explicit `day` that code is unknown, so
+the window stops at 23:59 and `cut_at_midnight` says so. Measured on the 2026-11-20 files with the built tool (Apple
+M4, 15 calls, 400 m around Praça Tiradentes, 08:00 weekday, 60 min): median 73 ms, first call 134 ms; reading and
+validating the three files is most of it.
 
 Each tool lists the names in `urbs/` (no file is opened to choose), takes the newest valid date for its own kind,
 and reads that one file through `src/localfs.ts` with the same rules as `city_services_search` (realpath inside the

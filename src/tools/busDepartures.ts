@@ -4,7 +4,7 @@ import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInpu
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** What is known about times after midnight (checked on the 2026-11-20 file), and what is not. */
 export const MIDNIGHT_NOTE =

@@ -65,7 +65,7 @@ export interface BusStopsNearArgs {
   offset: number;
 }
 
-interface Stop {
+export interface Stop {
   /** The stop's first row (file order) with both coordinates: name, position and type come from it. */
   row: Ponto;
   lat: number;
@@ -75,7 +75,7 @@ interface Stop {
 }
 
 /** Rows grouped by stop NUM. Stops without coordinates in any row are left out (they cannot be placed). */
-function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
+export function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
   const stops = new Map<string, Stop>();
   const pending = new Map<string, Map<string, { cod: string; sentido: string }>>(); // lines seen before a coordinate
   for (const r of rows) {
