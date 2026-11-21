@@ -107,6 +107,9 @@ describe("city_points_search", () => {
     expect((await search({ name: "teatro" })).note).toContain(MIXED_NOTE);
     expect((await search({ category: "feira" })).note).not.toContain(MIXED_NOTE);
     expect((await search({ category: "special_education" })).note).not.toContain(MIXED_NOTE); // no rows, no results
+    const firstOnly = await search({ limit: 1 }); // by name, "Câmbio Verde…" comes first; Teatro Inventado is further on
+    expect(firstOnly.data.items[0]?.category).not.toBe("cultural_space");
+    expect(firstOnly.note).toContain(MIXED_NOTE);
   });
 
   it("matches name words with accents and case ignored", async () => {
