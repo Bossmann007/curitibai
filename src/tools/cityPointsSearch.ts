@@ -296,7 +296,8 @@ export const cityPointsSearch: ToolDef<typeof cityPointsSearchInput, typeof city
     "restaurants, regional and city offices, Ruas da Cidadania, libraries, cemeteries, CMEIs, municipal and state " +
     "schools, cultural spaces, bus terminals, transit-card offices and public health units. Filter by category id, " +
     "words in the name, and/or a position with a radius (nearest first, with distance_m); call with no arguments to " +
-    "list the categories with counts. URBS's private-business categories (supermarkets, markets, shopping centres, " +
+    "list the categories with counts, split per URBS name in source_categories (a 0 there may mean URBS renamed " +
+    "that name; such rows are dropped without a warning). URBS's private-business categories (supermarkets, markets, shopping centres, " +
     "private schools and crèches, hotels, private clubs, newsstands), churches, hospitals, police and categories not " +
     "on the allowlist are never returned. " +
     `${MIXED_CATEGORIES.join(", ")} are ${MIXED_DETAIL}. No days or hours. ` +
