@@ -442,7 +442,7 @@ file). Category names are compared with accents, case and repeated spaces ignore
 | `caps` | SAUDE CAPS (10) |
 | `health_district` | SAUDE DIST SANITARIO (9) |
 
-Total 1,219 rows. "Public-facing" is the test, not "publicly owned": `cultural_space` also holds commercial cinemas
+Total 1,219 rows. "Open to the public" is the test, not "publicly owned" (owner decision 2026-11-21: keep these three, with a warning): `cultural_space` also holds commercial cinemas
 and private theatres and museums, and `special_education` and `vocational_education` hold private or non-profit
 schools. They are institutions open to the public, listed by the city under its own categories, not people.
 
@@ -452,8 +452,11 @@ EDUC ESCOLA PARTICULAR (179), HOTEL (152), IGREJA (108), ABAST SUPER MERCADO (17
 SEG DEFESA SOCIAL (21), SEG POLICIA CIVIL (44), SEG POLICIA MILITAR (16) (police is in `places_search`, with its
 emergency note), EQUIPAMENTOS URBANOS (5), and any category not in the allowlist above, including a new or renamed
 one. Reason: these are private businesses, and their names can be people's names. `note` gives the count of dropped
-rows and names each allowlisted URBS category name with no row in the file (it looks missing or renamed; checked per
-name, so a rename inside a multi-name id such as `bus_terminal` is reported too).
+rows and names each category id with no row at all in the file (its URBS names look missing or renamed). It is checked
+per id, not per URBS name, because three names have a single row in the 2026-11-20 file (Unidade Saude 24H, RUA DA
+CIDADANIA - CARTÃO TRANSPORTE, ESTAÇÃO TUBO - CARTÃO TRANSPORTE) and could vanish without a rename. When the returned
+page includes `cultural_space`, `special_education` or `vocational_education`, `note` says they may include private or
+non-profit institutions.
 
 Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked
 text. `near` keeps points within `radius_m` (great-circle distance, mean Earth radius 6,371,008.8 m; default 1,500 m,
