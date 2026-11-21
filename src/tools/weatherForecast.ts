@@ -37,7 +37,7 @@ export const weatherForecastOutput = envelope(
 export const FORECAST_NOTE =
   `INMET forecast for Curitiba (IBGE ${CURITIBA_GEOCODE}). INMET gives morning, afternoon and night for the first ` +
   "days and one whole-day entry for later days; both are returned as published. Text is INMET's, unchanged. A field " +
-  "INMET left out or empty is null.";
+  "INMET left out or empty is null. Confirm on the official channel before you act: https://portal.inmet.gov.br/ (INMET).";
 
 export const weatherForecast: ToolDef<typeof weatherForecastInput, typeof weatherForecastOutput> = {
   name: "weather_forecast",

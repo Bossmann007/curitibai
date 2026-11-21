@@ -15,6 +15,7 @@ import {
   type UrbsFile,
   type UrbsKind,
 } from "../sources/urbs.js";
+import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fail } from "./common.js";
 
 /** Shared by the three bus tools and city_points_search: `{data, source_url, checked_at, license_note, note}`. */
@@ -49,6 +50,10 @@ export function page<T>(rows: readonly T[], offset: number, limit: number) {
 const andList = (items: readonly string[]) =>
   items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
+/** Said by the two tools people use to catch a bus (bus_departures, next_buses_near). The server never opens the URL. */
+export const BUS_CONFIRM_NOTE =
+  "Confirm on the official channel before you go: https://www.urbs.curitiba.pr.gov.br/ (URBS) or the 156.";
+
 export function urbsLicenseNote(...files: string[]): string {
   return (
     "Source: URBS — Urbanização de Curitiba S.A., dataset \"Transporte Coletivo de Curitiba\" on the Portal de Dados " +
@@ -56,8 +61,8 @@ export function urbsLicenseNote(...files: string[]): string {
     "downloaded by the user from the portal's mirror " +
     `(${URBS_MIRROR_URL}). ${URBS_LICENSE}. Values are ` +
     "returned as published, except that coordinates are converted to decimal numbers and e-mail-, phone- and " +
-    "CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. Unofficial; not affiliated with URBS or the " +
-    "Prefeitura de Curitiba."
+    `CPF/CNPJ-shaped text in a stop name would be replaced by [masked]. ${PORTAL_DISCLAIMER} Unofficial; not ` +
+    "affiliated with URBS or the Prefeitura de Curitiba."
   );
 }
 

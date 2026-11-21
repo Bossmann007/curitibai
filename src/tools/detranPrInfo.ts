@@ -17,7 +17,8 @@ import { fail, ok, type ToolDef } from "./common.js";
 export const DETRAN_BASE_NOTE =
   "Unofficial; not affiliated with Detran-PR. Public facts copied by hand from the Detran-PR and Paraná legislation " +
   "websites (no terms of use or licence was found there); each item has its source URL and the date it was checked. " +
-  "This tool makes no network call. Confirm at the source before acting.";
+  "This tool makes no network call. " +
+  "Confirm on the official channel before you go or act: https://www.detran.pr.gov.br/ (Detran-PR).";
 
 const Dated = { source_url: z.string().url(), checked_at: z.string().date() };
 

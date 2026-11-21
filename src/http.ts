@@ -15,6 +15,74 @@ export class RateLimitedError extends SourceUnavailableError {
   }
 }
 
+/**
+ * A final refusal: HTTP 401 or 403, or a 429 whose HTML page is a CAPTCHA. Never retried (not by PNCP's single
+ * retry either), never asked again with other headers, and there is no browser fallback. The host is then not asked
+ * again for REFUSAL_BLOCK_MS in this process. Paged tools return what they have with next_page null.
+ */
+export class SourceRefusedError extends SourceUnavailableError {
+  constructor(readonly status: number) {
+    super(`HTTP ${status} (refused; not retried)`);
+    this.name = "SourceRefusedError";
+  }
+}
+
+/** After a final refusal, the host is not asked again in this process for this long; the same refusal is returned. */
+export const REFUSAL_BLOCK_MS = 10 * 60 * 1000;
+const refusedHosts = new Map<string, { until: number; status: number }>();
+
+/** Tests only: forget every host refusal. */
+export function resetHostRefusals(): void {
+  refusedHosts.clear();
+}
+
+function checkNotRefused(url: string): void {
+  const host = new URL(url).hostname.toLowerCase();
+  const r = refusedHosts.get(host);
+  if (r === undefined) return;
+  if (Date.now() < r.until) throw new SourceRefusedError(r.status);
+  refusedHosts.delete(host);
+}
+
+function refuse(url: string, status: number): never {
+  refusedHosts.set(new URL(url).hostname.toLowerCase(), { until: Date.now() + REFUSAL_BLOCK_MS, status });
+  throw new SourceRefusedError(status);
+}
+
+/** Bytes of a 429 HTML body read to look for a CAPTCHA; the rest is discarded. */
+const CAPTCHA_SNIFF_BYTES = 16 * 1024;
+const CAPTCHA = /captcha|cf-challenge|challenge-platform|cf-turnstile/i;
+
+/** True when a 429 answer is an HTML page with a CAPTCHA (read at most CAPTCHA_SNIFF_BYTES); the body is released. */
+async function isCaptchaPage(res: Response): Promise<boolean> {
+  if (!/^text\/html\b/i.test(res.headers.get("content-type")?.trim() ?? "") || !res.body) {
+    await res.body?.cancel().catch(() => undefined);
+    return false;
+  }
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (size < CAPTCHA_SNIFF_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.byteLength;
+    }
+  } catch {
+    return false;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    bytes.set(c, at);
+    at += c.byteLength;
+  }
+  return CAPTCHA.test(new TextDecoder().decode(bytes.subarray(0, CAPTCHA_SNIFF_BYTES)));
+}
+
 /** The body was larger than the cap for this request (declared or streamed). */
 export class ResponseTooLargeError extends SourceUnavailableError {
   constructor(readonly maxBytes: number) {
@@ -102,6 +170,7 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
   let body: URLSearchParams | undefined = options.form ? new URLSearchParams(options.form) : undefined;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     if (!isAllowedUrl(url)) throw new UrlNotAllowedError();
+    checkNotRefused(url);
     let res: Response;
     try {
       res = await fetch(url, {
@@ -139,11 +208,13 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       continue;
     }
     if (!res.ok) {
-      await res.body?.cancel().catch(() => undefined);
       if (res.status === 429) {
+        if (await isCaptchaPage(res)) refuse(url, 429);
         const ra = res.headers.get("retry-after")?.trim() ?? "";
         throw new RateLimitedError(/^\d{1,6}$/.test(ra) ? Number(ra) : null);
       }
+      await res.body?.cancel().catch(() => undefined);
+      if (res.status === 401 || res.status === 403) refuse(url, res.status);
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
     return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res, maxBytes) };

@@ -21,7 +21,7 @@
    "sequencialCompra": 1,
    "numeroCompra": "1",
    "processo": "PROCESSO FICTICIO 01/2026",
-   "objetoCompra": "Aquisição de medicamentos ficticios. Contato: fulana.ficticia@example.invalid, (41) 3333-0000; CPF do responsável 123.456.789-09; CNPJ 12.345.678/0001-95.",
+   "objetoCompra": "Aquisição de medicamentos ficticios. Contato: fulana.ficticia@example.invalid, (41) 3333-0000; CPF do responsável 123.456.789-00; CNPJ 12.345.678/0001-95.",
    "modalidadeId": 6,
    "modalidadeNome": "Pregão - Eletrônico",
    "situacaoCompraId": 1,
@@ -48,15 +48,15 @@
    "linkProcessoEletronico": null,
    "justificativaPresencial": null,
    "emendaParlamentar": false,
-   "informacaoComplementar": "Responsável técnico: BELTRANO FICTICIO DA SILVA, CPF 98765432100",
+   "informacaoComplementar": "Responsável técnico: BELTRANO FICTICIO DA SILVA, CPF 98765432101",
    "orgaoSubRogado": null,
    "unidadeSubRogada": null,
    "fontesOrcamentarias": [],
    "usuarioNome": "SICRANO FICTICIO PUBLICADOR",
-   "niFornecedor": "12345678909",
+   "niFornecedor": "12345678900",
    "nomeRazaoSocialFornecedor": "FORNECEDORA PESSOA FICTICIA",
    "fornecedor": {
-    "ni": "12345678909",
+    "ni": "12345678900",
     "nome": "FORNECEDORA PESSOA FICTICIA",
     "tipoPessoa": "PF"
    }
@@ -113,7 +113,7 @@
    "unidadeSubRogada": null,
    "fontesOrcamentarias": [],
    "usuarioNome": "PLATAFORMA FICTICIA",
-   "niFornecedor": "98765432100",
+   "niFornecedor": "98765432101",
    "nomeRazaoSocialFornecedor": "FULANO FICTICIO PRIMEIRO"
   },
   {

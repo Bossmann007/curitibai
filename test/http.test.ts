@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchText, isAllowedUrl, ResponseTooLargeError, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
+import {
+  fetchText,
+  isAllowedUrl,
+  RateLimitedError,
+  REFUSAL_BLOCK_MS,
+  resetHostRefusals,
+  ResponseTooLargeError,
+  SourceRefusedError,
+  SourceUnavailableError,
+  UrlNotAllowedError,
+} from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
 import { rateLimitedMessage } from "../src/tools/common.js";
 import { stubFetch } from "./helpers.js";
@@ -134,6 +144,44 @@ describe("fetchText", () => {
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
     stubFetch({ [`GET ${OK}`]: { status: 403, body: "Access Denied" } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
+  });
+
+  it.each([401, 403])("HTTP %i is a final refusal: one request, SourceRefusedError, never retried", async (status) => {
+    const calls = stubFetch({ [`GET ${OK}`]: { status, body: "Access Denied" } });
+    const err = await fetchText(OK).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SourceRefusedError);
+    expect(err).toBeInstanceOf(SourceUnavailableError);
+    expect(err).not.toBeInstanceOf(RateLimitedError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("after a refusal the host is not asked again for 10 minutes (same refusal, no network call)", async () => {
+    const calls = stubFetch({ [`GET ${OK}`]: { status: 403, body: "Access Denied" } });
+    for (let i = 0; i < 3; i++) await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceRefusedError);
+    expect(calls).toHaveLength(1);
+    const other = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?x=1";
+    const otherCalls = stubFetch({ [`GET ${other}`]: { body: "{}", contentType: "application/json" } });
+    await fetchText(other); // another host is not blocked
+    expect(otherCalls).toHaveLength(1);
+    vi.useFakeTimers({ now: Date.now() + REFUSAL_BLOCK_MS + 1, toFake: ["Date"] });
+    try {
+      const later = stubFetch({ [`GET ${OK}`]: { body: "ok" } });
+      await expect(fetchText(OK)).resolves.toMatchObject({ body: "ok" });
+      expect(later).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("an HTTP 429 whose HTML page is a CAPTCHA is a final refusal, not rate limiting", async () => {
+    const page = '<html><body><div class="g-recaptcha" data-sitekey="x"></div></body></html>';
+    stubFetch({ [`GET ${OK}`]: { status: 429, body: page, contentType: "text/html; charset=utf-8", headers: { "retry-after": "1" } } });
+    const err = await fetchText(OK).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SourceRefusedError);
+    expect(err).not.toBeInstanceOf(RateLimitedError);
+    resetHostRefusals(); // the refusal above blocks the host for 10 minutes
+    stubFetch({ [`GET ${OK}`]: { status: 429, body: "slow down", contentType: "text/html", headers: { "retry-after": "1" } } });
+    await expect(fetchText(OK)).rejects.toBeInstanceOf(RateLimitedError);
   });
 
   it("caps the response size", async () => {

@@ -59,8 +59,11 @@ export const MODALITIES: Readonly<Record<number, string>> = {
   20: "Diálogo Competitivo Internacional",
 };
 
-/** Direct awards: their objects often name the contracted person. Owner decision 2026-11-19. */
-export const OBJECT_WITHHELD_MODALITIES: ReadonlySet<number> = new Set([8, 9, 14]);
+/**
+ * Direct awards and credenciamento: their objects often name the contracted or accredited person. Owner decisions
+ * 2026-11-19 (8, 9, 14) and 2026-11-21 (12, v0.13.2).
+ */
+export const OBJECT_WITHHELD_MODALITIES: ReadonlySet<number> = new Set([8, 9, 12, 14]);
 
 /** Fails closed: an unknown modality code withholds the object too. */
 export function objectReturnable(modality: number | null): boolean {
@@ -71,7 +74,7 @@ export const PNCP_LICENSE_NOTE =
   "Source: Portal Nacional de Contratações Públicas (PNCP), API de Consulta (https://pncp.gov.br/api/consulta). " +
   "The PNCP site (https://www.gov.br/pncp/pt-br) is published under CC BY-ND 3.0; no separate licence for the API " +
   "data was found. Selected fields only; no supplier is returned. Values are passed on unchanged, except the object " +
-  "text: for dispensa, inexigibilidade and inaplicabilidade it is withheld (it may name a person), and for other " +
+  "text: for dispensa, inexigibilidade, credenciamento and inaplicabilidade it is withheld (it may name a person), and for other " +
   "modalities CPF/CNPJ-shaped numbers, e-mails and phone numbers are replaced by [masked], whitespace is collapsed, " +
   "dashes are normalised and it is cut at 300 characters. Open the link for the official record. Unofficial; not affiliated with PNCP, the Ministério da Gestão " +
   "e Inovação em Serviços Públicos (MGI) or Prefeitura de Curitiba.";

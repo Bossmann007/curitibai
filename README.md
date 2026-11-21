@@ -9,10 +9,16 @@ OpenStreetMap, give URBS bus lines, stops and timetables and points of interest 
 public health units and more) from files the user downloaded, search Curitiba's events calendar from a file written by a
 separate collector script, list the Prefeitura's public vaccination sites (Imuniza Já), and summarise a CSV file the user downloaded by hand.
 
-**Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, URBS, the Ministério da Saúde,
-PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
-(Instituto Nacional de Meteorologia), the Instituto Municipal de Turismo de Curitiba, or OpenStreetMap / the OSM Foundation.**
-Data comes from the sources as it is; always confirm important information at the source.
+**Independent, unofficial project. It has no link with the Prefeitura Municipal de Curitiba and is not affiliated
+with, endorsed by or connected to it, URBS, the Ministério da Saúde, PNCP / the Ministério da Gestão e Inovação em
+Serviços Públicos, Detran-PR / the Governo do Paraná, INMET (Instituto Nacional de Meteorologia), the Instituto
+Municipal de Turismo de Curitiba, or OpenStreetMap / the OSM Foundation.** Names cited here (for example "Curitiba
+App") belong to their owners and appear only to identify them. Data is provided as is, with no warranty: it may be
+incomplete or outdated, so confirm anything important on the official channels before you go or act:
+[URBS](https://www.urbs.curitiba.pr.gov.br/) (buses), [Imuniza Já](https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/)
+(vaccination), [INMET](https://portal.inmet.gov.br/) (weather), [Detran-PR](https://www.detran.pr.gov.br/) (vehicles)
+or the 156 (Prefeitura). **Not for emergencies: call 190 (Polícia Militar), 192 (SAMU), 193 (Corpo de Bombeiros) or
+199 (Defesa Civil).**
 
 ## Tools
 
@@ -49,7 +55,7 @@ wait in `note`.
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page failed (with `note` giving the wait when it was refused with HTTP 429) | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
-| `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
+| `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards and credenciamento, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
 | `detran_pr_info` | `topic`: `licensing_calendar` or `units`; optional `plate_final` (0–9, calendar only) | Calendar: the 2026 licensing due date for one plate final digit (or all ten, earliest first, each with `past`, which only means the Anexo I due date has passed; `note` quotes the Anexo II enforcement calendar as published) and the fee (R$ 94,61). Units: the 01ª CIRETRAN (Curitiba) and its five PATRANs (address, phone, services as published), the scheduling rule, and the site's two conflicting general hours (8h–16h and 8h–15h30), both returned. Each item has `source_url` and `checked_at`. **No network call**; for both topics `note` says the data may be outdated once the year in Curitiba is past 2026, and for units also once more than 180 days have passed since `checked_at` | Portaria DETRAN 907/2025 (Anexos I and II), a Detran-PR news page, `detran.pr.gov.br/unidades` and its home page, checked by hand |
 | `weather_forecast` | optional `days` 1–5 (default 3) | INMET's forecast for Curitiba, per day (`date`, `weekday`) and period: `morning`, `afternoon` and `night` for the first days, one `whole_day` entry for later days, as INMET publishes them. Each period: summary, min/max temperature (°C), min/max humidity (%), wind direction and intensity, sunrise and sunset. A field INMET leaves out or empty is `null` | INMET forecast API (`GET apiprevmet3.inmet.gov.br/previsao/4106902`) |
 | `weather_alerts` | optional `when`: `today`, `upcoming` or `all` (default) | INMET's active warnings whose area includes Curitiba (IBGE 4106902): id, which INMET lists it is in (`listed_in`: `today`, `upcoming` or both), description, severity, start, end (as published, no time zone given), risks and instructions, and `count`. A warning listed identically in both lists is returned once. When none covers Curitiba, `count` is 0 and `note` says so. Polygons, area lists and icons are dropped | INMET warnings API (`GET apiprevmet3.inmet.gov.br/avisos/ativos`) |
@@ -95,6 +101,7 @@ outros". Rows marked * are features the owner noted in the app itself; the listi
 says "agendamentos" but not Saúde Já). The app itself was not tested here, so no row claims CuritibAI is better:
 the listing's "entre outros" means a feature missing from it may still be in the app.
 CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login is out of scope by design.
+Compared on 2026-11-21 with public sources (the App Store listing above), not with the app itself.
 
 | Curitiba App feature | CuritibAI | Why |
 |---|---|---|
@@ -107,7 +114,7 @@ CuritibAI is a read-only assistant tool, not a replacement: anything that needs 
 | Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
 | Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
 | Cartão Transporte * | — | Needs a login; out of scope |
-| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search, all answerable in plain language by an assistant |
+| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search |
 
 ## Deferred
 
@@ -186,9 +193,12 @@ The server never downloads data files. A person does it in a browser:
 The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns column
 names and counts. Data rows (after the first line) are never returned. What it does return, and what it refuses:
 
-- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 3
-  rows are added to `other_count` instead of being listed, so that a filter on a unique column cannot reveal a single
-  record.
+- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 5
+  rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
+  cannot reveal a single record.
+- **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
+  could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
+  ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). This is a guard for contact data only: names of people in values are not detected.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
   nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
@@ -214,7 +224,8 @@ rows.
 ### Finding a city service (Carta de Serviços)
 
 `city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
-**This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+The copy must be saved by a person in an ordinary browser session; no automated capture of that host is part of this
+project (see [docs/sources.md](docs/sources.md)). The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds; new copies must be saved by a person in an ordinary browser session. **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
 terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
 `CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
 
@@ -308,7 +319,7 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
   the day's list pages (Curitiba's date; a pager showing more than 10 stops the run) and the detail page of each event
   it needs. It waits 5 s between requests (longer if a recorded `Crawl-delay` or `Request-rate` asks for more), stops
   after 30 minutes or at 05:50 UTC, whichever comes first, gives each request 15 s, follows no redirect, and stops
-  without retrying on any error status (403, 429, 5xx included). Node built-ins only; User-Agent `curitibai-mcp/0.10`.
+  without retrying on any error status (403, 429, 5xx included). Node built-ins only; User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)` (the repository as contact).
 - Detail pages it has read are kept in `events/details.json` with the time each was read (`fetched_at`), written after
   every page, so a run stopped by the deadline, the window or an error keeps its progress and the next run reads only
   the rest. A detail is read again when it is 7 days old or the event starts today or in the next 3 days, but never
@@ -344,6 +355,31 @@ week".
 
 ## Privacy and safety
 
+### Privacy notice
+
+- No user accounts; the server does not store or log queries. Search terms go only to the source they query, and
+  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page).
+- Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
+  objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through (below).
+- Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues).
+
+### Collection rules
+
+- Each host's robots.txt was checked before the host was added (recorded in [docs/sources.md](docs/sources.md)); a
+  host or path it disallows is never fetched. The events collector (the only collector) reads robots.txt on every run,
+  stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
+  (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
+- A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
+  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable`; no retry, no other headers, no browser
+  fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
+  with `next_page: null`), and the events collector stops the run on any non-200 answer, 403 included. Another 429 is
+  returned as `rate_limited` with the source's wait. PNCP alone retries once: after a connection error, or after a
+  429 whose `Retry-After` is 5 s or less; never after a 401, 403 or CAPTCHA.
+- Requests identify the project and its contact: User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`.
+- Removal requests: open an issue in this repository; the content is removed from the next release.
+
+### Details
+
 - No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
   (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/` (`events.json`,
   `status.json`, its detail cache `details.json` and its lock `.lock`). The cache is in
@@ -359,7 +395,7 @@ week".
 - The events collector (`scripts/fetch-events.mjs`) is separate from the server and contacts only
   `https://turismo.curitiba.pr.gov.br`, from its own allowlist, and only paths of the list and event pages plus
   robots.txt.
-- Requests use a generic User-Agent, `curitibai-mcp/0.7`, a 10 s timeout per request (25 s for PNCP, which is slow;
+- Requests use the User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)` (the repository as contact), a 10 s timeout per request (25 s for PNCP, which is slow;
   15 s for INMET and the vaccination page; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
   response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
   with a message naming the cap.
@@ -384,7 +420,7 @@ week".
   this fails closed, so a link with a long digit run (some social-media ids) or over 300 characters is dropped too.
 - `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
   has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
-  so the gate is by modality: for **dispensa (8), inexigibilidade (9), inaplicabilidade (14)** and any unknown modality
+  so the gate is by modality: for **dispensa (8), inexigibilidade (9), credenciamento (12, since 0.13.2), inaplicabilidade (14)** and any unknown modality
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
   with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
@@ -396,17 +432,17 @@ week".
   ("Maria Silva @ x.com" keeps "Maria").
   **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
   numbers (amounts of 10+ digits, long process numbers, 2 digits or 0 plus 2 digits followed by 8 or 9 digits).
-  Two year-like numbers (19xx/20xx) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them
-  ("2025 - 2026", "2026-2027") are kept, so an 8-digit phone that looks like that is not masked. `query` never matches a withheld object.
+  Since 0.13.2 two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are masked too,
+  because an 8-digit phone can look like that; "2025/2026" is kept. `query` never matches a withheld object.
 - `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
   of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
   links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same
-  masking as PNCP objects as a guard; on the 2026-11-19/20 capture it changes two summaries, both public text (an
+  masking as PNCP objects as a guard; on the 2026-11-19/20 capture (measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
   office's institutional e-mail, and a social-media handle that looks like an e-mail).
-- The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files it
+- The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files (measured before 0.13.2 widened the mask) it
   changes 29 of the 6,841 stop names in `pontosLinha`, all street-number ranges read as phone numbers
   ("R. Exemplo, 1469-1411" becomes "R. Exemplo, [masked]"), and none in `tabelaLinha`. Line names are not masked.
-  `city_points_search` passes names and descriptions through the same masking; on the 2026-11-20 `pois` file it
+  `city_points_search` passes names and descriptions through the same masking; on the 2026-11-20 `pois` file (measured before 0.13.2) it
   changes none of the 1,219 allowlisted points. It drops every row outside its category allowlist before searching.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads, close, and listing the names in `urbs/`). CSV files are returned only as aggregates;
@@ -444,20 +480,19 @@ week".
   licence was found for it, so this repository does not include it and the server never fetches it.
   `city_services_search` returns the titles and summaries of your local file unchanged (except masked text, see
   "Privacy and safety") and attributes them to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link
-  and the capture date in `license_note`. The `www.curitiba.pr.gov.br` host answers 403 to non-browser clients, and
-  the service pages' host (`servicos.curitiba.pr.gov.br`) has robots.txt `Disallow: /`; the server contacts neither.
-  For the owner's own copy, the listing pages were read with a scripted browser session on 2026-11-19/20 (details in
-  [docs/sources.md](docs/sources.md)); that copy may miss a few services, and its summaries are the site's short
+  and the capture date in `license_note`. The server contacts neither `www.curitiba.pr.gov.br` nor the service
+  pages' host (`servicos.curitiba.pr.gov.br`, robots.txt `Disallow: /`). The owner's own copy is dated 2026-11-19/20
+  (details in [docs/sources.md](docs/sources.md)); it may miss a few services, and its summaries are the site's short
   teasers, some of them empty (those services are found by title only).
-- OpenStreetMap: data © OpenStreetMap contributors, under the [ODbL](https://www.openstreetmap.org/copyright).
-  Every result carries that attribution in `attribution` and `license_note`, with the time of the OSM copy
+- OpenStreetMap: data © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)
+  (see <https://www.openstreetmap.org/copyright>). Every result carries that attribution in `attribution` and `license_note`, with the time of the OSM copy
   (`osm_data_as_of`, from Overpass `osm3s.timestamp_osm_base`). OSM is edited by volunteers: places can be missing,
   misplaced or outdated. The Overpass instance is a free service run privately
   by dresel.systems, with no availability guarantee and a limit of 4 parallel queries per IP; each server process sends
   one query at a time (a call that waited over 20 s in line gives up; after an HTTP 429 no request is sent until the
   wait is over, at most 1 hour) and returns `source_unavailable` when the instance is down. Its data is refreshed nightly, so
   `osm_data_as_of` is up to about a day old. Do not rely on this tool where an outage would cause harm; it is not for emergencies (call 190 or 193). The
-  bundled police and fire station list (`src/sources/osmBundled.ts`, © OpenStreetMap contributors, ODbL; the
+  bundled police and fire station list (`src/sources/osmBundled.ts`, © OpenStreetMap contributors, ODbL 1.0; the
   Apache-2.0 licence does not cover it) was taken on 2026-11-21 and is not refreshed; after 180 days `note` says it
   may be outdated, and a code update is needed to refresh it. Results
   are cached in memory for 10 minutes; a call reads a whole category once and filters it.
@@ -489,7 +524,7 @@ the real JSON shape with invented values), PNCP tests use a synthetic fixture wi
 phone and names (`test/fixtures/pncp_contratacoes_synthetic.json`), INMET tests use synthetic fixtures with the real
 shape (`test/fixtures/inmet_*_synthetic.json`: invented texts, polygons and icons, a near-miss geocode, a warning listed
 twice), OSM tests use trimmed real Overpass responses recorded on 2026-11-21 (`test/fixtures/osm_*_recorded.json`: the
-libraries answer; OpenStreetMap data, © OpenStreetMap contributors, ODbL) and synthetic responses
+libraries answer; OpenStreetMap data, © OpenStreetMap contributors, ODbL 1.0) and synthetic responses
 for edge cases (`test/fixtures/osm_*_synthetic.json`, with planted e-mail, phone, credential and `javascript:` links),
 and CSV tests use synthetic files.
 `city_services_search` tests and the smoke test use a small synthetic catalog
@@ -508,9 +543,33 @@ also fails if git tracks anything in a folder named `events` (the collector's ou
 and external link that must not be kept) and run the collector with a fake clock and a fake network. The guard
 must run at the top of a checkout (exit 2 elsewhere).
 
-## License
+## Licences (code and data)
 
-Code: [Apache-2.0](LICENSE). The Apache-2.0 licence covers the code only; the data belongs to its publishers under
-their own terms (see above). `src/sources/osmBundled.ts` (and its compiled copy in `dist/`) is OpenStreetMap data,
-© OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) (see
-<https://www.openstreetmap.org/copyright>), not Apache-2.0. The Carta de Serviços catalog and the URBS files are not part of this repository.
+- **Code**: [Apache-2.0](LICENSE). It covers the code only; the data belongs to its publishers under their own terms.
+- **URBS data** (bus and points-of-interest tools): by URBS — Urbanização de Curitiba S.A., dataset
+  ["Transporte Coletivo de Curitiba"](https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=ca40f13b-ef61-472b-810f-dd705f85fd2e)
+  on the [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/),
+  licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.pt_BR). Changes made: coordinates converted
+  to decimal numbers, contact-shaped text masked, long fields cut, only allowlisted categories and fields returned.
+  The same applies to other portal datasets (`open_datasets_search`, `dataset_files`), with the portal's notice: "O
+  Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua
+  autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário." The URBS
+  files are not part of this repository.
+- **OpenStreetMap extract**: `src/sources/osmBundled.ts` (and its compiled copy in `dist/`) is a separate database,
+  © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) (see
+  <https://www.openstreetmap.org/copyright>), not under Apache-2.0. Live `places_search` results are OSM data under
+  the same licence and carry "© OpenStreetMap contributors (ODbL 1.0)" with that link.
+- **Terms inherited by anyone reusing the server's output**: PNCP and INMET data are treated under CC BY-ND 3.0 (the
+  gov.br notice: attribution, no derivatives); CNES data under the strictest of the Ministry's notices (CC BY-ND 3.0,
+  CC BY-NC-SA 4.0, MIT: attribution, non-commercial, no derivatives). Each tool's `license_note` says which applies.
+  The Carta de Serviços catalog (no licence found) and the events calendar (no licence published; facts and links
+  only) are not part of this repository.
+- **Test fixtures with real third-party content**:
+
+| File | Source | Licence |
+|---|---|---|
+| `test/fixtures/portal_busca_saude.html`, `portal_busca_vazia.html`, `portal_detalhe_unidades.html`, `portal_detalhe_transporte.html` | Trimmed pages of the [Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), with the portal's notice above |
+| `test/fixtures/portal_arquivos_unidades.json` | 3 rows of a dataset's file list on the [same portal](https://dadosabertos.curitiba.pr.gov.br/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), with the portal's notice above |
+| `test/fixtures/osm_library_recorded.json` | Overpass answer from [OpenStreetMap](https://www.openstreetmap.org/), recorded 2026-11-21 | © OpenStreetMap contributors, [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) |
+
+  Every other fixture is synthetic (invented values).

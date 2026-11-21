@@ -8,7 +8,7 @@ import { READ_ONLY } from "./tools/common.js";
 
 export function createServer(): McpServer {
   const server = new McpServer(
-    { name: "curitibai", version: "0.13.1" },
+    { name: "curitibai", version: "0.13.2" },
     {
       instructions:
         "Unofficial, read-only access to public data about Curitiba (Brazil): city, federal (CNES, PNCP, INMET), " +

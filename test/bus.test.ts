@@ -91,6 +91,7 @@ describe("file selection", () => {
     expect(out.license_note).toContain(
       "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page",
     );
+    expect(out.license_note).toContain("O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.");
     expect(out.note).toContain("no network call");
     expect(out.note).not.toContain("days ago");
   });
@@ -225,6 +226,7 @@ describe("invalid_data", () => {
     expect(out.data.skipped_rows).toBe(1);
     expect(out.data.items.map((d) => d.time)).not.toContain("12:34");
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
+    expect(out.note).toContain("Confirm on the official channel before you go: https://www.urbs.curitiba.pr.gov.br/ (URBS) or the 156.");
   });
 
   it("skips a stop row with a long name or a bad coordinate", async () => {

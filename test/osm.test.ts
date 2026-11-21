@@ -5,7 +5,6 @@ import {
   OVERPASS_MAX_QUEUE_WAIT_MS,
   resetOverpassCooldown,
   safeWebsite,
-  OSM_ATTRIBUTION,
   OVERPASS_MAX_BYTES,
   OVERPASS_URL,
   parseOverpass,
@@ -56,10 +55,12 @@ describe("places_search", () => {
     expect(res.isError).toBeFalsy();
     const out = placesSearchOutput.parse(res.structuredContent);
     expect(calls).toEqual([{ url: OVERPASS_URL, method: "POST", data: placesQuery("library") }]);
-    expect(USER_AGENT).toBe("curitibai-mcp/0.7");
-    expect(out.data.attribution).toBe(OSM_ATTRIBUTION);
+    expect(USER_AGENT).toBe("curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)");
+    expect(out.data.attribution).toBe("© OpenStreetMap contributors (ODbL 1.0)");
     expect(out.data.osm_data_as_of).toBe("2030-01-01T00:00:00Z");
-    expect(out.license_note).toContain("© OpenStreetMap contributors, ODbL");
+    expect(out.license_note).toContain("© OpenStreetMap contributors (ODbL 1.0)");
+    expect(out.license_note).toContain("https://opendatacommons.org/licenses/odbl/1-0/");
+    expect(out.license_note).toContain("https://www.openstreetmap.org/copyright");
     expect(out.license_note).toContain("OSM data as of 2030-01-01T00:00:00Z");
     expect(out.license_note).toContain(`fetched at ${out.fetched_at}`);
     expect(out.source_url).toBe(OVERPASS_URL);
@@ -273,7 +274,9 @@ describe("places_search police and fire_station (bundled list, no network)", () 
     expect(out.data.checked_at).toBe(OSM_BUNDLED_CHECKED_AT);
     expect(out.data.osm_data_as_of).toBe("2026-11-19T21:22:20Z");
     expect(out.data.note.startsWith("NOT FOR EMERGENCIES: in an emergency call 190 (Polícia Militar) or 193 (Corpo de Bombeiros)")).toBe(true);
-    expect(out.data.attribution).toBe(OSM_ATTRIBUTION);
+    expect(out.data.attribution).toBe("© OpenStreetMap contributors (ODbL 1.0)");
+    expect(out.license_note).toContain("© OpenStreetMap contributors (ODbL 1.0)");
+    expect(out.license_note).toContain("https://opendatacommons.org/licenses/odbl/1-0/");
     expect(out.license_note).toContain("once and bundled with this server");
     expect(out.data.places.every((p) => p.category === category && p.lat !== null && p.osm_url.startsWith("https://www.openstreetmap.org/"))).toBe(true);
   });

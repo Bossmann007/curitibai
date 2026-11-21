@@ -67,6 +67,11 @@ export function fail(error: ErrorCode, message?: string): CallToolResult {
   return { isError: true, content: [{ type: "text", text: JSON.stringify(payload) }] };
 }
 
+/** Note for a paged tool whose later page got a final refusal: what was found is kept and next_page is null. */
+export function refusedPageNote(page: number, status: number): string {
+  return `The source refused page ${page} (HTTP ${status}); it is not asked again. What was found before is returned and next_page is null.`;
+}
+
 /** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
 export function rateLimitedMessage(retryAfterS: number | null): string {
   const wait =

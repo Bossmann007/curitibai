@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DAY_TYPE_NOTE, DAY_TYPES, URBS_SOURCE_URL, type Tabela } from "../sources/urbs.js";
-import { busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, skippedRowsOutput, urbsNote, type UrbsSource } from "./busCommon.js";
+import { BUS_CONFIRM_NOTE, busEnvelope, isFailure, lineCodeInput, loadUrbsOrFail, page, pagingInput, urbsLicenseNote, skippedRowsOutput, urbsNote, type UrbsSource } from "./busCommon.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
@@ -136,7 +136,7 @@ export function busDeparturesResult(rows: readonly Tabela[], src: UrbsSource, ar
     note:
       `${urbsNote(src, now)} ${DAY_TYPE_NOTE} ${MIDNIGHT_NOTE} \`from\`/\`to\` compare HH:MM and never wrap past midnight. Times exist only for the stops URBS lists in the ` +
       "timetable (not every stop of a line). `table` is URBS's TABELA (the vehicle schedule) and `adapt` its ADAPT field " +
-      "(the accessibility equipment), both as published.",
+      `(the accessibility equipment), both as published. ${BUS_CONFIRM_NOTE}`,
   };
 }
 

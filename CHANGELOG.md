@@ -2,6 +2,51 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.13.2
+
+Legal hygiene: attribution, notices and facts only. No new tool, source or host.
+
+- URBS bus and points-of-interest results (`urbsLicenseNote`, `city_points_search`) and the `local_csv_summary` note
+  now carry the Portal de Dados Abertos de Curitiba's required sentence ("O Portal de Dados Abertos de Curitiba e o
+  órgão ou entidade ... uso secundário."), as `PORTAL_LICENSE_NOTE` already did.
+- `places_search`: `attribution` is now "© OpenStreetMap contributors (ODbL 1.0)" (was "© OpenStreetMap contributors,
+  ODbL"), and `license_note` adds the ODbL 1.0 URI (https://opendatacommons.org/licenses/odbl/1-0/) next to the
+  copyright page, for live and bundled categories.
+- `weather_alerts`: the "no warning" note says the answer may lag INMET by up to 10 minutes (in-memory cache), that it
+  is not an official alert service, and to follow Defesa Civil (199).
+- `health_units_search`: every note ends with the emergency line the city-points tool already had ("NOT FOR
+  EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).").
+- User-Agent: the server and the events collector append the repository as contact
+  (`curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)`, `curitibai-mcp/0.10 (+...)`). robots.txt groups are
+  still matched on the `curitibai-mcp` product token.
+- Events: confirmed facts only (title, dates, time, place, address, category, link). The collector never reads the
+  description; a test now pins that neither `events.json` nor the detail cache holds it.
+- Tests and fixtures: CPF-shaped values now have invalid check digits; a test scans every file under `test/` and
+  allows only 123.456.789-09 in the two tests that check masking of a valid-looking CPF.
+- README: one block on independence, names, "as is" data and emergency numbers (190/192/193/199); the comparison table
+  is dated (2026-11-21, public sources) and its "extra" row loses the promotional wording; new "Privacy notice" and
+  "Collection rules"; "License" becomes "Licences (code and data)" (URBS CC BY 4.0 with changes made, OSM extract as a
+  separate ODbL 1.0 database, terms inherited from PNCP, INMET and CNES, fixtures with real third-party content). The
+  Carta de Serviços capture text is reworded.
+- `procurement_search`: the object of a credenciamento (modality 12) is withheld (`object: null`,
+  `object_withheld: "may_name_a_person"`), like dispensa, inexigibilidade and inaplicabilidade.
+- Masking (PNCP objects and every field that uses the same guard: events, bus stops, city points, city services,
+  places): two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are now masked, because
+  an 8-digit phone can look like that. "2025/2026" is kept.
+- `local_csv_summary`: groups need at least 5 rows to be listed (was 3); a grouped column is refused
+  (`column_not_allowed`) when a value it could return would be changed by the contact-data guard (CPF/CNPJ, e-mail or
+  phone shaped, or year ranges that look like phone numbers). Names of people in values are not detected.
+- `vaccination_sites_search`, `next_buses_near`, `bus_departures`, `weather_forecast` and `detran_pr_info` notes say to
+  confirm on the official channel before you go or act, with its URL; the README disclaimer links them.
+- `src/http.ts`: HTTP 401, 403 and a 429 whose HTML page is a CAPTCHA are a final refusal (`SourceRefusedError`,
+  returned as `source_unavailable`): never retried, not even by PNCP's single retry. A 429 CAPTCHA was `rate_limited`
+  before. The host is then not asked again for 10 minutes in that process, and `procurement_search` and
+  `health_units_search` return what they found with `next_page: null` when a later page is refused. The events
+  collector already stopped on 403 (tested).
+- Carta de Serviços: new local copies must be saved by a person in an ordinary browser session. The 2026-11-19/20
+  copy was made before this rule, with a scripted real-browser session (stated in README and docs/sources.md).
+- README "Removal requests": open an issue; the content is removed from the next release.
+
 ## 0.13.1
 
 - Fixed: times after midnight now follow the service day. URBS files a late-night trip under the day its service

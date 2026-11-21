@@ -57,6 +57,15 @@ describe("CNES public-administration filter (fails closed)", () => {
 });
 
 describe("health_units_search", () => {
+  it("an unknown unit_type still carries the emergency line", async () => {
+    stubFetch(cnesRoutes());
+    const client = await connectClient();
+    const data = dataOf(await client.callTool({ name: "health_units_search", arguments: { unit_type: "tipo inexistente zz" } }));
+    expect(data.units).toEqual([]);
+    expect(data.note).toMatch(/^No CNES unit type matches unit_type\./);
+    expect(data.note).toContain("NOT FOR EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).");
+  });
+
   it("returns public units with type labels and requests active Curitiba units", async () => {
     const calls = stubFetch(cnesRoutes());
     const client = await connectClient();
@@ -66,6 +75,7 @@ describe("health_units_search", () => {
     expect(data.units[0]?.unit_type).toBe("UNIDADE BASICA FICTICIA");
     expect(data).toMatchObject({ next_page: null, partial: false, discarded: 4, scanned_pages: { from: 1, to: 1 } });
     expect(data.note).toMatch(/Private clinics, consultórios and non-profit hospitals/);
+    expect(data.note).toContain("NOT FOR EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).");
     const url = new URL(calls.find((c) => c.url !== CNES_TYPES_URL)!.url);
     expect(Object.fromEntries(url.searchParams)).toEqual({
       codigo_municipio: "410690",
@@ -188,6 +198,20 @@ describe("health_units_search", () => {
     const data = dataOf(res);
     expect(data.units.length).toBeGreaterThan(0);
     expect(data).toMatchObject({ partial: true, next_page: 2 });
+  });
+
+  it("a final refusal (403) on a later page returns the partial with next_page null and does not ask again", async () => {
+    const calls = stubFetch({
+      ...cnesRoutes(),
+      [`GET ${establishmentsUrl(1, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE },
+      [`GET ${establishmentsUrl(2, null)}`]: { status: 403, body: "Forbidden" },
+    });
+    const client = await connectClient();
+    const data = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "UMS 2" } }));
+    expect(data).toMatchObject({ partial: true, next_page: null, next_skip: 0 });
+    expect(data.note).toMatch(/^The source refused page 2 \(HTTP 403\); it is not asked again\./);
+    expect(data.note).not.toContain("continue with next_page");
+    expect(calls.filter((c) => c.url !== CNES_TYPES_URL)).toHaveLength(2);
   });
 
   it("says how long to wait when a later page is refused with HTTP 429", async () => {

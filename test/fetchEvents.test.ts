@@ -387,6 +387,7 @@ describe("run", () => {
       "/evento/evento-sintetico-200/200",
       "/evento/evento-sintetico-201/201",
     ]);
+    expect(USER_AGENT).toBe("curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)");
     for (const [i, c] of h.calls.entries()) {
       expect(new Headers(c.init.headers).get("user-agent")).toBe(USER_AGENT);
       expect(c.init.method).toBe("GET");
@@ -399,6 +400,17 @@ describe("run", () => {
     expect(doc.events.every(validEvent)).toBe(true);
     expect(readJson(statusFile())).toMatchObject({ code: "ok", attempt: "2026-11-21T05:00:00.000Z", success: expect.any(String) });
     expect(readdirSync(join(dataDir, "events")).sort()).toEqual([CACHE_FILE, "events.json", "status.json"]); // no temp file or lock left
+  });
+
+  it("facts only: neither events.json nor the detail cache keeps the event description (or any part of it)", async () => {
+    await run(harness(siteRoutes([ids(2, 100)])).deps);
+    for (const f of [eventsFile(), join(dataDir, "events", CACHE_FILE)]) {
+      const text = readFileSync(f, "utf8");
+      expect(text).not.toMatch(/DESCRIPTION-SENTINEL|descri/i);
+    }
+    for (const e of readJson(eventsFile()).events) {
+      expect(Object.keys(e).sort()).toEqual(["address", "category", "end_date", "id", "link", "place", "start_date", "time", "title"]);
+    }
   });
 
   it("prints only fixed status lines and counts, never page text", async () => {

@@ -8,11 +8,15 @@ export const PORTAL_SEARCH_URL = `${PORTAL_BASE}/conjuntodado/`;
 export const PAGE_SIZE = 5;
 export const FILES_PAGE_SIZE = 50;
 
+/** The sentence the portal's rules ask every reuse of its data to carry, quoted in each note about portal data. */
+export const PORTAL_DISCLAIMER =
+  "\"O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua " +
+  "autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.\"";
+
 export const PORTAL_LICENSE_NOTE =
   "Data accessed via the Portal de Dados Abertos de Curitiba (https://dadosabertos.curitiba.pr.gov.br/), " +
   "licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Cite the publishing body shown with each dataset. " +
-  "\"O Portal de Dados Abertos de Curitiba e o órgão ou entidade de onde foram acessados os dados não garantem sua " +
-  "autenticidade, qualidade, integridade e atualidade após terem sido disponibilizados para uso secundário.\" " +
+  `${PORTAL_DISCLAIMER} ` +
   "Unofficial; not affiliated with Prefeitura de Curitiba.";
 
 export const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

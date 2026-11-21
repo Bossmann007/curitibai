@@ -58,6 +58,7 @@ describe("vaccination_sites_search", () => {
     expect(out.note).toMatch(/no update date/);
     expect(out.note).toMatch(/156/);
     expect(out.note).toMatch(/Not for emergencies/);
+    expect(out.note).toContain("Confirm on the official channel before you go: https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/ or the 156.");
     expect(out.note).toMatch(/untrusted third-party text/);
     const text = JSON.stringify(res.structuredContent);
     expect(text).not.toMatch(/PAGE-TEXT-OUTSIDE|PAGE_SCRIPT_TEXT|Atualizado|fulano|evil\.example|maps\.google|javascript:|Ver no mapa/);
