@@ -6,11 +6,12 @@ look up public health units in the Ministry of Health's CNES open API, search pr
 in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, give INMET's weather forecast and
 active weather warnings for Curitiba, search the Prefeitura's service catalog (Carta de Serviços), find public places in
 OpenStreetMap, give URBS bus lines, stops and timetables and points of interest open to the public (feiras, schools, libraries,
-public health units and more) from files the user downloaded, and summarise a CSV file the user downloaded by hand.
+public health units and more) from files the user downloaded, search Curitiba's events calendar from a file written by a
+separate collector script, and summarise a CSV file the user downloaded by hand.
 
 **Unofficial. Not affiliated with, endorsed by or connected to the Prefeitura de Curitiba, URBS, the Ministério da Saúde,
 PNCP / the Ministério da Gestão e Inovação em Serviços Públicos, Detran-PR / the Governo do Paraná, or INMET
-(Instituto Nacional de Meteorologia), or OpenStreetMap / the OSM Foundation.**
+(Instituto Nacional de Meteorologia), the Instituto Municipal de Turismo de Curitiba, or OpenStreetMap / the OSM Foundation.**
 Data comes from the sources as it is; always confirm important information at the source.
 
 ## Tools
@@ -29,7 +30,13 @@ wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing 
 they read URBS files you keep in `CURITIBAI_DATA_DIR/urbs/` (see below) and return the same envelope; their errors are
 `data_not_available` (no folder or no file of the kind needed), `invalid_data` (not UTF-8 JSON, not a non-empty list,
 more than 5% of the rows invalid, or over 20 MB; the message says to delete that file or change its name to fall back
-to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid rows are skipped, counted in `note` and in `data.skipped_rows`. `procurement_search` also returns `invalid_date_range`
+to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid rows are skipped, counted in `note` and in `data.skipped_rows`.
+`events_search` makes no network call either: it reads `CURITIBAI_DATA_DIR/events/events.json`, written by the separate
+collector `scripts/fetch-events.mjs` (see below), and returns `{data, source_url, checked_at, stale, attribution,
+license_note, note}`; its errors are `data_not_available` (no file, or `checked_at` more than 7 days ago),
+`invalid_data` (not UTF-8 JSON, the wrong shape, a link that is not the event page of its id, `checked_at` in the
+future, or over 2 MB),
+`invalid_date_range` (`from` after `to`, or more than 366 days apart), `file_not_allowed` and `invalid_argument`. `procurement_search` also returns `invalid_date_range`
 (`from` after `to`, or more than 365 days apart). A network tool returns `rate_limited` when the source answers HTTP 429
 to its first request; the message gives the wait from `Retry-After`, or about 1 minute. When a later page is refused,
 `procurement_search`, `health_units_search` and `open_datasets_search` return what they found as `partial`, with the
@@ -50,6 +57,7 @@ wait in `note`.
 | `bus_line_stops` | `line_code` (case ignored), optional `itinerary_id` (one direction), `limit` ≤ 50 (default 50), `offset` | The line's `directions` (direction name, `itinerary_id`, stop count) and its stops in itinerary order: direction, `seq`, `stop_number`, `name` (masked as a guard, see "Privacy and safety"), `lat`/`lon` (decimal; null when empty), shelter `type` and URBS's `group`, as published | The newest `YYYY_MM_DD_pontosLinha.json`, same folder |
 | `bus_departures` | `line_code` and/or `stop_number` (at least one), optional `day` (URBS DIA code), optional `from`/`to` (HH:MM, inclusive, `from` ≤ `to`), `limit` ≤ 50 (default 20), `offset` | Published departure times, ordered by day, time, line and stop: `time`, `day` (the code), `day_type` (`weekday`, `saturday`, `sunday_or_holiday` for 1, 2, 3, **inferred from the data, not stated by URBS**; null for any other code), `line_code`, `stop_number`, `stop_name` (masked as a guard), `table` (TABELA) and `adapt` (ADAPT, the accessibility equipment), as published. Not real-time | The newest `YYYY_MM_DD_tabelaLinha.json`, same folder |
 | `city_points_search` | optional `category` (one of 23 ids, e.g. `feira`, `cambio_verde`, `library`, `cmei`, `municipal_school`, `bus_terminal`, `health_unit`, `urgent_care`; [docs/sources.md](docs/sources.md) maps each to URBS's category names), optional `name` (1–100 chars; every word must appear in the name, accents, case and punctuation ignored), optional `near` (`{lat, lon}`) with `radius_m` (default 1500, at most 10000), `limit` ≤ 50 (default 20), `offset` | Points of interest **open to the public** from URBS's export: `name` and `desc` (masked as a guard), `category` (the id), `source_category` (URBS's name), `lat`/`lon` (decimal; null when empty), and `distance_m` when `near` is given (nearest first; otherwise by name); `total` and `next_offset`; with no filter, also the `categories` with counts, each split per URBS name (`source_categories`: `{name, count}`). **Only an allowlist of categories**: private schools and crèches, hotels, churches, supermarkets and markets, shopping centres, private clubs, newsstands, hospitals, laboratories, police and security (use `places_search`), urban equipment and any unknown category are dropped before searching. `cultural_space`, `special_education` and `vocational_education` are open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and museums, private schools); `note` says so, naming only those among the matches. `note` warns when a whole category id has no row in the file, but **not** when only one of its URBS names is renamed: renaming BIB FAROL DO SABER would drop 45 of the 59 libraries in the 2026-11-20 file with no warning, so check `source_categories` for a 0 after downloading a new file. The file has **no days or hours** (not even for feiras). **Not for emergencies** (192 SAMU, 193). No network call; `checked_at` is the file's date | The newest `YYYY_MM_DD_pois.json`, same folder |
+| `events_search` | optional `from`/`to` (YYYY-MM-DD; default today to 7 days ahead, Curitiba time), optional `text` (2–100 chars; every word must appear in the title, place, address or category, accents and case ignored), optional `category` (as published, accents and case ignored), `limit` ≤ 50 (default 20), `offset` | Events overlapping the range, earliest first: `id`, `title`, `start_date`, `end_date`, `time`, `place`, `address`, `category` and `link` (the event page); `checked_at` (when the collector ran) and `stale: true` after 3 days. Every field is untrusted third-party text | Instituto Municipal de Turismo de Curitiba, public events calendar (`turismo.curitiba.pr.gov.br/eventos/`), via `scripts/fetch-events.mjs`; not affiliated; the site publishes no licence, so only facts and links are kept |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -81,7 +89,7 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 | `city156_categories`, `city156_stats` | Same reason. Download the 156 file by hand and use `local_csv_summary` (see below) |
 | Bus lines, timetables and stops **fetched by the server** | The URBS website is out of scope (it refuses non-browser clients), its WebService needs a login, and the export mirror is treated as disallowed. The bus tools read files you download instead (see below); for a GTFS route, see "Alternatives" |
 | Real-time bus positions and fares | Not in the daily exports the bus tools read |
-| `schools_search`, `markets_fairs_list`, `culture_agenda` | Their files are only on the hosts whose robots.txt disallows automated access. `local_csv_summary` can count a file you download yourself |
+| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | No source found |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
@@ -249,16 +257,55 @@ Times are returned as published (00:00 to 23:59, each under its row's code): a d
 to the previous evening's service, and `from`/`to` never wrap past midnight. Whether URBS files such a trip under the
 day it starts or the calendar day of the time is not verified.
 
+### Events (Instituto Municipal de Turismo calendar, collected by a separate script)
+
+`events_search` reads `events/events.json` inside `CURITIBAI_DATA_DIR`. **The server never contacts the events site**
+(`turismo.curitiba.pr.gov.br` is not one of its hosts). The file is written by a separate collector, which you run:
+
+```sh
+CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
+```
+
+- **Only between 02:00 and 05:50 UTC** (23:00 to 02:50 in Curitiba). The site's robots.txt asks for visits between
+  02:00 and 06:00 and at most one request every 5 seconds. Outside the window the script makes no request and exits
+  with `code=window_closed`. A scheduler (cron, launchd) can run it once a night inside the window.
+- Each run first fetches robots.txt and stops (`robots_changed`) if its Disallow, Visit-time or Request-rate rules
+  differ from the ones recorded in the script; then it reads the day's list pages (Curitiba's date; a pager showing more than 10 stops the run) and the
+  detail page of each event id it has not seen before. It waits 5 s between requests, stops at 10 minutes, gives each
+  request 15 s, follows no redirect, and stops without retrying on any error status (403, 429, 5xx included). Node
+  built-ins only; User-Agent `curitibai-mcp/0.10`.
+- It keeps only id, title, start and end dates, time, place, address, category and the event page link, which it
+  builds from the id and slug. Descriptions, organisers, contacts, ticket and external links and images are never
+  kept. Control and format characters (bidi, zero-width, tag characters) are removed, text is NFC-normalised, title
+  and place are cut at 120 characters, and e-mail-, phone- and CPF/CNPJ-shaped text is replaced by `[masked]`.
+- Schedule it early in the window (for example 02:30 UTC): a first run reads every detail page and takes about 5
+  minutes, and a run cut short by 05:50 saves nothing.
+- It writes `events/events.json` and `events/status.json` (last attempt, last success, result code) atomically. When a
+  page does not have the expected structure, a field fails validation, the run is cut short, or the count is 0 or
+  outside 0.3x–3x of the previous file's, it keeps the old `events.json` and exits nonzero (`code=layout_changed`, or
+  the code of what stopped it). It prints only fixed status lines with counts and the exit code, never page text. If the
+  site really changes size (fewer or more than 0.3x–3x the previous count), every run keeps failing this way: check the
+  site, then delete `events/events.json` to accept the new count on the next run.
+
+The parser was built from one list page and one detail page seen on 2026-11-21; multi-day date formats and an empty
+day have not been seen yet, and the robots.txt Disallow list recorded in the script may be incomplete (see
+[docs/sources.md](docs/sources.md)), so the first real runs may stop with `robots_changed` or `layout_changed` until
+the script is updated. Ask, for example: "events in Curitiba this weekend" or "concerts next week".
+
 ## Privacy and safety
 
-- No telemetry, no secrets, no `.env`, no files written. The cache is in memory only (10 minutes) and is keyed by the
-  request sent to the source.
+- No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
+  (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/`. The cache is in
+  memory only (10 minutes) and is keyed by the request sent to the source.
 - The server contacts exactly five hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br` and
   `https://ovp.dresel.systems`, on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a URL.
   No user text ever enters an Overpass query: the query is built from the category allowlist, and name filters are
   applied to the result.
+- The events collector (`scripts/fetch-events.mjs`) is separate from the server and contacts only
+  `https://turismo.curitiba.pr.gov.br`, from its own allowlist, and only paths of the list and event pages plus
+  robots.txt.
 - Requests use a generic User-Agent, `curitibai-mcp/0.7`, a 10 s timeout per request (25 s for PNCP, which is slow;
   15 s for INMET; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB response cap (1 MB for the
   INMET forecast, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
@@ -367,7 +414,7 @@ day it starts or the calendar day of the time is not verified.
 ## Development
 
 ```sh
-scripts/verify   # no tracked carta-servicos.json or URBS export, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
+scripts/verify   # no tracked carta-servicos.json, URBS export, events output or HTML capture, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
 
 CI (`.github/workflows/verify.yml`) runs `scripts/verify` on every pull request and on pushes to `main`: one Ubuntu
@@ -395,6 +442,10 @@ also fails if that fixture is modified in the work tree. The same guard fails if
 bus tests and the smoke test use small synthetic files in the URBS shape (`test/fixtures/urbs_synthetic/`: invented
 lines, stops and times, with a planted e-mail, phone and street-number range, an empty coordinate and an unknown day
 code); they have no date in their names and are copied to a temporary folder under dated names when used. The guard
+also fails if git tracks anything in a folder named `events` (the collector's output) or an `.html`, `.htm`, `.mhtml` or
+`.har` file outside `test/fixtures/`, and `.gitignore` ignores them. The events tests use synthetic pages
+(`test/fixtures/events_synthetic/`: invented events in the site's markup, with a planted description, contacts, ticket
+and external link that must not be kept) and run the collector with a fake clock and a fake network. The guard
 must run at the top of a checkout (exit 2 elsewhere).
 
 ## License
