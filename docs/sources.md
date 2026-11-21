@@ -404,14 +404,14 @@ No network, and **no URBS file in this repository**. Same source, mirror, folder
 tools above: the newest `YYYY_MM_DD_pois.json` in `CURITIBAI_DATA_DIR/urbs/`, downloaded by a person from
 <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> and decompressed with `xz -d`, read through `src/localfs.ts` with
 the 20 MB cap, rows validated with zod one by one (`POI_NAME` and `POI_CATEGORY_NAME` required, `POI_LAT`/`POI_LON`
-comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint. `license_note`
+comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint (both count every row of the file, excluded categories included). `license_note`
 credits URBS and the dataset "Transporte Coletivo de Curitiba" (CC BY 4.0 as linked from its portal page) and names
 the file. That the portal page lists the POI export itself was not checked (the server never opens the mirror); the
 file sits in the same mirror folder as the bus exports.
 
 | File (2026-11-20) | Rows | Fields | Notes |
 |---|---|---|---|
-| `pois` (380 KB) | 2,536 | `POI_NAME`, `POI_CATEGORY_NAME` (45 values), `POI_LAT`, `POI_LON` (comma decimals, none empty), `POI_DESC` | `POI_DESC` is empty in 2,499 rows; the rest are transit-card notes ("Local que comercializa cartão avulso…") and office hours. No days or hours for feiras |
+| `pois` (380 KB) | 2,536 | `POI_NAME`, `POI_CATEGORY_NAME` (45 values), `POI_LAT`, `POI_LON` (comma decimals, none empty), `POI_DESC` | `POI_DESC` is empty in 2,499 rows; the other 37 are short notes on where transit cards are sold, URBS office hours, and box numbers for urban equipment. No days or hours for feiras |
 
 **Category allowlist.** Only these URBS categories are returned, each under a short id (counts in the 2026-11-20
 file). Category names are compared with accents, case and repeated spaces ignored; nothing else is matched.
