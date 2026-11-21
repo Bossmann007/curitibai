@@ -7,8 +7,9 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Docs and repository files only. No change to `src/`, no version bump.
 
 - README: brand header, badges, a three-line summary, a table of contents, "Quick start" (with other MCP clients) and
-  "Tools at a glance" (the 18 tools grouped by area). The existing sections are moved, unchanged, under "Tool
-  reference" and "Local data files". Every legal and licence section stays.
+  "Tools at a glance" (the 18 tools grouped by area). The existing sections keep their text and move under new
+  headings: "Tools" is now "Tool reference", "Run it" is now "Quick start", and the local-file guides sit under
+  "Local data files" (old `#tools` and `#run-it` links no longer resolve). Every legal and licence section stays.
 - README "Collection rules": the 10-minute refusal block is per host, not per path. Removal requests link to the new
   issue form.
 - README and docs/sources.md: the Carta de Serviços provenance line says why the 2026-11-19/20 copy used a real

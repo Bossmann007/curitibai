@@ -20,8 +20,8 @@ catálogo, export da URBS, saída do coletor de eventos ou página HTML capturad
   nada de trocar cabeçalhos, tentar de novo ou usar um navegador automatizado. `src/http.ts` já trata isso; não mude
   esse comportamento.
 - **Nenhum dado pessoal.** Nem no código, nem em testes, nem em fixtures, nem em issues. Use valores inventados. CPF
-  de teste tem dígito verificador inválido (um teste confere), exceto `123.456.789-09` nos dois testes que checam o
-  mascaramento. Uma ferramenta nova não devolve nomes de pessoas físicas, e texto livre passa pelo mesmo mascaramento
+  de teste tem dígito verificador inválido (um teste confere), exceto `123.456.789-09` nos testes que checam o
+  mascaramento de um CPF válido (`test/pncp.test.ts` e `test/fetchEvents.test.ts`). Uma ferramenta nova não devolve nomes de pessoas físicas, e texto livre passa pelo mesmo mascaramento
   de contato que os objetos do PNCP.
 - **Fonte nova ou alterada.** Atualize `docs/sources.md` (formato, termos, robots.txt, data da checagem), a seção de
   licenças do README, o `license_note` da ferramenta e o `CHANGELOG.md`. Host novo entra em `ALLOWED_HOSTS`

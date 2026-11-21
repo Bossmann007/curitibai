@@ -84,10 +84,10 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 Other MCP clients: configure a stdio server with the command `node` and the single argument
 `/absolute/path/to/curitibai/dist/server.js`. Check your client's documentation for where that setting goes.
 
-To use `local_csv_summary`, `city_services_search` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
+To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
 (Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
 `local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
-`{"error":"data_not_available"}` (the bus tools too), and the other tools work as usual. [Local data files](#local-data-files) says what to put in that folder.
+`{"error":"data_not_available"}` (the bus tools, `city_points_search` and `events_search` too), and the other tools work as usual. [Local data files](#local-data-files) says what to put in that folder.
 
 ## Tools at a glance
 
@@ -430,7 +430,8 @@ week".
   the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page).
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
   objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through (below).
-- Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues).
+- Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues);
+  for removal, use the [removal request form](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml).
 
 ### Collection rules
 
