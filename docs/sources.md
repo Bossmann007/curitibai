@@ -457,11 +457,12 @@ rows and names any allowlisted id with no row in the file (its URBS name looks m
 Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked
 text. `near` keeps points within `radius_m` (great-circle distance, mean Earth radius 6,371,008.8 m; default 1,500 m,
 at most 10,000 m), nearest first, with `distance_m` rounded to whole metres; a point with an empty coordinate never
-matches `near`. Otherwise results are in pt-BR name order; ties keep file order, so paging is stable. Results are
+matches `near`. Otherwise results are in pt-BR name order, then category id; remaining ties keep file order, so paging is stable. Results are
 capped at 50 per call, with `offset`. `note` always says the file has no days or hours and that the tool is not for
 emergencies (192 SAMU, 193).
 
-Guard: names and descriptions pass through the PNCP masking and are returned as published unless it hides something.
+Guard: names and descriptions pass through the PNCP masking and are returned as published unless it hides something
+or the text is over 300 characters (then cut with "…"; the longest 2026-11-20 name is 95 characters, description 73).
 On the 2026-11-20 file it changes none of the 1,219 public names and none of their 18 non-empty descriptions.
 Measured with the built server on that file: about 11–33 ms to read, validate and filter.
 

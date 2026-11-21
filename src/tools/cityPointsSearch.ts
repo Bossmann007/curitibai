@@ -105,7 +105,7 @@ export const cityPointsSearchOutput = busEnvelope(
 );
 
 export interface CityPoint {
-  /** Position in the file, to keep paging stable between points with the same sort key. */
+  /** Position among the file's valid rows (file order), to keep paging stable between points with the same sort key. */
   index: number;
   name: string;
   category: PoiCategoryId;
@@ -174,8 +174,8 @@ function poiLicenseNote(file: string): string {
     `Curitiba\" on the Portal de Dados Abertos de Curitiba (${URBS_SOURCE_URL}), daily export ${file}, downloaded by ` +
     `the user from the portal's mirror (${URBS_MIRROR_URL}). ${URBS_LICENSE}. Only public-facing categories are ` +
     "returned; values are returned as published, except that coordinates are converted to decimal numbers, " +
-    "categories get a short id, and e-mail-, phone- and CPF/CNPJ-shaped text in a name or description would be " +
-    "replaced by [masked]. Unofficial; not affiliated with URBS or the Prefeitura de Curitiba."
+    "categories get a short id, e-mail-, phone- and CPF/CNPJ-shaped text in a name or description would be " +
+    "replaced by [masked], and such a field over 300 characters would be cut with \"…\". Unofficial; not affiliated with URBS or the Prefeitura de Curitiba."
   );
 }
 
@@ -222,11 +222,9 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
     a.name.localeCompare(b.name, "pt-BR") || a.category.localeCompare(b.category) || a.index - b.index;
   matches.sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0) || byName(a, b));
   const p = page(matches, args.offset, args.limit);
-  const counts = CATEGORY_IDS.map((id) => ({
-    id,
-    source_categories: [...POI_CATEGORIES[id]],
-    count: points.filter((x) => x.category === id).length,
-  }));
+  const tally = new Map<PoiCategoryId, number>();
+  for (const x of points) tally.set(x.category, (tally.get(x.category) ?? 0) + 1);
+  const counts = CATEGORY_IDS.map((id) => ({ id, source_categories: [...POI_CATEGORIES[id]], count: tally.get(id) ?? 0 }));
   const noFilter = args.category === undefined && args.name === undefined && near === undefined;
   return {
     data: {

@@ -17,7 +17,7 @@ import {
 } from "../sources/urbs.js";
 import { fail } from "./common.js";
 
-/** Shared by the three bus tools: `{data, source_url, checked_at, license_note, note}`. */
+/** Shared by the three bus tools and city_points_search: `{data, source_url, checked_at, license_note, note}`. */
 export function busEnvelope<T extends z.ZodType>(data: T) {
   return z.object({
     data,
