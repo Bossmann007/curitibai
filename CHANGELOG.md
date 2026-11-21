@@ -2,6 +2,31 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.10.0
+
+- Added `events_search`: events in Curitiba from the public calendar of the Instituto Municipal de Turismo
+  (`turismo.curitiba.pr.gov.br/eventos/`), read from `CURITIBAI_DATA_DIR/events/events.json`; no network call. Filters:
+  `from`/`to` (default today to 7 days ahead, Curitiba time; events overlapping the range), `text` and `category`
+  (accents and case ignored), `limit` ≤ 50 and `offset`. Returns `id`, `title`, `start_date`, `end_date`, `time`,
+  `place`, `address`, `category` and `link`, with `checked_at`, `stale` (over 3 days), `attribution` and
+  `license_note`; `data_not_available` when the file is missing or over 7 days old, `invalid_data` when it fails
+  validation (checked with zod on every call; text fields are sanitized again). The description says every field is
+  untrusted third-party text.
+- Added `scripts/fetch-events.mjs`, a separate collector (Node built-ins only) that writes that file and
+  `events/status.json`. Its own host allowlist (the server's `ALLOWED_HOSTS` is unchanged), requests only 02:00–05:50
+  UTC, one per 5 s, 15 s timeout, 10-minute deadline, no redirects, stop without retry on any error status, robots.txt
+  checked against the recorded rules on every run, two path patterns, size caps, Curitiba dates, details only for new
+  ids, only the listed fields kept (link built from id and slug), Unicode control and format characters stripped, NFC,
+  120-character title and place, PII mask. Atomic writes; the old file is kept and the exit code is nonzero
+  (`layout_changed` or the stop code) when parsing or validation fails, the run is cut short, or the count is 0 or
+  outside 0.3x–3x of the previous one. Prints fixed status lines only. The parser is built from one list and one
+  detail page and the recorded robots.txt Disallow list may be incomplete: both need a live check (docs/sources.md).
+- The PII mask moved from `src/sources/pncp.ts` to `src/mask.ts` (no imports, so the collector can load it); `pncp.ts`
+  re-exports it, and behaviour is unchanged.
+- `scripts/check-no-catalog` also fails when git tracks a file in a folder named `events` or an `.html`, `.htm`,
+  `.mhtml` or `.har` file outside `test/fixtures/`; `.gitignore` ignores them.
+- README: the server still writes no files; only the collector writes, inside `CURITIBAI_DATA_DIR/events/`.
+
 ## 0.9.1
 
 - `city_points_search`: with no filter, each entry of `categories` now gives `source_categories` as `{name, count}` per URBS name instead of a list of names (a change of output shape for clients that read the names as strings), so a rename of one URBS name of a category shows as a 0 there. Such a partial rename is still not warned about in `note` (only a whole category id with no row is); README and docs/sources.md now say so (renaming BIB FAROL DO SABER would drop 45 of the 59 libraries in the 2026-11-20 file). The mixed-category line in `note` names only the categories among the matches (`cultural_space`, `special_education`, `vocational_education`).
