@@ -1,18 +1,25 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  acquireLock,
+  CACHE_FILE,
   curitibaDate,
   decodeBody,
   DEADLINE_MS,
   GAP_MS,
   inWindow,
   listPath,
+  LOCK_FILE,
+  needsDetail,
   parseDates,
   parseDetailPage,
   parseListPage,
   parseRobots,
+  politeGapMs,
+  RECORDED_ROBOTS,
+  readCache,
   robotsAllows,
   robotsGroupFor,
   robotsMatchesRecorded,
@@ -29,17 +36,34 @@ const LIST = fixture("events_synthetic/list_page.html");
 const DETAIL = fixture("events_synthetic/detail_page.html");
 const ORIGIN = "https://turismo.curitiba.pr.gov.br";
 
+// Same directives as the recorded group, in the live file's shape: CRLF, comments after tabs with Latin-1 bytes, no
+// charset in Content-Type and no final newline (the comments here are invented).
 const ROBOTS = [
   "User-agent: *",
-  "Request-rate: 1/5",
-  "Visit-time: 0200-0600",
+  "Request-rate: 1/5\t\t# no m\u00e1ximo uma p\u00e1gina a cada 5 s",
+  "Visit-time: 0200-0600\t# s\u00f3 entre 2:00 e 6:00 UT",
+  "Disallow: /App_Browsers",
+  "Disallow: /App_Themes",
   "Disallow: /bin",
+  "Disallow: /Cache",
   "Disallow: /Imagem",
+  "Disallow: /Include",
+  "Disallow: *.mdb",
   "Disallow: *.pdf",
+  "Disallow: *.dll",
+  "Disallow: *.log",
   "Disallow: *.asp",
+  "Disallow: *.config",
+  "Disallow: *.jpg",
+  "Disallow: *.gif",
+  "Disallow: *.ascx",
   "Allow: *.aspx",
-  "",
-].join("\n");
+  "Allow: *.html",
+  "Allow: *.htm",
+  "Disallow: /es/contenido/*/categoria/*/conteudos/*",
+].join("\r\n");
+const robotsBytes = (text: string) => Buffer.from(text, "latin1");
+const group = (text: string) => robotsGroupFor(parseRobots(text));
 
 /** A list page for 21-11-2026 with the given items and highest page number (same markup as the fixture). */
 function listHtml(items: { id: number; slug: string }[], maxPage = 1, date = "21-11-2026"): string {
@@ -123,30 +147,65 @@ describe("robots.txt", () => {
   });
 
   it("applies the longest match, Allow winning ties", () => {
-    const g = robotsGroupFor(parseRobots(ROBOTS))!;
+    const g = group(ROBOTS)!;
     expect(robotsAllows(g, "/page.asp")).toBe(false);
     expect(robotsAllows(g, "/page.aspx")).toBe(true); // Allow *.aspx is longer than Disallow *.asp
     expect(robotsAllows(g, "/Imagem/1.png")).toBe(false);
     expect(robotsAllows(g, "/doc.pdf")).toBe(false);
-    expect(robotsAllows(g, "/eventos/21-11-2026/1")).toBe(true);
-    expect(robotsAllows(g, "/evento/feira-ficticia/9001")).toBe(true);
+    expect(robotsAllows(g, "/es/contenido/1/categoria/2/conteudos/3")).toBe(false);
     expect(robotsAllows({ allow: ["/a"], disallow: ["/a"] }, "/a")).toBe(true);
   });
 
-  it("accepts only the recorded Disallow, Visit-time and Request-rate", () => {
-    expect(robotsMatchesRecorded(robotsGroupFor(parseRobots(ROBOTS)))).toBe(true);
-    expect(robotsMatchesRecorded(robotsGroupFor(parseRobots(ROBOTS.replace(/\n/g, "\r\n") + "# comment\n")))).toBe(true);
+  it("allows the list and event page paths under the whole recorded group", () => {
+    const g = group(ROBOTS)!;
+    for (const path of ["/eventos/21-11-2026/1", "/eventos/01-01-2027/10", "/evento/feira-ficticia/9001", "/evento/a-b-c-1/1"]) {
+      expect({ path, ok: robotsAllows(g, path) }).toEqual({ path, ok: true });
+    }
+  });
+
+  it("reads the live file's shape: CRLF, tab-separated Latin-1 comments, no final newline", () => {
+    const text = new TextDecoder("windows-1252").decode(robotsBytes(ROBOTS));
+    expect(group(text)!.lines).toEqual([...RECORDED_ROBOTS]);
+    expect(robotsMatchesRecorded(group(text))).toBe(true);
+    expect(robotsMatchesRecorded(group(ROBOTS.replace(/\r\n/g, "\n") + "\n# comment\n"))).toBe(true);
+    expect(robotsMatchesRecorded(group(`\uFEFF${ROBOTS}`))).toBe(true); // a byte order mark, decoded as UTF-8
+    expect(robotsMatchesRecorded(group(`\u00EF\u00BB\u00BF${ROBOTS}`))).toBe(true); // or as Windows-1252
+    expect(robotsMatchesRecorded(group([...ROBOTS.split("\r\n")].reverse().join("\n")))).toBe(false); // agent line last
+    expect(robotsMatchesRecorded(group(["User-agent: *", ...ROBOTS.split("\r\n").slice(1).reverse()].join("\n")))).toBe(true); // order ignored
+  });
+
+  it("compares the whole group: any added, removed or changed directive is a change", () => {
     const changed = [
       ROBOTS.replace("Request-rate: 1/5", "Request-rate: 1/10"),
       ROBOTS.replace("Visit-time: 0200-0600", "Visit-time: 0300-0500"),
-      ROBOTS.replace("Disallow: /bin\n", ""),
-      ROBOTS + "Disallow: /eventos\n",
-      ROBOTS.replace("Visit-time: 0200-0600\n", ""),
-      ROBOTS + "\nUser-agent: curitibai-mcp\nDisallow: /\n", // a group naming this script takes over
+      ROBOTS.replace("Disallow: /bin\r\n", ""),
+      ROBOTS.replace("Allow: *.html\r\n", ""), // a removed Allow
+      ROBOTS + "\r\nAllow: /eventos", // an added Allow
+      ROBOTS + "\r\nCrawl-delay: 10", // an added Crawl-delay
+      ROBOTS + "\r\nCrawl-delay: 1", // even a shorter one
+      ROBOTS + "\r\nDisallow: /eventos",
+      ROBOTS + "\r\nDisallow:", // an empty Disallow is still a new directive
+      ROBOTS + "\r\nDisallow: /bin", // a repeated directive
+      ROBOTS + "\r\nSitemap: https://turismo.curitiba.pr.gov.br/sitemap.xml",
+      ROBOTS + "\r\nNoindex: /x", // an unknown key
+      ROBOTS.replace("Disallow: *.pdf", "Disallow: *.PDF"),
+      ROBOTS.replace("Visit-time: 0200-0600\t# s\u00f3 entre 2:00 e 6:00 UT\r\n", ""),
+      ROBOTS + "\r\n\r\nUser-agent: curitibai-mcp\r\nDisallow: /", // a group naming this script takes over
       "User-agent: *\nDisallow: /\n",
       "",
     ];
-    for (const text of changed) expect({ text, ok: robotsMatchesRecorded(robotsGroupFor(parseRobots(text))) }).toMatchObject({ ok: false });
+    for (const text of changed) expect({ text, ok: robotsMatchesRecorded(group(text)) }).toMatchObject({ ok: false });
+  });
+
+  it("waits the larger of 5 s and a recorded Crawl-delay or Request-rate", () => {
+    expect(politeGapMs(group(ROBOTS)!)).toBe(GAP_MS);
+    expect(politeGapMs({ lines: ["crawl-delay: 10"] })).toBe(10_000);
+    expect(politeGapMs({ lines: ["crawl-delay: 2"] })).toBe(GAP_MS);
+    expect(politeGapMs({ lines: ["crawl-delay: 7.5"] })).toBe(7_500);
+    expect(politeGapMs({ lines: ["request-rate: 1/20"] })).toBe(20_000);
+    expect(politeGapMs({ lines: ["request-rate: 1/1m"] })).toBe(60_000);
+    expect(politeGapMs({ lines: ["request-rate: 2/5"] })).toBe(GAP_MS);
+    expect(politeGapMs({ lines: ["crawl-delay: soon"] })).toBe(GAP_MS);
   });
 });
 
@@ -257,7 +316,7 @@ afterEach(() => {
 
 interface FakeRoute {
   status?: number;
-  body?: string;
+  body?: string | Uint8Array;
   contentType?: string;
   headers?: Record<string, string>;
 }
@@ -286,7 +345,7 @@ function harness(routes: Record<string, FakeRoute | (() => FakeRoute)>, start = 
       const r = routes[url];
       if (r === undefined) throw new Error(`unexpected request in test: ${url}`);
       const route = typeof r === "function" ? r() : r;
-      return new Response(route.body ?? "", {
+      return new Response(typeof route.body === "string" || route.body === undefined ? (route.body ?? "") : new Uint8Array(route.body), {
         status: route.status ?? 200,
         headers: { "content-type": route.contentType ?? "text/html; charset=utf-8", ...(route.headers ?? {}) },
       });
@@ -300,7 +359,7 @@ const ids = (n: number, from = 100) => Array.from({ length: n }, (_, i) => ({ id
 /** Robots, `pages` list pages for 21-11-2026 and a detail page for every listed id. */
 function siteRoutes(pages: { id: number; slug: string }[][]): Record<string, FakeRoute> {
   const routes: Record<string, FakeRoute> = {
-    [`${ORIGIN}/robots.txt`]: { body: ROBOTS, contentType: "text/plain" },
+    [`${ORIGIN}/robots.txt`]: { body: robotsBytes(ROBOTS), contentType: "text/plain" },
   };
   pages.forEach((items, i) => {
     routes[`${ORIGIN}/eventos/21-11-2026/${i + 1}`] = { body: listHtml(items, pages.length) };
@@ -339,7 +398,7 @@ describe("run", () => {
     expect(doc.events.map((e: { id: number }) => e.id)).toEqual([100, 101, 102, 200, 201]);
     expect(doc.events.every(validEvent)).toBe(true);
     expect(readJson(statusFile())).toMatchObject({ code: "ok", attempt: "2026-11-21T05:00:00.000Z", success: expect.any(String) });
-    expect(readdirSync(join(dataDir, "events")).sort()).toEqual(["events.json", "status.json"]); // no temp file left
+    expect(readdirSync(join(dataDir, "events")).sort()).toEqual([CACHE_FILE, "events.json", "status.json"]); // no temp file or lock left
   });
 
   it("prints only fixed status lines and counts, never page text", async () => {
@@ -366,7 +425,7 @@ describe("run", () => {
     const routes = siteRoutes([ids(4, 100)]);
     const next = harness(
       Object.fromEntries(
-        Object.entries(routes).map(([k, v]) => [k.replace("21-11-2026", "22-11-2026"), { ...v, body: v.body?.replaceAll("21-11-2026", "22-11-2026") }]),
+        Object.entries(routes).map(([k, v]) => [k.replace("21-11-2026", "22-11-2026"), { ...v, body: typeof v.body === "string" ? v.body.replaceAll("21-11-2026", "22-11-2026") : v.body }]),
       ),
       "2026-11-22T05:00:00Z",
     );
@@ -399,14 +458,179 @@ describe("run", () => {
     expect(readFileSync(eventsFile(), "utf8")).toBe(before);
   });
 
-  it("stops at the 10-minute deadline", async () => {
-    const routes = siteRoutes([ids(10, 100), ids(10, 200), ids(10, 300), ids(10, 400), ids(10, 500), ids(10, 600), ids(10, 700), ids(10, 800), ids(10, 900), ids(10, 1000)]);
-    const h = harness(routes, "2026-11-21T03:00:00Z", 2_000); // 111 requests at 7 s each would take about 13 minutes
+  it("stops at the 30-minute deadline keeping the details read, and the next run reads only the rest", async () => {
+    const pages = Array.from({ length: 10 }, (_, p) => ids(30, 100 * (p + 1))); // 300 events: 311 requests
+    const start = Date.parse("2026-11-21T03:00:00Z");
+    const h = harness(siteRoutes(pages), "2026-11-21T03:00:00Z", 1_000); // 6 s per request: about 31 minutes
     const res = await run(h.deps);
     expect(res.code).toBe("deadline");
-    expect(h.calls.length).toBeGreaterThan(50);
-    for (const c of h.calls) expect(c.at - Date.parse("2026-11-21T03:00:00Z")).toBeLessThan(DEADLINE_MS);
+    for (const c of h.calls) expect(c.at - start).toBeLessThan(DEADLINE_MS);
+    expect(h.calls.length).toBeGreaterThan(250);
     expect(existsSync(eventsFile())).toBe(false);
+    const kept = readCache(join(dataDir, "events"));
+    expect(kept.size).toBe(res.counts.fetched);
+    expect(kept.size).toBeGreaterThan(200);
+
+    const next = harness(siteRoutes(pages), "2026-11-21T03:40:00Z");
+    const done = await run(next.deps);
+    expect(done).toMatchObject({ code: "ok", counts: { listed: 300, cached: kept.size, fetched: 300 - kept.size, events: 300 } });
+    const detailCalls = next.calls.filter((c) => c.url.includes("/evento/")).map((c) => Number(c.url.split("/").pop()));
+    expect(detailCalls).toHaveLength(300 - kept.size);
+    for (const id of detailCalls) expect(kept.has(id)).toBe(false);
+    expect(readJson(eventsFile()).count).toBe(300);
+  });
+
+  it("keeps the details read before a page fails, so the next run does not read them again", async () => {
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/evento/evento-sintetico-102/102`] = { status: 503, body: "x" };
+    expect((await run(harness(routes).deps)).code).toBe("http_error");
+    expect([...readCache(join(dataDir, "events")).keys()]).toEqual([100, 101]);
+    const next = harness(siteRoutes([ids(3)]), "2026-11-21T05:20:00Z");
+    expect((await run(next.deps)).counts).toMatchObject({ fetched: 1, cached: 2, events: 3 });
+  });
+
+  it("stores fetched_at per event in the cache and prunes ids no longer listed after a successful run", async () => {
+    await run(harness(siteRoutes([ids(4, 100)])).deps);
+    const cache = JSON.parse(readFileSync(join(dataDir, "events", CACHE_FILE), "utf8"));
+    expect(cache.format).toBe(1);
+    expect(cache.details).toHaveLength(4);
+    for (const d of cache.details) expect(d).toEqual({ fetched_at: expect.stringMatching(/^2026-11-21T05:0\d:\d{2}\.\d{3}Z$/), event: expect.any(Object) });
+    // events.json keeps exactly the tool's fields (its schema is strict): no fetched_at there.
+    for (const e of readJson(eventsFile()).events) expect(Object.keys(e)).not.toContain("fetched_at");
+    await run(harness(siteRoutes([ids(3, 101)]), "2026-11-21T05:30:00Z").deps);
+    expect([...readCache(join(dataDir, "events")).keys()]).toEqual([101, 102, 103]);
+  });
+
+  it("ignores a corrupt, oversized or linked cache file and reads every detail again", async () => {
+    const dir = join(dataDir, "events");
+    mkdirSync(dir);
+    for (const write of [
+      () => writeFileSync(join(dir, CACHE_FILE), "{not json"),
+      () => writeFileSync(join(dir, CACHE_FILE), JSON.stringify({ format: 1, details: [{ fetched_at: "yesterday", event: {} }] })),
+      () => writeFileSync(join(dir, CACHE_FILE), " ".repeat(4 * 1024 * 1024 + 1)),
+      () => {
+        rmSync(join(dir, CACHE_FILE), { force: true });
+        writeFileSync(join(root, "cache-target.json"), "{}");
+        symlinkSync(join(root, "cache-target.json"), join(dir, CACHE_FILE));
+      },
+    ]) {
+      write();
+      expect(readCache(dir).size).toBe(0);
+    }
+    expect((await run(harness(siteRoutes([ids(3)])).deps)).counts).toMatchObject({ fetched: 3, cached: 0 });
+    expect(readFileSync(join(root, "cache-target.json"), "utf8")).toBe("{}"); // the link was replaced, not written through
+  });
+
+  it("re-reads a detail older than 7 days or starting in the next 3 days, never one read under 20 hours ago", () => {
+    const item = { id: 5, slug: "evento-cinco" };
+    const at = (iso: string, start: string) => ({
+      fetched_at: iso,
+      event: { id: 5, title: "x", start_date: start, end_date: start, time: "", place: "", address: "", category: "x", link: `${ORIGIN}/evento/evento-cinco/5` },
+    });
+    const now = Date.parse("2026-11-21T03:00:00Z");
+    const today = "2026-11-21";
+    expect(needsDetail(undefined, item, today, now)).toBe(true);
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-12-20"), item, today, now)).toBe(false); // 1 day, far away
+    expect(needsDetail(at("2026-11-14T03:00:00.000Z", "2026-12-20"), item, today, now)).toBe(true); // 7 days
+    expect(needsDetail(at("2026-11-14T03:00:01.000Z", "2026-12-20"), item, today, now)).toBe(false);
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-11-21"), item, today, now)).toBe(true); // starts today
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-11-24"), item, today, now)).toBe(true); // in 3 days
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-11-25"), item, today, now)).toBe(false); // in 4 days
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-11-20"), item, today, now)).toBe(false); // already started
+    expect(needsDetail(at("2026-11-21T02:30:00.000Z", "2026-11-21"), item, today, now)).toBe(false); // read tonight
+    expect(needsDetail(at("2026-11-21T04:00:00.000Z", "2026-12-20"), item, today, now)).toBe(true); // read "in the future"
+    expect(needsDetail(at("2026-11-20T03:00:00.000Z", "2026-12-20"), { id: 5, slug: "outro-slug" }, today, now)).toBe(true);
+  });
+
+  it("re-reads stale and soon-starting details within the same 5 s gap", async () => {
+    const routes = siteRoutes([ids(3)]);
+    const cached = (id: number, fetchedAt: string, start: string) => ({
+      fetched_at: fetchedAt,
+      event: { id, title: `Evento ${id}`, start_date: start, end_date: start, time: "20h.", place: "", address: "", category: "Lazer", link: `${ORIGIN}/evento/evento-sintetico-${id}/${id}` },
+    });
+    mkdirSync(join(dataDir, "events"));
+    const details = [
+      cached(100, "2026-11-13T05:00:00.000Z", "2026-12-20"), // read 8 days ago: re-read
+      cached(101, "2026-11-20T05:00:00.000Z", "2026-11-23"), // starts in 2 days: re-read
+      cached(102, "2026-11-20T05:00:00.000Z", "2026-12-01"), // recent and far away: kept
+    ];
+    writeFileSync(join(dataDir, "events", CACHE_FILE), JSON.stringify({ format: 1, details }));
+    expect(readCache(join(dataDir, "events")).size).toBe(3);
+    const h = harness(routes);
+    const res = await run(h.deps);
+    expect(res.counts).toMatchObject({ fetched: 2, cached: 1, events: 3 });
+    const reads = h.calls.filter((c) => c.url.includes("/evento/"));
+    expect(reads.map((c) => c.url.replace(ORIGIN, ""))).toEqual(["/evento/evento-sintetico-100/100", "/evento/evento-sintetico-101/101"]);
+    for (const [i, c] of h.calls.entries()) if (i > 0) expect(c.at - h.calls[i - 1]!.at).toBeGreaterThanOrEqual(GAP_MS);
+    const after = readCache(join(dataDir, "events"));
+    expect(after.get(100)!.fetched_at).toBe(new Date(reads[0]!.at + 200).toISOString());
+    expect(after.get(101)!.event.start_date).toBe("2026-11-21"); // the page's current date replaced the cached one
+    expect(after.get(102)!.fetched_at).toBe("2026-11-20T05:00:00.000Z");
+  });
+
+  it("honours a recorded Crawl-delay above 5 s between every request", async () => {
+    const routes = siteRoutes([ids(2)]);
+    routes[`${ORIGIN}/robots.txt`] = { body: robotsBytes(ROBOTS + "\r\nCrawl-delay: 12"), contentType: "text/plain" };
+    expect((await run(harness(routes).deps)).code).toBe("robots_changed"); // not recorded: stop
+    const h = harness(routes);
+    h.deps.recordedRobots = [...RECORDED_ROBOTS, "crawl-delay: 12"];
+    expect((await run(h.deps)).code).toBe("ok");
+    expect(h.calls).toHaveLength(4);
+    for (const [i, c] of h.calls.entries()) if (i > 1) expect(c.at - h.calls[i - 1]!.at).toBeGreaterThanOrEqual(12_000 + 200);
+  });
+
+  it("never overlaps: a run finding a fresh lock makes no request and changes no file", async () => {
+    await run(harness(siteRoutes([ids(3)])).deps);
+    const dir = join(dataDir, "events");
+    const files = () => Object.fromEntries(readdirSync(dir).map((f) => [f, readFileSync(join(dir, f), "utf8")]));
+    const release = acquireLock(dir, new Date("2026-11-21T04:30:00Z"));
+    const before = files();
+    const h = harness(siteRoutes([ids(4)]), "2026-11-21T05:00:00Z"); // 30 minutes after the lock was taken
+    expect(await run(h.deps)).toMatchObject({ code: "locked", exit: 1 });
+    expect(h.calls).toEqual([]);
+    expect(files()).toEqual(before); // events.json, status.json, cache and the other run's lock untouched
+    expect(h.lines[0]).toBe("fetch-events: code=locked");
+    release();
+    expect(existsSync(join(dir, LOCK_FILE))).toBe(false);
+    expect((await run(harness(siteRoutes([ids(4)])).deps)).code).toBe("ok");
+  });
+
+  it("takes over a lock left for an hour or more (by its start time, else its mtime) and removes its own lock", async () => {
+    const dir = join(dataDir, "events");
+    mkdirSync(dir);
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T04:00:00.000Z" }));
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("ok");
+    expect(existsSync(join(dir, LOCK_FILE))).toBe(false);
+
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T04:00:01.000Z" })); // 59:59 old
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("locked");
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T09:00:00.000Z" })); // in the future
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("locked");
+
+    writeFileSync(join(dir, LOCK_FILE), ""); // a run that died between create and write
+    utimesSync(join(dir, LOCK_FILE), new Date("2026-11-21T04:30:00Z"), new Date("2026-11-21T04:30:00Z"));
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("locked");
+    utimesSync(join(dir, LOCK_FILE), new Date("2026-11-21T03:00:00Z"), new Date("2026-11-21T03:00:00Z"));
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("ok");
+    expect(existsSync(join(dir, LOCK_FILE))).toBe(false);
+    expect(readdirSync(dir).filter((f) => f.startsWith(LOCK_FILE))).toEqual([]); // no stale lock left aside
+  });
+
+  it("releases the lock on every exit path, and only its own", async () => {
+    const dir = join(dataDir, "events");
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 503, body: "x" };
+    for (const [r, at] of [
+      [routes, "2026-11-21T05:00:00Z"],
+      [siteRoutes([ids(3)]), "2026-11-21T15:00:00Z"],
+    ] as const) {
+      await run(harness(r, at).deps);
+      expect(existsSync(join(dir, LOCK_FILE))).toBe(false);
+    }
+    const release = acquireLock(dir, new Date("2026-11-21T05:00:00Z"));
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T05:00:00.000Z", token: "another run" }));
+    release();
+    expect(existsSync(join(dir, LOCK_FILE))).toBe(true);
   });
 
   it.each([403, 429, 500, 503, 404])("stops on HTTP %i without retrying and keeps the old file", async (status) => {
@@ -435,7 +659,7 @@ describe("run", () => {
 
   it("aborts before any page when robots.txt changed", async () => {
     const routes = siteRoutes([ids(3)]);
-    routes[`${ORIGIN}/robots.txt`] = { body: ROBOTS.replace("1/5", "1/30"), contentType: "text/plain" };
+    routes[`${ORIGIN}/robots.txt`] = { body: robotsBytes(ROBOTS.replace("1/5", "1/30")), contentType: "text/plain" };
     const h = harness(routes);
     expect(await run(h.deps)).toMatchObject({ code: "robots_changed", exit: 1 });
     expect(h.calls).toHaveLength(1);
@@ -494,7 +718,7 @@ describe("run", () => {
     const before = snapshot();
     expect((await run(harness(siteRoutes([ids(3)])).deps)).code).toBe("ok");
     expect(snapshot()).toEqual(before);
-    expect(readdirSync(join(dataDir, "events")).sort()).toEqual(["events.json", "status.json"]);
+    expect(readdirSync(join(dataDir, "events")).sort()).toEqual([CACHE_FILE, "events.json", "status.json"]);
   });
 
   it("replaces a symlinked events.json with a file instead of writing through it", async () => {

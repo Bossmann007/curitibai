@@ -269,33 +269,53 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
 - **Only between 02:00 and 05:50 UTC** (23:00 to 02:50 in Curitiba). The site's robots.txt asks for visits between
   02:00 and 06:00 and at most one request every 5 seconds. Outside the window the script makes no request and exits
   with `code=window_closed`. A scheduler (cron, launchd) can run it once a night inside the window.
-- Each run first fetches robots.txt and stops (`robots_changed`) if its Disallow, Visit-time or Request-rate rules
-  differ from the ones recorded in the script; then it reads the day's list pages (Curitiba's date; a pager showing more than 10 stops the run) and the
-  detail page of each event id it has not seen before. It waits 5 s between requests, stops at 10 minutes, gives each
-  request 15 s, follows no redirect, and stops without retrying on any error status (403, 429, 5xx included). Node
-  built-ins only; User-Agent `curitibai-mcp/0.10`.
+- Each run first takes a lock (`events/.lock`, created exclusively): if another run holds it, it exits with
+  `code=locked` without any request or file change. A lock older than 1 hour is left by a run that died and is
+  replaced.
+- It then fetches robots.txt and stops (`robots_changed`) if the `User-agent: *` group differs in any way from the one
+  recorded in the script (any added, removed or changed directive, including `Allow` and `Crawl-delay`); then it reads
+  the day's list pages (Curitiba's date; a pager showing more than 10 stops the run) and the detail page of each event
+  it needs. It waits 5 s between requests (longer if a recorded `Crawl-delay` or `Request-rate` asks for more), stops
+  after 30 minutes or at 05:50 UTC, whichever comes first, gives each request 15 s, follows no redirect, and stops
+  without retrying on any error status (403, 429, 5xx included). Node built-ins only; User-Agent `curitibai-mcp/0.10`.
+- Detail pages it has read are kept in `events/details.json` with the time each was read (`fetched_at`), written after
+  every page, so a run stopped by the deadline, the window or an error keeps its progress and the next run reads only
+  the rest. A detail is read again when it is 7 days old or the event starts today or in the next 3 days, but never
+  twice within 20 hours. After a successful run the cache keeps only the events still listed.
 - It keeps only id, title, start and end dates, time, place, address, category and the event page link, which it
   builds from the id and slug. Descriptions, organisers, contacts, ticket and external links and images are never
   kept. Control and format characters (bidi, zero-width, tag characters) are removed, text is NFC-normalised, title
   and place are cut at 120 characters, and e-mail-, phone- and CPF/CNPJ-shaped text is replaced by `[masked]`.
-- Schedule it early in the window (for example 02:30 UTC): a first run reads every detail page and takes about 5
-  minutes, and a run cut short by 05:50 saves nothing.
+- Schedule it early in the window (for example 02:30 UTC): a first run reads every detail page, one per 5 s (about 5
+  minutes for the 50 or so events seen on 2026-11-21); if it is cut short, the next run continues from the cache.
 - It writes `events/events.json` and `events/status.json` (last attempt, last success, result code) atomically. When a
   page does not have the expected structure, a field fails validation, the run is cut short, or the count is 0 or
   outside 0.3x–3x of the previous file's, it keeps the old `events.json` and exits nonzero (`code=layout_changed`, or
   the code of what stopped it). It prints only fixed status lines with counts and the exit code, never page text. If the
   site really changes size (fewer or more than 0.3x–3x the previous count), every run keeps failing this way: check the
   site, then delete `events/events.json` to accept the new count on the next run.
+- **A day with no events also stops with `code=layout_changed`** and keeps the previous `events.json`. The script has
+  never seen the site's empty list page, so it cannot tell "no events today" from a page it no longer understands, and
+  it fails closed. On such a night `events_search` keeps answering from the last good file (marked `stale` after 3
+  days); open the list page in a browser to check which case it is.
+
+**When robots.txt changes** (`code=robots_changed`): open <https://turismo.curitiba.pr.gov.br/robots.txt> in a browser
+and read the `User-agent: *` group. If the new rules still allow the list and event pages, edit `RECORDED_ROBOTS` (one
+`"key: value"` per directive, key in lower case, no comment) and `ROBOTS_RECORDED_ON` in `scripts/fetch-events.mjs`,
+update the copy in [docs/sources.md](docs/sources.md) and the test robots in `test/fetchEvents.test.ts`, and run
+`npm test` (or `scripts/verify`). If they no longer allow them, or move the visit window, do not run the collector until
+the script follows them.
 
 The parser was built from one list page and one detail page seen on 2026-11-21; multi-day date formats and an empty
-day have not been seen yet, and the robots.txt Disallow list recorded in the script may be incomplete (see
-[docs/sources.md](docs/sources.md)), so the first real runs may stop with `robots_changed` or `layout_changed` until
-the script is updated. Ask, for example: "events in Curitiba this weekend" or "concerts next week".
+day have not been seen yet (see [docs/sources.md](docs/sources.md)), so the first real runs may stop with
+`layout_changed` until the script is updated. Ask, for example: "events in Curitiba this weekend" or "concerts next
+week".
 
 ## Privacy and safety
 
 - No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
-  (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/`. The cache is in
+  (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/` (`events.json`,
+  `status.json`, its detail cache `details.json` and its lock `.lock`). The cache is in
   memory only (10 minutes) and is keyed by the request sent to the source.
 - The server contacts exactly five hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br` and
