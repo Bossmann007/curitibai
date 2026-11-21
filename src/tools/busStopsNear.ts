@@ -12,6 +12,7 @@ import {
   urbsNote,
   type UrbsSource,
 } from "./busCommon.js";
+import { lineStops } from "./busLineStops.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
@@ -69,7 +70,7 @@ interface Stop {
   row: Ponto;
   lat: number;
   lon: number;
-  /** COD + SENTIDO -> the pair, once per pair. */
+  /** Upper-cased COD + SENTIDO -> the pair, once per pair (codes compared case-insensitively, as everywhere). */
   lines: Map<string, { cod: string; sentido: string }>;
 }
 
@@ -84,7 +85,8 @@ function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
       lines = new Map();
       pending.set(r.NUM, lines);
     }
-    lines.set(`${r.COD}\u0000${r.SENTIDO}`, { cod: r.COD, sentido: r.SENTIDO });
+    const key = `${r.COD.toUpperCase()}\u0000${r.SENTIDO}`;
+    if (!lines.has(key)) lines.set(key, { cod: r.COD, sentido: r.SENTIDO }); // the first spelling of the code wins
     if (stop === undefined) {
       const lat = parseCoordinate(r.LAT, 90);
       const lon = parseCoordinate(r.LON, 180);
@@ -111,8 +113,8 @@ export function busStopsNearResult(
   const matches: { stop: Stop; distance: number }[] = [];
   for (const stop of groupStops(rows).values()) {
     if (wanted !== undefined && ![...stop.lines.values()].some((l) => l.cod.toUpperCase() === wanted)) continue;
-    const distance = Math.round(distanceM(args.near, stop));
-    if (distance <= args.radius_m) matches.push({ stop, distance });
+    const exact = distanceM(args.near, stop);
+    if (exact <= args.radius_m) matches.push({ stop, distance: Math.round(exact) });
   }
   const byNumber = (a: string, b: string) => Number(a) - Number(b) || a.localeCompare(b);
   matches.sort((a, b) => a.distance - b.distance || byNumber(a.stop.row.NUM, b.stop.row.NUM));
@@ -170,8 +172,7 @@ export const busStopsNear: ToolDef<typeof busStopsNearInput, typeof busStopsNear
     if (isFailure(stops)) return stops;
     if (isFailure(lines)) return lines;
     if (args.line_code !== undefined) {
-      const wanted = args.line_code.trim().toUpperCase();
-      if (!stops.rows.some((r) => r.COD.toUpperCase() === wanted)) {
+      if (lineStops(stops.rows, args.line_code).length === 0) {
         return fail("invalid_argument", `line_code has no stops in ${stops.file}; find the code with bus_lines_search.`);
       }
     }

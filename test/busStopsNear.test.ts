@@ -42,6 +42,7 @@ function stopRows() {
     row("990101", "X91", "Centro Fictício", north(100), CENTRE.lon),
     row("990101", "901", "Bairro Inventado", north(100), CENTRE.lon),
     row("990101", "901", "Terminal Imaginário", north(100), CENTRE.lon, { ITINERARY_ID: "9999" }),
+    row("990101", "x91", "Centro Fictício", north(100), CENTRE.lon), // same line, code in lower case
     // 300 m east, a name with an e-mail address, served by a line that the lines file does not have.
     row("990102", "777", "Vila Inexistente", CENTRE.lat, east(300), {
       NOME: "Praça Inventada - contato ficticio@example.invalid",
@@ -49,6 +50,8 @@ function stopRows() {
     }),
     // 600 m north: outside the default 400 m.
     row("990103", "903", "Bairro Inventado", north(600), CENTRE.lon),
+    // 400.4 m: outside 400 m although its distance_m would round to 400.
+    row("990109", "903", "Bairro Inventado", north(400.4), CENTRE.lon),
     // No coordinates in any row: never returned.
     row("990104", "903", "Bairro Inventado", null, null),
     // First row without coordinates, then 200 m south, then a different position: the first row with coordinates wins.
@@ -131,7 +134,8 @@ describe("bus_stops_near", () => {
   it("widens with radius_m; a stop without coordinates is never returned", async () => {
     dataDir();
     const out = await near({ radius_m: 1000 });
-    expect(out.data.items.map((s) => s.stop_number)).toEqual(["990101", "990105", "990106", "990107", "990102", "990103"]);
+    expect(out.data.items.map((s) => s.stop_number)).toEqual(["990101", "990105", "990106", "990107", "990102", "990109", "990103"]);
+    expect(out.data.items.find((s) => s.stop_number === "990109")?.distance_m).toBe(400);
     expect(out.data.items.some((s) => s.stop_number === "990104")).toBe(false);
     const tight = await near({ radius_m: 99 });
     expect(tight.data).toMatchObject({ total: 0, items: [], next_offset: null });
@@ -192,7 +196,7 @@ describe("bus_stops_near", () => {
     expect((await call({ near: CENTRE, limit: 51 })).isError).toBe(true);
     expect((await call({ near: { lat: 91, lon: 0 } })).isError).toBe(true);
     expect((await call({ near: CENTRE, line_code: "9 01" })).isError).toBe(true);
-    expect((await near({ radius_m: 2000, limit: 50 })).data.total).toBe(6);
+    expect((await near({ radius_m: 2000, limit: 50 })).data.total).toBe(7);
   });
 
   it("data_not_available without the stops file or without the lines file", async () => {

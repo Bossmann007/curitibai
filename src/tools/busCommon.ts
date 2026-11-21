@@ -87,7 +87,6 @@ const OUTPUT_FIELD: Record<DescriptiveField, string> = {
   ADAPT: "adapt",
 };
 
-
 /**
  * For descriptive fields (other than ADAPT, which has ADAPT_MISSING_NOTE) that are empty in every row of the file: the
  * field looks missing or renamed, so the values it feeds (empty, or null for `card_only`) may not come from URBS. "" when none.

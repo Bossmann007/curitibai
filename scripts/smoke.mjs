@@ -62,7 +62,7 @@ if (pois.isError || !(pois.structuredContent?.data?.total > 0)) {
   process.exit(1);
 }
 console.log(`smoke: city_points_search OK (${pois.structuredContent.data.total} synthetic feiras)`);
-console.log(`smoke: bus_stops_near OK (${near.structuredContent.data.total} synthetic stop within 400 m)`);
+console.log(`smoke: bus_stops_near OK (${near.structuredContent.data.total} synthetic stop(s) within 400 m)`);
 console.log(`smoke: bus_departures OK (${bus.structuredContent.data.total} synthetic weekday departures of line 901)`);
 console.log(`smoke: city_services_search OK (${cs.structuredContent.data.total} synthetic services match "ficticia")`);
 console.log(`smoke: tools/list over stdio OK (${names.length} tools: ${names.join(", ")})`);

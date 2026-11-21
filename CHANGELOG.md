@@ -13,7 +13,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   (newest file, 5% rule, `skipped_rows`, masking, CC BY 4.0 note, renamed-field notes) and the distance of
   `city_points_search`; no network call. `checked_at` is the stops file's date; `note` names the lines file when its
   date differs and says the result is not real-time (timetables via `bus_departures` with the `stop_number`).
-- About 50 ms per call (median) on the real 17,496-row 2026-11-20 stops file on an Apple M4. `scripts/verify` now times
+- About 50 ms per call (median; the first call in a process about 105 ms) on the real 17,496-row 2026-11-20 stops
+  file on an Apple M4. `scripts/verify` now times
   the built tool on 17,496 generated rows and fails above 400 ms; the smoke test calls it over stdio.
 - The URBS `license_note` names every file a tool read (one for the other bus tools, unchanged).
 
