@@ -30,7 +30,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
-| `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200 (as handed over by the owner on 2026-11-21, not refetched in this change): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0200-0600`, disallows `/bin`, `/Imagem`, `*.pdf`, `*.asp` and more (the list was given truncated), `Allow: *.aspx` | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after checking robots.txt on every run |
+| `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -501,10 +501,43 @@ in the city's own categories. Built.
 - **Collector** (`scripts/fetch-events.mjs`, Node built-ins only, run by the user): its own exact host allowlist
   (`turismo.curitiba.pr.gov.br`, not in `src/config.ts` `ALLOWED_HOSTS`), https only, `redirect: "manual"` with any
   3xx treated as a stop, User-Agent `curitibai-mcp/0.10`, never a browser's. The window (02:00–05:50 UTC, inside the
-  robots.txt `Visit-time` with a 10-minute margin) and the 10-minute run deadline are checked before every request;
-  15 s per request; at least 5 s from the end of one request to the start of the next. robots.txt is fetched first on
-  every run and the run aborts (`robots_changed`) unless the group for `*` has exactly the recorded Disallow set,
-  `Visit-time: 0200-0600` and `Request-rate: 1/5` (a group naming `curitibai-mcp` would also abort it). Each path is
+  robots.txt `Visit-time` with a 10-minute margin) and the 30-minute run deadline are checked before every request;
+  15 s per request; at least 5 s from the end of one request to the start of the next, or more when a recorded
+  `Crawl-delay` (seconds) or `Request-rate` asks for a longer gap. Before any request the run takes an exclusive lock
+  (`events/.lock`, created with `wx`; a lock whose start time is 1 hour old or more is stale and replaced); a run that
+  finds a fresh lock exits with `locked` and touches no file. robots.txt is fetched next on every run, decoded as
+  Windows-1252 when no charset is declared (the site sends `text/plain` with Latin-1 comments), and the run aborts
+  (`robots_changed`) unless the `*` group has exactly the recorded directives: every `key: value` line of the group
+  (comments removed, keys in lower case, order ignored, repeats counted), so any added, removed or changed directive,
+  `Allow`, `Crawl-delay`, `Sitemap` and unknown keys included, is a change. A group naming `curitibai-mcp` would also
+  abort it. The group recorded on 2026-11-21 (`RECORDED_ROBOTS`; the file has no other group):
+
+  ```text
+  User-agent: *
+  Request-rate: 1/5
+  Visit-time: 0200-0600
+  Disallow: /App_Browsers
+  Disallow: /App_Themes
+  Disallow: /bin
+  Disallow: /Cache
+  Disallow: /Imagem
+  Disallow: /Include
+  Disallow: *.mdb
+  Disallow: *.pdf
+  Disallow: *.dll
+  Disallow: *.log
+  Disallow: *.asp
+  Disallow: *.config
+  Disallow: *.jpg
+  Disallow: *.gif
+  Disallow: *.ascx
+  Allow: *.aspx
+  Allow: *.html
+  Allow: *.htm
+  Disallow: /es/contenido/*/categoria/*/conteudos/*
+  ```
+
+  Each path is
   checked against those rules with an RFC 9309 matcher (`*` wildcard, `$` anchor, longest match wins, Allow wins
   ties; `*.asp` matches any path containing `.asp`) and against two path patterns:
   `^/eventos/\d{2}-\d{2}-\d{4}/\d+$` and `^/evento/[a-z0-9-]+/\d+$`. Any non-200 status (403, 429 and 5xx included)
@@ -520,16 +553,23 @@ in the city's own categories. Built.
   Unicode Cc characters turned into spaces and Cf characters (bidi controls, zero-width, tag characters) removed, NFC,
   whitespace collapsed, the existing PII mask (e-mail, phone, CPF/CNPJ shapes → `[masked]`), then cut at 120 code
   points (title, place, address) or 60 (time, category). `place` and `address` are split at the first " | " of
-  `lblLocal`. Details are fetched only for ids not in the previous `events.json`.
+  `lblLocal`.
+- **Detail cache** (`events/details.json`, `{format: 1, details: [{fetched_at, event}]}`): every detail page read is
+  added with its read time and the file is rewritten atomically at once, so a run stopped by the deadline, the window
+  or an error keeps what it read. A detail is read again when it is missing, its link changed, it is 7 days old or more,
+  or the event starts from the list date to 3 days after it, but never when it was read less than 20 hours ago (so a
+  second run on the same night keeps the first run's progress). A successful run prunes the cache to the ids it listed.
+  `fetched_at` stays in the cache: `events.json` keeps exactly the tool's fields. A cache that is missing, over 4 MB,
+  not a regular file or not in this shape is ignored (every detail is read again); invalid entries are dropped.
 - **Failure rule:** the old `events.json` is kept, and the script exits 1 with a code, when a page lacks a known
   element or repeats it (`layout_changed`), a field fails validation, the run is cut short (`window_closed`,
   `deadline`, `http_error`, `redirect`, `too_large`, `timeout`, `network`), or the event count is 0 or outside 0.3x–3x
-  of the previous file's (`layout_changed`). `status.json` records `attempt`, `success` (the last successful run) and
+  of the previous file's (`layout_changed`). A day with no events is therefore `layout_changed` too: no empty list page
+  has been seen, so it cannot be told from a page the parser no longer understands. `locked` exits 1 without writing
+  `status.json`. `status.json` records `attempt`, `success` (the last successful run) and
   `code` (and `http_status` when one stopped the run). Output is limited to fixed status lines.
-- **Needs a live check** (decided from one sample of each page): the robots.txt Disallow list recorded in the script
-  (`/bin`, `/Imagem`, `*.pdf`, `*.asp`) is the truncated list handed over, so the first real run may abort with
-  `robots_changed` until the full list is recorded; the text of an empty list page is unknown, so a count of 0 always
-  stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
+- **Needs a live check** (decided from one sample of each page): the text of an empty list page is unknown, so a
+  count of 0 always stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
   kept fields have not been seen, nor has the date filter value on list pages 2 and later (the parser expects the
   run's date there too).
 - **Tool** (`events_search`, no network): reads `events/events.json` through `openDataFile` and `readAllCapped` (2 MB

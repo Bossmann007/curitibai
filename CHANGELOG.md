@@ -2,6 +2,30 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.10.1
+
+Fixes so the first real nightly run of `scripts/fetch-events.mjs` can succeed (reviewer follow-ups from PR #25). The
+server and `events_search` are unchanged.
+
+- robots.txt: the whole `User-agent: *` group of `turismo.curitiba.pr.gov.br/robots.txt`, fetched once on 2026-11-21,
+  is now recorded in the collector and in docs/sources.md (21 directives; 0.10.0 had a truncated Disallow list, so the
+  first run would have stopped with `robots_changed`). Every run compares the whole group, order ignored and repeats
+  counted: any added, removed or changed directive, `Allow` and `Crawl-delay` included, is `robots_changed`. A recorded
+  `Crawl-delay` or `Request-rate` asking for more than 5 s between requests is honoured.
+- robots.txt is decoded as Windows-1252 when no charset is declared: the site sends `text/plain` without a charset and
+  with Latin-1 comments, which the strict UTF-8 fallback of 0.10.0 would have rejected (`layout_changed`) before any page.
+- The run deadline is 30 minutes (was 10); the 05:50 UTC window end still applies. Detail pages read are kept in
+  `events/details.json` with `fetched_at`, rewritten atomically after each page, so a run stopped by the deadline, the
+  window or an error keeps its progress and the next run reads only the rest. `events.json` is unchanged (no
+  `fetched_at`: the tool's schema is strict); the previous `events.json` is no longer used as the detail cache, so the
+  first 0.10.1 run reads every detail page again.
+- Details are read again when 7 days old or when the event starts on the list date or in the 3 days after it, never
+  twice within 20 hours, at the same one request per 5 s. A successful run prunes the cache to the listed ids.
+- Exclusive run lock `events/.lock` (created with `wx`, stale after 1 hour): a second run exits 1 with `code=locked`,
+  makes no request and changes no file.
+- README: how to update the recorded robots.txt rules, and why a day with no events stops with `layout_changed`
+  (kept on purpose: the empty list page has never been seen).
+
 ## 0.10.0
 
 - Added `events_search`: events in Curitiba from the public calendar of the Instituto Municipal de Turismo
