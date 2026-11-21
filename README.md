@@ -306,7 +306,7 @@ terms of use or licence for it was found. To use the tool, put a file named `car
 ```json
 {
   "source": "https://www.curitiba.pr.gov.br/servicos/",
-  "captured": "2026-11-19/20",
+  "captured": "YYYY-MM-DD",
   "count": 1,
   "items": [
     { "cat": "Category", "title": "Service title", "what": "The listing's short description...",
@@ -591,8 +591,8 @@ week".
 scripts/verify   # no tracked carta-servicos.json, URBS export, events output or HTML capture, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
 
-CI (`.github/workflows/verify.yml`) runs `scripts/verify` on every pull request and on pushes to `main`: one Ubuntu
-job, Node from `.nvmrc`, actions pinned by commit SHA, read-only token, no secrets, 10-minute timeout. It sets
+`scripts/verify` is the required local check. The CI workflow `.github/workflows/verify.yml` is set to run it on every
+pull request and on pushes to `main`: one Ubuntu job, Node from `.nvmrc`, actions pinned by commit SHA, read-only token, no secrets, 10-minute timeout. It sets
 `CURITIBAI_SKIP_AUDIT=1`, so the separate `npm audit` step is skipped there: it never changes the result, and new
 advisories would only add noise to unrelated CI runs (Dependabot, `.github/dependabot.yml`, opens weekly npm and
 GitHub Actions update PRs instead).

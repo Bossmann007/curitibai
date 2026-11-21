@@ -30,6 +30,11 @@ Docs and repository files:
 - README and docs/sources.md, Carta de Serviços: the server never contacts www.curitiba.pr.gov.br;
   `city_services_search` reads only a copy that you save yourself, by hand, in an ordinary browser session. An
   earlier local copy (2026-11-19/20) was deleted and is not used.
+- README and docs/sources.md: the `captured` and `checked_at` examples use `YYYY-MM-DD`; the
+  www.curitiba.pr.gov.br row dates its facts (robots.txt read on 2026-11-19; the HTTP 403 to non-browser clients
+  observed on 2026-11-19). README and CONTRIBUTING: `scripts/verify` is the required local check, and
+  `.github/workflows/verify.yml` is set to run it on pull requests. The removal-request form points sensitive cases
+  to the repository's private vulnerability reporting (Security tab), with no e-mail.
 - New: `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`, a pull request template and issue forms (bug, data
   source suggestion, removal request; blank issues off).
 

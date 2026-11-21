@@ -27,4 +27,4 @@ body:
     validations: { required: true }
   - type: textarea
     id: details
-    attributes: { label: Mais detalhes, description: "Opcional. Para um caso sensível, peça um contato privado e não escreva os detalhes aqui." }
+    attributes: { label: Mais detalhes, description: "Opcional. Para um caso sensível, não escreva os detalhes aqui: use o reporte privado do repositório (aba Security, botão Report a vulnerability)." }
