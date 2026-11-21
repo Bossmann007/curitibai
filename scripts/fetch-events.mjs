@@ -128,7 +128,8 @@ export function parseRobots(text) {
   const groups = [];
   let current = null;
   let lastWasAgent = false;
-  for (const rawLine of text.split(/\r\n|\r|\n/)) {
+  // A UTF-8 byte order mark, decoded as UTF-8 or as Windows-1252, would hide the first User-agent line.
+  for (const rawLine of text.replace(/^(?:\uFEFF|\u00EF\u00BB\u00BF)/, "").split(/\r\n|\r|\n/)) {
     const line = rawLine.replace(/#.*/, "").trim();
     const colon = line.indexOf(":");
     if (colon < 0) continue;
@@ -610,9 +611,9 @@ export const LOCK_STALE_MS = 60 * 60 * 1000;
 /**
  * Takes the run lock: DIR/.lock created exclusively (flag wx, never through an existing file or link). An existing lock
  * stops the run with `locked`, unless it is stale: its `started` time (else, when the file is unreadable, its mtime) is
- * LOCK_STALE_MS or more away from `now`; a stale lock is removed and the create is tried once more (if two runs remove
- * the same stale lock, only one create succeeds). Returns a release function that removes the lock only while it still
- * holds this run's content.
+ * LOCK_STALE_MS or more before `now`. A stale lock is moved aside and removed only if it is still the one judged stale,
+ * then the create is tried once more (only one of two racing runs can create it). Returns a release function that
+ * removes the lock only while it still holds this run's content.
  */
 export function acquireLock(dir, now) {
   const path = join(dir, LOCK_FILE);
@@ -630,12 +631,15 @@ export function acquireLock(dir, now) {
     } catch (err) {
       if (err?.code !== "EEXIST") throw new StopError("write_failed");
     }
+    let st;
+    let seen = null;
     let started = NaN;
     try {
-      const st = lstatSync(path);
+      st = lstatSync(path);
       if (st.isFile()) {
+        seen = readFileSync(path, "utf8");
         try {
-          started = Date.parse(JSON.parse(readFileSync(path, "utf8")).started);
+          started = Date.parse(JSON.parse(seen).started);
         } catch {
           // unreadable: use the mtime below
         }
@@ -644,9 +648,33 @@ export function acquireLock(dir, now) {
     } catch {
       continue; // removed meanwhile: try again
     }
-    if (Math.abs(now.getTime() - started) < LOCK_STALE_MS) break;
+    // Fresh, or dated in the future (another clock, or this one set back): fail closed.
+    if (now.getTime() - started < LOCK_STALE_MS) break;
+    // Stale: move it aside (one atomic step), then check that what moved is the lock judged stale. If another run
+    // replaced it meanwhile, put that run's lock back and stop.
+    const aside = join(dir, `${LOCK_FILE}.stale-${process.pid}-${Math.random().toString(36).slice(2, 10)}`);
     try {
-      unlinkSync(path);
+      renameSync(path, aside);
+    } catch {
+      continue; // removed meanwhile: try again
+    }
+    let same = false;
+    try {
+      const moved = lstatSync(aside);
+      same = moved.mtimeMs === st.mtimeMs && (moved.isFile() ? readFileSync(aside, "utf8") === seen : seen === null);
+    } catch {
+      // unreadable: treat as not the same
+    }
+    if (!same) {
+      try {
+        renameSync(aside, path);
+      } catch {
+        // nothing more to do
+      }
+      break;
+    }
+    try {
+      unlinkSync(aside);
     } catch {
       // removed meanwhile
     }

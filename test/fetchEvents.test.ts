@@ -168,6 +168,8 @@ describe("robots.txt", () => {
     expect(group(text)!.lines).toEqual([...RECORDED_ROBOTS]);
     expect(robotsMatchesRecorded(group(text))).toBe(true);
     expect(robotsMatchesRecorded(group(ROBOTS.replace(/\r\n/g, "\n") + "\n# comment\n"))).toBe(true);
+    expect(robotsMatchesRecorded(group(`\uFEFF${ROBOTS}`))).toBe(true); // a byte order mark, decoded as UTF-8
+    expect(robotsMatchesRecorded(group(`\u00EF\u00BB\u00BF${ROBOTS}`))).toBe(true); // or as Windows-1252
     expect(robotsMatchesRecorded(group([...ROBOTS.split("\r\n")].reverse().join("\n")))).toBe(false); // agent line last
     expect(robotsMatchesRecorded(group(["User-agent: *", ...ROBOTS.split("\r\n").slice(1).reverse()].join("\n")))).toBe(true); // order ignored
   });
@@ -602,6 +604,8 @@ describe("run", () => {
 
     writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T04:00:01.000Z" })); // 59:59 old
     expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("locked");
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ started: "2026-11-21T09:00:00.000Z" })); // in the future
+    expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("locked");
 
     writeFileSync(join(dir, LOCK_FILE), ""); // a run that died between create and write
     utimesSync(join(dir, LOCK_FILE), new Date("2026-11-21T04:30:00Z"), new Date("2026-11-21T04:30:00Z"));
@@ -609,6 +613,7 @@ describe("run", () => {
     utimesSync(join(dir, LOCK_FILE), new Date("2026-11-21T03:00:00Z"), new Date("2026-11-21T03:00:00Z"));
     expect((await run(harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z").deps)).code).toBe("ok");
     expect(existsSync(join(dir, LOCK_FILE))).toBe(false);
+    expect(readdirSync(dir).filter((f) => f.startsWith(LOCK_FILE))).toEqual([]); // no stale lock left aside
   });
 
   it("releases the lock on every exit path, and only its own", async () => {

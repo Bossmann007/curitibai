@@ -56,13 +56,16 @@ describe("events collector boundaries", () => {
     // writeAtomic's temp file and the lock, both created exclusively (wx: never through an existing file or link).
     expect(count(/\bwriteFileSync\(/g)).toBe(2);
     expect(count(/\bwriteFileSync\([^)]*flag: "wx" \}\)/g)).toBe(2);
-    expect(count(/\brenameSync\(/g)).toBe(1);
     expect(count(/\bmkdirSync\(/g)).toBe(1);
-    // unlink only removes the lock: inside acquireLock, on `path`, which is join(dir, LOCK_FILE).
+    // Besides writeAtomic's rename, rename and unlink touch only the lock: inside acquireLock, on `path`
+    // (join(dir, LOCK_FILE)) or `aside` (a stale lock moved next to it).
     const lockFn = SCRIPT.slice(SCRIPT.indexOf("export function acquireLock("), SCRIPT.indexOf("// ---------- run ----------"));
     expect(lockFn).toContain("const path = join(dir, LOCK_FILE);");
+    expect(lockFn).toContain("const aside = join(dir, `${LOCK_FILE}.stale-");
+    expect(count(/\brenameSync\(/g)).toBe(3);
+    expect(lockFn.match(/\brenameSync\([^)]*\)/g)).toEqual(["renameSync(path, aside)", "renameSync(aside, path)"]);
     expect(count(/\bunlinkSync\(/g)).toBe(2);
-    expect((lockFn.match(/\bunlinkSync\(path\)/g) ?? []).length).toBe(2);
+    expect(lockFn.match(/\bunlinkSync\([^)]*\)/g)).toEqual(["unlinkSync(path)", "unlinkSync(aside)"]);
     expect(SCRIPT).toContain('const dir = join(base, "events");');
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "events\.json",/);
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "status\.json",/);
