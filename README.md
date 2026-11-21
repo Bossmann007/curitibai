@@ -90,20 +90,22 @@ Details for each source (format, terms, robots.txt) are in [docs/sources.md](doc
 The Prefeitura's official app is [Curitiba App](https://apps.apple.com/br/app/curitiba-app/id1447887852) (Prefeitura
 Municipal de Curitiba; App Store listing, version 4.5.2 of 2026-10-06). Its listing describes it as bringing together
 the Prefeitura's apps and services, with "consultas, agendamentos, informações sobre transportes, saúde e educação, entre
-outros". The rows marked * are features the owner noted in the app itself; the listing text does not name them.
+outros". Rows marked * are features the owner noted in the app itself; the listing text does not name them (it
+says "agendamentos" but not Saúde Já). The app itself was not tested here, so "better" is used only where the
+comparison can be checked against the listing.
 CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login is out of scope by design.
 
 | Curitiba App feature | CuritibAI | Why |
 |---|---|---|
 | Consultas / services catalogue | ✓ | `city_services_search` searches the Carta de Serviços by words and category (from a copy you keep) |
-| Transport information | better | `bus_stops_near`, `bus_departures` and `bus_line_stops` answer "which bus stops near me and when" in one question, from the URBS timetables you download; no real-time positions |
-| Health information | better | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
+| Transport information | ✓ | `bus_stops_near`, `bus_departures` and `bus_line_stops` answer "which bus stops near me and when" in one question, from the URBS timetables you download; no real-time positions |
+| Health information | ✓ | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
 | Education information | ✓ | Municipal and state schools and CMEIs from the URBS points export (`city_points_search`); no enrolment |
 | Events * | ✓ | `events_search` over the Instituto Municipal de Turismo calendar (through the separate collector) |
 | 156 * (requests and their protocols) | — | Opening and following 156 requests needs a login; out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
-| Saúde Já scheduling * | — | Needs a login; out of scope |
-| Curitiba Lê * (library app) | — | Not covered; `city_points_search` and `places_search` list library locations only |
-| Cartão Transporte | — | Needs a login; out of scope |
+| Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
+| Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
+| Cartão Transporte * | — | Needs a login; out of scope |
 | — | better | Also in CuritibAI and not named in the listing: INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search, all answerable in plain language by an assistant |
 
 ## Deferred

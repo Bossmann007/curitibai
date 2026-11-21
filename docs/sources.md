@@ -593,12 +593,15 @@ in the city's own categories. Built.
 ### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
 
 - **Source:** <https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/>, the Secretaria Municipal da Saúde's public list
-  of vaccination sites ("Imuniza Já", Prefeitura de Curitiba). ASP.NET HTML page; no feed, API or dataset with hours was
-  found. No personal data: units, addresses, hours and vaccine groups only.
+  of vaccination sites ("Imuniza Já", Prefeitura de Curitiba). ASP.NET HTML page; the owner found no feed, API or dataset with hours
+  (not searched again here). No personal data: units, addresses, hours and vaccine groups only.
 - **Checked live on 2026-11-21** at 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`,
-  the server's own client): 200, `text/html; charset=utf-8`, 299,365 bytes, 0.25 s, an `ASP.NET_SessionId` cookie (never
+  the server's own client): 200, `text/html; charset=utf-8`, 299,365 bytes (curl, `Content-Length`), 0.25 s (Node.js
+  `fetch`), an `ASP.NET_SessionId` cookie (never
   sent back), no rate-limit headers. The page is **not** in this repository; the parser was run on a local copy outside
-  it: 101 units, 10 regionals, 0 skipped, 0 masked fields, coordinates for all 101.
+  it: 101 units, 10 regionals, 0 skipped, 0 masked fields, coordinates for all 101. One live call of the built tool
+  followed at 15:58 UTC (101 sites). Requests to the host on 2026-11-21: robots.txt twice and the page three times. The
+  UFPR robots check was three requests (root, `/curitiba/`, `/curitibaurbs/`) within about a second.
 - **Structure** (ids of an ASP.NET repeater): per regional `<span id="ContentPlaceHolder1_rptRegionais_lblRegional_R">`
   ("Regional Bairro Novo"); per unit `..._rptUnidades_R_lblUnidadeNome_U` (name), `..._lblUnidadeEndereco_U` (street,
   number and neighbourhood in one string, no separator), a schedule block `..._rptHorarios_U_lblEstrategia_K` followed by
@@ -615,12 +618,12 @@ in the city's own categories. Built.
   `https://maps.google.com/?q=<lat>,<lon>` exactly and falls inside a box around Curitiba (lat −25.7 to −25.3, lon
   −49.45 to −49.15); otherwise they are null. **No link from the page is returned**; `source_url` is the page URL. Units
   are counted by their name-span id, whatever the span holds. A unit without a name, regional or hours line (after
-  cleaning), with a tag inside its name or address, with a schedule block that does not match the known shape, or with
+  cleaning), with a name or address span that does not match or holds a tag (also as `&lt;`), with a schedule block that does not match the known shape, or with
   a block holding anything other than those spans, is skipped and counted (`skipped_units`); no unit, or more than 5%
   skipped, is `source_unavailable`.
 - **Guards:** host in `ALLOWED_HOSTS` exactly, https only, redirects to any other host refused (`sameHostOnly`), one
   GET per call at most, the parsed result cached in memory for 6 hours; after a failure no new request for 60 s (after
-  a 429, the `Retry-After` wait, at most 1 hour), the same error is returned instead; 1 MB cap, 15 s timeout, `text/html` required,
+  a 429, the `Retry-After` wait when longer, at most 1 hour), the same error is returned instead; 1 MB cap, 15 s timeout, `text/html` required,
   HTTP 429 is `rate_limited` with the `Retry-After` wait, same User-Agent as the other tools.
 - **Terms / licence:** none found on the page or the site; the page metadata says `copyright: Prefeitura de Curitiba`.
   Only facts are returned, with `attribution` "Prefeitura Municipal de Curitiba, Secretaria Municipal da Saúde,
@@ -630,7 +633,7 @@ in the city's own categories. Built.
   instruction-like vaccine line, a `javascript:` map link, a map link outside Curitiba, a map link on another host,
   text and a link outside the known structure.
 - **Prior art** (2026-11-21, `gh search repos imunizaja` and `"vacinacao curitiba"`): one repository without a
-  description (`Arthurrfreire/imunizaja-vacinas`), no MCP server or API client. Built inside this server, reusing its
+  description (`Arthurrfreire/imunizaja-vacinas`, not opened); the search found no MCP server or API client. Built inside this server, reusing its
   HTTP client, cache, masking and paging.
 
 ### `local_csv_summary`: a file the user downloaded

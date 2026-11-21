@@ -117,7 +117,8 @@ describe("vaccination_sites_search", () => {
   });
 
   it.each<[string, Route, unknown]>([
-    ["HTTP 429", { status: 429, headers: { "retry-after": "30" } }, { error: "rate_limited", message: expect.stringMatching(/30 s/) }],
+    // The wait reported is the one applied: at least 60 s.
+    ["HTTP 429", { status: 429, headers: { "retry-after": "30" } }, { error: "rate_limited", message: expect.stringMatching(/60 s/) }],
     ["HTTP 500", { status: 500 }, { error: "source_unavailable" }],
     ["a body over the cap", { headers: { "content-length": String(VACCINATION_MAX_BYTES + 1) } }, { error: "source_unavailable", message: expect.stringMatching(/1 MB cap/) }],
     ["a non-HTML body", { contentType: "application/json" }, { error: "source_unavailable" }],
@@ -151,6 +152,13 @@ describe("vaccination_sites_search", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("waits at least 60 s after a 429 with Retry-After 0", async () => {
+    const calls = stubFetch(route({ status: 429, headers: { "retry-after": "0" } }));
+    await call();
+    expect(errorOf(await call())).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(1);
+  });
+
   it("follows a same-host redirect", async () => {
     const moved = "https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/default.aspx";
     stubFetch({ ...route({ status: 302, headers: { location: moved } }), [`GET ${moved}`]: { body: page() } });
@@ -179,6 +187,8 @@ describe("parseVaccinationPage", () => {
   it.each<[string, (html: string) => string]>([
     ["a name holding a tag", (h) => h.replace(">Unidade Gerada 5<", "><b>Nova</b> Unidade<")],
     ["an address holding a tag", (h) => h.replace(">Rua Gerada, 5<", ">Rua Gerada, 5<br/>Bairro<")],
+    ["an address span of another shape", (h) => h.replace(`lblUnidadeEndereco_5">`, `lblUnidadeEndereco_5" class="x">`)],
+    ["an entity-encoded tag in the name", (h) => h.replace(">Unidade Gerada 5<", ">&lt;b&gt;Unidade Gerada 5<")],
     ["a second schedule block that does not fit", (h) => h.replace(block(5, 0, HOURS), block(5, 0, HOURS) + block(5, 1, HOURS, false))],
     ["an hours line of format characters only", (h) => h.replace(block(5, 0, HOURS), block(5, 0, "<span style='font-weight:normal'>&#x200B;&#x202E;</span>"))],
   ])("counts a unit with %s as skipped, never returns it", (_, edit) => {
@@ -186,6 +196,11 @@ describe("parseVaccinationPage", () => {
     expect(r.skipped).toBe(1);
     expect(r.sites.map((s) => s.name)).not.toContain("Unidade Gerada 5");
     expect(r.sites).toHaveLength(39);
+  });
+
+  it("does not count an id inside another attribute as a unit or block", () => {
+    const extra = `<div data-id="${P}rptUnidades_0_rptHorarios_3_lblEstrategia_0"></div>`;
+    expect(parseVaccinationPage(generated(40, 0) + extra).skipped).toBe(0);
   });
 
   it("caps long fields", () => {

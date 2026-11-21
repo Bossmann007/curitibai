@@ -43,24 +43,24 @@ export interface VaccinationPage {
 }
 
 const ID = "ContentPlaceHolder1_rptRegionais_";
-const REGIONAL = new RegExp(`<span id="${ID}lblRegional_(\\d{1,3})">([^<]{0,300})</span>`, "g");
+const REGIONAL = new RegExp(`<span id="${ID}lblRegional_(\\d{1,6})">([^<]{0,300})</span>`, "g");
 /** Every unit has a name span; its id alone counts the unit, whatever the span holds. */
-const UNIT_ID = new RegExp(`id="${ID}rptUnidades_(\\d{1,3})_lblUnidadeNome_(\\d{1,4})"`, "g");
+const UNIT_ID = new RegExp(`\\sid="${ID}rptUnidades_(\\d{1,6})_lblUnidadeNome_(\\d{1,6})"`, "g");
 /** Name and address spans; content with any tag (or over 600 characters) does not fit and skips the unit. */
-const NAME = new RegExp(`<span id="${ID}rptUnidades_(\\d{1,3})_lblUnidadeNome_(\\d{1,4})">([\\s\\S]{0,600}?)</span>`, "g");
-const ADDRESS = new RegExp(`<span id="${ID}rptUnidades_(\\d{1,3})_lblUnidadeEndereco_(\\d{1,4})">([\\s\\S]{0,600}?)</span>`, "g");
+const NAME = new RegExp(`<span id="${ID}rptUnidades_(\\d{1,6})_lblUnidadeNome_(\\d{1,6})">([\\s\\S]{0,600}?)</span>`, "g");
+const ADDRESS = new RegExp(`<span id="${ID}rptUnidades_(\\d{1,6})_lblUnidadeEndereco_(\\d{1,6})">([\\s\\S]{0,600}?)</span>`, "g");
 /** Every schedule block's id, to tell when a block exists but does not fit SCHEDULE. */
-const SCHEDULE_ID = new RegExp(`id="${ID}rptUnidades_(\\d{1,3})_rptHorarios_(\\d{1,4})_lblEstrategia_\\d{1,2}"`, "g");
+const SCHEDULE_ID = new RegExp(`\\sid="${ID}rptUnidades_(\\d{1,6})_rptHorarios_(\\d{1,6})_lblEstrategia_\\d{1,6}"`, "g");
 /**
  * One schedule block: the rich-text `lblEstrategia_K` span, closed right before its sibling `lblHorario_K` span. The
  * inner part is bounded, so a missing sibling cannot make the match run across the page.
  */
 const SCHEDULE = new RegExp(
-  `<span id="${ID}rptUnidades_(\\d{1,3})_rptHorarios_(\\d{1,4})_lblEstrategia_(\\d{1,2})">([\\s\\S]{0,4000}?)</span>\\s*` +
+  `<span id="${ID}rptUnidades_(\\d{1,6})_rptHorarios_(\\d{1,6})_lblEstrategia_(\\d{1,6})">([\\s\\S]{0,4000}?)</span>\\s*` +
     `<span id="${ID}rptUnidades_\\1_rptHorarios_\\2_lblHorario_\\3">([^<]{0,500})</span>`,
   "g",
 );
-const MAP_LINK = new RegExp(`<a href="([^"<>]{0,300})" id="${ID}rptUnidades_(\\d{1,3})_lblVerNoMapa_(\\d{1,4})"`, "g");
+const MAP_LINK = new RegExp(`<a href="([^"<>]{0,300})" id="${ID}rptUnidades_(\\d{1,6})_lblVerNoMapa_(\\d{1,6})"`, "g");
 /** The only map link shape read, and only for its two numbers; the link itself is never returned. */
 const COORDS = /^https:\/\/maps\.google\.com\/\?q=(-?\d{1,3}\.\d{1,12}),(-?\d{1,3}\.\d{1,12})$/;
 /** Tokens allowed inside a schedule block; anything else left over means the block is not understood. */
@@ -111,7 +111,9 @@ export function parseVaccinationPage(html: string): VaccinationPage {
     const map = new Map<string, T[]>();
     for (const m of html.matchAll(re)) {
       const key = `${m[at]}_${m[at + 1]}`;
-      map.set(key, [...(map.get(key) ?? []), pick(m)]);
+      const list = map.get(key);
+      if (list) list.push(pick(m));
+      else map.set(key, [pick(m)]);
     }
     return map;
   };
@@ -137,7 +139,9 @@ export function parseVaccinationPage(html: string): VaccinationPage {
     const hours: string[] = [];
     const vaccines: string[] = [];
     // Every block of the unit must match and fit; a block that exists but does not is never silently dropped.
-    let fits = rawName !== undefined && !rawName.includes("<") && !rawAddress?.includes("<");
+    // The name and address spans must both match and hold plain text (also after decoding entities such as &lt;).
+    const plainText = (raw: string | undefined) => raw !== undefined && !raw.includes("<") && !htmlToText(raw).includes("<");
+    let fits = plainText(rawName) && plainText(rawAddress);
     fits &&= found.length === (blockIds.get(key)?.length ?? 0);
     for (const b of fits ? found : []) {
       const s = schedule(b.inner);
@@ -155,7 +159,7 @@ export function parseVaccinationPage(html: string): VaccinationPage {
       skipped++;
       continue;
     }
-    const address = rawAddress === undefined ? "" : cleanField(htmlToText(rawAddress), ADDRESS_MAX);
+    const address = cleanField(htmlToText(rawAddress!), ADDRESS_MAX);
     const href = maps.get(key)?.[0];
     const at = href === undefined ? null : coords(href);
     sites.push({
@@ -201,10 +205,12 @@ export async function getVaccinationSites(): Promise<Cached<VaccinationPage>> {
   try {
     return await load();
   } catch (err) {
-    const wait = err instanceof RateLimitedError ? Math.min(err.retryAfterS ?? FAILURE_WAIT_S, MAX_FAILURE_WAIT_S) : FAILURE_WAIT_S;
+    // At least 60 s after any failure, a 429's Retry-After when longer, never more than 1 hour.
+    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : 0;
+    const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
     retryAt = Date.now() + wait * 1000;
-    lastError = err;
-    throw err;
+    lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
+    throw lastError;
   }
 }
 
