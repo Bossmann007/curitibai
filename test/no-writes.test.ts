@@ -55,7 +55,7 @@ describe("no tool writes", () => {
   it("imports node:fs only in the allowed modules, and only read APIs there", () => {
     // Every mention of the fs module (any spelling) must be one of these named imports.
     const allowed: Record<string, string[]> = {
-      "localfs.ts": ["closeSync", "constants", "fstatSync", "openSync", "read", "realpathSync", "statSync"],
+      "localfs.ts": ["closeSync", "constants", "fstatSync", "openSync", "read", "readdirSync", "realpathSync", "statSync"],
       "server.ts": ["realpathSync"],
     };
     const anyFs = /["'](node:)?fs(\/[\w]+)?["']/g;
