@@ -6,6 +6,7 @@ import {
   OVERPASS_URL,
   PLACE_CATEGORIES,
   PLACE_CATEGORY_NAMES,
+  type PlaceCategory,
 } from "../sources/osm.js";
 import { dateInCuritiba } from "../sources/detran.js";
 import { fold } from "../text.js";
@@ -82,7 +83,7 @@ export const POLICE_NOTE =
   "police is as tagged in OSM; includes Guarda Municipal, identification institutes and some non-police offices.";
 
 /** Note for the bundled police and fire station list: emergency warning first, then (police only) what the category holds, then its age. */
-export function bundledNote(now: Date, checkedAt: string, category?: string): string {
+export function bundledNote(now: Date, checkedAt: string, category: PlaceCategory): string {
   const days = Math.floor((Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${checkedAt}T00:00:00Z`)) / 86_400_000);
   const age =
     days > BUNDLED_MAX_AGE_DAYS
@@ -99,9 +100,8 @@ export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearch
     "community centre, town hall, bus station, marketplace, police, fire station), optionally filtered by words in the name. " +
     "Returns name, address as tagged, coordinates, opening hours, website and the OSM link. No shops, offices, " +
     "doctors or hospitals (use health_units_search for public health units). Police and fire stations come from a " +
-    "list bundled once from OSM; police is as tagged in OSM and includes Guarda Municipal, identification institutes " +
-    "and some non-police offices. NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). Community data, may " +
-    "be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
+    `list bundled once from OSM; ${POLICE_NOTE} NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). ` +
+    "Community data, may be outdated. © OpenStreetMap contributors, ODbL. Read-only.",
   inputSchema: placesSearchInput,
   outputSchema: placesSearchOutput,
   handler: async ({ category, name, limit, offset }) => {
