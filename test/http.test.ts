@@ -3,6 +3,8 @@ import {
   fetchText,
   isAllowedUrl,
   RateLimitedError,
+  REFUSAL_BLOCK_MS,
+  resetHostRefusals,
   ResponseTooLargeError,
   SourceRefusedError,
   SourceUnavailableError,
@@ -153,12 +155,31 @@ describe("fetchText", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("after a refusal the host is not asked again for 10 minutes (same refusal, no network call)", async () => {
+    const calls = stubFetch({ [`GET ${OK}`]: { status: 403, body: "Access Denied" } });
+    for (let i = 0; i < 3; i++) await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceRefusedError);
+    expect(calls).toHaveLength(1);
+    const other = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?x=1";
+    const otherCalls = stubFetch({ [`GET ${other}`]: { body: "{}", contentType: "application/json" } });
+    await fetchText(other); // another host is not blocked
+    expect(otherCalls).toHaveLength(1);
+    vi.useFakeTimers({ now: Date.now() + REFUSAL_BLOCK_MS + 1, toFake: ["Date"] });
+    try {
+      const later = stubFetch({ [`GET ${OK}`]: { body: "ok" } });
+      await expect(fetchText(OK)).resolves.toMatchObject({ body: "ok" });
+      expect(later).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("an HTTP 429 whose HTML page is a CAPTCHA is a final refusal, not rate limiting", async () => {
     const page = '<html><body><div class="g-recaptcha" data-sitekey="x"></div></body></html>';
     stubFetch({ [`GET ${OK}`]: { status: 429, body: page, contentType: "text/html; charset=utf-8", headers: { "retry-after": "1" } } });
     const err = await fetchText(OK).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SourceRefusedError);
     expect(err).not.toBeInstanceOf(RateLimitedError);
+    resetHostRefusals(); // the refusal above blocks the host for 10 minutes
     stubFetch({ [`GET ${OK}`]: { status: 429, body: "slow down", contentType: "text/html", headers: { "retry-after": "1" } } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(RateLimitedError);
   });

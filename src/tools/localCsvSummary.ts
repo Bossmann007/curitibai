@@ -65,7 +65,8 @@ export const LOCAL_NOTE =
   "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
   "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused by name, and a grouped " +
-  "column is refused when a value it would return looks like contact data (CPF/CNPJ, e-mail or phone shaped); " +
+  "column is refused when a value it would return looks like contact data (CPF/CNPJ, e-mail or phone shaped, or year " +
+  "ranges that look like phone numbers); " +
   "names of people in values are not detected. " +
   "The data keeps its publisher's licence: cite the source of the file. " +
   `For a file from the Portal de Dados Abertos de Curitiba, the portal's rules ask for this notice: ${PORTAL_DISCLAIMER}`;
@@ -222,7 +223,8 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
     "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
     "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, and " +
-    "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone) is refused. " +
+    "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges that look like " +
+    "phone numbers) is refused. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
@@ -257,7 +259,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
         // Values that could be returned and that the contact-data guard would change (CPF/CNPJ-, e-mail- or
         // phone-shaped text): the column is refused whole, whatever `top` is. It detects contact data, not names.
         if (sorted.some(([value]) => guardedSummary(value) !== value)) {
-          return fail("column_not_allowed", "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone)");
+          return fail(
+            "column_not_allowed",
+            "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone, or year ranges that look like phone numbers)",
+          );
         }
         const shown = sorted.slice(0, top).map(([value, count]) => ({ value, count }));
         const shownTotal = shown.reduce((t, g) => t + g.count, 0);

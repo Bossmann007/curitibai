@@ -21,8 +21,8 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
   still matched on the `curitibai-mcp` product token.
 - Events: confirmed facts only (title, dates, time, place, address, category, link). The collector never reads the
   description; a test now pins that neither `events.json` nor the detail cache holds it.
-- Test fixture: the CPF-shaped values in `pncp_contratacoes_synthetic.json` now have invalid check digits; a test
-  checks that no value there passes the CPF rule.
+- Tests and fixtures: CPF-shaped values now have invalid check digits; a test scans every file under `test/` and
+  allows only 123.456.789-09 in the two tests that check masking of a valid-looking CPF.
 - README: one block on independence, names, "as is" data and emergency numbers (190/192/193/199); the comparison table
   is dated (2026-11-21, public sources) and its "extra" row loses the promotional wording; new "Privacy notice" and
   "Collection rules"; "License" becomes "Licences (code and data)" (URBS CC BY 4.0 with changes made, OSM extract as a
@@ -35,14 +35,16 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
   an 8-digit phone can look like that. "2025/2026" is kept.
 - `local_csv_summary`: groups need at least 5 rows to be listed (was 3); a grouped column is refused
   (`column_not_allowed`) when a value it could return would be changed by the contact-data guard (CPF/CNPJ, e-mail or
-  phone shaped). Names of people in values are not detected.
+  phone shaped, or year ranges that look like phone numbers). Names of people in values are not detected.
 - `vaccination_sites_search`, `next_buses_near`, `bus_departures`, `weather_forecast` and `detran_pr_info` notes say to
   confirm on the official channel before you go or act, with its URL; the README disclaimer links them.
 - `src/http.ts`: HTTP 401, 403 and a 429 whose HTML page is a CAPTCHA are a final refusal (`SourceRefusedError`,
   returned as `source_unavailable`): never retried, not even by PNCP's single retry. A 429 CAPTCHA was `rate_limited`
-  before. The events collector already stopped on 403 (tested).
-- Carta de Serviços: the local copy must be saved by a person in an ordinary browser session; the docs no longer
-  describe how a copy is captured.
+  before. The host is then not asked again for 10 minutes in that process, and `procurement_search` and
+  `health_units_search` return what they found with `next_page: null` when a later page is refused. The events
+  collector already stopped on 403 (tested).
+- Carta de Serviços: new local copies must be saved by a person in an ordinary browser session. The 2026-11-19/20
+  copy was made before this rule, with a scripted real-browser session (stated in README and docs/sources.md).
 - README "Removal requests": open an issue; the content is removed from the next release.
 
 ## 0.13.1

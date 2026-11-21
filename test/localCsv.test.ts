@@ -42,7 +42,7 @@ beforeAll(() => {
   writeFileSync(join(dataDir, "latin1.csv"), Buffer.concat([Buffer.from(ascii, "latin1"), Buffer.from("x;Saúde\n".repeat(5), "latin1")]));
   writeFileSync(join(dataDir, "empty.csv"), "");
   // Headerless: the first line is a (synthetic) record with a name, a CPF-shaped number and a street.
-  writeFileSync(join(dataDir, "headerless.csv"), "Fulano Ficticio;123.456.789-09;Rua Ficticia 1\nBeltrana Ficticia;987.654.321-00;Rua Ficticia 2\n");
+  writeFileSync(join(dataDir, "headerless.csv"), "Fulano Ficticio;123.456.789-00;Rua Ficticia 1\nBeltrana Ficticia;987.654.321-01;Rua Ficticia 2\n");
   // A line with far more fields than any header.
   writeFileSync(join(dataDir, "wide.csv"), `a,b\n1,2\n${",".repeat(MAX_COLUMNS * 10)}\n`);
   writeFileSync(join(dataDir, "swap.csv"), "a;b\ninside;1\n");
@@ -104,7 +104,7 @@ describe("csv parser", () => {
 
 describe("header and column guards", () => {
   it("treats data-looking cells as values", () => {
-    for (const v of ["123.456.789-09", "12.345.678/0001-90", "a@b.com", "(41) 3333-4444", "41 999998888", "18/11/2026",
+    for (const v of ["123.456.789-00", "12.345.678/0001-90", "a@b.com", "(41) 3333-4444", "41 999998888", "18/11/2026",
       "2026-11-18", "80000-000", "12345", "x".repeat(61)]) {
       expect({ v, value: looksLikeValue(v) }).toEqual({ v, value: true });
     }
@@ -197,7 +197,10 @@ describe("local_csv_summary", () => {
   it("refuses a column whose returned values look like personal data (the contact-data guard would change them)", async () => {
     writeFileSync(join(dataDir, "contact-values.csv"), `ref;tipo\n${"(41) 3333-4444;A\n".repeat(5)}${"x@ficticio.example;A\n".repeat(5)}`);
     const res = await call({ file: "contact-values.csv", group_by: "ref" });
-    expect(errorOf(res)).toMatchObject({ error: "column_not_allowed" });
+    expect(errorOf(res)).toEqual({
+      error: "column_not_allowed",
+      message: "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone, or year ranges that look like phone numbers)",
+    });
     const text = JSON.stringify(res);
     for (const leak of ["3333", "ficticio"]) expect(text).not.toContain(leak);
     const ok = localCsvSummaryOutput.parse((await call({ file: "contact-values.csv", group_by: "tipo" })).structuredContent).data;

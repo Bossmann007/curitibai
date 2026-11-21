@@ -19,7 +19,10 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 - A 403, a CAPTCHA, a login or any other block is never bypassed: the host is left out, or the tool returns
   `source_unavailable`. Since v0.13.2 this is in code: `src/http.ts` throws `SourceRefusedError` (a final refusal,
   never retried, not even by PNCP's single retry) for HTTP 401, 403 and a 429 whose HTML page (first 16 KB) mentions
-  a CAPTCHA or challenge; the events collector stops on any non-200 status, 403 included.
+  a CAPTCHA or challenge; the host is then not asked again for 10 minutes in that process (the same refusal is
+  returned without a network call), and `procurement_search` and `health_units_search` return what they found with
+  `next_page: null`. PNCP's single retry happens only after a connection error or a 429 with `Retry-After` of 5 s or
+  less, never after a 401, 403 or CAPTCHA. The events collector stops on any non-200 status, 403 included.
 - Requests send the User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`, the repository
   being the contact.
 - Removal requests: open an issue at <https://github.com/Bossmann007/curitibai/issues>; the content is removed from
@@ -324,6 +327,7 @@ robots.txt `Disallow: /`. The server contacts neither host.
 ordinary browser session, reading the public listing pages as any visitor does. No script, scheduler or automated
 capture of `www.curitiba.pr.gov.br` or `servicos.curitiba.pr.gov.br` is part of this project or documented here, and
 none may be added. `scripts/check-no-catalog` keeps any copy out of the repository.
+The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds; new copies must be saved by a person in an ordinary browser session.
 
 | Field | Value |
 |---|---|
@@ -687,7 +691,8 @@ Data rows (after the first line) are never returned.
 The values of the grouped column are returned; groups under 5 rows (3 before v0.13.2, owner decision 2026-11-21) are
 counted only in `other_count`, so a filter plus a group-by cannot reveal one record. Since v0.13.2 a grouped column is
 refused (`column_not_allowed`) when any value that could be returned would be changed by the contact-data guard
-(`guardedSummary`: CPF/CNPJ-, e-mail- or phone-shaped text). It does not detect names of people.
+(`guardedSummary`: CPF/CNPJ-, e-mail- or phone-shaped text, or year ranges that look like phone numbers such as
+"2025 - 2026"). It does not detect names of people.
 
 **Owner decision (2026-11-19), same rule as CNES (no person names):** `group_by` and `filter_column` are refused
 (`column_not_allowed`) when the column name, accents and case ignored, matches nome, name, cpf, cnpj, rg, email/e-mail,

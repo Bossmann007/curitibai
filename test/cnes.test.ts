@@ -200,6 +200,20 @@ describe("health_units_search", () => {
     expect(data).toMatchObject({ partial: true, next_page: 2 });
   });
 
+  it("a final refusal (403) on a later page returns the partial with next_page null and does not ask again", async () => {
+    const calls = stubFetch({
+      ...cnesRoutes(),
+      [`GET ${establishmentsUrl(1, null)}`]: { body: syntheticPage("UMS", 1), contentType: JSON_TYPE },
+      [`GET ${establishmentsUrl(2, null)}`]: { status: 403, body: "Forbidden" },
+    });
+    const client = await connectClient();
+    const data = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "UMS 2" } }));
+    expect(data).toMatchObject({ partial: true, next_page: null, next_skip: 0 });
+    expect(data.note).toMatch(/^The source refused page 2 \(HTTP 403\); it is not asked again\./);
+    expect(data.note).not.toContain("continue with next_page");
+    expect(calls.filter((c) => c.url !== CNES_TYPES_URL)).toHaveLength(2);
+  });
+
   it("says how long to wait when a later page is refused with HTTP 429", async () => {
     stubFetch({
       ...cnesRoutes(),

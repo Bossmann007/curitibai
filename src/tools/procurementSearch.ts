@@ -7,8 +7,8 @@ import {
   type Procurement,
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
-import { RateLimitedError } from "../http.js";
-import { envelope, fail, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
+import { RateLimitedError, SourceRefusedError } from "../http.js";
+import { envelope, fail, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
 
 /** Upstream pages requested per call, at most (8–13 s each on 2026-11-19). */
 export const MAX_PNCP_REQUESTS = 2;
@@ -151,6 +151,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let p = page;
       let scanned = 0;
       let rateLimitNote: string | null = null;
+      let refusedNote: string | null = null;
       let budgetReached = false;
       const started = Date.now();
       for (;;) {
@@ -172,6 +173,10 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         } catch (err) {
           if (scanned === 0) throw err;
           partial = true;
+          if (err instanceof SourceRefusedError) {
+            refusedNote = refusedPageNote(p, err.status);
+            break; // next_page stays null: following it would ask the host again
+          }
           nextPage = p;
           if (err instanceof RateLimitedError) rateLimitNote = rateLimitedMessage(err.retryAfterS);
           break;
@@ -197,7 +202,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         p++;
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
-      if (partial) {
+      if (refusedNote !== null) notes.unshift(refusedNote);
+      else if (partial) {
         const why = budgetReached ? ` (the ${SECOND_PAGE_BUDGET_MS / 1000} s time budget was reached)` : "";
         notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
       }

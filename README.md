@@ -197,8 +197,8 @@ names and counts. Data rows (after the first line) are never returned. What it d
   rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
   cannot reveal a single record.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
-  could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, the same
-  masking as PNCP objects). This is a guard for contact data only: names of people in values are not detected.
+  could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
+  ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). This is a guard for contact data only: names of people in values are not detected.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
   nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
@@ -225,7 +225,7 @@ rows.
 
 `city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
 The copy must be saved by a person in an ordinary browser session; no automated capture of that host is part of this
-project (see [docs/sources.md](docs/sources.md)). **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+project (see [docs/sources.md](docs/sources.md)). The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds; new copies must be saved by a person in an ordinary browser session. **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
 terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
 `CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
 
@@ -371,8 +371,10 @@ week".
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
   429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable`; no retry, no other headers, no browser
-  fallback), and the events collector stops the run on any non-200 answer, 403 included. Another 429 is returned as
-  `rate_limited` with the source's wait (PNCP alone retries once, and only when `Retry-After` is 5 s or less).
+  fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
+  with `next_page: null`), and the events collector stops the run on any non-200 answer, 403 included. Another 429 is
+  returned as `rate_limited` with the source's wait. PNCP alone retries once: after a connection error, or after a
+  429 whose `Retry-After` is 5 s or less; never after a 401, 403 or CAPTCHA.
 - Requests identify the project and its contact: User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`.
 - Removal requests: open an issue in this repository; the content is removed from the next release.
 

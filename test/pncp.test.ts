@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isAllowedUrl } from "../src/http.js";
 import {
@@ -126,17 +127,44 @@ function validCpf(digits: string): boolean {
   return check(9) === d[9] && check(10) === d[10];
 }
 
-describe("PNCP fixture", () => {
+/** Every file under test/ (sources and fixtures), as [path relative to the repo, text]. */
+function testFiles(dir = "test"): [string, string][] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e): [string, string][] => {
+    const p = `${dir}/${e.name}`;
+    return e.isDirectory() ? testFiles(p) : [[p, readFileSync(p, "utf8")]];
+  });
+}
+
+/**
+ * The one valid-check-digit CPF allowed in the tests: the textbook example 123.456.789-09, only in the files that
+ * deliberately check that a valid-looking CPF is masked (PNCP objects, event fields). Everywhere else, and in every
+ * fixture, CPF-shaped values must have an invalid check digit, so no real person's number can be planted.
+ */
+const ALLOWED_VALID_CPF = "12345678909";
+const MASKING_TESTS = new Set(["test/pncp.test.ts", "test/fetchEvents.test.ts"]);
+
+describe("CPF-shaped values in tests and fixtures", () => {
   it("rule check: 123.456.789-09 is a valid CPF, 123.456.789-00 is not", () => {
     expect(validCpf("12345678909")).toBe(true);
     expect(validCpf("12345678900")).toBe(false);
   });
 
-  it("has no CPF-shaped value with a valid check digit (no real person's number can be planted)", () => {
+  it("the PNCP fixture still plants CPF-shaped values (so the scan below checks something)", () => {
     const text = fixture("pncp_contratacoes_synthetic.json");
-    const cpfs = [...text.matchAll(/(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)/g)].map((m) => m.slice(1).join(""));
-    expect(cpfs.length).toBeGreaterThanOrEqual(3);
-    expect(cpfs.filter(validCpf)).toEqual([]);
+    expect([...text.matchAll(/(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)/g)].length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("have an invalid check digit, except 123.456.789-09 in the masking tests", () => {
+    const found: string[] = [];
+    for (const [path, text] of testFiles()) {
+      for (const m of text.matchAll(/(?<!\d)(\d{3})[. ]?(\d{3})[. ]?(\d{3})[- ]?(\d{2})(?!\d)/g)) {
+        const digits = m.slice(1).join("");
+        if (/^(\d)\1{10}$/.test(digits) || !validCpf(digits)) continue; // repeated digits are invalid CPFs by rule
+        if (digits === ALLOWED_VALID_CPF && MASKING_TESTS.has(path)) continue;
+        found.push(`${path}: ${m[0]}`);
+      }
+    }
+    expect(found).toEqual([]);
   });
 });
 
@@ -567,6 +595,19 @@ describe("procurement_search paging", () => {
     expect(res.isError).toBe(true);
     expect(errorOf(res)).toEqual({ error: "source_unavailable" });
     expect(n).toBe(1);
+  });
+
+  it("a final refusal (403) on a later page returns the partial with next_page null and does not ask again", async () => {
+    const calls = stubFetch({
+      [`GET ${pncpUrl(1)}`]: { body: syntheticPncpPage(1, 3, 4), contentType: JSON_TYPE },
+      [`GET ${pncpUrl(2)}`]: { status: 403, body: "Forbidden" },
+    });
+    const data = dataOf(await search({ limit: 20 }));
+    expect(data).toMatchObject({ partial: true, next_page: null, next_skip: 0 });
+    expect(data.items).toHaveLength(3);
+    expect(data.note).toMatch(/^The source refused page 2 \(HTTP 403\); it is not asked again\./);
+    expect(data.note).not.toContain("continue with next_page");
+    expect(calls).toHaveLength(2);
   });
 
   it("a 429 on a later page keeps what was found as partial", async () => {
