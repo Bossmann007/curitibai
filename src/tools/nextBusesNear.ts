@@ -255,7 +255,8 @@ export const nextBusesNear: ToolDef<typeof nextBusesNearInput, typeof nextBusesN
     "\"Next buses near me\" in one call: published departures in the next window_min minutes (default 60, at most " +
     "180) after `at` (default now in Curitiba) at the URBS stops within radius_m (default 400 m, at most 1000), " +
     "soonest first: time, minutes from now, line code and name, directions, stop, distance and accessibility " +
-    "equipment. Day code from today's weekday unless given (holidays not detected). Timetable as published, not " +
+    "equipment. `directions` is a list: the timetable has no direction field, so it gives every SENTIDO the stops " +
+    "file lists for that line at that stop (most timetable stops are served in both directions). Day code from today's weekday unless given (holidays not detected). Timetable as published, not " +
     "real-time. Reads the newest YYYY_MM_DD_tabelaLinha.json, pontosLinha.json and linhas.json the user downloaded " +
     "into CURITIBAI_DATA_DIR/urbs/; no network call. Read-only.",
   inputSchema: nextBusesNearInput,
