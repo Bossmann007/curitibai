@@ -1,0 +1,29 @@
+name: Pedido de remoção de conteúdo
+description: Peça para remover um conteúdo que o CuritibAI devolve ou que está neste repositório
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Esta issue é pública. **Não cole aqui o dado pessoal em si** (nome, CPF, telefone, e-mail, endereço). Diga só onde ele aparece; isso basta para achar e remover.
+        O conteúdo é removido da próxima versão. O CuritibAI lê várias fontes ao vivo (por exemplo PNCP e CNES): o que vem delas continua publicado na fonte, então peça a remoção também ao órgão que publica.
+  - type: input
+    id: where
+    attributes: { label: Onde aparece, description: "A ferramenta e o campo (ex.: procurement_search, campo object), ou o arquivo deste repositório.", placeholder: "Ex.: city_points_search, campo name" }
+    validations: { required: true }
+  - type: textarea
+    id: how
+    attributes: { label: Como encontrar, description: "Os argumentos da chamada que devolve o conteúdo, ou o link (ex.: a página do PNCP do resultado). Sem o dado pessoal." }
+    validations: { required: true }
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Motivo
+      options:
+        - Dado pessoal meu
+        - Dado pessoal de outra pessoa
+        - Conteúdo protegido por direitos autorais
+        - Outro
+    validations: { required: true }
+  - type: textarea
+    id: details
+    attributes: { label: Mais detalhes, description: "Opcional. Para um caso sensível, peça um contato privado e não escreva os detalhes aqui." }

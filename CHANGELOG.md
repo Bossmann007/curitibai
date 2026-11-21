@@ -2,6 +2,20 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## Unreleased
+
+Docs and repository files only. No change to `src/`, no version bump.
+
+- README: brand header, badges, a three-line summary, a table of contents, "Quick start" (with other MCP clients) and
+  "Tools at a glance" (the 18 tools grouped by area). The existing sections are moved, unchanged, under "Tool
+  reference" and "Local data files". Every legal and licence section stays.
+- README "Collection rules": the 10-minute refusal block is per host, not per path. Removal requests link to the new
+  issue form.
+- README and docs/sources.md: the Carta de Serviços provenance line says why the 2026-11-19/20 copy used a real
+  browser (www.curitiba.pr.gov.br answers HTTP 403 to non-browser clients).
+- New: `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`, a pull request template and issue forms (bug, data
+  source suggestion, removal request; blank issues off).
+
 ## 0.13.2
 
 Legal hygiene: attribution, notices and facts only. No new tool, source or host.

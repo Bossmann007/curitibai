@@ -327,7 +327,7 @@ robots.txt `Disallow: /`. The server contacts neither host.
 ordinary browser session, reading the public listing pages as any visitor does. No script, scheduler or automated
 capture of `www.curitiba.pr.gov.br` or `servicos.curitiba.pr.gov.br` is part of this project or documented here, and
 none may be added. `scripts/check-no-catalog` keeps any copy out of the repository.
-The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds; new copies must be saved by a person in an ordinary browser session.
+The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds, because www.curitiba.pr.gov.br answers HTTP 403 to non-browser clients; new copies must be saved by a person in an ordinary browser session.
 
 | Field | Value |
 |---|---|
