@@ -6,16 +6,18 @@ import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
 describe("tools/list", () => {
-  it("lists exactly the nine read-only tools with input and output schemas", async () => {
+  it("lists exactly the eleven read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
+      "bus_lines",
       "city_services_search",
       "dataset_files",
       "detran_pr_info",
       "health_units_search",
       "local_csv_summary",
       "open_datasets_search",
+      "places_search",
       "procurement_search",
       "weather_alerts",
       "weather_forecast",
@@ -53,6 +55,10 @@ describe("each tool returns the envelope, valid against its output schema", () =
       expect(new URL(parsed.source_url).hostname).toBe("pncp.gov.br");
       expect(parsed.license_note).toMatch(/PNCP/);
       expect(parsed.license_note).toMatch(/CC BY-ND 3\.0/);
+    } else if (call.name === "places_search" || call.name === "bus_lines") {
+      expect(new URL(parsed.source_url).hostname).toBe("overpass.private.coffee");
+      expect(parsed.license_note).toContain("© OpenStreetMap contributors, ODbL");
+      expect(parsed.license_note).toContain(`fetched at ${parsed.fetched_at}`);
     } else if (call.name.startsWith("weather_")) {
       expect(new URL(parsed.source_url).hostname).toBe("apiprevmet3.inmet.gov.br");
       expect(parsed.license_note).toMatch(/INMET/);

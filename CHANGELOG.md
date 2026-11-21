@@ -2,6 +2,14 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.7.0
+
+- Added `places_search`: public places in Curitiba from OpenStreetMap by a fixed category allowlist (park, library, school, hospital, police, fire station, community centre, town hall, bus station, marketplace), optional name words, `limit` ≤ 20 and `offset`. No shops, offices, doctors, dentists or clinics.
+- Added `bus_lines`: OpenStreetMap bus route relations in Curitiba (ref, name, from/to, operator, network) with ref/name filters; with `route_id`, one route's stops in order with coordinates. No timetables.
+- New host `overpass.private.coffee` (Overpass API, robots.txt 404); `overpass-api.de` is not used because its robots.txt disallows `/api/`. One POST per call, 30 s timeout, 3 MB cap.
+- Every OSM result carries "© OpenStreetMap contributors, ODbL" and the OSM data timestamp (`osm3s.timestamp_osm_base`); names and other free text pass through the existing PII masking as a guard.
+- User-Agent is now `curitibai-mcp/0.7` for every host.
+
 ## 0.6.0
 
 - Added `city_services_search`: searches the Prefeitura de Curitiba service catalog (Carta de Serviços) by words (accents, case and punctuation ignored), category and online-only, with paging. It reads a local `carta-servicos.json` that the user keeps in `CURITIBAI_DATA_DIR`; the catalog is not shipped or fetched. No network call; the note warns 180 days after the file's capture date.

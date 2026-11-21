@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
+import { OVERPASS_URL } from "../src/sources/osm.js";
 import { PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { connectClient, happyRoutes, SAMPLE_CALLS, stubFetch } from "./helpers.js";
 
@@ -75,7 +76,7 @@ describe("no tool writes", () => {
     }
   });
 
-  it("calling every tool sends only GET requests (plus the portal search form POST) and creates no files", async () => {
+  it("calling every tool sends only GET requests (plus the portal search form and Overpass query POSTs) and creates no files", async () => {
     const before = snapshot(ROOT);
     const calls = stubFetch(happyRoutes());
     const client = await connectClient();
@@ -87,7 +88,8 @@ describe("no tool writes", () => {
     const local = await client.callTool({ name: "local_csv_summary", arguments: { file: "synthetic_sample.csv", group_by: "ASSUNTO" } });
     expect(local.isError).toBeFalsy();
     for (const c of calls) {
-      expect(c.method === "GET" || (c.method === "POST" && c.url === PORTAL_SEARCH_URL)).toBe(true);
+      const readPost = c.method === "POST" && (c.url === PORTAL_SEARCH_URL || (c.url === OVERPASS_URL && /;out [a-z ]+;$/.test(c.data ?? "")));
+      expect(c.method === "GET" || readPost).toBe(true);
     }
     expect(snapshot(ROOT)).toEqual(before);
   });
