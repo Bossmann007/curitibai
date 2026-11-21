@@ -454,8 +454,8 @@ emergency note), EQUIPAMENTOS URBANOS (5), and any category not in the allowlist
 one. Reason: these are private businesses, and their names can be people's names. `note` gives the count of dropped
 rows and names each category id with no row at all in the file (its URBS names look missing or renamed). It is checked
 per id, not per URBS name, because three names have a single row in the 2026-11-20 file (Unidade Saude 24H, RUA DA
-CIDADANIA - CARTÃO TRANSPORTE, ESTAÇÃO TUBO - CARTÃO TRANSPORTE) and could vanish without a rename. When the returned
-page includes `cultural_space`, `special_education` or `vocational_education`, `note` says they may include private or
+CIDADANIA - CARTÃO TRANSPORTE, ESTAÇÃO TUBO - CARTÃO TRANSPORTE) and could vanish without a rename. When any match
+(on any page) is in `cultural_space`, `special_education` or `vocational_education`, `note` says they may include private or
 non-profit institutions.
 
 Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked

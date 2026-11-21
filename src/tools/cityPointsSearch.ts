@@ -174,9 +174,10 @@ export const FEIRA_NOTE =
   "This file gives no days or hours for feiras (or any other point); check the Prefeitura before going.";
 /** Allowlisted ids that are open to the public but not necessarily publicly run. */
 export const MIXED_CATEGORIES: readonly PoiCategoryId[] = ["cultural_space", "special_education", "vocational_education"];
-export const MIXED_NOTE =
-  "Some results are in cultural_space, special_education or vocational_education: these are open to the public but " +
-  "may include private or non-profit institutions (commercial cinemas, private theatres and museums, private schools).";
+const MIXED_DETAIL =
+  "open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and " +
+  "museums, private schools)";
+export const MIXED_NOTE = `Some results are in ${MIXED_CATEGORIES.join(", ")}: these are ${MIXED_DETAIL}.`;
 export const HEALTH_NOTE = "NOT FOR EMERGENCIES: in an emergency call 192 (SAMU) or 193 (Corpo de Bombeiros).";
 
 function poiLicenseNote(file: string): string {
@@ -198,7 +199,7 @@ function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], mixed: boolean
     `Read from the local file ${URBS_SUBDIR}/${src.file} in CURITIBAI_DATA_DIR (the newest of its kind there); this ` +
     "tool makes no network call. Only an allowlist of categories is searched; " +
     `${plural(src.excluded, "row", "rows")} in other categories (private businesses, people's names, police and ` +
-    "security, and any category not on the list) are never returned. " +
+    "security, and any category not on the list, including a renamed one) are never returned. " +
     FEIRA_NOTE +
     ` ${HEALTH_NOTE}` +
     (src.skipped > 0
@@ -209,7 +210,7 @@ function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], mixed: boolean
       ? " No row of this file is in any category on the list: the URBS category names look missing or renamed in this file."
       : empty.length > 0
         ? ` No row of this file is in the ${empty.length === 1 ? "category" : "categories"} ${empty.join(", ")}: ` +
-          `${empty.length === 1 ? "its" : "their"} URBS names look missing or renamed in this file (docs/sources.md lists them).`
+          `${empty.length === 1 ? "its" : "their"} URBS names look missing or renamed in this file (call with no arguments to see \`source_categories\`).`
         : "") +
     (days > URBS_MAX_AGE_DAYS
       ? ` The file is dated ${src.date}, ${days} days ago (more than ${URBS_MAX_AGE_DAYS}); points may have changed. Download a newer export.`
@@ -262,7 +263,7 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
     note: poiNote(
       src,
       counts.filter((c) => c.count === 0).map((c) => c.id),
-      p.items.some((x) => MIXED_CATEGORIES.includes(x.category)),
+      matches.some((x) => MIXED_CATEGORIES.includes(x.category)),
       now,
     ),
   };
@@ -270,7 +271,7 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
 
 export const cityPointsSearch: ToolDef<typeof cityPointsSearchInput, typeof cityPointsSearchOutput> = {
   name: "city_points_search",
-  title: "Curitiba public points of interest (URBS, local file)",
+  title: "Curitiba points of interest open to the public (URBS, local file)",
   description:
     "Find places open to the public in Curitiba from URBS's points-of-interest export: feiras, Câmbio Verde, popular " +
     "restaurants, regional and city offices, Ruas da Cidadania, libraries, cemeteries, CMEIs, municipal and state " +
@@ -278,9 +279,9 @@ export const cityPointsSearch: ToolDef<typeof cityPointsSearchInput, typeof city
     "words in the name, and/or a position with a radius (nearest first, with distance_m); call with no arguments to " +
     "list the categories with counts. URBS's private-business categories (supermarkets, markets, shopping centres, " +
     "private schools and crèches, hotels, private clubs, newsstands), churches, hospitals, police and categories not " +
-    "on the allowlist are never returned. cultural_space, special_education and vocational_education are open to the " +
-    "public but may include private or non-profit institutions (commercial cinemas, private theatres and museums, " +
-    "private schools). No days or hours. Reads the newest YYYY_MM_DD_pois.json the user downloaded into " +
+    "on the allowlist are never returned. " +
+    `${MIXED_CATEGORIES.join(", ")} are ${MIXED_DETAIL}. No days or hours. ` +
+    "Reads the newest YYYY_MM_DD_pois.json the user downloaded into " +
     "CURITIBAI_DATA_DIR/urbs/; no network call. Read-only. Not for emergencies.",
   inputSchema: cityPointsSearchInput,
   outputSchema: cityPointsSearchOutput,
