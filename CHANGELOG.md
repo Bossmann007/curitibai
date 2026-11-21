@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.11.0
+
+- Added `bus_stops_near` ("which buses stop near me"): the URBS stops within `radius_m` (default 400, at most 2000) of
+  `near` (`{lat, lon}`, required), nearest first, one item per stop number: `stop_number`, `stop_name` (masked as a
+  guard), `lat`, `lon`, `distance_m`, shelter `type` and `lines` (`line_code`, `line_name` from the lines file or null,
+  `direction` = SENTIDO, each line and direction once). Optional `line_code` keeps only the stops that line serves (an
+  unknown code is `invalid_argument`); `limit` ≤ 50 (default 20) and `offset` page over stops, with `total` and
+  `next_offset`. Reads the newest `pontosLinha` and `linhas` files in `CURITIBAI_DATA_DIR/urbs/` with the v0.8 readers
+  (newest file, 5% rule, `skipped_rows`, masking, CC BY 4.0 note, renamed-field notes) and the distance of
+  `city_points_search`; no network call. `checked_at` is the stops file's date; `note` names the lines file when its
+  date differs and says the result is not real-time (timetables via `bus_departures` with the `stop_number`).
+- About 50 ms per call (median) on the real 17,496-row 2026-11-20 stops file on an Apple M4. `scripts/verify` now times
+  the built tool on 17,496 generated rows and fails above 400 ms; the smoke test calls it over stdio.
+- The URBS `license_note` names every file a tool read (one for the other bus tools, unchanged).
+
 ## 0.10.1
 
 Fixes so the first real nightly run of `scripts/fetch-events.mjs` can succeed (reviewer follow-ups from PR #25). The

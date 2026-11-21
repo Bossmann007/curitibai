@@ -333,7 +333,7 @@ Prior art (2026-11-19, `gh search repos`): "carta de serviços" found the federa
 (`servicosgovbr/cartas-de-servico`) and unrelated agency projects; "curitiba mcp", "curitiba servicos mcp" and
 "prefeitura curitiba servicos" found nothing. Nothing covers Curitiba's catalog. Built.
 
-### `bus_lines_search`, `bus_line_stops`, `bus_departures`: URBS daily exports (local files, not shipped)
+### `bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`: URBS daily exports (local files, not shipped)
 
 No network, and **no URBS file in this repository**. The source is the dataset "Transporte Coletivo de Curitiba" on
 the Portal de Dados Abertos de Curitiba (publisher URBS — Urbanização de Curitiba S.A.; portal page
@@ -344,7 +344,16 @@ disallowed (table above), so the server never fetches them; a person downloads `
 under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR), as linked from the dataset's portal page.
 That page's body reads "Dados Abertos - Conteúdo licenciado sob uma Licença Creative Commons." with the by/4.0 badge
 (checked 2026-11-21 with one GET). `license_note`
-attributes URBS and the dataset and names the file.
+attributes URBS and the dataset and names the file (`bus_stops_near`, since 0.11.0, names both files it reads).
+
+`bus_stops_near` (0.11.0) reads the newest `pontosLinha` and the newest `linhas` (their dates may differ; `checked_at`
+is the stops file's, and `note` names the lines file when its date differs) and groups the stop rows by `NUM`. On the
+2026-11-20 file, 17,496 rows give 7,248 stop numbers (4,231 in more than one row, up to 26 lines at one stop); every
+stop has coordinates, and exactly one stop number has rows with different names and coordinates. The tool therefore
+takes a stop's name, position and type from its first row in the file with both coordinates, and lists each
+(line, SENTIDO) pair once; 297 stops have the same pair in more than one row (another itinerary of the same
+direction). Distance is the haversine distance of `city_points_search`. Grouping and distance run on every call;
+reading and validating the 4.2 MB file is most of the time.
 
 Each tool lists the names in `urbs/` (no file is opened to choose), takes the newest valid date for its own kind,
 and reads that one file through `src/localfs.ts` with the same rules as `city_services_search` (realpath inside the
