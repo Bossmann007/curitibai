@@ -1,0 +1,179 @@
+{
+ "geometryType": "esriGeometryPolyline",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "fields": [
+  {
+   "name": "objectid",
+   "type": "esriFieldTypeOID"
+  },
+  {
+   "name": "nome",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "name": "ctba_tipo_ciclovia",
+   "type": "esriFieldTypeSmallInteger"
+  },
+  {
+   "name": "ctba_localizacao",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "name": "ctba_bairro",
+   "type": "esriFieldTypeSmallInteger"
+  },
+  {
+   "name": "ctba_regional",
+   "type": "esriFieldTypeSmallInteger"
+  },
+  {
+   "name": "lenght_km",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "name": "operacional",
+   "type": "esriFieldTypeSmallInteger"
+  },
+  {
+   "name": "situacaofisica",
+   "type": "esriFieldTypeSmallInteger"
+  }
+ ],
+ "features": [
+  {
+   "attributes": {
+    "objectid": 48,
+    "nome": null,
+    "ctba_tipo_ciclovia": 1,
+    "ctba_localizacao": "PARQUE BARIGUI",
+    "ctba_bairro": 47,
+    "ctba_regional": 5,
+    "lenght_km": 0.763,
+    "operacional": 1,
+    "situacaofisica": 5
+   },
+   "geometry": {
+    "paths": [
+     [
+      [
+       -49.30727,
+       -25.42232
+      ],
+      [
+       -49.30776,
+       -25.42252
+      ],
+      [
+       -49.30853,
+       -25.42139
+      ],
+      [
+       -49.30864,
+       -25.42114
+      ],
+      [
+       -49.30871,
+       -25.42034
+      ],
+      [
+       -49.3092,
+       -25.41904
+      ],
+      [
+       -49.30918,
+       -25.4185
+      ],
+      [
+       -49.30851,
+       -25.41654
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 670,
+    "nome": null,
+    "ctba_tipo_ciclovia": 6,
+    "ctba_localizacao": "R. DES. WESTPHALEN",
+    "ctba_bairro": 1,
+    "ctba_regional": 1,
+    "lenght_km": 0.353,
+    "operacional": 1,
+    "situacaofisica": 5
+   },
+   "geometry": {
+    "paths": [
+     [
+      [
+       -49.2714,
+       -25.43588
+      ],
+      [
+       -49.27003,
+       -25.43881
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 744,
+    "nome": null,
+    "ctba_tipo_ciclovia": 5,
+    "ctba_localizacao": "R. EDUARDO SPRADA",
+    "ctba_bairro": 75,
+    "ctba_regional": 11,
+    "lenght_km": 0.101,
+    "operacional": 1,
+    "situacaofisica": 5
+   },
+   "geometry": {
+    "paths": [
+     [
+      [
+       -49.36381,
+       -25.45203
+      ],
+      [
+       -49.36286,
+       -25.45173
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 350,
+    "nome": "VILA VERDE",
+    "ctba_tipo_ciclovia": 6,
+    "ctba_localizacao": "R. JORN. AUGUSTO WALDRIGUES",
+    "ctba_bairro": 75,
+    "ctba_regional": 11,
+    "lenght_km": 0.675,
+    "operacional": 1,
+    "situacaofisica": 5
+   },
+   "geometry": {
+    "paths": [
+     [
+      [
+       -49.33496,
+       -25.53148
+      ],
+      [
+       -49.34127,
+       -25.53355
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}
