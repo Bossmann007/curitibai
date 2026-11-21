@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.13.1
+
+- Fixed: times after midnight now follow the service day. URBS files a late-night trip under the day its service
+  starts, at the end of that day's table (on the 2026-11-20 file, 677 tables run from 23:xx on to 00:xx in file order;
+  see docs/sources.md). A row before 04:00 that comes after such a wrap in its table is an after-midnight row; the
+  other rows before 04:00 are read as early trips of their own code's day (not verified).
+- `next_buses_near`: a window past 24:00 reads the same day's after-midnight trips plus the next calendar day's early
+  trips (it read the next day's code only, so Friday 23:30 missed Friday's 00:03 and showed Saturday night's trips); a
+  window starting before 04:00 with an inferred day reads the previous day's after-midnight trips plus today's early
+  ones. An explicit `day` is now the service day: past 24:00 the window no longer stops at 23:59 but reads that day's
+  after-midnight trips; `cut_at_midnight` now means the next day's early trips were not read. Items and `windows`
+  gain `after_midnight`.
+- `bus_departures`: items gain `after_midnight`; the note states the rule instead of "not verified". Order and
+  filters are unchanged.
+
 ## 0.13.0
 
 - Added `next_buses_near` ("next buses near me" in one call): the published URBS departures in the next `window_min`

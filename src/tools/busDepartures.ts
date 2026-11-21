@@ -6,12 +6,39 @@ import { fail, ok, type ToolDef } from "./common.js";
 
 export const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** What is known about times after midnight (checked on the 2026-11-20 file), and what is not. */
+/** Minutes after midnight before which a row can be the previous evening's service (04:00). */
+export const NIGHT_END_MIN = 4 * 60;
+
+/**
+ * The rows that run after midnight but belong to the evening before: URBS files a late-night trip under the day its
+ * service starts, at the end of that day's table. A row before 04:00 is one when, in the file's order, an earlier row
+ * of its table (same COD, DIA and TABELA, any stop) has a later time, so the table has already wrapped past midnight.
+ * Pass the whole file, in file order, before any filter: the row that proves the wrap may be at another stop.
+ */
+export function afterMidnightRows(rows: readonly Tabela[]): Set<Tabela> {
+  const last = new Map<string, number>();
+  const wrapped = new Set<string>();
+  const out = new Set<Tabela>();
+  for (const r of rows) {
+    const key = `${r.COD}\u0000${r.DIA}\u0000${r.TABELA}`;
+    const t = Number(r.HORA.slice(0, 2)) * 60 + Number(r.HORA.slice(3, 5));
+    const prev = last.get(key);
+    if (prev !== undefined && t < prev) wrapped.add(key);
+    if (t < NIGHT_END_MIN && wrapped.has(key)) out.add(r);
+    last.set(key, t);
+  }
+  return out;
+}
+
+/** How times after midnight are filed (checked on the 2026-11-20 file) and how this server reads them. */
 export const MIDNIGHT_NOTE =
-  "Times are returned as published: HH:MM from 00:00 to 23:59, each under its row's DIA code. The file has no field " +
-  "that ties a time after midnight to the previous evening's service, so this server does not move or reinterpret " +
-  "such times (a 00:30 departure stays under its own day code, and `from`/`to` never wrap past midnight). Whether " +
-  "URBS files a late-night trip under the day it starts or the calendar day of the time is not verified.";
+  "Times are as published: HH:MM from 00:00 to 23:59, each under its row's DIA code, never moved. URBS files a " +
+  "late-night trip under the day its service starts, at the end of that day's table: in the 2026-11-20 file 677 " +
+  "tables (same line, DIA and TABELA, in file order) run from 23:xx on to 00:xx. A row before 04:00 that comes after " +
+  "such a wrap in its table, at any stop, has `after_midnight` true: it runs after midnight, on the calendar day after " +
+  "a day of its code (a 00:03 under 1 on a Friday runs early on Saturday). Other rows before 04:00 have " +
+  "`after_midnight` false and are read as early trips of their own code's day; the file does not say so, so that " +
+  "reading is not verified.";
 
 export const busDeparturesInput = {
   line_code: lineCodeInput.optional(),
@@ -41,6 +68,9 @@ const Departure = z.object({
   stop_name: z.string(),
   table: z.string(),
   adapt: z.string(),
+  after_midnight: z
+    .boolean()
+    .describe("True when the row continues the previous evening's service of its day code past midnight (see note)."),
 });
 
 export const busDeparturesOutput = busEnvelope(
@@ -64,6 +94,7 @@ export interface BusDeparturesArgs {
 }
 
 export function busDeparturesResult(rows: readonly Tabela[], src: UrbsSource, args: BusDeparturesArgs, now: Date) {
+  const night = afterMidnightRows(rows);
   const line = args.line_code?.trim().toUpperCase();
   const matches = rows.filter(
     (r) =>
@@ -96,13 +127,14 @@ export function busDeparturesResult(rows: readonly Tabela[], src: UrbsSource, ar
         stop_name: guardedSummary(r.PONTO),
         table: r.TABELA,
         adapt: r.ADAPT,
+        after_midnight: night.has(r),
       })),
     },
     source_url: URBS_SOURCE_URL,
     checked_at: src.date,
     license_note: urbsLicenseNote(src.file),
     note:
-      `${urbsNote(src, now)} ${DAY_TYPE_NOTE} ${MIDNIGHT_NOTE} Times exist only for the stops URBS lists in the ` +
+      `${urbsNote(src, now)} ${DAY_TYPE_NOTE} ${MIDNIGHT_NOTE} \`from\`/\`to\` compare HH:MM and never wrap past midnight. Times exist only for the stops URBS lists in the ` +
       "timetable (not every stop of a line). `table` is URBS's TABELA (the vehicle schedule) and `adapt` its ADAPT field " +
       "(the accessibility equipment), both as published.",
   };

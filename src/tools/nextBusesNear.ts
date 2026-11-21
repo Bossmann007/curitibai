@@ -11,7 +11,7 @@ import {
   urbsNote,
   type UrbsSource,
 } from "./busCommon.js";
-import { TIME } from "./busDepartures.js";
+import { afterMidnightRows, NIGHT_END_MIN, TIME } from "./busDepartures.js";
 import { NEAR_RADIUS_DEFAULT_M, stopsWithin, type Stop } from "./busStopsNear.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
@@ -36,7 +36,10 @@ export const nextBusesNearInput = {
     .string()
     .regex(TIME)
     .optional()
-    .describe("Start of the window, HH:MM on today's date in Curitiba (default: now, America/Sao_Paulo)."),
+    .describe(
+      "Start of the window, HH:MM (default: now in Curitiba, America/Sao_Paulo). Before 04:00 with `day` inferred, " +
+        "the previous evening's after-midnight trips are read too.",
+    ),
   day: z
     .string()
     .trim()
@@ -44,7 +47,8 @@ export const nextBusesNearInput = {
     .optional()
     .describe(
       'URBS day code: "1" weekday, "2" Saturday, "3" Sunday or holiday (inferred reading). Default: from today\'s ' +
-        "weekday in Curitiba. Holidays are not detected: on one, pass the code URBS announces.",
+        "weekday in Curitiba. Holidays are not detected: on one, pass the code URBS announces. When given, it is read " +
+        "as the service day: its own after-midnight trips are included, the next day's early trips are not.",
     ),
   window_min: z
     .number()
@@ -57,7 +61,15 @@ export const nextBusesNearInput = {
   limit: z.number().int().min(1).max(50).default(20),
 };
 
-const Window = z.object({ day: z.string(), day_type: z.string().nullable(), from: z.string(), to: z.string() });
+const Window = z.object({
+  day: z.string(),
+  day_type: z.string().nullable(),
+  from: z.string(),
+  to: z.string(),
+  after_midnight: z
+    .boolean()
+    .describe("True: this part reads only the rows that continue that code's evening past midnight; false: only the others."),
+});
 
 const NextDeparture = z.object({
   time: z.string(),
@@ -70,6 +82,9 @@ const NextDeparture = z.object({
   stop_name: z.string(),
   distance_m: z.number().int(),
   adapt: z.string(),
+  after_midnight: z
+    .boolean()
+    .describe("True when the trip continues the previous evening's service of its day code past midnight (see note)."),
 });
 
 export const nextBusesNearOutput = busEnvelope(
@@ -78,10 +93,15 @@ export const nextBusesNearOutput = busEnvelope(
     day: z.string(),
     day_type: z.string().nullable(),
     day_inferred: z.boolean().describe("True when `day` came from today's weekday, not from the input."),
-    windows: z.array(Window).describe("The (day code, time range) pairs searched: two when the window passes 24:00."),
+    windows: z
+      .array(Window)
+      .describe("The (day code, time range, after-midnight rows or not) parts searched: several around midnight."),
     cut_at_midnight: z
       .boolean()
-      .describe("True when the window would pass 24:00 but `day` was given, so it stops at 23:59 (see note)."),
+      .describe(
+        "True when the window passes 24:00 but `day` was given: that day's after-midnight trips are read, the next " +
+          "calendar day's early-morning trips are not (see note).",
+      ),
     stops_considered: z.number().int().describe("Stops with coordinates within radius_m (any line)."),
     stops_with_times: z
       .number()
@@ -130,6 +150,8 @@ interface Segment {
   to: number;
   /** Added to a time's minutes to count from `at`: 0 today, 1440 after midnight. */
   shift: number;
+  /** Reads only the rows that continue their code's evening past midnight (afterMidnightRows), or only the others. */
+  night: boolean;
 }
 
 export function nextBusesNearResult(
@@ -144,12 +166,22 @@ export function nextBusesNearResult(
   const day = args.day ?? dayCodeOf(clock.weekday);
   const start = minutes(at);
   const end = start + args.window_min;
-  const segments: Segment[] = [{ day, from: start, to: Math.min(end, DAY_MIN - 1), shift: 0 }];
-  // Past 24:00 the times belong to the next calendar day, read under that day's code (never moved between codes, as
-  // in bus_departures). With an explicit `day` that code is unknown, so the window stops at 23:59.
+  // URBS files a late-night trip under the day its service starts (afterMidnightRows). Up to 24:00 the window reads
+  // `day`; past it, `day`'s after-midnight rows and, when `day` was inferred, the next day's other rows. Before 04:00
+  // with `day` inferred, the previous day's after-midnight rows come first. An explicit `day` is the service day.
   const crosses = end >= DAY_MIN;
-  if (crosses && dayInferred) {
-    segments.push({ day: dayCodeOf((clock.weekday + 1) % 7), from: 0, to: end - DAY_MIN, shift: DAY_MIN });
+  const segments: Segment[] = [];
+  if (start < NIGHT_END_MIN) {
+    const night = dayInferred ? dayCodeOf((clock.weekday + 6) % 7) : day;
+    segments.push({ day: night, from: start, to: end, shift: 0, night: true }, { day, from: start, to: end, shift: 0, night: false });
+  } else {
+    segments.push({ day, from: start, to: Math.min(end, DAY_MIN - 1), shift: 0, night: false });
+    if (crosses) {
+      segments.push({ day, from: 0, to: end - DAY_MIN, shift: DAY_MIN, night: true });
+      if (dayInferred) {
+        segments.push({ day: dayCodeOf((clock.weekday + 1) % 7), from: 0, to: end - DAY_MIN, shift: DAY_MIN, night: false });
+      }
+    }
   }
 
   const wanted = args.line_code?.trim().toUpperCase();
@@ -157,6 +189,7 @@ export function nextBusesNearResult(
   const nearby = new Map(stopsWithin(files.stops, args.near, args.radius_m).map((m) => [m.stop.row.NUM, m]));
 
   // One pass over the timetable, stop number first: only rows at a nearby stop are looked at further.
+  const night = afterMidnightRows(files.times);
   const timed = new Set<string>();
   const hits: { r: Tabela; at: { stop: Stop; distance: number }; m: number }[] = [];
   for (const r of files.times) {
@@ -165,8 +198,11 @@ export function nextBusesNearResult(
     if (wanted !== undefined && r.COD.toUpperCase() !== wanted) continue;
     timed.add(r.NUM);
     const t = minutes(r.HORA);
+    const isNight = night.has(r);
     for (const s of segments) {
-      if (r.DIA === s.day && t >= s.from && t <= s.to) hits.push({ r, at: hit, m: t + s.shift - start });
+      if (r.DIA === s.day && s.night === isNight && t >= s.from && t <= s.to) {
+        hits.push({ r, at: hit, m: t + s.shift - start });
+      }
     }
   }
   hits.sort(
@@ -197,7 +233,13 @@ export function nextBusesNearResult(
       day,
       day_type: DAY_TYPES[day] ?? null,
       day_inferred: dayInferred,
-      windows: segments.map((s) => ({ day: s.day, day_type: DAY_TYPES[s.day] ?? null, from: hhmm(s.from), to: hhmm(s.to) })),
+      windows: segments.map((s) => ({
+        day: s.day,
+        day_type: DAY_TYPES[s.day] ?? null,
+        from: hhmm(s.from),
+        to: hhmm(s.to),
+        after_midnight: s.night,
+      })),
       cut_at_midnight: crosses && !dayInferred,
       stops_considered: nearby.size,
       stops_with_times: timed.size,
@@ -214,6 +256,7 @@ export function nextBusesNearResult(
         stop_name: guardedSummary(stop.row.NOME),
         distance_m: distance,
         adapt: r.ADAPT,
+        after_midnight: night.has(r),
       })),
     },
     source_url: URBS_SOURCE_URL,
@@ -228,13 +271,19 @@ export function nextBusesNearResult(
         : "") +
       "Holidays are not detected: on a holiday pass the day code URBS announces (usually 3). " +
       `${DAY_TYPE_NOTE} ` +
-      "`minutes_from_now` counts from `at` (HH:MM, seconds ignored), not from the moment of the call when `at` is given; " +
-      "`at` is a time on today's date, so for a time after midnight tonight also pass the next day's code. " +
-      "Times are as published under their row's day code and never moved, as in bus_departures. When the window passes " +
-      "24:00, the times from 00:00 on are read under the next calendar day's code, inferred the same way (`windows` " +
-      "shows both parts), and counted past midnight; with an explicit `day` the next day's code is unknown, so the " +
-      "window stops at 23:59 (`cut_at_midnight`): call again with at 00:00 and that day's code. Whether URBS files a " +
-      "late-night trip under the day it starts or the calendar day of the time is not verified. " +
+      "`minutes_from_now` counts from `at` (HH:MM, seconds ignored), not from the moment of the call when `at` is given. " +
+      "Times are as published under their row's day code and never moved, as in bus_departures. URBS files a " +
+      "late-night trip under the day its service starts, at the end of that day's table: a row before 04:00 that comes " +
+      "after its table (same line, code and TABELA) has run from 23:xx on to 00:xx is `after_midnight` (checked on the " +
+      "2026-11-20 file; other rows before 04:00 are read as early trips of their own code's day, not verified). So a " +
+      "window past 24:00 reads that day's after-midnight trips and the next calendar day's early trips, and a window " +
+      "starting before 04:00 reads the previous day's after-midnight trips and today's early ones (`windows` lists " +
+      "each part). " +
+      (dayInferred
+        ? ""
+        : "`day` was given, so it is read as the service day: its after-midnight trips are included and, when the " +
+          "window passes 24:00, the next calendar day's early trips are not (`cut_at_midnight`); before 04:00 both its " +
+          "after-midnight and its early rows are read, each labelled by `after_midnight`. ") +
       "URBS publishes times only at some stops of each line (timing points, often terminals and tube stations), so " +
       "`stops_with_times` can be far below `stops_considered` and a stop with no times here may still be served: widen " +
       "radius_m or use bus_stops_near. The timetable has no direction field: `directions` lists every SENTIDO the stops " +
