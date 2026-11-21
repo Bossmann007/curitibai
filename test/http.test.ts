@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchText, isAllowedUrl, ResponseTooLargeError, SourceUnavailableError, UrlNotAllowedError } from "../src/http.js";
+import {
+  fetchText,
+  isAllowedUrl,
+  RateLimitedError,
+  ResponseTooLargeError,
+  SourceRefusedError,
+  SourceUnavailableError,
+  UrlNotAllowedError,
+} from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
 import { rateLimitedMessage } from "../src/tools/common.js";
 import { stubFetch } from "./helpers.js";
@@ -134,6 +142,25 @@ describe("fetchText", () => {
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
     stubFetch({ [`GET ${OK}`]: { status: 403, body: "Access Denied" } });
     await expect(fetchText(OK)).rejects.toBeInstanceOf(SourceUnavailableError);
+  });
+
+  it.each([401, 403])("HTTP %i is a final refusal: one request, SourceRefusedError, never retried", async (status) => {
+    const calls = stubFetch({ [`GET ${OK}`]: { status, body: "Access Denied" } });
+    const err = await fetchText(OK).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SourceRefusedError);
+    expect(err).toBeInstanceOf(SourceUnavailableError);
+    expect(err).not.toBeInstanceOf(RateLimitedError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("an HTTP 429 whose HTML page is a CAPTCHA is a final refusal, not rate limiting", async () => {
+    const page = '<html><body><div class="g-recaptcha" data-sitekey="x"></div></body></html>';
+    stubFetch({ [`GET ${OK}`]: { status: 429, body: page, contentType: "text/html; charset=utf-8", headers: { "retry-after": "1" } } });
+    const err = await fetchText(OK).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SourceRefusedError);
+    expect(err).not.toBeInstanceOf(RateLimitedError);
+    stubFetch({ [`GET ${OK}`]: { status: 429, body: "slow down", contentType: "text/html", headers: { "retry-after": "1" } } });
+    await expect(fetchText(OK)).rejects.toBeInstanceOf(RateLimitedError);
   });
 
   it("caps the response size", async () => {

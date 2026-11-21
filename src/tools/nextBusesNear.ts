@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { DAY_TYPE_NOTE, DAY_TYPES, URBS_SOURCE_URL, type Linha, type Ponto, type Tabela } from "../sources/urbs.js";
 import {
+  BUS_CONFIRM_NOTE,
   busEnvelope,
   isFailure,
   lineCodeInput,
@@ -264,7 +265,7 @@ export function nextBusesNearResult(
     license_note: urbsLicenseNote(src.times.file, src.stops.file, src.lines.file),
     note:
       `${urbsNote({ ...src.times, emptyFields: src.times.emptyFields.filter((f) => f === "ADAPT") }, now)} ` +
-      "Timetable as published, not real-time: a bus can be early, late or not run. " +
+      `Timetable as published, not real-time: a bus can be early, late or not run. ${BUS_CONFIRM_NOTE} ` +
       (dayInferred
         ? "`day` was inferred from today's weekday in Curitiba (America/Sao_Paulo): Monday to Friday 1, Saturday 2, " +
           "Sunday 3. "

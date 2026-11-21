@@ -21,8 +21,8 @@ export const SECOND_PAGE_BUDGET_MS = 15_000;
 
 export const SCOPE_NOTE =
   "Procurement published in PNCP by Curitiba municipal bodies (the city, its câmara, funds, foundations, institutes, " +
-  "URBS and COHAB-CT, as listed in docs/sources.md). Suppliers are never returned. Objects of dispensa, inexigibilidade " +
-  "and inaplicabilidade are withheld because they may name a person; other objects are returned as published with " +
+  "URBS and COHAB-CT, as listed in docs/sources.md). Suppliers are never returned. Objects of dispensa, inexigibilidade, " +
+  "credenciamento and inaplicabilidade are withheld because they may name a person; other objects are returned as published with " +
   "CPF/CNPJ-shaped numbers, e-mails and phones masked, and may still, rarely, contain a person's name.";
 
 const isoDate = z
@@ -123,8 +123,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "Search contratações (licitações, dispensas, inexigibilidades...) published in the national PNCP portal by " +
     "Curitiba municipal bodies: body, modality, object, estimated value, status, publication and proposal dates, link " +
     "to the official PNCP page. One modality per call (default 6, Pregão - Eletrônico), publication dates up to 365 " +
-    "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade and " +
-    "inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
+    "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade, " +
+    "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
     "a name. Scans at most 2 upstream pages of 50 per call; continue with next_page and next_skip. Read-only.",
   inputSchema: procurementSearchInput,

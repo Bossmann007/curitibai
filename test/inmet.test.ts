@@ -48,6 +48,7 @@ describe("weather_forecast", () => {
     // A field INMET left out stays null.
     expect(out.data.days[1]!.periods[2]!.humidity_min_pct).toBeNull();
     expect(out.data.note).toMatch(/null/);
+    expect(out.data.note).toContain("Confirm on the official channel before you act: https://portal.inmet.gov.br/ (INMET).");
   });
 
   it("returns up to 5 days; an empty summary is null, not invented", async () => {

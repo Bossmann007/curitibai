@@ -14,8 +14,11 @@ with, endorsed by or connected to it, URBS, the Ministério da Saúde, PNCP / th
 Serviços Públicos, Detran-PR / the Governo do Paraná, INMET (Instituto Nacional de Meteorologia), the Instituto
 Municipal de Turismo de Curitiba, or OpenStreetMap / the OSM Foundation.** Names cited here (for example "Curitiba
 App") belong to their owners and appear only to identify them. Data is provided as is, with no warranty: it may be
-incomplete or outdated, so confirm anything important on the official channels. **Not for emergencies: call 190
-(Polícia Militar), 192 (SAMU), 193 (Corpo de Bombeiros) or 199 (Defesa Civil).**
+incomplete or outdated, so confirm anything important on the official channels before you go or act:
+[URBS](https://www.urbs.curitiba.pr.gov.br/) (buses), [Imuniza Já](https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/)
+(vaccination), [INMET](https://portal.inmet.gov.br/) (weather), [Detran-PR](https://www.detran.pr.gov.br/) (vehicles)
+or the 156 (Prefeitura). **Not for emergencies: call 190 (Polícia Militar), 192 (SAMU), 193 (Corpo de Bombeiros) or
+199 (Defesa Civil).**
 
 ## Tools
 
@@ -52,7 +55,7 @@ wait in `note`.
 | `open_datasets_search` | `query` (2–100 chars), `limit` ≤ 20 | Dataset id, title, publisher, description, formats, last update, detail URL; `total`, and `partial` when a later result page failed (with `note` giving the wait when it was refused with HTTP 429) | Portal search form (`POST /conjuntodado/`) |
 | `dataset_files` | `dataset_id` (GUID from the search), `page` | The dataset's files: name, format, size, last update, link and data-dictionary link (50 per page). **Links only: the files are not downloaded** | Portal detail page + `/ConjuntoDado/DownloadArquivos/` JSON |
 | `health_units_search` | optional `name` (text in the unit name), optional `unit_type` (CNES type code or text in its label), `limit` ≤ 20, `page`, `skip` | Active **public-administration** health units in Curitiba: CNES code, name, unit type, address, neighbourhood, CEP, unit phone, management sphere; `next_page` and `next_skip` to continue, `partial` when the 5-request cap stopped the scan, and `discarded` (non-public records skipped) | Ministry of Health CNES API (`GET apidadosabertos.saude.gov.br/cnes/estabelecimentos`, `/cnes/tipounidades`) |
-| `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
+| `procurement_search` | optional `query` (text in the returned object or the body name), `from`/`to` (YYYY-MM-DD, ≤ 365 days apart; default the last 30 days), `modality` (PNCP code 1–20, default 6 Pregão - Eletrônico), `limit` ≤ 20, `page`, `skip` | Contratações published by **Curitiba municipal bodies**: PNCP id, body CNPJ and name, modality, object (withheld for direct awards and credenciamento, see below), estimated value, status, publication and proposal dates, link to the official PNCP page; `next_page`/`next_skip`, `partial` when the 2-request cap stopped the scan, `discarded`. **Never the supplier** | PNCP Consulta API (`GET pncp.gov.br/api/consulta/v1/contratacoes/publicacao`) |
 | `detran_pr_info` | `topic`: `licensing_calendar` or `units`; optional `plate_final` (0–9, calendar only) | Calendar: the 2026 licensing due date for one plate final digit (or all ten, earliest first, each with `past`, which only means the Anexo I due date has passed; `note` quotes the Anexo II enforcement calendar as published) and the fee (R$ 94,61). Units: the 01ª CIRETRAN (Curitiba) and its five PATRANs (address, phone, services as published), the scheduling rule, and the site's two conflicting general hours (8h–16h and 8h–15h30), both returned. Each item has `source_url` and `checked_at`. **No network call**; for both topics `note` says the data may be outdated once the year in Curitiba is past 2026, and for units also once more than 180 days have passed since `checked_at` | Portaria DETRAN 907/2025 (Anexos I and II), a Detran-PR news page, `detran.pr.gov.br/unidades` and its home page, checked by hand |
 | `weather_forecast` | optional `days` 1–5 (default 3) | INMET's forecast for Curitiba, per day (`date`, `weekday`) and period: `morning`, `afternoon` and `night` for the first days, one `whole_day` entry for later days, as INMET publishes them. Each period: summary, min/max temperature (°C), min/max humidity (%), wind direction and intensity, sunrise and sunset. A field INMET leaves out or empty is `null` | INMET forecast API (`GET apiprevmet3.inmet.gov.br/previsao/4106902`) |
 | `weather_alerts` | optional `when`: `today`, `upcoming` or `all` (default) | INMET's active warnings whose area includes Curitiba (IBGE 4106902): id, which INMET lists it is in (`listed_in`: `today`, `upcoming` or both), description, severity, start, end (as published, no time zone given), risks and instructions, and `count`. A warning listed identically in both lists is returned once. When none covers Curitiba, `count` is 0 and `note` says so. Polygons, area lists and icons are dropped | INMET warnings API (`GET apiprevmet3.inmet.gov.br/avisos/ativos`) |
@@ -190,9 +193,12 @@ The server never downloads data files. A person does it in a browser:
 The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns column
 names and counts. Data rows (after the first line) are never returned. What it does return, and what it refuses:
 
-- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 3
-  rows are added to `other_count` instead of being listed, so that a filter on a unique column cannot reveal a single
-  record.
+- **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 5
+  rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
+  cannot reveal a single record.
+- **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
+  could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, the same
+  masking as PNCP objects). This is a guard for contact data only: names of people in values are not detected.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
   nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
@@ -218,7 +224,8 @@ rows.
 ### Finding a city service (Carta de Serviços)
 
 `city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
-**This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+The copy must be saved by a person in an ordinary browser session; no automated capture of that host is part of this
+project (see [docs/sources.md](docs/sources.md)). **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
 terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
 `CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
 
@@ -362,11 +369,12 @@ week".
   host or path it disallows is never fetched. The events collector (the only collector) reads robots.txt on every run,
   stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
-- A 403, a CAPTCHA, a login or any other block is never bypassed: the host is left out, or the tool returns
-  `source_unavailable`. A 429 is returned as `rate_limited` with the source's wait (PNCP alone retries once, and only
-  when `Retry-After` is 5 s or less).
+- A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
+  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable`; no retry, no other headers, no browser
+  fallback), and the events collector stops the run on any non-200 answer, 403 included. Another 429 is returned as
+  `rate_limited` with the source's wait (PNCP alone retries once, and only when `Retry-After` is 5 s or less).
 - Requests identify the project and its contact: User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`.
-- Content is removed on request: open an issue in this repository.
+- Removal requests: open an issue in this repository; the content is removed from the next release.
 
 ### Details
 
@@ -410,7 +418,7 @@ week".
   this fails closed, so a link with a long digit run (some social-media ids) or over 300 characters is dropped too.
 - `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
   has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
-  so the gate is by modality: for **dispensa (8), inexigibilidade (9), inaplicabilidade (14)** and any unknown modality
+  so the gate is by modality: for **dispensa (8), inexigibilidade (9), credenciamento (12, since 0.13.2), inaplicabilidade (14)** and any unknown modality
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,
   with CPF/CNPJ-shaped numbers, e-mail addresses and phone numbers replaced by `[masked]` and a 300-character cap.
@@ -422,17 +430,17 @@ week".
   ("Maria Silva @ x.com" keeps "Maria").
   **These objects may still, rarely, contain a person's name.** The masking fails closed, so it also hides some public
   numbers (amounts of 10+ digits, long process numbers, 2 digits or 0 plus 2 digits followed by 8 or 9 digits).
-  Two year-like numbers (19xx/20xx) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them
-  ("2025 - 2026", "2026-2027") are kept, so an 8-digit phone that looks like that is not masked. `query` never matches a withheld object.
+  Since 0.13.2 two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are masked too,
+  because an 8-digit phone can look like that; "2025/2026" is kept. `query` never matches a withheld object.
 - `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
   of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
   links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same
-  masking as PNCP objects as a guard; on the 2026-11-19/20 capture it changes two summaries, both public text (an
+  masking as PNCP objects as a guard; on the 2026-11-19/20 capture (measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
   office's institutional e-mail, and a social-media handle that looks like an e-mail).
-- The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files it
+- The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files (measured before 0.13.2 widened the mask) it
   changes 29 of the 6,841 stop names in `pontosLinha`, all street-number ranges read as phone numbers
   ("R. Exemplo, 1469-1411" becomes "R. Exemplo, [masked]"), and none in `tabelaLinha`. Line names are not masked.
-  `city_points_search` passes names and descriptions through the same masking; on the 2026-11-20 `pois` file it
+  `city_points_search` passes names and descriptions through the same masking; on the 2026-11-20 `pois` file (measured before 0.13.2) it
   changes none of the 1,219 allowlisted points. It drops every row outside its category allowlist before searching.
 - Local files are read only from `CURITIBAI_DATA_DIR`, only through one module (`src/localfs.ts`: realpath, stat, a read-only
   open, fstat, positional reads, close, and listing the names in `urbs/`). CSV files are returned only as aggregates;

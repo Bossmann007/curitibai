@@ -3,10 +3,14 @@ import { CsvParser, detectDelimiter } from "../csv.js";
 import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
 import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fold } from "../text.js";
+import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
-/** Groups with fewer rows than this are folded into `other_count`, so a filter plus a group-by cannot rebuild a row. */
-export const MIN_GROUP_COUNT = 3;
+/**
+ * Groups with fewer rows than this are folded into `other_count`, so a filter plus a group-by cannot rebuild a row.
+ * 3 until 0.13.2; raised to 5 by owner decision (2026-11-21).
+ */
+export const MIN_GROUP_COUNT = 5;
 export const MAX_DISTINCT = 50_000;
 export const MAX_VALUE_CHARS = 120;
 export const MAX_HEADER_CHARS = 60;
@@ -60,7 +64,9 @@ export const LOCAL_NOTE =
   "A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, long text) is refused; a first line made only of text cannot be told apart from a header and is returned as column names. Data rows (after the first line) are never returned. " +
   "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
-  "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused; the check is by name only. " +
+  "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused by name, and a grouped " +
+  "column is refused when a value it would return looks like contact data (CPF/CNPJ, e-mail or phone shaped); " +
+  "names of people in values are not detected. " +
   "The data keeps its publisher's licence: cite the source of the file. " +
   `For a file from the Portal de Dados Abertos de Curitiba, the portal's rules ask for this notice: ${PORTAL_DISCLAIMER}`;
 
@@ -215,7 +221,8 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
     "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
-    "name only, refuses some harmless look-alikes and is not perfect. " +
+    "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, and " +
+    "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone) is refused. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
@@ -247,6 +254,11 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       let groupOut = null;
       if (group_by !== undefined) {
         const sorted = [...s.groups].filter(([, n]) => n >= MIN_GROUP_COUNT).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+        // Values that could be returned and that the contact-data guard would change (CPF/CNPJ-, e-mail- or
+        // phone-shaped text): the column is refused whole, whatever `top` is. It detects contact data, not names.
+        if (sorted.some(([value]) => guardedSummary(value) !== value)) {
+          return fail("column_not_allowed", "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone)");
+        }
         const shown = sorted.slice(0, top).map(([value, count]) => ({ value, count }));
         const shownTotal = shown.reduce((t, g) => t + g.count, 0);
         groupOut = {

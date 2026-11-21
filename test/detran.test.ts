@@ -172,6 +172,7 @@ describe("detran_pr_info units", () => {
       [DETRAN_HOME_URL, "15h30"],
     ]);
     expect(parsed.note).toMatch(/two different general hours/);
+    expect(parsed.note).toContain("Confirm on the official channel before you go or act: https://www.detran.pr.gov.br/ (Detran-PR).");
     expect(calls).toHaveLength(0);
   });
 });

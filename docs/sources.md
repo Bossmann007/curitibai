@@ -17,10 +17,13 @@ not even inside the visit hours they list. The browser User-Agent is never imita
   collector reads robots.txt on every run, stops if it changed, starts requests only inside the site's `Visit-time`
   and makes at most 1 request per 5 s on that host (`Request-rate: 1/5`).
 - A 403, a CAPTCHA, a login or any other block is never bypassed: the host is left out, or the tool returns
-  `source_unavailable`.
+  `source_unavailable`. Since v0.13.2 this is in code: `src/http.ts` throws `SourceRefusedError` (a final refusal,
+  never retried, not even by PNCP's single retry) for HTTP 401, 403 and a 429 whose HTML page (first 16 KB) mentions
+  a CAPTCHA or challenge; the events collector stops on any non-200 status, 403 included.
 - Requests send the User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`, the repository
   being the contact.
-- Content is removed on request: open an issue at <https://github.com/Bossmann007/curitibai/issues>.
+- Removal requests: open an issue at <https://github.com/Bossmann007/curitibai/issues>; the content is removed from
+  the next release.
 
 ## robots.txt findings
 
@@ -41,7 +44,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
 | `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host.** The owner's local copy used by `city_services_search` (v0.6) is of the `/servicos/` listing pages, dated 2026-11-19/20. That copy is **not** in this repository |
-| `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**: the capture never opened a detail page. `city_services_search` returns these URLs (from the local file) only as links for people to open |
+| `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**; the local copy holds no detail-page content. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
@@ -152,8 +155,9 @@ and objects of direct awards can name a contracted natural person (an instructor
 from a name by a heuristic (the same lesson as the CSV header check), so the server gates by modality.
 **Owner decision (2026-11-19):**
 
-- Modalities **8 (Dispensa), 9 (Inexigibilidade), 14 (Inaplicabilidade da Licitação)** and any code not in the table
-  above: `object` is `null` and `object_withheld` is `"may_name_a_person"`. Body, modality, estimated value, status,
+- Modalities **8 (Dispensa), 9 (Inexigibilidade), 12 (Credenciamento; added by owner decision 2026-11-21, v0.13.2,
+  because an accreditation can name the accredited person), 14 (Inaplicabilidade da Licitação)** and any code not in
+  the table above: `object` is `null` and `object_withheld` is `"may_name_a_person"`. Body, modality, estimated value, status,
   dates and the PNCP link are still returned; the official page is one click away.
 - All other modalities: `object` is returned as published, except that CPF/CNPJ-shaped digit runs (10 or more digits,
   dots, slashes and hyphens allowed, or CPF/CNPJ groups split by spaces), e-mail addresses and phone numbers are
@@ -169,14 +173,10 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
   formats covered, not a guarantee.
   These objects can still, rarely, contain a person's name. The masking fails closed and also hides some public
   numbers: amounts with 10 or more digits, long process numbers, two 4-digit numbers joined by a space or hyphen
-  (for example "2026-3333"), and 2 digits (or 0 plus 2 digits) followed by 8 or 9 digits. Two year-like numbers
-  (`(19|20)\d{2}`) joined by a space, hyphen or dot with no DDD, "+55" or parentheses before them ("2025 - 2026",
-  "2026-2027") are kept, so an 8-digit phone shaped like that is not masked (fails open, by owner decision);
-  with one of those before them ("41 2025-2026", "(041) 2025-2026"), or a contact word right before them (tel, tels,
-  telef, cel, fone, telefone(s), celular, contato(s), whatsapp, whats, zap, fax, ramal, any case, not inside a longer
-  word such as "hotel", "Excel" or "Marcel", optional "." and ":", as in "Tel. 2025-2026"), they are still masked. The cue covers only the number right after
-  it ("tel 2025-2026 2027-2028" keeps the second pair) and only the words listed (not "fones" or "cels"). The
-  official text is on the linked page.
+  (for example "2026-3333"), and 2 digits (or 0 plus 2 digits) followed by 8 or 9 digits. Since v0.13.2 (owner
+  decision 2026-11-21) two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are masked
+  too, because an 8-digit phone can look like that (fails closed; it was an exemption before). "2025/2026", with a
+  slash, is not phone-shaped and is kept. The official text is on the linked page.
 - The `query` text matches only the object the tool returns (after masking) and the body name, never a withheld object.
 - No supplier is ever returned (the endpoint has none, and the output is built field by field).
 
@@ -320,10 +320,15 @@ The owner's copy is of the listing pages of <https://www.curitiba.pr.gov.br/serv
 (America/Sao_Paulo); detail pages on `servicos.curitiba.pr.gov.br` were never opened. The service pages' host has
 robots.txt `Disallow: /`. The server contacts neither host.
 
+**Rule for whoever provides `carta-servicos.json` (since v0.13.2):** the local copy must be saved by a person in an
+ordinary browser session, reading the public listing pages as any visitor does. No script, scheduler or automated
+capture of `www.curitiba.pr.gov.br` or `servicos.curitiba.pr.gov.br` is part of this project or documented here, and
+none may be added. `scripts/check-no-catalog` keeps any copy out of the repository.
+
 | Field | Value |
 |---|---|
 | Item shape | `{cat, title, what, url, online}`: the theme (category), the title, the listing's own "O que é?" teaser as published (the site truncates it; some are empty, and those services are found by title only), the detail-page URL and, for some, an online-service link |
-| Completeness of the 2026-11-19/20 copy | 756 unique services in 18 categories, 96 of them with an empty teaser. The listing paginates through ASP.NET postbacks and its order is not stable between requests; a full pass plus one pass per theme gave 756, while the paginator suggested about 770, so **a few services may be missing** |
+| Completeness of the 2026-11-19/20 copy | 756 unique services in 18 categories, 96 of them with an empty teaser. The site suggested about 770, so **a few services may be missing** |
 | `checked_at` | The first date in the file's `captured` (for "2026-11-19/20", `2026-11-19`), so the 180-day staleness warning, counted in America/Sao_Paulo, starts early rather than late. `license_note` repeats the date part of `captured` and never the rest of that text |
 | Terms / licence | None found. Treated under the strictest reading: values returned unchanged (except masked text, below), attributed to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture date in `license_note` |
 
@@ -436,7 +441,7 @@ stop. Times are never moved: each stays under its row's code.
 
 Privacy: lines, stops and timetables are public transport data with no personal data. As a guard, stop names
 (`NOME`, `PONTO`) pass through the PNCP object masking (`maskObject`, via `guardedSummary`); a name is returned as
-published unless the mask hides something. On the 2026-11-20 files that happens to 29 of the 6,841 distinct stop
+published unless the mask hides something. On the 2026-11-20 files (measured before v0.13.2 widened the mask) that happens to 29 of the 6,841 distinct stop
 names in `pontosLinha`, all street-number ranges ("1469-1411") read as phone numbers, and to none in `tabelaLinha`.
 Line names, directions and types are not masked.
 
@@ -521,7 +526,7 @@ emergencies (192 SAMU, 193).
 
 Guard: names and descriptions pass through the PNCP masking and are returned as published unless it hides something
 or the text is over 300 characters (then cut with "…"; the longest 2026-11-20 name is 95 characters, description 73).
-On the 2026-11-20 file it changes none of the 1,219 public names and none of their 18 non-empty descriptions.
+On the 2026-11-20 file (measured before v0.13.2) it changes none of the 1,219 public names and none of their 18 non-empty descriptions.
 Measured with the built server on that file: about 11–33 ms to read, validate and filter.
 
 Prior art: same as the bus tools (no project reads these exports for an assistant); `places_search` covers some of the
@@ -679,8 +684,10 @@ in the city's own categories. Built.
 No network. The user downloads a file in a browser (for example the 156 CSV from the portal, about 137 MB) into the
 folder named by `CURITIBAI_DATA_DIR`. The tool streams it and returns column names, row counts and grouped counts.
 Data rows (after the first line) are never returned.
-The values of the grouped column are returned; groups under 3 rows are counted only in `other_count`, so a filter plus
-a group-by cannot reveal one record.
+The values of the grouped column are returned; groups under 5 rows (3 before v0.13.2, owner decision 2026-11-21) are
+counted only in `other_count`, so a filter plus a group-by cannot reveal one record. Since v0.13.2 a grouped column is
+refused (`column_not_allowed`) when any value that could be returned would be changed by the contact-data guard
+(`guardedSummary`: CPF/CNPJ-, e-mail- or phone-shaped text). It does not detect names of people.
 
 **Owner decision (2026-11-19), same rule as CNES (no person names):** `group_by` and `filter_column` are refused
 (`column_not_allowed`) when the column name, accents and case ignored, matches nome, name, cpf, cnpj, rg, email/e-mail,

@@ -50,6 +50,10 @@ export function page<T>(rows: readonly T[], offset: number, limit: number) {
 const andList = (items: readonly string[]) =>
   items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
+/** Said by the two tools people use to catch a bus (bus_departures, next_buses_near). The server never opens the URL. */
+export const BUS_CONFIRM_NOTE =
+  "Confirm on the official channel before you go: https://www.urbs.curitiba.pr.gov.br/ (URBS) or the 156.";
+
 export function urbsLicenseNote(...files: string[]): string {
   return (
     "Source: URBS — Urbanização de Curitiba S.A., dataset \"Transporte Coletivo de Curitiba\" on the Portal de Dados " +

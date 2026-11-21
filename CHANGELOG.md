@@ -28,6 +28,22 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
   "Collection rules"; "License" becomes "Licences (code and data)" (URBS CC BY 4.0 with changes made, OSM extract as a
   separate ODbL 1.0 database, terms inherited from PNCP, INMET and CNES, fixtures with real third-party content). The
   Carta de Serviços capture text is reworded.
+- `procurement_search`: the object of a credenciamento (modality 12) is withheld (`object: null`,
+  `object_withheld: "may_name_a_person"`), like dispensa, inexigibilidade and inaplicabilidade.
+- Masking (PNCP objects and every field that uses the same guard: events, bus stops, city points, city services,
+  places): two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are now masked, because
+  an 8-digit phone can look like that. "2025/2026" is kept.
+- `local_csv_summary`: groups need at least 5 rows to be listed (was 3); a grouped column is refused
+  (`column_not_allowed`) when a value it could return would be changed by the contact-data guard (CPF/CNPJ, e-mail or
+  phone shaped). Names of people in values are not detected.
+- `vaccination_sites_search`, `next_buses_near`, `bus_departures`, `weather_forecast` and `detran_pr_info` notes say to
+  confirm on the official channel before you go or act, with its URL; the README disclaimer links them.
+- `src/http.ts`: HTTP 401, 403 and a 429 whose HTML page is a CAPTCHA are a final refusal (`SourceRefusedError`,
+  returned as `source_unavailable`): never retried, not even by PNCP's single retry. A 429 CAPTCHA was `rate_limited`
+  before. The events collector already stopped on 403 (tested).
+- Carta de Serviços: the local copy must be saved by a person in an ordinary browser session; the docs no longer
+  describe how a copy is captured.
+- README "Removal requests": open an issue; the content is removed from the next release.
 
 ## 0.13.1
 

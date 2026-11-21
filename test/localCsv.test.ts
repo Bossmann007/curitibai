@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { CsvLimitError, CsvParser, detectDelimiter, MAX_COLUMNS, MAX_FIELD_CHARS } from "../src/csv.js";
 import { closeFile, DATA_DIR_ENV, LocalFileError, openDataFile, openVerified, readChunks } from "../src/localfs.js";
-import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue } from "../src/tools/localCsvSummary.js";
+import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue, MIN_GROUP_COUNT } from "../src/tools/localCsvSummary.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Synthetic files only, written to a temporary folder outside the repository.
@@ -24,6 +24,10 @@ const UTF8_ROWS = [
   "7;Iluminação;Batel;Rua Fictícia E",
   "8;Lixo;Centro;Rua Fictícia F",
   "9;\"Poda; árvore\";Centro;Rua Fictícia G",
+  "10;Iluminação;Batel;Rua Fictícia H",
+  "11;Iluminação;Batel;Rua Fictícia I",
+  "12;\"Poda; árvore\";Centro;Rua Fictícia J",
+  "13;\"Poda; árvore\";Centro;Rua Fictícia K",
 ];
 
 beforeAll(() => {
@@ -32,10 +36,10 @@ beforeAll(() => {
   mkdirSync(dataDir);
   mkdirSync(join(dataDir, "sub"));
   writeFileSync(join(dataDir, "156.csv"), `﻿${HEADER}\r\n${UTF8_ROWS.join("\r\n")}\r\n`, "utf8");
-  writeFileSync(join(dataDir, "sub", "comma.CSV"), "a,b\n1,x\n2,x\n3,x\n4,y\n", "utf8");
+  writeFileSync(join(dataDir, "sub", "comma.CSV"), "a,b\n1,x\n2,x\n3,x\n4,y\n5,x\n6,x\n", "utf8");
   // Latin-1 whose first megabyte is plain ASCII: a sniff of the start would call it UTF-8.
   const ascii = `nome;categoria\n${"linha;ascii\n".repeat(100_000)}`;
-  writeFileSync(join(dataDir, "latin1.csv"), Buffer.concat([Buffer.from(ascii, "latin1"), Buffer.from("x;Saúde\nx;Saúde\nx;Saúde\n", "latin1")]));
+  writeFileSync(join(dataDir, "latin1.csv"), Buffer.concat([Buffer.from(ascii, "latin1"), Buffer.from("x;Saúde\n".repeat(5), "latin1")]));
   writeFileSync(join(dataDir, "empty.csv"), "");
   // Headerless: the first line is a (synthetic) record with a name, a CPF-shaped number and a street.
   writeFileSync(join(dataDir, "headerless.csv"), "Fulano Ficticio;123.456.789-09;Rua Ficticia 1\nBeltrana Ficticia;987.654.321-00;Rua Ficticia 2\n");
@@ -156,7 +160,7 @@ describe("local_csv_summary", () => {
       encoding: "utf-8",
       delimiter: ";",
       columns: ["PROTOCOLO", "ASSUNTO", "BAIRRO", "LOGRADOURO"],
-      row_count: 9,
+      row_count: 13,
       malformed_rows: 1,
       filter: null,
     });
@@ -165,8 +169,8 @@ describe("local_csv_summary", () => {
       distinct_values: 3,
       distinct_capped: false,
       top: [
-        { value: "Iluminação", count: 4 },
-        { value: "Poda; árvore", count: 3 },
+        { value: "Iluminação", count: 6 },
+        { value: "Poda; árvore", count: 5 },
       ],
       other_count: 1, // "Lixo" has 1 row: below the minimum group size
     });
@@ -178,9 +182,26 @@ describe("local_csv_summary", () => {
   it("filters by column = value (accents and case ignored)", async () => {
     const res = await call({ file: "156.csv", group_by: "BAIRRO", filter_column: "Assunto", filter_value: "iluminacao" });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;
-    expect(data.filter).toEqual({ column: "Assunto", value: "iluminacao", matched_rows: 4 });
+    expect(data.filter).toEqual({ column: "Assunto", value: "iluminacao", matched_rows: 6 });
     expect(data.group_by?.top).toEqual([]);
-    expect(data.group_by?.other_count).toBe(4); // Centro 2, Batel 2: both below 3
+    expect(data.group_by?.other_count).toBe(6); // Centro 2, Batel 4: both below the minimum of 5
+  });
+
+  it("returns only groups of at least 5 rows (a group of 4 goes to other_count)", async () => {
+    expect(MIN_GROUP_COUNT).toBe(5);
+    writeFileSync(join(dataDir, "four.csv"), `tipo\n${"A\n".repeat(5)}${"B\n".repeat(4)}`);
+    const data = localCsvSummaryOutput.parse((await call({ file: "four.csv", group_by: "tipo" })).structuredContent).data;
+    expect(data.group_by).toMatchObject({ top: [{ value: "A", count: 5 }], other_count: 4 });
+  });
+
+  it("refuses a column whose returned values look like personal data (the contact-data guard would change them)", async () => {
+    writeFileSync(join(dataDir, "contact-values.csv"), `ref;tipo\n${"(41) 3333-4444;A\n".repeat(5)}${"x@ficticio.example;A\n".repeat(5)}`);
+    const res = await call({ file: "contact-values.csv", group_by: "ref" });
+    expect(errorOf(res)).toMatchObject({ error: "column_not_allowed" });
+    const text = JSON.stringify(res);
+    for (const leak of ["3333", "ficticio"]) expect(text).not.toContain(leak);
+    const ok = localCsvSummaryOutput.parse((await call({ file: "contact-values.csv", group_by: "tipo" })).structuredContent).data;
+    expect(ok.group_by?.top).toEqual([{ value: "A", count: 10 }]);
   });
 
   it("cannot rebuild a row by filtering on a unique column", async () => {
@@ -229,23 +250,23 @@ describe("local_csv_summary", () => {
   it("reads comma files in subfolders and limits top", async () => {
     const res = await call({ file: "sub/comma.CSV", group_by: "b", top: 1 });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;
-    expect(data).toMatchObject({ delimiter: ",", row_count: 4, group_by: { top: [{ value: "x", count: 3 }], other_count: 1 } });
+    expect(data).toMatchObject({ delimiter: ",", row_count: 6, group_by: { top: [{ value: "x", count: 5 }], other_count: 1 } });
   });
 
   it("falls back to Latin-1 when invalid UTF-8 appears late in the file", async () => {
     const res = await call({ file: "latin1.csv", group_by: "categoria" });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;
     expect(data.encoding).toBe("latin1");
-    expect(data.row_count).toBe(100_003);
+    expect(data.row_count).toBe(100_005);
     expect(data.group_by?.top).toEqual([
       { value: "ascii", count: 100_000 },
-      { value: "Saúde", count: 3 },
+      { value: "Saúde", count: 5 },
     ]);
   });
 
   it("allows a symlink that stays inside the folder", async () => {
     const res = await call({ file: "link-in.csv" });
-    expect(localCsvSummaryOutput.parse(res.structuredContent).data.row_count).toBe(9);
+    expect(localCsvSummaryOutput.parse(res.structuredContent).data.row_count).toBe(13);
   });
 
   it.each([

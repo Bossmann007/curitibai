@@ -226,6 +226,7 @@ describe("invalid_data", () => {
     expect(out.data.skipped_rows).toBe(1);
     expect(out.data.items.map((d) => d.time)).not.toContain("12:34");
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
+    expect(out.note).toContain("Confirm on the official channel before you go: https://www.urbs.curitiba.pr.gov.br/ (URBS) or the 156.");
   });
 
   it("skips a stop row with a long name or a bad coordinate", async () => {

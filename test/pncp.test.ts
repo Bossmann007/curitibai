@@ -227,10 +227,19 @@ describe("procurement_search privacy", () => {
 });
 
 describe("object gate (unit)", () => {
-  it("gates exactly 8, 9, 14 and unknown codes", () => {
-    expect([...OBJECT_WITHHELD_MODALITIES].sort((a, b) => a - b)).toEqual([8, 9, 14]);
-    for (const c of [8, 9, 14, 0, 21, 99, null]) expect(objectReturnable(c)).toBe(false);
-    for (const c of [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20]) expect(objectReturnable(c)).toBe(true);
+  it("gates exactly 8, 9, 12, 14 and unknown codes", () => {
+    expect([...OBJECT_WITHHELD_MODALITIES].sort((a, b) => a - b)).toEqual([8, 9, 12, 14]);
+    for (const c of [8, 9, 12, 14, 0, 21, 99, null]) expect(objectReturnable(c)).toBe(false);
+    for (const c of [1, 2, 3, 4, 5, 6, 7, 10, 11, 13, 15, 16, 17, 18, 19, 20]) expect(objectReturnable(c)).toBe(true);
+  });
+
+  it("withholds the object of a credenciamento (modality 12), which can name an accredited person", () => {
+    const raw = JSON.parse(syntheticPncpPage(1, 1, 0, 0)) as { data: Record<string, unknown>[] };
+    raw.data[0]!.modalidadeId = 12;
+    raw.data[0]!.objetoCompra = "Credenciamento de FULANA FICTICIA CREDENCIADA para consultas";
+    const item = parseContratacoes(JSON.stringify(raw)).items[0]!;
+    expect(item).toMatchObject({ modality_code: 12, modality: "Credenciamento", object: null, object_withheld: "may_name_a_person" });
+    expect(JSON.stringify(item)).not.toContain("FULANA");
   });
 
   /**
@@ -368,10 +377,11 @@ describe("object gate (unit)", () => {
     ["tel 41 33334444", `tel ${MASK}`],
     ["tel 041 33334444.", `tel ${MASK}.`],
     ["tel 041 999998888, ramal 2", `tel ${MASK}, ramal 2`],
-    ["vigência 2025 - 2026", "vigência 2025 - 2026"],
-    ["vigência 2026\u20132027", "vigência 2026-2027"],
-    ["ano 2025 2026", "ano 2025 2026"],
-    ["exercícios 1999-2000 e 2025.2026", "exercícios 1999-2000 e 2025.2026"],
+    ["vigência 2025 - 2026", `vigência ${MASK}`],
+    ["vigência 2026\u20132027", `vigência ${MASK}`],
+    ["ano 2025 2026", `ano ${MASK}`],
+    ["exercícios 1999-2000 e 2025.2026", `exercícios ${MASK} e ${MASK}`],
+    ["exercício 2025/2026", "exercício 2025/2026"],
     ["fone 2025-3333", `fone ${MASK}`],
     ["fone 3333 2026", `fone ${MASK}`],
     ["fone 41 2025-2026", `fone ${MASK}`],
@@ -382,7 +392,7 @@ describe("object gate (unit)", () => {
     ["fone (041)3333-4444", `fone ${MASK}`],
     ["nº 123 12345678", "nº 123 12345678"],
     ["fone +55 2025 2026", `fone ${MASK}`],
-    ["datas 2025 2026 3333", `datas 2025 ${MASK}`],
+    ["datas 2025 2026 3333", `datas ${MASK} 3333`],
     ["tel 41 - 33334444", `tel ${MASK}`],
     ["lote 12 1234567 itens", "lote 12 1234567 itens"],
     ["item 3 12345678", "item 3 12345678"],
@@ -393,9 +403,9 @@ describe("object gate (unit)", () => {
     ["celular:2025 2026", `celular:${MASK}`],
     ["contato 2025-2026", `contato ${MASK}`],
     ["WhatsApp : 2025-2026", `WhatsApp : ${MASK}`],
-    ["contrato 2025 - 2026", "contrato 2025 - 2026"],
-    ["hotel 2025 - 2026", "hotel 2025 - 2026"],
-    ["Pimentel 2025-2026", "Pimentel 2025-2026"],
+    ["contrato 2025 - 2026", `contrato ${MASK}`],
+    ["hotel 2025 - 2026", `hotel ${MASK}`],
+    ["Pimentel 2025-2026", `Pimentel ${MASK}`],
     ["telefones 2025-2026", `telefones ${MASK}`],
     ["Tel. 2025-2026", `Tel. ${MASK}`],
     ["Cel: 2025-2026", `Cel: ${MASK}`],
@@ -404,18 +414,18 @@ describe("object gate (unit)", () => {
     ["Tel.: 2025-2026", `Tel.: ${MASK}`],
     ["whats 2025 2026", `whats ${MASK}`],
     ["ZAP 2025-2026", `ZAP ${MASK}`],
-    ["hotel 2025-2026", "hotel 2025-2026"],
-    ["exercício 2025 - 2026", "exercício 2025 - 2026"],
-    ["parcel 2025-2026", "parcel 2025-2026"],
-    ["telas 2025-2026", "telas 2025-2026"],
+    ["hotel 2025-2026", `hotel ${MASK}`],
+    ["exercício 2025 - 2026", `exercício ${MASK}`],
+    ["parcel 2025-2026", `parcel ${MASK}`],
+    ["telas 2025-2026", `telas ${MASK}`],
     ["Telef. 2025-2026", `Telef. ${MASK}`],
     ["tels 2025-2026", `tels ${MASK}`],
     ["contatos 2025-2026", `contatos ${MASK}`],
-    ["Excel 2025-2026", "Excel 2025-2026"],
-    ["Marcel 2025-2026", "Marcel 2025-2026"],
-    ["hotels 2025-2026", "hotels 2025-2026"],
-    ["telefonia 2025-2026", "telefonia 2025-2026"],
-    ["vigência 2025 - 2026, tel 3333-4444", `vigência 2025 - 2026, tel ${MASK}`],
+    ["Excel 2025-2026", `Excel ${MASK}`],
+    ["Marcel 2025-2026", `Marcel ${MASK}`],
+    ["hotels 2025-2026", `hotels ${MASK}`],
+    ["telefonia 2025-2026", `telefonia ${MASK}`],
+    ["vigência 2025 - 2026, tel 3333-4444", `vigência ${MASK}, tel ${MASK}`],
   ])("maskObject(%j)", (input, expected) => {
     expect(maskObject(input)).toEqual({ text: expected, truncated: false });
   });
@@ -542,6 +552,21 @@ describe("procurement_search paging", () => {
     const res = await search();
     expect(res.isError).toBeFalsy();
     expect(n).toBe(2);
+  });
+
+  it("HTTP 429 with a CAPTCHA page is not retried, even with a short Retry-After", async () => {
+    let n = 0;
+    globalThis.fetch = (async () => {
+      n++;
+      return new Response("<html><script src=\"https://hcaptcha.com/1/api.js\"></script></html>", {
+        status: 429,
+        headers: { "retry-after": "0", "content-type": "text/html" },
+      });
+    }) as typeof fetch;
+    const res = await search();
+    expect(res.isError).toBe(true);
+    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+    expect(n).toBe(1);
   });
 
   it("a 429 on a later page keeps what was found as partial", async () => {

@@ -157,6 +157,7 @@ describe("next_buses_near", () => {
     });
     expect(out.checked_at).toBe("2026-11-20");
     expect(out.note).toContain("not real-time");
+    expect(out.note).toContain("Confirm on the official channel before you go: https://www.urbs.curitiba.pr.gov.br/ (URBS) or the 156.");
     expect(out.note).not.toContain("was inferred from today's weekday");
     expect(out.note).toContain("Holidays are not detected");
     expect(out.note).toContain("1 row of the file did not match");
