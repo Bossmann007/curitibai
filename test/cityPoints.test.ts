@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
 import { MASK } from "../src/sources/pncp.js";
 import { newestUrbsFile, URBS_SOURCE_URL } from "../src/sources/urbs.js";
-import { cityPointsSearchOutput, distanceM, FEIRA_NOTE, HEALTH_NOTE, POI_CATEGORIES } from "../src/tools/cityPointsSearch.js";
+import { cityPointsSearchOutput, distanceM, FEIRA_NOTE, HEALTH_NOTE, MIXED_NOTE, POI_CATEGORIES } from "../src/tools/cityPointsSearch.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Invented points in the real URBS POI export shape (test/fixtures/urbs_synthetic/pois.json); no real rows.
@@ -67,9 +67,10 @@ describe("city_points_search", () => {
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
     expect(out.note).toContain(FEIRA_NOTE);
     expect(out.note).toContain(HEALTH_NOTE);
-    expect(out.note).toContain("they look missing or renamed");
-    expect(out.note).toContain("CEMITERIO");
-    expect(out.note).toContain("Unidade Saude Familia"); // health_unit has rows, but not under this name
+    expect(out.note).toContain("their URBS names look missing or renamed");
+    expect(out.note).toContain("cemetery");
+    expect(out.note).not.toMatch(/\bhealth_unit\b/); // has rows, though not under every one of its URBS names
+    expect(out.note).toContain(MIXED_NOTE); // the first page holds all 14 points, Teatro Inventado included
     expect(out.note).not.toContain("days ago");
   });
 
@@ -98,6 +99,14 @@ describe("city_points_search", () => {
     expect(out.data.items[0]).toMatchObject({ category: "bus_terminal", lat: -25.433, lon: -49.273 });
     expect(out.data.categories).toBeUndefined();
     expect(out.data.items[0]).not.toHaveProperty("distance_m");
+  });
+
+  it("warns about private or non-profit institutions only when results include the mixed categories", async () => {
+    useFixture();
+    expect((await search({ category: "cultural_space" })).note).toContain(MIXED_NOTE);
+    expect((await search({ name: "teatro" })).note).toContain(MIXED_NOTE);
+    expect((await search({ category: "feira" })).note).not.toContain(MIXED_NOTE);
+    expect((await search({ category: "special_education" })).note).not.toContain(MIXED_NOTE); // no rows, no results
   });
 
   it("matches name words with accents and case ignored", async () => {
@@ -134,7 +143,7 @@ describe("city_points_search", () => {
     useFixture();
     const posto = (await search({ category: "transit_card_office" })).data.items[0];
     expect(posto?.desc).toContain(MASK);
-    expect(posto?.desc).not.toContain("3333");
+    expect(posto?.desc).not.toContain("0000");
     const tubo = (await search({ name: "tubo" })).data.items[0];
     expect(tubo?.desc).toBe("Texto inventado sobre recarga");
     write([...fixtureRows(), { POI_NAME: "Feira Contato 41 99999-8888", POI_CATEGORY_NAME: "ABAST FEIRA", POI_LAT: "", POI_LON: "", POI_DESC: "" }]);
