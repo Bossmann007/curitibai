@@ -25,6 +25,8 @@ const transport = new StdioClientTransport({
   stderr: "pipe",
 });
 const client = new Client({ name: "smoke", version: "0.0.0" });
+const cleanup = () => rmSync(dataDir, { recursive: true, force: true });
+process.on("exit", cleanup); // also on a timeout or a thrown error
 const timer = setTimeout(() => {
   console.error("smoke: timeout");
   process.exit(1);
@@ -36,7 +38,7 @@ const cs = await client.callTool({ name: "city_services_search", arguments: { qu
 const bus = await client.callTool({ name: "bus_departures", arguments: { line_code: "901", day: "1" } });
 await client.close();
 clearTimeout(timer);
-rmSync(dataDir, { recursive: true, force: true });
+cleanup();
 if (JSON.stringify(names) !== JSON.stringify(expected)) {
   console.error(`smoke: unexpected tools ${JSON.stringify(names)}`);
   process.exit(1);

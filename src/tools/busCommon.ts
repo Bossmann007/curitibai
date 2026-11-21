@@ -65,7 +65,8 @@ export function urbsNote(file: string, date: string, now: Date): string {
       : "";
   return (
     `Read from the local file ${URBS_SUBDIR}/${file} in CURITIBAI_DATA_DIR (the newest of its kind there); this tool ` +
-    "makes no network call. Published timetables, not real-time positions. Confirm with URBS before relying on it." +
+    "makes no network call. Each bus tool reads the newest file of its own kind, so their dates can differ: compare " +
+    "`checked_at`. Published timetables, not real-time positions. Confirm with URBS before relying on it." +
     stale
   );
 }
