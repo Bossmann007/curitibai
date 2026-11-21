@@ -67,8 +67,9 @@ describe("city_points_search", () => {
     expect(out.note).toContain("1 row of the file did not match the expected shape and was left out.");
     expect(out.note).toContain(FEIRA_NOTE);
     expect(out.note).toContain(HEALTH_NOTE);
-    expect(out.note).toContain("look missing or renamed");
-    expect(out.note).toContain("cemetery");
+    expect(out.note).toContain("they look missing or renamed");
+    expect(out.note).toContain("CEMITERIO");
+    expect(out.note).toContain("Unidade Saude Familia"); // health_unit has rows, but not under this name
     expect(out.note).not.toContain("days ago");
   });
 
@@ -140,6 +141,7 @@ describe("city_points_search", () => {
     const masked = await search({ category: "feira", limit: 50 });
     expect(masked.data.items.some((p) => p.name === `Feira Contato ${MASK}`)).toBe(true);
     expect((await search({ name: "99999" })).data.total).toBe(0); // a query cannot probe masked text
+    expect((await search({ name: "masked" })).data.total).toBe(0); // nor match the guard's own token
   });
 
   it("pages with limit and offset in a stable order", async () => {

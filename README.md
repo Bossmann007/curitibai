@@ -238,7 +238,7 @@ departures of line 464 between 07:00 and 08:00".
 `city_points_search` returns only an allowlist of public-facing categories (23 ids; the full mapping to URBS's 45
 category names is in [docs/sources.md](docs/sources.md)). Rows in any other category, which name private businesses
 or people, are dropped when the file is read, so no `name`, `near` or count can reach them; `note` gives how many were
-dropped and names any allowlisted id with no row in the file (its URBS name looks missing or renamed). Ask, for
+dropped and names any allowlisted URBS category name with no row in the file (it looks missing or renamed). Ask, for
 example: "feiras near -25.43, -49.27", "health units near -25.50, -49.29 within 3 km", or call it with no arguments for the counts.
 
 URBS's `DIA` codes are not explained in the files. `bus_departures` returns the code as published and, next to it,

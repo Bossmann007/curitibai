@@ -404,7 +404,7 @@ No network, and **no URBS file in this repository**. Same source, mirror, folder
 tools above: the newest `YYYY_MM_DD_pois.json` in `CURITIBAI_DATA_DIR/urbs/`, downloaded by a person from
 <https://dadosabertos.c3sl.ufpr.br/curitibaurbs/> and decompressed with `xz -d`, read through `src/localfs.ts` with
 the 20 MB cap, rows validated with zod one by one (`POI_NAME` and `POI_CATEGORY_NAME` required, `POI_LAT`/`POI_LON`
-comma decimals or empty, `POI_DESC` optional), the same 5% rule, `skipped_rows` and fallback hint (both count every row of the file, excluded categories included). There is no missing-field note for `POI_DESC` (the 0.8.2 check), since real rows almost never fill it. `license_note`
+comma decimals or empty, `POI_DESC` optional, up to 10,000 characters), the same 5% rule, `skipped_rows` and fallback hint (both count every row of the file, excluded categories included). There is no missing-field note for `POI_DESC` (the 0.8.2 check), since real rows almost never fill it. `license_note`
 credits URBS and the dataset "Transporte Coletivo de Curitiba" (CC BY 4.0 as linked from its portal page) and names
 the file. That the portal page lists the POI export itself was not checked (the server never opens the mirror); the
 file sits in the same mirror folder as the bus exports.
@@ -452,7 +452,8 @@ EDUC ESCOLA PARTICULAR (179), HOTEL (152), IGREJA (108), ABAST SUPER MERCADO (17
 SEG DEFESA SOCIAL (21), SEG POLICIA CIVIL (44), SEG POLICIA MILITAR (16) (police is in `places_search`, with its
 emergency note), EQUIPAMENTOS URBANOS (5), and any category not in the allowlist above, including a new or renamed
 one. Reason: these are private businesses, and their names can be people's names. `note` gives the count of dropped
-rows and names any allowlisted id with no row in the file (its URBS name looks missing or renamed).
+rows and names each allowlisted URBS category name with no row in the file (it looks missing or renamed; checked per
+name, so a rename inside a multi-name id such as `bus_terminal` is reported too).
 
 Search: `name` folds accents and case and requires every word in the (guarded) name, so a query cannot probe masked
 text. `near` keeps points within `radius_m` (great-circle distance, mean Earth radius 6,371,008.8 m; default 1,500 m,

@@ -9,7 +9,7 @@ import {
   URBS_SUBDIR,
   type Poi,
 } from "../sources/urbs.js";
-import { OBJECT_MAX_CHARS } from "../sources/pncp.js";
+import { MASK, OBJECT_MAX_CHARS } from "../sources/pncp.js";
 import { fold } from "../text.js";
 import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, skippedRowsOutput } from "./busCommon.js";
 import { guardedSummary, queryWords } from "./cityServicesSearch.js";
@@ -114,6 +114,8 @@ export interface CityPoint {
   lat: number | null;
   lon: number | null;
   desc: string;
+  /** The guarded name folded for `name` search, without the guard's own "[masked]" and "…" tokens. */
+  search: string;
 }
 
 /**
@@ -127,14 +129,17 @@ export function publicPoints(rows: readonly Poi[]): { points: CityPoint[]; exclu
     if (category === undefined) continue;
     const lat = parseCoordinate(r.POI_LAT, 90);
     const lon = parseCoordinate(r.POI_LON, 180);
+    const hasPosition = lat !== null && lon !== null;
+    const name = guardedSummary(r.POI_NAME);
     points.push({
       index,
-      name: guardedSummary(r.POI_NAME),
+      name,
       category,
       source_category: r.POI_CATEGORY_NAME,
-      lat: lat === null || lon === null ? null : lat,
-      lon: lat === null || lon === null ? null : lon,
+      lat: hasPosition ? lat : null,
+      lon: hasPosition ? lon : null,
       desc: r.POI_DESC === "" ? "" : guardedSummary(r.POI_DESC),
+      search: fold(name.split(MASK).join(" ").replace(/…$/, "")),
     });
   }
   return { points, excluded: rows.length - points.length };
@@ -181,7 +186,13 @@ function poiLicenseNote(file: string): string {
   );
 }
 
-function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], now: Date): string {
+/** Allowlisted URBS category names with no row in the file (each checked on its own, not per id). */
+function missingSourceNames(points: readonly CityPoint[]): string[] {
+  const seen = new Set(points.map((p) => normCategory(p.source_category)));
+  return CATEGORY_IDS.flatMap((id) => POI_CATEGORIES[id].filter((src) => !seen.has(normCategory(src))));
+}
+
+function poiNote(src: PoiSource, missing: readonly string[], total: number, now: Date): string {
   const days = (Date.parse(`${dateInCuritiba(now)}T00:00:00Z`) - Date.parse(`${src.date}T00:00:00Z`)) / 86_400_000;
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
@@ -194,10 +205,12 @@ function poiNote(src: PoiSource, empty: readonly PoiCategoryId[], now: Date): st
     (src.skipped > 0
       ? ` ${plural(src.skipped, "row", "rows")} of the file did not match the expected shape and ${src.skipped === 1 ? "was" : "were"} left out.`
       : "") +
-    (empty.length > 0
-      ? ` No row of this file is in ${empty.length === CATEGORY_IDS.length ? "any category on the list" : `the categories ${empty.join(", ")}`}: ` +
-        "their URBS names look missing or renamed in this file."
-      : "") +
+    (total === 0
+      ? " No row of this file is in any category on the list: the URBS category names look missing or renamed in this file."
+      : missing.length > 0
+        ? ` No row of this file is in the URBS ${missing.length === 1 ? "category" : "categories"} ${missing.join("; ")}: ` +
+          `${missing.length === 1 ? "it looks" : "they look"} missing or renamed in this file.`
+        : "") +
     (days > URBS_MAX_AGE_DAYS
       ? ` The file is dated ${src.date}, ${days} days ago (more than ${URBS_MAX_AGE_DAYS}); points may have changed. Download a newer export.`
       : "")
@@ -211,7 +224,7 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
   const matches: (CityPoint & { distance_m?: number })[] = [];
   for (const p of points) {
     if (args.category !== undefined && p.category !== args.category) continue;
-    if (!words.every((w) => fold(p.name).includes(w))) continue;
+    if (!words.every((w) => p.search.includes(w))) continue;
     if (near === undefined) {
       matches.push(p);
       continue;
@@ -246,7 +259,7 @@ export function cityPointsSearchResult(points: readonly CityPoint[], src: PoiSou
     source_url: URBS_SOURCE_URL,
     checked_at: src.date,
     license_note: poiLicenseNote(src.file),
-    note: poiNote(src, counts.filter((c) => c.count === 0).map((c) => c.id), now),
+    note: poiNote(src, missingSourceNames(points), points.length, now),
   };
 }
 

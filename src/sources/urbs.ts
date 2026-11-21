@@ -80,7 +80,7 @@ export const PoiRow = z.object({
   POI_CATEGORY_NAME: z.string().trim().min(1).max(100),
   POI_LAT: coordinate.nullish().transform((v) => v ?? ""),
   POI_LON: coordinate.nullish().transform((v) => v ?? ""),
-  POI_DESC: optional(1000),
+  POI_DESC: optional(10_000), // generous: the guard cuts what is returned at OBJECT_MAX_CHARS
 });
 
 /**
