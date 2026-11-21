@@ -530,7 +530,8 @@ in the city's own categories. Built.
   (`/bin`, `/Imagem`, `*.pdf`, `*.asp`) is the truncated list handed over, so the first real run may abort with
   `robots_changed` until the full list is recorded; the text of an empty list page is unknown, so a count of 0 always
   stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
-  kept fields have not been seen.
+  kept fields have not been seen, nor has the date filter value on list pages 2 and later (the parser expects the
+  run's date there too).
 - **Tool** (`events_search`, no network): reads `events/events.json` through `openDataFile` and `readAllCapped` (2 MB
   cap), validates it with zod on every call (`invalid_data`: wrong shape, extra fields, a link that is not the event
   page of its own id, `count` not matching), sanitizes the text fields again, and filters by date overlap (default
@@ -569,7 +570,7 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `city156_categories`, `city156_stats` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB. Measured: 136,902,324 bytes (2026-11-18 file), ~1 MB/s from the mirror (~140 s) and ~0.4 MB/s from `mid` (>300 s). The 156 API (`api-156.curitiba.pr.gov.br`) is not public. Owner decision (2026-11-19): no permission request will be sent; a person downloads the file and uses `local_csv_summary` |
 | Bus lines, timetables, stops fetched by the server; real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. The export mirror is treated as disallowed. Since v0.8 the bus tools read the exports from local files instead (above) |
 | `schools_search`, `markets_fairs_list` | Covered since v0.9 by `city_points_search` (URBS `pois` export: feiras, Câmbio Verde, CMEIs, municipal and state schools and more), with no days or hours for feiras. The other sources are stale (below). Health units moved to the CNES API in v0.2 |
-| `culture_agenda` | No current source: "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
+| `culture_agenda` | Covered since v0.10 by `events_search` (Instituto Municipal de Turismo calendar, local file written by the separate collector). The portal's "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No source found (portal searches for "lixo", "coleta", "residuos") |
 | Detran-PR fees by vehicle, debts, fines and IPVA by plate | Behind login and CAPTCHA on Detran-PR; per-owner data. Not accessed |

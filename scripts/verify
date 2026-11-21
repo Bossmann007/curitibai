@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "no tracked city services catalog (carta-servicos.json) or URBS export (YYYY_MM_DD_*.json)"
+step "no tracked city services catalog (carta-servicos.json), URBS export (YYYY_MM_DD_*.json), events output (events/) or HTML capture"
 scripts/check-no-catalog
 
 step "npm ci"
