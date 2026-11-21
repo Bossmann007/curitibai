@@ -6,7 +6,7 @@ import { DATA_DIR_ENV } from "../src/localfs.js";
 import { MASK } from "../src/sources/pncp.js";
 import { newestUrbsFile, parseUrbs, URBS_MAX_BYTES, URBS_SOURCE_URL, type UrbsKind } from "../src/sources/urbs.js";
 import { ADAPT_MISSING_NOTE, emptyFieldsNote } from "../src/tools/busCommon.js";
-import { busDeparturesOutput } from "../src/tools/busDepartures.js";
+import { afterMidnightRows, busDeparturesOutput } from "../src/tools/busDepartures.js";
 import { busLineStopsOutput } from "../src/tools/busLineStops.js";
 import { busLinesSearchOutput } from "../src/tools/busLinesSearch.js";
 import { connectClient, errorOf } from "./helpers.js";
@@ -520,6 +520,36 @@ describe("bus_departures", () => {
       "00:30 6 false",
       "05:00 6 false",
     ]);
+  });
+
+  it("a drop in a table's times marks after_midnight only from 20:00 or later to before 04:00", async () => {
+    // Table 7: 12:00 then 03:00 (a non-night drop) is not a wrap. Table 8: 23:50 then 00:10 wraps, and its 04:00 row
+    // after the wrap stays false.
+    const row = (HORA: string, TABELA: string) => ({ HORA, PONTO: "PARADA FICTICIA", DIA: "1", NUM: "990001", TABELA, ADAPT: "ELEVADOR", COD: "901" });
+    writeFileSync(
+      join(tmp, "urbs", "2026_11_20_tabelaLinha.json"),
+      JSON.stringify([row("12:00", "7"), row("03:00", "7"), row("23:50", "8"), row("00:10", "8"), row("04:00", "8")]),
+    );
+    const out = await departures({ stop_number: "990001", day: "1" });
+    expect(out.data.items.map((d) => `${d.time} ${d.table} ${d.after_midnight}`)).toEqual([
+      "00:10 8 true",
+      "03:00 7 false",
+      "04:00 8 false",
+      "12:00 7 false",
+      "23:50 8 false",
+    ]);
+  });
+
+  it.each([
+    ["20:00", "03:59", true],
+    ["19:59", "03:59", false],
+    ["20:00", "04:00", false],
+    ["12:00", "03:00", false],
+    ["23:59", "00:00", true],
+  ])("afterMidnightRows: %s then %s -> %s", (before, after, marked) => {
+    const row = (HORA: string) => ({ HORA, PONTO: "P", DIA: "1", NUM: "1", TABELA: "1", ADAPT: "", COD: "901" });
+    const rows = [row(before), row(after)];
+    expect(afterMidnightRows(rows).has(rows[1]!)).toBe(marked);
   });
 
   it("filters by stop, day and an inclusive time window", async () => {

@@ -271,7 +271,8 @@ names and counts. Data rows (after the first line) are never returned. What it d
   cannot reveal a single record.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
-  ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). This is a guard for contact data only: names of people in values are not detected.
+  ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the
+  whole value before the cut, so a phone or e-mail split by the cut is still found. This is a guard for contact data only: names of people in values are not detected.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
   nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
@@ -305,7 +306,7 @@ terms of use or licence for it was found. To use the tool, put a file named `car
 ```json
 {
   "source": "https://www.curitiba.pr.gov.br/servicos/",
-  "captured": "2026-11-19/20",
+  "captured": "YYYY-MM-DD",
   "count": 1,
   "items": [
     { "cat": "Category", "title": "Service title", "what": "The listing's short description...",
@@ -369,7 +370,7 @@ URBS's `DIA` codes are not explained in the files. `bus_departures` returns the 
 Times are returned as published (00:00 to 23:59, each under its row's code) and `from`/`to` never wrap past
 midnight. URBS files a late-night trip under the day its service starts, at the end of that day's table (checked on
 the 2026-11-20 file, see [docs/sources.md](docs/sources.md)): a row before 04:00 that comes after its table has run
-from 23:xx on to 00:xx has `after_midnight: true` and runs on the calendar day after a day of its code. Other rows
+from 20:00 or later on to before 04:00 (any other drop in its times is not a wrap) has `after_midnight: true` and runs on the calendar day after a day of its code. Other rows
 before 04:00 are read as early trips of their own code's day (not verified).
 
 ### Events (Instituto Municipal de Turismo calendar, collected by a separate script)
@@ -444,7 +445,8 @@ week".
   stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
-  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable`; no retry, no other headers, no browser
+  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable` with the message "the source refused
+  this server; it is not asked again for 10 minutes (per host)"; no retry, no other headers, no browser
   fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
   with `next_page: null`). The block is per host, not per path: a 403 on one portal path pauses every tool that uses
   that host. The events collector stops the run on any non-200 answer, 403 included. Another 429 is
@@ -589,8 +591,8 @@ week".
 scripts/verify   # no tracked carta-servicos.json, URBS export, events output or HTML capture, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
 ```
 
-CI (`.github/workflows/verify.yml`) runs `scripts/verify` on every pull request and on pushes to `main`: one Ubuntu
-job, Node from `.nvmrc`, actions pinned by commit SHA, read-only token, no secrets, 10-minute timeout. It sets
+`scripts/verify` is the required local check. The CI workflow `.github/workflows/verify.yml` is set to run it on every
+pull request and on pushes to `main`: one Ubuntu job, Node from `.nvmrc`, actions pinned by commit SHA, read-only token, no secrets, 10-minute timeout. It sets
 `CURITIBAI_SKIP_AUDIT=1`, so the separate `npm audit` step is skipped there: it never changes the result, and new
 advisories would only add noise to unrelated CI runs (Dependabot, `.github/dependabot.yml`, opens weekly npm and
 GitHub Actions update PRs instead).

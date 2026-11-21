@@ -8,12 +8,15 @@ export const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Minutes after midnight before which a row can be the previous evening's service (04:00). */
 export const NIGHT_END_MIN = 4 * 60;
+/** A drop in a table's times is a wrap past midnight only when the time before it is at or after this (20:00). */
+export const NIGHT_START_MIN = 20 * 60;
 
 /**
  * The rows that run after midnight but belong to the evening before: URBS files a late-night trip under the day its
- * service starts, at the end of that day's table. A row before 04:00 is one when, in the file's order, an earlier row
- * of its table (same COD, DIA and TABELA, any stop) has a later time, so the table has already wrapped past midnight.
- * Pass the whole file, in file order, before any filter: the row that proves the wrap may be at another stop.
+ * service starts, at the end of that day's table. A row before 04:00 is one when, in the file's order, its table
+ * (same COD, DIA and TABELA, any stop) has already wrapped past midnight: a time at or after 20:00 followed by one
+ * before 04:00. Any other drop (12:00 then 03:00) is not a wrap. Rows at or after 04:00 are never marked, even after
+ * a wrap. Pass the whole file, in file order, before any filter: the row that proves the wrap may be at another stop.
  */
 export function afterMidnightRows(rows: readonly Tabela[]): Set<Tabela> {
   const last = new Map<string, number>();
@@ -23,7 +26,7 @@ export function afterMidnightRows(rows: readonly Tabela[]): Set<Tabela> {
     const key = `${r.COD}\u0000${r.DIA}\u0000${r.TABELA}`;
     const t = Number(r.HORA.slice(0, 2)) * 60 + Number(r.HORA.slice(3, 5));
     const prev = last.get(key);
-    if (prev !== undefined && t < prev) wrapped.add(key);
+    if (prev !== undefined && prev >= NIGHT_START_MIN && t < NIGHT_END_MIN) wrapped.add(key);
     if (t < NIGHT_END_MIN && wrapped.has(key)) out.add(r);
     last.set(key, t);
   }
@@ -34,8 +37,9 @@ export function afterMidnightRows(rows: readonly Tabela[]): Set<Tabela> {
 export const MIDNIGHT_NOTE =
   "Times are as published: HH:MM from 00:00 to 23:59, each under its row's DIA code, never moved. URBS files a " +
   "late-night trip under the day its service starts, at the end of that day's table: in the 2026-11-20 file 677 " +
-  "tables (same line, DIA and TABELA, in file order) run from 23:xx on to 00:xx. A row before 04:00 that comes after " +
-  "such a wrap in its table, at any stop, has `after_midnight` true: it runs after midnight, on the calendar day after " +
+  "tables (same line, DIA and TABELA, in file order) run from 23:xx on to 00:xx. A wrap is a time at or after 20:00 " +
+  "followed by one before 04:00 in the same table. A row before 04:00 that comes after such a wrap in its table, at " +
+  "any stop, has `after_midnight` true: it runs after midnight, on the calendar day after " +
   "a day of its code (a 00:03 under 1 on a Friday runs early on Saturday). Other rows before 04:00 have " +
   "`after_midnight` false and are read as early trips of their own code's day; the file does not say so, so that " +
   "reading is not verified.";

@@ -34,8 +34,9 @@ catálogo, export da URBS, saída do coletor de eventos ou página HTML capturad
 2. Faça a mudança com teste. Comportamento novo vem com teste que falhava antes.
 3. Atualize README, `docs/sources.md` e `CHANGELOG.md` quando o comportamento mudar.
 4. Rode `scripts/verify`.
-5. Abra o pull request para `main` com o modelo preenchido e o fim da saída do `scripts/verify`. O CI roda o mesmo
-   script.
+5. Abra o pull request para `main` com o modelo preenchido e o fim da saída do `scripts/verify`. O
+   `scripts/verify` local é a verificação obrigatória; o workflow `.github/workflows/verify.yml` está configurado para
+   rodar o mesmo script em pull requests.
 
 Ideia de fonte nova: use o formulário
 [Sugerir uma fonte de dados](https://github.com/Bossmann007/curitibai/issues/new?template=data-source.yml) antes de

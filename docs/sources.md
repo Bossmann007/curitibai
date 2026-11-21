@@ -20,7 +20,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
   `source_unavailable`. Since v0.13.2 this is in code: `src/http.ts` throws `SourceRefusedError` (a final refusal,
   never retried, not even by PNCP's single retry) for HTTP 401, 403 and a 429 whose HTML page (first 16 KB) mentions
   a CAPTCHA or challenge; the host is then not asked again for 10 minutes in that process (the same refusal is
-  returned without a network call), and `procurement_search` and `health_units_search` return what they found with
+  returned without a network call; since v0.13.3 the error carries the message "the source refused this server; it
+  is not asked again for 10 minutes (per host)"), and `procurement_search` and `health_units_search` return what they found with
   `next_page: null`. PNCP's single retry happens only after a connection error or a 429 with `Retry-After` of 5 s or
   less, never after a 401, 403 or CAPTCHA. The events collector stops on any non-200 status, 403 included.
 - Requests send the User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`, the repository
@@ -46,7 +47,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `www.curitiba.pr.gov.br` | 200 (checked 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: it answers HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
+| `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**; the local copy holds no detail-page content. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
@@ -332,7 +333,7 @@ none may be added. `scripts/check-no-catalog` keeps any copy out of the reposito
 |---|---|
 | Item shape | `{cat, title, what, url, online}`: the theme (category), the title, the listing's own "O que é?" teaser as published (the site truncates it; some are empty, and those services are found by title only), the detail-page URL and, for some, an online-service link |
 | Completeness of the earlier 2026-11-19/20 copy (deleted) | 756 unique services in 18 categories, 96 of them with an empty teaser. The site suggested about 770, so **a few services may be missing** |
-| `checked_at` | The first date in the file's `captured` (for "2026-11-19/20", `2026-11-19`), so the 180-day staleness warning, counted in America/Sao_Paulo, starts early rather than late. `license_note` repeats the date part of `captured` and never the rest of that text |
+| `checked_at` | The first date in the file's `captured` (`YYYY-MM-DD`; when `captured` holds more than one date, the first), so the 180-day staleness warning, counted in America/Sao_Paulo, starts early rather than late. `license_note` repeats the date part of `captured` and never the rest of that text |
 | Terms / licence | None found. Treated under the strictest reading: values returned unchanged (except masked text, below), attributed to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link and capture date in `license_note` |
 
 Privacy: the catalog describes public services. Online links to the city's obituary system
@@ -438,7 +439,11 @@ service starts, at the end of that day's table. Since 0.13.1 a row before 04:00 
 table is an after-midnight row (`after_midnight: true` in `bus_departures` and `next_buses_near`): 993 of the 1,291
 rows before 04:00 (972 of them at 00:xx). The other 298 are read as early trips of their own code's day; the file
 does not say so, so this reading is not verified: 36 of them sit in 9 tables with no row at or after 04:00 (all-night
-service). A different count, by position, agrees: 1,063 of the 1,291 rows sit in the second half of their table and
+service). Since 0.13.3 only a drop from 20:00 or later to before 04:00 counts as the wrap; any other drop (12:00
+then 03:00, for example) does not mark later rows. On the 2026-11-20 file every one of the 677 drops is of that kind,
+so the 993 rows are unchanged. Known limit: in that file 9 rows, in 3 tables, come after the wrap at 04:00 or later;
+they keep `after_midnight: false` and are read as trips of their own code's day, which the file does not confirm.
+These 9 rows are a different set from the 36 rows in 9 all-night tables above. A different count, by position, agrees: 1,063 of the 1,291 rows sit in the second half of their table and
 228 in the first. The drop is found over the whole file before any filter, since the row before it can be at another
 stop. Times are never moved: each stays under its row's code.
 
