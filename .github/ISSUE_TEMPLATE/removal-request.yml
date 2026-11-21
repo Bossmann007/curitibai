@@ -1,5 +1,6 @@
 name: Pedido de remoção de conteúdo
 description: Peça para remover um conteúdo que o CuritibAI devolve ou que está neste repositório
+labels: [removal-request]
 body:
   - type: markdown
     attributes:

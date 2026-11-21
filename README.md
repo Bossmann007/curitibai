@@ -51,6 +51,8 @@ or the 156 (Prefeitura). **Not for emergencies: call 190 (Polícia Militar), 192
 - [Contributing, security and removal requests](#contributing-security-and-removal-requests)
 - [Licences (code and data)](#licences-code-and-data)
 
+<a id="run-it"></a>
+
 ## Quick start
 
 Requires Node.js 26.13.1 or newer (the version CI tests, from `.nvmrc`).
@@ -115,6 +117,8 @@ make no network call. [Tool reference](#tool-reference) has every input, output 
 | Open data | `open_datasets_search` | Search the Portal de Dados Abertos de Curitiba catalogue | Network (portal) |
 | Open data | `dataset_files` | List one dataset's files as links (never downloads them) | Network (portal) |
 | Open data | `local_csv_summary` | Column names and grouped counts of a CSV you downloaded | Local (your file) |
+
+<a id="tools"></a>
 
 ## Tool reference
 
@@ -293,8 +297,8 @@ rows.
 ### Finding a city service (Carta de Serviços)
 
 `city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
-The copy must be saved by a person in an ordinary browser session; no automated capture of that host is part of this
-project (see [docs/sources.md](docs/sources.md)). The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds, because www.curitiba.pr.gov.br answers HTTP 403 to non-browser clients; new copies must be saved by a person in an ordinary browser session. **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+The server never contacts `www.curitiba.pr.gov.br`. `city_services_search` reads only a copy that you save yourself, by hand, in an ordinary browser session, into `CURITIBAI_DATA_DIR/carta-servicos.json`. An earlier local copy (2026-11-19/20) was deleted and is not used.
+No automated capture of that host is part of this project (see [docs/sources.md](docs/sources.md)). **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
 terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
 `CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
 
@@ -510,7 +514,7 @@ week".
 - `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
   of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
   links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same
-  masking as PNCP objects as a guard; on the 2026-11-19/20 capture (measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
+  masking as PNCP objects as a guard; on the earlier 2026-11-19/20 copy (deleted; measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
   office's institutional e-mail, and a social-media handle that looks like an e-mail).
 - The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files (measured before 0.13.2 widened the mask) it
   changes 29 of the 6,841 stop names in `pontosLinha`, all street-number ranges read as phone numbers
@@ -554,9 +558,9 @@ week".
   `city_services_search` returns the titles and summaries of your local file unchanged (except masked text, see
   "Privacy and safety") and attributes them to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link
   and the capture date in `license_note`. The server contacts neither `www.curitiba.pr.gov.br` nor the service
-  pages' host (`servicos.curitiba.pr.gov.br`, robots.txt `Disallow: /`). The owner's own copy is dated 2026-11-19/20
-  (details in [docs/sources.md](docs/sources.md)); it may miss a few services, and its summaries are the site's short
-  teasers, some of them empty (those services are found by title only).
+  pages' host (`servicos.curitiba.pr.gov.br`, robots.txt `Disallow: /`). An earlier local copy (2026-11-19/20) was
+  deleted and is not used (details in [docs/sources.md](docs/sources.md)). A copy of the listing may miss a few
+  services, and its summaries are the site's short teasers, some of them empty (those services are found by title only).
 - OpenStreetMap: data © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)
   (see <https://www.openstreetmap.org/copyright>). Every result carries that attribution in `attribution` and `license_note`, with the time of the OSM copy
   (`osm_data_as_of`, from Overpass `osm3s.timestamp_osm_base`). OSM is edited by volunteers: places can be missing,

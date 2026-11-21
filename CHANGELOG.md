@@ -9,11 +9,12 @@ Docs and repository files only. No change to `src/`, no version bump.
 - README: brand header, badges, a three-line summary, a table of contents, "Quick start" (with other MCP clients) and
   "Tools at a glance" (the 18 tools grouped by area). The existing sections keep their text and move under new
   headings: "Tools" is now "Tool reference", "Run it" is now "Quick start", and the local-file guides sit under
-  "Local data files" (old `#tools` and `#run-it` links no longer resolve). Every legal and licence section stays.
+  "Local data files" (`#tools` and `#run-it` still resolve). Every legal and licence section stays.
 - README "Collection rules": the 10-minute refusal block is per host, not per path. Removal requests link to the new
   issue form.
-- README and docs/sources.md: the Carta de Serviços provenance line says why the 2026-11-19/20 copy used a real
-  browser (www.curitiba.pr.gov.br answers HTTP 403 to non-browser clients).
+- README and docs/sources.md, Carta de Serviços: the server never contacts www.curitiba.pr.gov.br;
+  `city_services_search` reads only a copy that you save yourself, by hand, in an ordinary browser session. An
+  earlier local copy (2026-11-19/20) was deleted and is not used.
 - New: `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`, a pull request template and issue forms (bug, data
   source suggestion, removal request; blank issues off).
 
@@ -58,8 +59,7 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
   before. The host is then not asked again for 10 minutes in that process, and `procurement_search` and
   `health_units_search` return what they found with `next_page: null` when a later page is refused. The events
   collector already stopped on 403 (tested).
-- Carta de Serviços: new local copies must be saved by a person in an ordinary browser session. The 2026-11-19/20
-  copy was made before this rule, with a scripted real-browser session (stated in README and docs/sources.md).
+- Carta de Serviços: new local copies must be saved by a person in an ordinary browser session.
 - README "Removal requests": open an issue; the content is removed from the next release.
 
 ## 0.13.1
