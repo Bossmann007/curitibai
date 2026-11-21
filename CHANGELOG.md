@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.13.0
+
+- Added `next_buses_near` ("next buses near me" in one call): the published URBS departures in the next `window_min`
+  minutes (default 60, at most 180) after `at` (HH:MM, default now in Curitiba) at the stops within `radius_m` (default
+  400, at most 1000) of `near`, soonest first: `time`, `day`, `minutes_from_now`, `line_code`, `line_name`,
+  `directions` (every SENTIDO the stops file lists for the line at that stop: the timetable has no direction field),
+  `stop_number`, `stop_name` (masked as a guard), `distance_m`, `adapt`; plus `windows`, `cut_at_midnight`,
+  `stops_considered`, `stops_with_times`, `total`, `skipped_rows`. Optional `line_code` and `limit` ≤ 50 (default 20).
+  `day` defaults to the code of today's weekday in Curitiba (1 Monday to Friday, 2 Saturday, 3 Sunday; inferred, and
+  holidays are not detected). A window past 24:00 reads the times from 00:00 under the next calendar day's code; with
+  an explicit `day` it stops at 23:59. Reuses the v0.8 readers (newest file, 5% rule, `skipped_rows`, masking, CC BY
+  4.0 note, renamed-field notes) and the v0.11 stop grouping; reads `tabelaLinha`, `pontosLinha` and `linhas`; no
+  network call. Timetable as published, not real-time.
+- About 73 ms per call (median; the first call in a process about 135 ms) on the real 2026-11-20 files on an Apple M4.
+  `scripts/verify` now times the built tool on 17,496 generated stop rows and 71,085 departures and fails above
+  600 ms; the smoke test calls it over stdio.
+
 ## 0.12.0
 
 - Added `vaccination_sites_search`: Curitiba's public vaccination sites from the Prefeitura's "Imuniza Já" page

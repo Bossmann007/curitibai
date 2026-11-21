@@ -103,6 +103,12 @@ export function emptyFieldsNote(fields: readonly DescriptiveField[]): string {
   );
 }
 
+/** " N rows of <what> did not match the expected shape and were left out." with a leading space, or "" for none. */
+export function skippedNote(skipped: number, what: string): string {
+  if (skipped === 0) return "";
+  return ` ${skipped} row${skipped === 1 ? "" : "s"} of ${what} did not match the expected shape and ${skipped === 1 ? "was" : "were"} left out.`;
+}
+
 /**
  * Base note, plus the count of skipped rows when there are any, plus ADAPT_MISSING_NOTE and emptyFieldsNote when they
  * apply, plus an age warning once more than URBS_MAX_AGE_DAYS have passed since the file's date.
@@ -118,9 +124,7 @@ export function urbsNote({ file, date, skipped, emptyFields }: UrbsSource, now: 
     `Read from the local file ${URBS_SUBDIR}/${file} in CURITIBAI_DATA_DIR (the newest of its kind there); this tool ` +
     "makes no network call. Each bus tool reads the newest file of its own kind, so their dates can differ: compare " +
     "`checked_at`. Published timetables, not real-time positions. Confirm with URBS before relying on it." +
-    (skipped > 0
-      ? ` ${skipped} row${skipped === 1 ? "" : "s"} of the file did not match the expected shape and ${skipped === 1 ? "was" : "were"} left out.`
-      : "") +
+    skippedNote(skipped, "the file") +
     (emptyFields.includes("ADAPT") ? ` ${ADAPT_MISSING_NOTE}` : "") +
     (missing ? ` ${missing}` : "") +
     stale
