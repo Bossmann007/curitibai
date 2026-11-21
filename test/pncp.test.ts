@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isAllowedUrl } from "../src/http.js";
+import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import {
   CURITIBA_BODIES,
   maskObject,
@@ -593,7 +594,7 @@ describe("procurement_search paging", () => {
     }) as typeof fetch;
     const res = await search();
     expect(res.isError).toBe(true);
-    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+    expect(errorOf(res)).toEqual({ error: "source_unavailable", message: SOURCE_REFUSED_MESSAGE });
     expect(n).toBe(1);
   });
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CsvParser, detectDelimiter } from "../csv.js";
 import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
+import { MASK, maskObject } from "../mask.js";
 import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fold } from "../text.js";
 import { guardedSummary } from "./cityServicesSearch.js";
@@ -13,6 +14,9 @@ import { fail, ok, type ToolDef } from "./common.js";
 export const MIN_GROUP_COUNT = 5;
 export const MAX_DISTINCT = 50_000;
 export const MAX_VALUE_CHARS = 120;
+/** Bounds of the cache of long values already checked clean (about 10 MB at most). */
+const CLEAN_CACHE_MAX = 5_000;
+const CLEAN_CACHE_MAX_CHARS = 1_000;
 export const MAX_HEADER_CHARS = 60;
 
 /**
@@ -126,6 +130,8 @@ interface Scan {
   malformed: number;
   matched: number;
   groups: Map<string, number>;
+  /** Grouped (cut) values for which some whole value, longer than MAX_VALUE_CHARS, looked like contact data. */
+  contactKeys: Set<string>;
   capped: boolean;
   delimiter: ";" | ",";
   groupColumn: string;
@@ -141,7 +147,9 @@ async function scan(
 ): Promise<Scan> {
   const decoder = new TextDecoder(encoding === "utf-8" ? "utf-8" : "latin1", { fatal: encoding === "utf-8" });
   const groups = new Map<string, number>();
-  const s: Scan = { columns: [], rows: 0, malformed: 0, matched: 0, groups, capped: false, delimiter: ",", groupColumn: "" };
+  /** Whole values over MAX_VALUE_CHARS already checked and clean, so a repeated value is checked once (bounded). */
+  const cleanLong = new Set<string>();
+  const s: Scan = { columns: [], rows: 0, malformed: 0, matched: 0, groups, contactKeys: new Set(), capped: false, delimiter: ",", groupColumn: "" };
   let header: string[] | null = null;
   let gi = -1;
   let fi = -1;
@@ -173,11 +181,20 @@ async function scan(
     if (filter && fold(rec[fi]!.trim()) !== fv) return;
     s.matched++;
     if (gi < 0) return;
-    const v = cut(rec[gi]!.trim()) || "(empty)";
+    const full = rec[gi]!.trim();
+    const v = cut(full) || "(empty)";
     const n = groups.get(v);
     if (n !== undefined) groups.set(v, n + 1);
     else if (groups.size < MAX_DISTINCT) groups.set(v, 1);
-    else s.capped = true;
+    else {
+      s.capped = true;
+      return;
+    }
+    // The contact-data check runs on the whole value, before the cut: a phone or e-mail split by the cut would
+    // otherwise pass and be returned in part. Shorter values are their own group key and are checked at the end.
+    if (full.length <= MAX_VALUE_CHARS || s.contactKeys.has(v) || cleanLong.has(full)) return;
+    if (maskObject(full).text.includes(MASK)) s.contactKeys.add(v);
+    else if (full.length <= CLEAN_CACHE_MAX_CHARS && cleanLong.size < CLEAN_CACHE_MAX) cleanLong.add(full);
   };
 
   const feed = (text: string) => {
@@ -258,7 +275,7 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
         const sorted = [...s.groups].filter(([, n]) => n >= MIN_GROUP_COUNT).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
         // Values that could be returned and that the contact-data guard would change (CPF/CNPJ-, e-mail- or
         // phone-shaped text): the column is refused whole, whatever `top` is. It detects contact data, not names.
-        if (sorted.some(([value]) => guardedSummary(value) !== value)) {
+        if (sorted.some(([value]) => s.contactKeys.has(value) || guardedSummary(value) !== value)) {
           return fail(
             "column_not_allowed",
             "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone, or year ranges that look like phone numbers)",

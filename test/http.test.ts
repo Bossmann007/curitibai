@@ -11,8 +11,8 @@ import {
   UrlNotAllowedError,
 } from "../src/http.js";
 import { MAX_RESPONSE_BYTES, USER_AGENT } from "../src/config.js";
-import { rateLimitedMessage } from "../src/tools/common.js";
-import { stubFetch } from "./helpers.js";
+import { failFrom, rateLimitedMessage, SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
+import { errorOf, stubFetch } from "./helpers.js";
 
 const OK = "https://dadosabertos.curitiba.pr.gov.br/conjuntodado/detalhe?chave=1";
 
@@ -201,6 +201,21 @@ describe("fetchText", () => {
   it("never raises the cap above MAX_RESPONSE_BYTES", async () => {
     stubFetch({ [`GET ${OK}`]: { body: "x".repeat(MAX_RESPONSE_BYTES + 1) } });
     await expect(fetchText(OK, { maxBytes: MAX_RESPONSE_BYTES * 2 })).rejects.toBeInstanceOf(ResponseTooLargeError);
+  });
+});
+
+describe("failFrom", () => {
+  it("a final refusal says the source refused and is not asked again for 10 minutes per host (no status, no host)", () => {
+    expect(SOURCE_REFUSED_MESSAGE).toBe("the source refused this server; it is not asked again for 10 minutes (per host)");
+    expect(REFUSAL_BLOCK_MS).toBe(10 * 60 * 1000);
+    for (const status of [401, 403, 429]) {
+      expect(errorOf(failFrom(new SourceRefusedError(status)))).toEqual({ error: "source_unavailable", message: SOURCE_REFUSED_MESSAGE });
+    }
+  });
+
+  it("other source failures keep the bare source_unavailable", () => {
+    expect(errorOf(failFrom(new SourceUnavailableError("HTTP 500")))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(failFrom(new Error("x")))).toEqual({ error: "source_unavailable" });
   });
 });
 

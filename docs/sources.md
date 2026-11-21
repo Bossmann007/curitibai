@@ -20,7 +20,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
   `source_unavailable`. Since v0.13.2 this is in code: `src/http.ts` throws `SourceRefusedError` (a final refusal,
   never retried, not even by PNCP's single retry) for HTTP 401, 403 and a 429 whose HTML page (first 16 KB) mentions
   a CAPTCHA or challenge; the host is then not asked again for 10 minutes in that process (the same refusal is
-  returned without a network call), and `procurement_search` and `health_units_search` return what they found with
+  returned without a network call; since v0.13.3 the error carries the message "the source refused this server; it
+  is not asked again for 10 minutes (per host)"), and `procurement_search` and `health_units_search` return what they found with
   `next_page: null`. PNCP's single retry happens only after a connection error or a 429 with `Retry-After` of 5 s or
   less, never after a 401, 403 or CAPTCHA. The events collector stops on any non-200 status, 403 included.
 - Requests send the User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`, the repository
@@ -438,7 +439,11 @@ service starts, at the end of that day's table. Since 0.13.1 a row before 04:00 
 table is an after-midnight row (`after_midnight: true` in `bus_departures` and `next_buses_near`): 993 of the 1,291
 rows before 04:00 (972 of them at 00:xx). The other 298 are read as early trips of their own code's day; the file
 does not say so, so this reading is not verified: 36 of them sit in 9 tables with no row at or after 04:00 (all-night
-service). A different count, by position, agrees: 1,063 of the 1,291 rows sit in the second half of their table and
+service). Since 0.13.3 only a drop from 20:00 or later to before 04:00 counts as the wrap; any other drop (12:00
+then 03:00, for example) does not mark later rows. On the 2026-11-20 file every one of the 677 drops is of that kind,
+so the 993 rows are unchanged. Known limit: in that file 9 rows, in 3 tables, come after the wrap at 04:00 or later;
+they keep `after_midnight: false` and are read as trips of their own code's day, which the file does not confirm.
+These 9 rows are a different set from the 36 rows in 9 all-night tables above. A different count, by position, agrees: 1,063 of the 1,291 rows sit in the second half of their table and
 228 in the first. The drop is found over the whole file before any filter, since the row before it can be at another
 stop. Times are never moved: each stays under its row's code.
 

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { CsvLimitError, CsvParser, detectDelimiter, MAX_COLUMNS, MAX_FIELD_CHARS } from "../src/csv.js";
 import { closeFile, DATA_DIR_ENV, LocalFileError, openDataFile, openVerified, readChunks } from "../src/localfs.js";
-import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue, MIN_GROUP_COUNT } from "../src/tools/localCsvSummary.js";
+import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue, MAX_VALUE_CHARS, MIN_GROUP_COUNT } from "../src/tools/localCsvSummary.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Synthetic files only, written to a temporary folder outside the repository.
@@ -205,6 +205,29 @@ describe("local_csv_summary", () => {
     for (const leak of ["3333", "ficticio"]) expect(text).not.toContain(leak);
     const ok = localCsvSummaryOutput.parse((await call({ file: "contact-values.csv", group_by: "tipo" })).structuredContent).data;
     expect(ok.group_by?.top).toEqual([{ value: "A", count: 10 }]);
+  });
+
+  it("checks the whole value for contact data before cutting it at MAX_VALUE_CHARS (a phone or e-mail split by the cut)", async () => {
+    // The cut falls inside the phone ("(41) 3333-" | "4444") and inside the e-mail (before ".example"): the cut
+    // values alone do not look like contact data, so only a check on the whole value refuses the column.
+    const pad = (n: number) => "Reclamacao ficticia ".repeat(10).slice(0, n);
+    const phone = `${pad(MAX_VALUE_CHARS - 10)}(41) 3333-4444`;
+    const email = `${pad(MAX_VALUE_CHARS - 12)}x@ficticio.example`;
+    expect(phone.slice(0, MAX_VALUE_CHARS).endsWith("(41) 3333-")).toBe(true);
+    expect(email.slice(0, MAX_VALUE_CHARS).endsWith("x@ficticio.e")).toBe(true);
+    for (const [name, value, leak] of [["cut-phone.csv", phone, "3333"], ["cut-email.csv", email, "ficticio.e"]] as const) {
+      writeFileSync(join(dataDir, name), `ref;tipo\n${`${value};A\n`.repeat(MIN_GROUP_COUNT)}`);
+      const res = await call({ file: name, group_by: "ref" });
+      expect(errorOf(res)).toEqual({
+        error: "column_not_allowed",
+        message: "values of this column look like personal contact data (CPF/CNPJ, e-mail or phone, or year ranges that look like phone numbers)",
+      });
+      expect(JSON.stringify(res)).not.toContain(leak);
+    }
+    // A long value with no contact data is still cut and returned (the check does not refuse long text as such).
+    writeFileSync(join(dataDir, "cut-plain.csv"), `ref;tipo\n${`${pad(200)};A\n`.repeat(MIN_GROUP_COUNT)}`);
+    const ok = localCsvSummaryOutput.parse((await call({ file: "cut-plain.csv", group_by: "ref" })).structuredContent).data;
+    expect(ok.group_by?.top).toEqual([{ value: `${pad(200).slice(0, MAX_VALUE_CHARS)}…`, count: MIN_GROUP_COUNT }]);
   });
 
   it("cannot rebuild a row by filtering on a unique column", async () => {

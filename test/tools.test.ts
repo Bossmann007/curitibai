@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import { tools } from "../src/tools/index.js";
 import { datasetUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_UNIDADES, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
@@ -201,6 +202,6 @@ describe("source down", () => {
     stubFetch({ [`POST ${PORTAL_SEARCH_URL}`]: { status: 403, body: "<H1>Access Denied</H1>" } });
     const client = await connectClient();
     const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude" } });
-    expect(errorOf(res)).toEqual({ error: "source_unavailable" });
+    expect(errorOf(res)).toEqual({ error: "source_unavailable", message: SOURCE_REFUSED_MESSAGE });
   });
 });

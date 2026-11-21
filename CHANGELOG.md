@@ -2,9 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
-## Unreleased
+## 0.13.3
 
-Docs and repository files only. No change to `src/`, no version bump.
+Privacy and robustness follow-ups. No new tool, source or host.
+
+- `local_csv_summary`: the contact-data check (CPF/CNPJ, e-mail, phone) on grouped values now runs on the whole
+  value before it is cut at 120 characters. Before, a value was cut first, so a phone or e-mail split by the cut
+  ("... (41) 3333-" | "4444") passed the check and its first part could be returned. A test pins a phone and an
+  e-mail that straddle the cut. The other places that cut text after masking (`maskObject`, `cleanField`,
+  `guardedSummary`, the header cut, which refuses headers over 60 characters first) already checked before cutting.
+- Final refusals (HTTP 401, 403, a CAPTCHA 429) now return `source_unavailable` with the message "the source refused
+  this server; it is not asked again for 10 minutes (per host)". Other source failures are unchanged.
+- `bus_departures` and `next_buses_near`: a drop in a table's times counts as the wrap past midnight only when the
+  time before it is 20:00 or later and the time after it is before 04:00; any other drop no longer marks later rows
+  `after_midnight`. On the 2026-11-20 file all 677 drops are of that kind, so the 993 marked rows are unchanged. The 9
+  rows in that file that come after a wrap at 04:00 or later stay `after_midnight: false` (known limit, in
+  docs/sources.md).
+
+Docs and repository files:
 
 - README: brand header, badges, a three-line summary, a table of contents, "Quick start" (with other MCP clients) and
   "Tools at a glance" (the 18 tools grouped by area). The existing sections keep their text and move under new
