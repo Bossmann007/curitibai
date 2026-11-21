@@ -1,13 +1,27 @@
+<!-- ENZO-PORTFOLIO-BRAND -->
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111111,100:7751FF&height=165&section=header&text=CuritibAI&fontSize=42&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Read-only%20MCP%20server%20for%20public%20data%20about%20Curitiba%2C%20Brazil&descAlignY=57&descSize=14" alt="CuritibAI: read-only MCP server for public data about Curitiba, Brazil" />
+</p>
+
+<p align="center"><strong>TypeScript · MCP · Dados abertos de Curitiba</strong></p>
+
+<div align="center">
+
+[![License](https://img.shields.io/badge/License-Apache--2.0%20%2B%20ODbL%20%28OSM%20extract%29-blue?style=for-the-badge)](#licences-code-and-data)
+[![Node](https://img.shields.io/badge/Node-%3E%3D26.13.1-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](.nvmrc)
+[![MCP](https://img.shields.io/badge/MCP-stdio-7751FF?style=for-the-badge&logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io)
+[![Tests](https://img.shields.io/badge/Tests-720%20passed-2ea44f?style=for-the-badge&logo=vitest&logoColor=white)](#development)
+[![Não oficial](https://img.shields.io/badge/N%C3%A3o%20oficial-no%20link%20with%20the%20Prefeitura-lightgrey?style=for-the-badge)](#curitibai)
+
+</div>
+
+---
+
 # CuritibAI
 
-A read-only [MCP](https://modelcontextprotocol.io) server that lets AI assistants search the catalogue of the
-[Portal de Dados Abertos de Curitiba](https://dadosabertos.curitiba.pr.gov.br/) (Brazil), list each dataset's files,
-look up public health units in the Ministry of Health's CNES open API, search procurement of Curitiba municipal bodies
-in the national PNCP portal, give Detran-PR's vehicle licensing calendar and its units in and around Curitiba, give INMET's weather forecast and
-active weather warnings for Curitiba, search the Prefeitura's service catalog (Carta de Serviços), find public places in
-OpenStreetMap, give URBS bus lines, stops and timetables and points of interest open to the public (feiras, schools, libraries,
-public health units and more) from files the user downloaded, search Curitiba's events calendar from a file written by a
-separate collector script, list the Prefeitura's public vaccination sites (Imuniza Já), and summarise a CSV file the user downloaded by hand.
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 18 tools over public
+data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, places, events, weather,
+municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
 
 **Independent, unofficial project. It has no link with the Prefeitura Municipal de Curitiba and is not affiliated
 with, endorsed by or connected to it, URBS, the Ministério da Saúde, PNCP / the Ministério da Gestão e Inovação em
@@ -20,7 +34,93 @@ incomplete or outdated, so confirm anything important on the official channels b
 or the 156 (Prefeitura). **Not for emergencies: call 190 (Polícia Militar), 192 (SAMU), 193 (Corpo de Bombeiros) or
 199 (Defesa Civil).**
 
-## Tools
+## Contents
+
+- [Quick start](#quick-start)
+- [Tools at a glance](#tools-at-a-glance)
+- [Tool reference](#tool-reference)
+- [Compared with the Curitiba App](#compared-with-the-curitiba-app)
+- [Deferred](#deferred)
+- [Local data files](#local-data-files): [CSV summaries](#summarising-a-file-you-downloaded-for-example-the-156-file),
+  [Carta de Serviços](#finding-a-city-service-carta-de-serviços),
+  [URBS files](#bus-lines-stops-timetables-and-points-of-interest-urbs-files-you-download),
+  [events](#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script)
+- [Privacy and safety](#privacy-and-safety): [privacy notice](#privacy-notice), [collection rules](#collection-rules)
+- [Limits](#limits)
+- [Development](#development)
+- [Contributing, security and removal requests](#contributing-security-and-removal-requests)
+- [Licences (code and data)](#licences-code-and-data)
+
+<a id="run-it"></a>
+
+## Quick start
+
+Requires Node.js 26.13.1 or newer (the version CI tests, from `.nvmrc`).
+
+```sh
+git clone https://github.com/Bossmann007/curitibai.git
+cd curitibai
+npm ci
+npm run build
+node dist/server.js   # speaks MCP over stdio; it prints nothing else
+```
+
+Then add the server to your MCP client. Every client starts the same command, `node` with the absolute path to
+`dist/server.js`, and talks to it over stdio.
+
+MCP client configuration (for example Claude Desktop's `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "curitibai": {
+      "command": "node",
+      "args": ["/absolute/path/to/curitibai/dist/server.js"]
+    }
+  }
+}
+```
+
+Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/server.js`
+
+Other MCP clients: configure a stdio server with the command `node` and the single argument
+`/absolute/path/to/curitibai/dist/server.js`. Check your client's documentation for where that setting goes.
+
+To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
+(Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
+`local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
+`{"error":"data_not_available"}` (the bus tools, `city_points_search` and `events_search` too), and the other tools work as usual. [Local data files](#local-data-files) says what to put in that folder.
+
+## Tools at a glance
+
+All 18 tools are read-only. "Network" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+the vaccination page). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` or data bundled in the code, and
+make no network call. [Tool reference](#tool-reference) has every input, output and error.
+
+| Area | Tool | What it answers | Data |
+|---|---|---|---|
+| Transport | `bus_lines_search` | Find URBS bus lines by name, code or category | Local (URBS file) |
+| Transport | `bus_line_stops` | The stops of one line, per direction, in itinerary order | Local (URBS file) |
+| Transport | `bus_departures` | Published departure times for a line, a stop or both | Local (URBS file) |
+| Transport | `bus_stops_near` | Stops near a point and the lines that serve each one | Local (URBS files) |
+| Transport | `next_buses_near` | The next published departures at the stops near a point | Local (URBS files) |
+| Health | `health_units_search` | Public-administration health units in Curitiba (CNES) | Network (Ministry of Health) |
+| Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Network (Imuniza Já page) |
+| City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |
+| City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
+| City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Network (Overpass); police and fire stations bundled |
+| City | `events_search` | Events from the Instituto Municipal de Turismo calendar | Local (file from the separate collector) |
+| Weather | `weather_forecast` | INMET's forecast for Curitiba, up to 5 days | Network (INMET) |
+| Weather | `weather_alerts` | INMET's active warnings that cover Curitiba | Network (INMET) |
+| Procurement | `procurement_search` | Procurement published by Curitiba municipal bodies in PNCP, never the supplier | Network (PNCP) |
+| Detran | `detran_pr_info` | Detran-PR's 2026 licensing calendar and its units in and around Curitiba | Local (bundled snapshot) |
+| Open data | `open_datasets_search` | Search the Portal de Dados Abertos de Curitiba catalogue | Network (portal) |
+| Open data | `dataset_files` | List one dataset's files as links (never downloads them) | Network (portal) |
+| Open data | `local_csv_summary` | Column names and grouped counts of a CSV you downloaded | Local (your file) |
+
+<a id="tools"></a>
+
+## Tool reference
 
 All tools are read-only. Seven of the eight network tools return `{data, source_url, fetched_at, license_note}`;
 `vaccination_sites_search` returns `{data, source_url, checked_at, attribution, license_note, note}`, with `checked_at`
@@ -146,37 +246,10 @@ Compared on 2026-11-21 with public sources (the App Store listing above), not wi
 Out of scope by design: gov.br/CPF login, payments, scheduling, opening or looking up 156 tickets, personal data,
 any tool that writes, and real-time feeds that need a key.
 
-## Run it
+## Local data files
 
-Requires Node.js 26.13.1 or newer (the version CI tests, from `.nvmrc`).
-
-```sh
-git clone https://github.com/Bossmann007/curitibai.git
-cd curitibai
-npm ci
-npm run build
-node dist/server.js   # speaks MCP over stdio; it prints nothing else
-```
-
-MCP client configuration (for example Claude Desktop's `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "curitibai": {
-      "command": "node",
-      "args": ["/absolute/path/to/curitibai/dist/server.js"]
-    }
-  }
-}
-```
-
-Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/server.js`
-
-To use `local_csv_summary`, `city_services_search` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
-(Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
-`local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
-`{"error":"data_not_available"}` (the bus tools too), and the other tools work as usual.
+Nine tools read files you keep in the folder set by `CURITIBAI_DATA_DIR` ([Quick start](#quick-start) shows how to
+set it). The server never downloads these files. This section says what each tool needs and how to get it.
 
 ### Summarising a file you downloaded (for example the 156 file)
 
@@ -224,8 +297,8 @@ rows.
 ### Finding a city service (Carta de Serviços)
 
 `city_services_search` answers "how do I ... at the Prefeitura?" from a local copy of the city's service catalog.
-The copy must be saved by a person in an ordinary browser session; no automated capture of that host is part of this
-project (see [docs/sources.md](docs/sources.md)). The local copy of 2026-11-19/20 was made before this rule, with a scripted real-browser session at about one page every few seconds; new copies must be saved by a person in an ordinary browser session. **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
+The server never contacts `www.curitiba.pr.gov.br`. `city_services_search` reads only a copy that you save yourself, by hand, in an ordinary browser session, into `CURITIBAI_DATA_DIR/carta-servicos.json`. An earlier local copy (2026-11-19/20) was deleted and is not used.
+No automated capture of that host is part of this project (see [docs/sources.md](docs/sources.md)). **This project does not ship or fetch the catalog**: its content belongs to the Prefeitura Municipal de Curitiba, and no
 terms of use or licence for it was found. To use the tool, put a file named `carta-servicos.json` in the folder set by
 `CURITIBAI_DATA_DIR` (the same folder `local_csv_summary` uses), with this shape:
 
@@ -361,7 +434,8 @@ week".
   the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page).
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
   objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through (below).
-- Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues).
+- Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues);
+  for removal, use the [removal request form](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml).
 
 ### Collection rules
 
@@ -372,11 +446,14 @@ week".
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
   429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable`; no retry, no other headers, no browser
   fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
-  with `next_page: null`), and the events collector stops the run on any non-200 answer, 403 included. Another 429 is
+  with `next_page: null`). The block is per host, not per path: a 403 on one portal path pauses every tool that uses
+  that host. The events collector stops the run on any non-200 answer, 403 included. Another 429 is
   returned as `rate_limited` with the source's wait. PNCP alone retries once: after a connection error, or after a
   429 whose `Retry-After` is 5 s or less; never after a 401, 403 or CAPTCHA.
 - Requests identify the project and its contact: User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`.
-- Removal requests: open an issue in this repository; the content is removed from the next release.
+- Removal requests: open an issue in this repository with the
+  [removal request form](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml); the content
+  is removed from the next release.
 
 ### Details
 
@@ -437,7 +514,7 @@ week".
 - `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
   of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
   links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same
-  masking as PNCP objects as a guard; on the 2026-11-19/20 capture (measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
+  masking as PNCP objects as a guard; on the earlier 2026-11-19/20 copy (deleted; measured before 0.13.2 widened the mask) it changes two summaries, both public text (an
   office's institutional e-mail, and a social-media handle that looks like an e-mail).
 - The bus tools pass stop names through the same masking as a guard. It fails closed: on the 2026-11-20 files (measured before 0.13.2 widened the mask) it
   changes 29 of the 6,841 stop names in `pontosLinha`, all street-number ranges read as phone numbers
@@ -481,9 +558,9 @@ week".
   `city_services_search` returns the titles and summaries of your local file unchanged (except masked text, see
   "Privacy and safety") and attributes them to "Prefeitura Municipal de Curitiba — Carta de Serviços" with the link
   and the capture date in `license_note`. The server contacts neither `www.curitiba.pr.gov.br` nor the service
-  pages' host (`servicos.curitiba.pr.gov.br`, robots.txt `Disallow: /`). The owner's own copy is dated 2026-11-19/20
-  (details in [docs/sources.md](docs/sources.md)); it may miss a few services, and its summaries are the site's short
-  teasers, some of them empty (those services are found by title only).
+  pages' host (`servicos.curitiba.pr.gov.br`, robots.txt `Disallow: /`). An earlier local copy (2026-11-19/20) was
+  deleted and is not used (details in [docs/sources.md](docs/sources.md)). A copy of the listing may miss a few
+  services, and its summaries are the site's short teasers, some of them empty (those services are found by title only).
 - OpenStreetMap: data © OpenStreetMap contributors, under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)
   (see <https://www.openstreetmap.org/copyright>). Every result carries that attribution in `attribution` and `license_note`, with the time of the OSM copy
   (`osm_data_as_of`, from Overpass `osm3s.timestamp_osm_base`). OSM is edited by volunteers: places can be missing,
@@ -542,6 +619,17 @@ also fails if git tracks anything in a folder named `events` (the collector's ou
 (`test/fixtures/events_synthetic/`: invented events in the site's markup, with a planted description, contacts, ticket
 and external link that must not be kept) and run the collector with a fake clock and a fake network. The guard
 must run at the top of a checkout (exit 2 elsewhere).
+
+## Contributing, security and removal requests
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): how to run `scripts/verify`, the collection rules a change must keep, and the
+  pull request flow.
+- [SECURITY.md](SECURITY.md): report a vulnerability privately through
+  [GitHub security advisories](https://github.com/Bossmann007/curitibai/security/advisories/new), never in a public
+  issue.
+- Issue forms: [something does not work](https://github.com/Bossmann007/curitibai/issues/new?template=bug.yml),
+  [suggest a data source](https://github.com/Bossmann007/curitibai/issues/new?template=data-source.yml) and
+  [ask for content removal](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml).
 
 ## Licences (code and data)
 

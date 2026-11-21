@@ -1,0 +1,36 @@
+name: Sugerir uma fonte de dados
+description: Uma fonte pública de Curitiba que poderia virar ferramenta
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Uma fonte só entra se o robots.txt permitir, se não exigir login nem CAPTCHA e se não devolver dados pessoais. Nada é contornado (veja \"Collection rules\" no README)."
+  - type: input
+    id: url
+    attributes: { label: Endereço da fonte, placeholder: "https://..." }
+    validations: { required: true }
+  - type: input
+    id: publisher
+    attributes: { label: Quem publica, placeholder: "Ex.: URBS, Prefeitura, Ministério da Saúde" }
+    validations: { required: true }
+  - type: input
+    id: license
+    attributes: { label: Licença ou termos de uso, description: "O link para a licença ou os termos. Se não achou nenhum, escreva \"não encontrei\"." }
+    validations: { required: true }
+  - type: textarea
+    id: robots
+    attributes: { label: robots.txt, description: "O endereço do robots.txt do host e o trecho que vale para o caminho da fonte (o grupo `User-agent: *`)." }
+    validations: { required: true }
+  - type: textarea
+    id: use
+    attributes: { label: Para que serve, description: "Que pergunta a ferramenta responderia, e se a fonte tem API, arquivo para baixar ou só página." }
+    validations: { required: true }
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checagens
+      options:
+        - label: A fonte não exige login, CAPTCHA nem chave
+          required: true
+        - label: Os dados não identificam pessoas (ou dá para tirar os campos pessoais antes de devolver)
+          required: true
