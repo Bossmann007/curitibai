@@ -29,9 +29,11 @@ node scripts/smoke.mjs
 echo
 echo "verify: OK"
 
-# Reported separately: never changes the exit code above.
+# Reported separately: never changes the exit code above. CURITIBAI_SKIP_AUDIT=1 skips it (CI sets it).
 step "npm audit --omit=dev --audit-level=high (separate, needs network)"
-if curl -fsS -m 5 -o /dev/null https://registry.npmjs.org/ 2>/dev/null; then
+if [[ "${CURITIBAI_SKIP_AUDIT:-}" == 1 ]]; then
+  echo "audit: SKIPPED (CURITIBAI_SKIP_AUDIT=1)"
+elif curl -fsS -m 5 -o /dev/null https://registry.npmjs.org/ 2>/dev/null; then
   if npm audit --omit=dev --audit-level=high; then
     echo "audit: OK"
   else

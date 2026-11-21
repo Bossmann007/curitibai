@@ -351,8 +351,11 @@ folder, regular file, read-only open, no symlink out), on every call, with a 20 
 row by row (strings of bounded length, `HH:MM` times, digit-only stop numbers and day codes, comma-decimal
 coordinates or empty). Fields a tool selects or orders by are required (`COD`, `NOME`, `CATEGORIA_SERVICO` in linhas;
 `NUM`, `SEQ`, `SENTIDO`, `ITINERARY_ID`, `COD` in pontosLinha; `HORA`, `DIA`, `NUM`, `COD` in tabelaLinha); the descriptive ones may be missing
-or null and become ""; when every tabelaLinha row has an empty `ADAPT` (real rows always fill it), `note` says the
-accessibility field looks missing or renamed. A row that fails is skipped and the count is given in `note` and in
+or null and become "". Each descriptive field (`NOME_COR`, `SOMENTE_CARTAO` in linhas; `NOME`, `TIPO`, `GRUPO` in
+pontosLinha; `PONTO`, `TABELA`, `ADAPT` in tabelaLinha) is filled in at least some rows of the 2026-11-20 files
+(`GRUPO` in 2,243 of 17,496, the others in all or nearly all), so when one is empty or whitespace in every valid row of
+a file, `note` says it looks missing or renamed and names the result field it feeds (for `ADAPT`, the accessibility
+note of 0.8.0, unchanged; for the others, since 0.8.2). A row that fails is skipped and the count is given in `note` and in
 `data.skipped_rows`. The file is `invalid_data` only
 when it is not UTF-8 JSON, not a non-empty list (within a row cap), more than 5% of its rows are invalid, or over
 20 MB; the message names the file and the problem (never the file's text) and says to delete the file or change its
