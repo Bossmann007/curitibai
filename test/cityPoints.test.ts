@@ -135,7 +135,7 @@ describe("city_points_search", () => {
     expect(posto?.desc).toContain(MASK);
     expect(posto?.desc).not.toContain("3333");
     const tubo = (await search({ name: "tubo" })).data.items[0];
-    expect(tubo?.desc).toBe("Local que comercializa cartão avulso");
+    expect(tubo?.desc).toBe("Texto inventado sobre recarga");
     write([...fixtureRows(), { POI_NAME: "Feira Contato 41 99999-8888", POI_CATEGORY_NAME: "ABAST FEIRA", POI_LAT: "", POI_LON: "", POI_DESC: "" }]);
     const masked = await search({ category: "feira", limit: 50 });
     expect(masked.data.items.some((p) => p.name === `Feira Contato ${MASK}`)).toBe(true);

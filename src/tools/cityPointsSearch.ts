@@ -9,6 +9,7 @@ import {
   URBS_SUBDIR,
   type Poi,
 } from "../sources/urbs.js";
+import { OBJECT_MAX_CHARS } from "../sources/pncp.js";
 import { fold } from "../text.js";
 import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, skippedRowsOutput } from "./busCommon.js";
 import { guardedSummary, queryWords } from "./cityServicesSearch.js";
@@ -175,7 +176,8 @@ function poiLicenseNote(file: string): string {
     `the user from the portal's mirror (${URBS_MIRROR_URL}). ${URBS_LICENSE}. Only public-facing categories are ` +
     "returned; values are returned as published, except that coordinates are converted to decimal numbers, " +
     "categories get a short id, e-mail-, phone- and CPF/CNPJ-shaped text in a name or description would be " +
-    "replaced by [masked], and such a field over 300 characters would be cut with \"…\". Unofficial; not affiliated with URBS or the Prefeitura de Curitiba."
+    `replaced by [masked], and such a field over ${OBJECT_MAX_CHARS} characters would be cut with "…". ` +
+    "Unofficial; not affiliated with URBS or the Prefeitura de Curitiba."
   );
 }
 
