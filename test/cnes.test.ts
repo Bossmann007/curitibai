@@ -318,6 +318,27 @@ describe("health_units_search host gate (CNES)", () => {
     expect(starts.map((t) => t - t0)).toEqual([0, 400, 800, 1200, 1600]);
   });
 
+  it("is rate_limited, not source_unavailable, when the gate's first page turn comes after the 20 s budget", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    const types = fixture("cnes_tipounidades_synthetic.json");
+    let pages = 0;
+    globalThis.fetch = (async (input: string | URL) => {
+      if (String(input) !== CNES_TYPES_URL) pages++;
+      t += 21_000; // the unit-type load takes 21 s
+      return new Response(types, { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    try {
+      const client = await connectClient();
+      const res = await client.callTool({ name: "health_units_search", arguments: { name: "cajuru" } });
+      expect(errorOf(res)).toEqual({ error: "rate_limited", message: "The source is limiting requests; wait about 1 minute before trying again." });
+      expect(pages).toBe(0);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
   it("remembers a 429: a second call inside the wait makes no request", async () => {
     const routes: Record<string, Route> = { ...cnesRoutes() };
     routes[`GET ${establishmentsUrl(1, null)}`] = { body: syntheticPage("UMS", 100), contentType: JSON_TYPE };

@@ -15,8 +15,11 @@ Usability fixes found by calling every tool as a user (Praça Tiradentes). No ne
 - CNES and PNCP requests now go through a host gate (`src/hostGate.ts`, ADR 0003), like ANA, GeoCuritiba and Teatro
   Guaíra: CNES at least 400 ms between request starts, PNCP at least 6 s (at most 20 requests in 2 minutes, the rate
   at which PNCP answered 429). After a failure neither host is asked again for 60 s (a 429's Retry-After when longer,
-  at most 1 hour; 10 minutes after a refusal): following `next_page` inside the wait returns `rate_limited` with no
-  request. A 429 with no usable Retry-After now says to wait 60 s; one over 1 hour says about 60 minutes.
+  at most 1 hour; 10 minutes after a refusal): following `next_page` inside the wait makes no request and returns the
+  same error (`rate_limited` with the remaining wait after a 429, `source_unavailable` after a timeout, network error
+  or refusal). Every 429 wait is now clamped to 60 s–1 hour: Retry-After 30 or none says 60 s, over 1 hour says about
+  60 minutes. When the gate's next turn would start after the 20 s budget before any page was read, the answer is
+  `rate_limited` (about 1 minute) instead of `source_unavailable`.
 - `open_datasets_search`: when the portal finds nothing, the query is retried once without accents and then once
   with a synonym from a short list in `src/sources/portalSynonyms.ts` ("ônibus" and "busão" → "transporte
   coletivo", checked live); `note` says which query matched or lists every query tried. A failed retry keeps the

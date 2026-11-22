@@ -226,7 +226,8 @@ async function fetchPncp(url: string): Promise<string> {
  * The PNCP host gate (src/hostGate.ts, ADR 0003): 6 s between request starts, so at most 20 in 2 minutes (PNCP
  * answered 429 after about 20 requests in two minutes on 2026-11-19); a turn more than 10 s away is rate_limited;
  * after a failure no request for 60 s (a 429's Retry-After when longer, at most 1 hour; a refusal for the 10-minute
- * host block). The single retry of fetchPncp runs inside the same turn. Exported so tests can lower the spacing.
+ * host block). The single retry of fetchPncp runs inside the same turn. Exported so tests can set the spacing to 0
+ * (test/setup.ts); production code never changes it.
  */
 export const PNCP_MIN_INTERVAL_MS = 6_000;
 export const PNCP_GATE: HostGateOptions = { minIntervalMs: PNCP_MIN_INTERVAL_MS, maxQueueWaitMs: 10_000, refusalWaitMs: REFUSAL_BLOCK_MS };

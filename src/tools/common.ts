@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { RateLimitedError, ResponseTooLargeError, SourceRefusedError, SourceUnavailableError, UrlNotAllowedError } from "../http.js";
 
 export const READ_ONLY: ToolAnnotations = {
@@ -118,6 +119,8 @@ export const SOURCE_REFUSED_MESSAGE = "the source refused this server; it is not
 /** Maps thrown errors to a fixed error code. Never echoes source text or user input. */
 export function failFrom(err: unknown): CallToolResult {
   if (err instanceof UrlNotAllowedError) return fail("url_not_allowed");
+  // The host gate's next turn came after the call's time budget before anything was read: the host is busy, not down.
+  if (err instanceof OutOfTimeError) return fail("rate_limited", rateLimitedMessage(null));
   if (err instanceof RateLimitedError) return fail("rate_limited", rateLimitedMessage(err.retryAfterS));
   if (err instanceof ResponseTooLargeError) {
     const mb = Math.round((err.maxBytes / (1024 * 1024)) * 10) / 10;

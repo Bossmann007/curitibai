@@ -112,7 +112,7 @@ export function parseUnitTypes(json: unknown): Map<number, string> {
  * The CNES host gate (src/hostGate.ts, ADR 0003): 400 ms between request starts (pages took 0.3–1.2 s on 2026-11-19,
  * so a page scan is barely slowed), a turn more than 5 s away is rate_limited, and after a failure no request for
  * 60 s (a 429's Retry-After when longer, at most 1 hour; a refusal for the 10-minute host block). Exported so tests
- * can lower the spacing; nothing else changes it.
+ * set the spacing to 0 (test/setup.ts); production code never changes it.
  */
 export const CNES_MIN_INTERVAL_MS = 400;
 export const CNES_GATE: HostGateOptions = { minIntervalMs: CNES_MIN_INTERVAL_MS, maxQueueWaitMs: 5_000, refusalWaitMs: REFUSAL_BLOCK_MS };
