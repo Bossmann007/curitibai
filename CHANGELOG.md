@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.2 - 2026-11-22
+
+The two Low findings left by the v0.18.1 review. No new tool, no new host.
+
+- `river_levels`: when the host gate refuses a station in the middle of a call (`rate_limited`), the stations already
+  read in that call, or found in the cache, are returned with `partial: true` and a note naming the wait (refused
+  stations first in `more_matches`), as for the time budget. `rate_limited` is returned only when no station is
+  available. Before, the call returned `rate_limited` and dropped what it had read (with 3 concurrent calls one got
+  nothing; with 8, six did). Tests with fake timers for 3 and 8 concurrent calls and for a cached station.
+- `guaira_events`: the listing (title, dates, city, link) is the complete answer and event-page details (venue, age
+  rating, price) an optional enrichment. `partial: true` now means only that listing pages are missing (`truncated`),
+  so a cold call is no longer always partial. Items whose event page was not read yet (time budget, the 2-page cap
+  per call, a refusal) are counted in the new `details_pending` field, with a note to call again for venue and
+  price. The 5 s gate, the caches and the 20 s budget are unchanged.
+
 ## 0.18.1 - 2026-11-22
 
 Robustness fixes for the open Low findings of the last code reviews. No new tool, no new host.

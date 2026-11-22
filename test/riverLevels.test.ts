@@ -482,4 +482,63 @@ describe("river_levels", () => {
     await Promise.all(pending);
     expect(calls.map((c) => c.url)).toEqual(["02549127", "02549118", "02549086"].map(urlFor));
   });
+
+  describe("concurrent calls refused by the host gate mid-call", () => {
+    const all = () => Object.assign({}, ...STATIONS.map((s) => route(s.code))) as Record<string, Route>;
+
+    /** Runs the calls at once (each on its own client) and lets the gate's slots pass. */
+    async function concurrent(queries: string[]) {
+      const pending = queries.map((station) => call({ station }));
+      await vi.advanceTimersByTimeAsync(60_000);
+      return Promise.all(pending);
+    }
+
+    it("3 calls: the call refused after reading one station returns it with partial: true, not rate_limited", async () => {
+      const calls = stubFetch(all());
+      // Disjoint station sets of 3, so no call joins another call's load: slots at 0, 5, 10, 15 and 20 s.
+      const results = await concurrent(["0254911", "0254912", "6500"]);
+      expect(results.every((r) => !r.isError)).toBe(true);
+      const outs = results.map((r) => riverLevelsOutput.parse(r.structuredContent));
+      // The first call's second turn (15 s away) is refused, the others' later turns fall after the 20 s budget.
+      expect(outs.map((o) => o.data.stations.length)).toEqual([1, 2, 2]);
+      expect(outs.map((o) => o.data.partial)).toEqual([true, true, true]);
+      const refused = outs[0]!;
+      expect(refused.data.more_matches).toHaveLength(5);
+      expect(refused.data.more_matches.slice(0, 2).every((m) => m.code.startsWith("0254911"))).toBe(true);
+      expect(refused.note).toMatch(/Partial: 2 station\(s\) not read \(partial: true\)\. The source is limiting requests; wait \d+ s before trying again\./);
+      // Only the stations returned were asked for: no extra request.
+      expect(calls).toHaveLength(5);
+      expect(outs.flatMap((o) => o.data.stations.map((s) => s.code)).sort()).toEqual(calls.map((c) => new URL(c.url).searchParams.get("codEstacao")).sort());
+    });
+
+    it("8 calls: every call that read a station returns it (partial: true); only a call with nothing read is rate_limited", async () => {
+      const calls = stubFetch(all());
+      const queries = ["0254904", "0254909", "0254911", "0254912", "0254913", "6500", "6501", "6502"];
+      const results = await concurrent(queries);
+      const errors = results.filter((r) => r.isError).map((r) => errorOf(r));
+      const outs = results.filter((r) => !r.isError).map((r) => riverLevelsOutput.parse(r.structuredContent));
+      for (const e of errors) expect(e).toEqual({ error: "rate_limited", message: expect.stringMatching(/wait/) });
+      for (const o of outs) expect(o.data.stations.length).toBeGreaterThan(0);
+      // The first 3 calls take the slots at 0, 5 and 10 s; the 5 others are refused at once with nothing read.
+      expect(outs).toHaveLength(3);
+      expect(errors).toHaveLength(5);
+      expect(outs.flatMap((o) => o.data.stations.map((s) => s.code)).sort()).toEqual(calls.map((c) => new URL(c.url).searchParams.get("codEstacao")).sort());
+    });
+
+    it("returns a cached station when the gate refuses the others; rate_limited only when nothing is read or cached", async () => {
+      const calls = stubFetch(all());
+      // 65010000 cached; 5 s later three requests take the slots at 0, 5 and 10 s, so the next turn is 15 s away.
+      await levels({ station: "65010000" });
+      await vi.advanceTimersByTimeAsync(5_000);
+      const busy = ["02549127", "02549118", "02549086"].map((c) => getStationData(station(c)));
+      const out = await levels({ station: "6501" }); // 65010000, 65015400, 65019980
+      expect(out.data.stations.map((s) => s.code)).toEqual(["65010000"]);
+      expect(out.data.partial).toBe(true);
+      expect(out.data.more_matches.map((m) => m.code)).toEqual(["65015400", "65019980"]);
+      expect(errorOf(await call({ station: "65015400" }))).toMatchObject({ error: "rate_limited" });
+      await vi.advanceTimersByTimeAsync(20_000);
+      await Promise.all(busy);
+      expect(calls).toHaveLength(4);
+    });
+  });
 });

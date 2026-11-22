@@ -902,7 +902,10 @@ cited, the approach the owner approved for no-licence sources).
 - **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s. Time budget
   (v0.18.1): no request starts later than 20 s after the call began, plus 1 s of slack for the call's first request
   starting a few ms late (only requests of other calls sharing the gate
-  can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note. A
+  can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note.
+  A station the gate refuses mid-call (`rate_limited`, v0.18.2) is handled the same way when at least one station was
+  read in the call or is cached (later stations are still tried, so cached ones are returned); the call returns
+  `rate_limited` only when none is available. A
   request already started is never cut, so the bound is 21 s plus the 10 s timeout. A call that joins another call's
   in-flight load of a station (or, for `guaira_events`, of robots.txt), which ran out of that other call's budget, asks
   again under its own (`underOwnBudget` in `src/hostGate.ts`). Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
@@ -968,7 +971,10 @@ cited, the approach the owner approved for no-licence sources).
   insert). The user's `text`, `city` and dates never reach the source. 1 MB cap
   (robots.txt 512 KB), 15 s timeout, `text/html` required (robots.txt `text/plain`), redirects only to the same host
   under the requested path. Time budget (v0.18.1): no event page (nor robots.txt for it) is asked for later than 20 s after the call began, plus 1 s of slack;
-  those items stay `details: "not_read"`, with `partial: true` and a note. The listing load (robots.txt and up to 3
+  those items stay `details: "not_read"`. Since v0.18.2 the listing is the complete answer and event-page details
+  are an optional enrichment: items not read yet (budget, the 2-page cap, a refusal) are counted in `details_pending`
+  with a note to call again for venue and price, and `partial: true` means only that listing pages are missing
+  (`truncated`). The listing load (robots.txt and up to 3
   pages, starts at 0 to 15 s) is never cut, since a partial listing would be cached 1 hour, and a request already
   started is never cut. A cold call: 5 requests 5 s apart (the first event page at 20 s, the second left for the
   next call), about 20 s plus network time; the bound is 21 s plus the 15 s timeout.
@@ -989,7 +995,7 @@ cited, the approach the owner approved for no-licence sources).
   a next link that does not point to the next page, a pager or "Carregar mais" without that `rel="next"` link, or a
   second `<ul>` inside the card list. Markup after the card
   list's `</ul>` is not read. A page 3 that still has a next link is returned with
-  `truncated: true`. An event page without exactly one body field, or with a nested `<div>` inside it, is `details: "not_recognised"`; a 404/410 page is
+  `truncated: true` and `partial: true`. An event page without exactly one body field, or with a nested `<div>` inside it, is `details: "not_recognised"`; a 404/410 page is
   `unavailable` for that event only (cached 6 h, no host failure); any other failure is `unavailable`, is remembered
   by the gate and ends event-page reading for that call (later items stay `not_read`).
 - **Strict event-page values:** `venue` only when exactly one `Local:` line that ends at a line break or the end of the paragraph, list item or cell; `age_rating` only "Livre" or "N anos" (the whole value);

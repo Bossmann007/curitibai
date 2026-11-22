@@ -204,12 +204,15 @@ describe("guaira_events", () => {
     // Slots at 0, 5, 10, 15 and 20 s; the second event page's slot (25 s) is after the call's 20 s budget.
     expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
     expect(calls.every((c) => c.method === "GET")).toBe(true);
-    expect(out.data).toMatchObject({ from: "2026-11-22", to: "2026-12-22", city: "Curitiba", total: 4, other_city_rows: 1, truncated: false, partial: true });
+    expect(out.data).toMatchObject({ from: "2026-11-22", to: "2026-12-22", city: "Curitiba", total: 4, other_city_rows: 1, truncated: false, partial: false, details_pending: 3 });
     expect(out.data.items.map((i) => i.link)).toEqual([MUITO, MIA, OSP, JON]);
     expect(out.data.items[0]).toMatchObject({ venue: "Auditório Salvador de Ferrante (Guairinha)", price: "R$20,00 (inteira) | R$10,00 (meia-entrada)", details: "read" });
     expect(out.data.items[1]).toMatchObject({ venue: null, details: "not_read" });
     expect(out.data.items[2]).toMatchObject({ venue: null, details: "not_read" });
+    // The listing is the complete answer: event pages the budget left out are an enrichment, not a partial result.
     expect(out.note).toMatch(/20 s time budget of this call ran out/);
+    expect(out.note).toMatch(/3 item\(s\) on this page have no venue, age rating or price yet \(details_pending: 3\); call again for venue and price\./);
+    expect(out.note).not.toMatch(/partial/);
     expect(out).toMatchObject({ source_url: CALENDAR_URL, license_note: expect.stringMatching(/No licence found/) });
     expect(out.note).toMatch(/event\(s\) in other cities/);
   });
@@ -247,7 +250,7 @@ describe("guaira_events", () => {
     await search({});
     const second = await search({});
     expect(calls.slice(5).map((c) => c.url)).toEqual([MIA, OSP]);
-    expect(second.data.partial).toBe(false);
+    expect(second.data).toMatchObject({ partial: false, details_pending: 1 });
     expect(second.data.items[1]).toMatchObject({ details: "not_recognised" });
     expect(second.data.items[2]).toMatchObject({ venue: "Auditório Bento Munhoz da Rocha Neto (Guairão)", details: "read" });
     vi.setSystemTime(Date.now() + 60 * 60 * 1000);
@@ -280,8 +283,8 @@ describe("guaira_events", () => {
   it("marks the listing truncated when page 3 still has a next link", async () => {
     stubFetch(routes({ [`GET ${listingPageUrl(2)}`]: { body: list(1).replace("page=2\"", "page=3\""), contentType: HTML } }));
     const out = await search({ city: "all", from: "2026-11-01", to: "2027-03-01" });
-    expect(out.data.truncated).toBe(true);
-    expect(out.note).toMatch(/truncated: true/);
+    expect(out.data).toMatchObject({ truncated: true, partial: true });
+    expect(out.note).toMatch(/truncated: true, partial: true/);
   });
 });
 

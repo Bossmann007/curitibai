@@ -3,7 +3,8 @@ import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATION
 import { fold } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { OutOfTimeError } from "../hostGate.js";
-import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { RateLimitedError } from "../http.js";
+import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 export const RIVER_SOURCE = "ANA (Agência Nacional de Águas e Saneamento Básico) telemetry; stations operated by IAT-PR";
 export const RIVER_LICENSE_NOTE = "No licence found; facts only; ANA cited.";
@@ -76,8 +77,13 @@ export const riverLevelsOutput = z.object({
     total_matches: z.number().int(),
     more_matches: z
       .array(z.object({ code: z.string(), name: z.string() }))
-      .describe("Matching stations not read in this call (at most 3 per call; first those the time budget left out)."),
-    partial: z.boolean().describe("true when the 20 s time budget stopped the call before every picked station was read."),
+      .describe("Matching stations not read in this call (at most 3 per call; first those the host gate or the time budget left out)."),
+    partial: z
+      .boolean()
+      .describe(
+        "true when some picked stations were not read: the 20 s time budget ran out, or the source was limiting requests " +
+          "(rate_limited) after at least one station was read or found in the cache; the stations read are returned.",
+      ),
     stations: z.array(Item),
   }),
   source: z.string(),
@@ -157,7 +163,8 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
     "Latest river level (cm), flow (m³/s) and rain (mm; last reading, last 1 h and 24 h) at ANA telemetry stations " +
     "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
     "municipality text); stations come nearest to `near` (default Curitiba centre) first. At most 3 stations read per " +
-    "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); your position and text are never sent. `stale` marks readings older than 2 h; " +
+    "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); when the source is limiting requests, the stations already read " +
+    "are returned with partial: true (rate_limited only when none was read); your position and text are never sent. `stale` marks readings older than 2 h; " +
     "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
     "Stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
   inputSchema: riverLevelsInput,
@@ -174,27 +181,36 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       // One station after the other: the host gate spaces the requests 5 s apart. A host or transfer failure fails
       // the call (a station not read is never shown as no_recent_data); an answer that cannot be read marks only
       // that station `unavailable`.
-      // A station whose request would start after the time budget is not read (listed first in more_matches).
+      // A station whose request would start after the time budget, or that the host gate refuses (rate_limited: its
+      // turn is more than 10 s away, or a 429 is remembered), is not read (listed first in more_matches); later
+      // stations are still tried, so cached ones are returned. rate_limited fails the call only when nothing was read.
       const read: { s: Station; km: number; d: Read }[] = [];
       const outOfTime: Station[] = [];
+      const limited: Station[] = [];
+      let limitedErr: RateLimitedError | null = null;
       for (const m of picked) {
         try {
           read.push({ ...m, d: await getStationData(m.s, startBy) });
         } catch (err) {
           if (err instanceof OutOfTimeError) outOfTime.push(m.s);
-          else if (err instanceof StationDataError) read.push({ ...m, d: "unavailable" });
+          else if (err instanceof RateLimitedError) {
+            limited.push(m.s);
+            limitedErr ??= err;
+          } else if (err instanceof StationDataError) read.push({ ...m, d: "unavailable" });
           else throw err;
         }
       }
+      if (limitedErr !== null && read.length === 0) return failFrom(limitedErr);
+      const left = [...limited, ...outOfTime];
       const now = Date.now();
-      const more = [...outOfTime, ...matches.slice(MAX_STATIONS_PER_CALL).map((m) => m.s)].map((s) => ({ code: s.code, name: s.name }));
+      const more = [...left, ...matches.slice(MAX_STATIONS_PER_CALL).map((m) => m.s)].map((s) => ({ code: s.code, name: s.name }));
       const stations = read.map((x) => stationItem(x.s, x.km, x.d, now));
       const suspect = stations.filter((s) => s.quality === "suspect").map((s) => s.code);
       const out: Output = {
         data: {
           total_matches: matches.length,
           more_matches: more,
-          partial: outOfTime.length > 0,
+          partial: left.length > 0,
           stations,
         },
         source: RIVER_SOURCE,
@@ -208,7 +224,10 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
           outOfTime.length > 0
             ? `Partial: ${outOfTime.length} station(s) not read because the ${CALL_START_BUDGET_MS / 1000} s time budget of this call ran out (partial: true); call again (stations read are cached 15 minutes).`
             : "",
-          more.length > outOfTime.length ? `${more.length - outOfTime.length} more matching station(s) not read (at most ${MAX_STATIONS_PER_CALL} per call); ask by code.` : "",
+          limitedErr !== null
+            ? `Partial: ${limited.length} station(s) not read (partial: true). ${rateLimitedMessage(limitedErr.retryAfterS)}`
+            : "",
+          more.length > left.length ? `${more.length - left.length} more matching station(s) not read (at most ${MAX_STATIONS_PER_CALL} per call); ask by code.` : "",
         ].filter(Boolean).join(" "),
       };
       return ok(out);
