@@ -215,15 +215,15 @@ already read (no extra request), and the raw values are never hidden or changed:
 - `out_of_range`: a negative level, flow or rain, or more than 150 mm of rain in one 15-minute reading. A negative
   level can be a legitimate gauge zero in a dry spell; the flag errs on the side of caution.
 - `level_spike`: the level jumps more than 100 cm between readings 15 minutes apart and comes back (within 50 cm of the
-  level before) within the next hour. A jump that stays is not flagged, since it may be a real rise. This check does
-  not cover a jump that stays (e.g. a flood wave rising 150 cm in 15 min then receding slowly) or a spike whose return
-  takes over 1 h.
+  level before) within the next hour. A jump that stays is not flagged, since it may be a real rise.
 - `level_jump_unconfirmed`: the same jump in the last hour, not back yet (it has had no time to come back).
 - `level_stuck`: the level is identical for 6 h or more (at least 20 readings) while 10 mm or more of rain fell at the
   station. A flat level on a dry day is normal and is not flagged.
 
 Any of these makes the station `suspect`, and the note says to treat its values with caution. `ok` only means that no
-check fired: the tool flags suspicious readings but cannot prove that a value is right. `unknown` means no reading, or
+check fired: the tool flags suspicious readings but cannot prove that a value is right. `ok` does not cover a jump
+that stays (for example a flood wave rising 150 cm in 15 minutes, then receding slowly) or a spike whose return takes
+over 1 h. `unknown` means no reading, or
 fewer than 8 readings in the 24 h (level readings, for a station that reports a level). Level and flow are not compared with each other (flow is missing at some stations and
 follows the level where present). `stale` (latest reading older than 2 h) is a separate flag.
 
