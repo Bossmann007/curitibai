@@ -1,6 +1,6 @@
 import { TtlCache } from "../cache.js";
 import { createHostGate } from "../hostGate.js";
-import { fetchText, ResponseTooLargeError, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, ResponseTooLargeError, SourceRefusedError, SourceUnavailableError } from "../http.js";
 import { LocalFileError } from "../localfs.js";
 
 /**
@@ -99,7 +99,9 @@ export async function loadPublished<T>(
         });
         return { body: res.body };
       } catch (err) {
-        if (optional || isFileError(err)) return { fileError: err };
+        // A 429 or a final refusal stays a host failure even for an optional file (Retry-After is kept for the host).
+        const hostRefusal = err instanceof RateLimitedError || err instanceof SourceRefusedError;
+        if ((optional && !hostRefusal) || isFileError(err)) return { fileError: err };
         throw err;
       }
     });

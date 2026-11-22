@@ -714,7 +714,8 @@ in the city's own categories. Built.
   `phones/status.json` from the same copy as the phones (local or published; a local file never makes a request) and,
   when the last phones run failed (an attempt not older than the phones), names its `code` (and HTTP status) in the
   note; a missing or invalid status file (strict schema, `code` only lower-case letters and `_`) adds nothing and never
-  fails the answer, and its failures are remembered for that file only, never for the host. A failed run
+  fails the answer; its failures are remembered for that file only (3 s timeout), except a 429 or a final refusal,
+  which stay host failures so a Retry-After is kept. A failed run
   changes only the `status.json` files and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
@@ -903,7 +904,8 @@ cited, the approach the owner approved for no-licence sources).
   starting a few ms late (only requests of other calls sharing the gate
   can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note. A
   request already started is never cut, so the bound is 21 s plus the 10 s timeout. A call that joins another call's
-  in-flight load of a station, which ran out of that other call's budget, tries once more under its own. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
+  in-flight load of a station (or, for `guaira_events`, of robots.txt), which ran out of that other call's budget, asks
+  again under its own (`underOwnBudget` in `src/hostGate.ts`). Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
   XML content type required; redirects only to the same host under `/ServiceANA.asmx`.
 - **Rate and failures** (`src/hostGate.ts`, the same gate as GeoCuritiba): at least 5 s between request starts to the
   host; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure no request

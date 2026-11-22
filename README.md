@@ -486,7 +486,8 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
 - `phones/status.json` is published too (since 0.18.1): when the last phones run failed, `useful_phones` names its
   `code` (and HTTP status) in the note, read from the same copy as the phones (a local file never makes a request),
   unless that attempt is older than the numbers. A missing or invalid status file adds nothing and never fails the
-  answer; its failures are never remembered for the host, so they cannot block `events_search`.
+  answer; its failures are remembered for that file only (3 s timeout), except a 429 or a final refusal, which pause
+  the host as for the other files.
 
 **Running the collector yourself** (optional; a local file always wins over the published copy).
 `events_search` then reads `events/events.json` inside `CURITIBAI_DATA_DIR`. **The server never contacts the events

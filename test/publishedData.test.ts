@@ -312,6 +312,16 @@ describe("published nightly copy", () => {
       expect(calls.map((c) => c.url)).toEqual([PHONES_URL, PHONES_STATUS_URL, EVENTS_URL]);
     });
 
+    it("a 429 on the status file is still remembered for the host, with its Retry-After", async () => {
+      const calls = stubFetch({
+        [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))),
+        [`GET ${PHONES_STATUS_URL}`]: { status: 429, headers: { "retry-after": "600" } },
+      });
+      expect((await phonesNow()).isError).toBeFalsy();
+      expect(errorOf(await events())).toMatchObject({ error: "rate_limited" });
+      expect(calls.map((c) => c.url)).toEqual([PHONES_URL, PHONES_STATUS_URL]);
+    });
+
     it("says nothing about a failed run older than the numbers (its status write came before a newer phones file)", async () => {
       const older = { ...failed, attempt: new Date(Date.now() - 2 * 3600_000).toISOString() };
       stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))), [`GET ${PHONES_STATUS_URL}`]: json(older) });

@@ -28,6 +28,22 @@ export class OutOfTimeError extends Error {
   }
 }
 
+/**
+ * Runs `load`, which may join a load shared with other calls (a cache's in-flight promise), until it settles for this
+ * caller: an OutOfTimeError of another call's budget is not this call's, so the load is asked again under its own.
+ * Ends: each pass either joins another call's load, which settles, or runs this call's own.
+ */
+export async function underOwnBudget<T>(startBy: number | undefined, load: () => Promise<T>): Promise<T> {
+  for (;;) {
+    try {
+      return await load();
+    } catch (err) {
+      if (err instanceof OutOfTimeError && err.startBy !== startBy) continue;
+      throw err;
+    }
+  }
+}
+
 export interface RunOptions {
   /** No request starts after this time (ms): a later slot throws OutOfTimeError. A request in flight is never cut. */
   startBy?: number;

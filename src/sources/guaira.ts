@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { createHostGate, OutOfTimeError } from "../hostGate.js";
+import { createHostGate, OutOfTimeError, underOwnBudget } from "../hostGate.js";
 import { blockHost, CAPTCHA, fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
 import { cleanField, EVENT_PLACE_MAX, EVENT_TITLE_MAX } from "../mask.js";
 import { decodeEntities } from "../text.js";
@@ -343,7 +343,8 @@ async function getHtml(url: string, pathPrefix: string): Promise<string> {
  * fails closed: stricter than the RFC on purpose.
  */
 function getRobotsRules(startBy?: number): Promise<Cached<RobotsRule[]>> {
-  return robotsCache.getOrLoad("robots", () =>
+  // Shared in-flight load: another call's OutOfTimeError is retried under this call's own budget (none for the listing).
+  return underOwnBudget(startBy, () => robotsCache.getOrLoad("robots", () =>
     gate.run(async () => {
       try {
         const res = await fetchText(ROBOTS_URL, { timeoutMs: GUAIRA_TIMEOUT_MS, maxBytes: ROBOTS_MAX_BYTES, sameHostOnly: true });
@@ -354,7 +355,7 @@ function getRobotsRules(startBy?: number): Promise<Cached<RobotsRule[]>> {
         throw err;
       }
     }, startBy === undefined ? {} : { startBy }),
-  );
+  ));
 }
 
 /** Throws RobotsDisallowedError when robots.txt disallows `pathAndQuery` for this server. */

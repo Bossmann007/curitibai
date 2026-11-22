@@ -227,6 +227,21 @@ describe("guaira_events", () => {
     expect(out.data.items[0]).toMatchObject({ details: "read" });
   });
 
+  it("a listing load that joins another call's robots.txt load which ran out of that call's budget still loads", async () => {
+    const calls = stubFetch(routes());
+    await warmListing(); // robots.txt read at 0 s, cached 24 h
+    vi.setSystemTime(NOW.getTime() + 24 * 60 * 60 * 1000 - 1_000);
+    const muito = readDetails([MUITO]); // robots.txt still cached: MUITO takes the slot now, the next one is 5 s away
+    await vi.advanceTimersByTimeAsync(2_000); // robots.txt expired; the next slot is 3 s away
+    const short = readDetails([OSP], 2, Date.now() + 1_000); // its robots.txt slot is after its 1 s budget: no request
+    const listing = getListing(); // joins that robots.txt load
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await short).stopped).toBe("out_of_time");
+    expect((await listing).value.rows.length).toBeGreaterThan(0);
+    await muito;
+    expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2)]);
+  });
+
   it("serves the listing from the cache for 1 hour and fills the next event pages on the next call", async () => {
     const calls = stubFetch(routes());
     await search({});
