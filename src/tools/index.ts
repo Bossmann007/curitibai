@@ -13,6 +13,7 @@ import { nextBusesNear } from "./nextBusesNear.js";
 import { openDatasetsSearch } from "./openDatasetsSearch.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
+import { usefulPhones } from "./usefulPhones.js";
 import { vaccinationSitesSearch } from "./vaccinationSitesSearch.js";
 import { weatherAlerts } from "./weatherAlerts.js";
 import { weatherForecast } from "./weatherForecast.js";
@@ -36,4 +37,5 @@ export const tools = [
   cityPointsSearch,
   eventsSearch,
   vaccinationSitesSearch,
+  usefulPhones,
 ] as const;

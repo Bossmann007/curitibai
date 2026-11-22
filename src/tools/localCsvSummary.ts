@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { CsvParser, detectDelimiter } from "../csv.js";
 import { closeFile, LocalFileError, openDataFile, readChunks } from "../localfs.js";
@@ -147,8 +148,13 @@ async function scan(
 ): Promise<Scan> {
   const decoder = new TextDecoder(encoding === "utf-8" ? "utf-8" : "latin1", { fatal: encoding === "utf-8" });
   const groups = new Map<string, number>();
-  /** Whole values over MAX_VALUE_CHARS already checked and clean, so a repeated value is checked once (bounded). */
+  /**
+   * Whole values over MAX_VALUE_CHARS already checked and clean, so a repeated value is checked once (bounded). A value
+   * over CLEAN_CACHE_MAX_CHARS is kept as its SHA-256, so long repeated values are not masked again either.
+   */
   const cleanLong = new Set<string>();
+  const cacheKey = (full: string) =>
+    full.length <= CLEAN_CACHE_MAX_CHARS ? full : `sha256:${createHash("sha256").update(full).digest("hex")}`;
   const s: Scan = { columns: [], rows: 0, malformed: 0, matched: 0, groups, contactKeys: new Set(), capped: false, delimiter: ",", groupColumn: "" };
   let header: string[] | null = null;
   let gi = -1;
@@ -192,9 +198,11 @@ async function scan(
     }
     // The contact-data check runs on the whole value, before the cut: a phone or e-mail split by the cut would
     // otherwise pass and be returned in part. Shorter values are their own group key and are checked at the end.
-    if (full.length <= MAX_VALUE_CHARS || s.contactKeys.has(v) || cleanLong.has(full)) return;
+    if (full.length <= MAX_VALUE_CHARS || s.contactKeys.has(v)) return;
+    const key = cacheKey(full);
+    if (cleanLong.has(key)) return;
     if (maskObject(full).text.includes(MASK)) s.contactKeys.add(v);
-    else if (full.length <= CLEAN_CACHE_MAX_CHARS && cleanLong.size < CLEAN_CACHE_MAX) cleanLong.add(full);
+    else if (cleanLong.size < CLEAN_CACHE_MAX) cleanLong.add(key);
   };
 
   const feed = (text: string) => {

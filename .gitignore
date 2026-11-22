@@ -8,8 +8,9 @@ carta-servicos.json
 # URBS daily exports (linhas, pontosLinha, tabelaLinha, pois) the user downloads into CURITIBAI_DATA_DIR/urbs/ (scripts/check-no-catalog blocks them too).
 [0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_*.json
 [0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]_*.json.xz
-# The events collector's output (CURITIBAI_DATA_DIR/events/) and any captured page: never committed (scripts/check-no-catalog blocks them too).
+# The events collector's output (CURITIBAI_DATA_DIR/events/ and phones/) and any captured page: never committed (scripts/check-no-catalog blocks them too).
 events/
+phones/
 *.html
 *.htm
 *.mhtml

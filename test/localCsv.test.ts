@@ -230,6 +230,23 @@ describe("local_csv_summary", () => {
     expect(ok.group_by?.top).toEqual([{ value: `${pad(200).slice(0, MAX_VALUE_CHARS)}…`, count: MIN_GROUP_COUNT }]);
   });
 
+  it("caches long clean values by hash, so a different long value with the same start is still checked", async () => {
+    // Both over the 1,000-character key limit, with the same first 120 characters; the phone starts just after the cut.
+    const start = "Reclamacao ficticia ".repeat(10).slice(0, MAX_VALUE_CHARS);
+    const tail = " texto ficticio".repeat(100);
+    const clean = `${start} sem contato${tail}`;
+    const contact = `${start} (41) 3333-4444${tail}`;
+    expect(clean.length).toBeGreaterThan(1000);
+    expect(clean.slice(0, MAX_VALUE_CHARS)).toBe(contact.slice(0, MAX_VALUE_CHARS)); // same group key
+    writeFileSync(join(dataDir, "long-repeat.csv"), `ref;tipo\n${`${clean};A\n`.repeat(MIN_GROUP_COUNT * 2)}${contact};A\n`);
+    const res = await call({ file: "long-repeat.csv", group_by: "ref" });
+    expect(errorOf(res)).toMatchObject({ error: "column_not_allowed" });
+    expect(JSON.stringify(res)).not.toContain("3333");
+    writeFileSync(join(dataDir, "long-clean.csv"), `ref;tipo\n${`${clean};A\n`.repeat(MIN_GROUP_COUNT * 2)}`);
+    const ok = localCsvSummaryOutput.parse((await call({ file: "long-clean.csv", group_by: "ref" })).structuredContent).data;
+    expect(ok.group_by?.top).toEqual([{ value: `${clean.slice(0, MAX_VALUE_CHARS)}…`, count: MIN_GROUP_COUNT * 2 }]);
+  });
+
   it("cannot rebuild a row by filtering on a unique column", async () => {
     const res = await call({ file: "156.csv", group_by: "BAIRRO", filter_column: "PROTOCOLO", filter_value: "1" });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;

@@ -3,7 +3,8 @@
 # test fixture. The user's copy of the city services catalog must never be committed, even with `git add -f`.
 # Also fails if git tracks a URBS daily export (linhas, pontosLinha, tabelaLinha, pois or any other kind): a file
 # named YYYY_MM_DD_<anything>.json or .json.xz (any folder, any letter case), with no exemption (the synthetic URBS fixtures have no date in their names).
-# Also fails if git tracks anything inside a folder named events (the collector's output, CURITIBAI_DATA_DIR/events/),
+# Also fails if git tracks anything inside a folder named events or phones (the collector's output,
+# CURITIBAI_DATA_DIR/events/ and CURITIBAI_DATA_DIR/phones/),
 # or an HTML capture (.html, .htm, .mhtml, .har) outside test/fixtures/: real pages of the events site are never committed.
 # The fixture is exempt only as a regular file (mode 100644) whose staged content matches the pinned sha256,
 # and the work-tree file at the fixture path, when present, must match the pinned sha256 too.
@@ -36,7 +37,7 @@ git ls-files -s -z >"$index" || fail2 "git ls-files failed, cannot tell what is 
 
 name_re='/carta-servicos\.json$'
 urbs_re='/[0-9]{4}_[0-9]{2}_[0-9]{2}_[^/]*\.json(\.xz)?$'
-events_re='/events/'
+events_re='/(events|phones)/'
 capture_re='\.(html?|mhtml|har)$'
 found=""
 urbs_found=""
@@ -85,7 +86,7 @@ if [[ -n "$urbs_found" ]]; then
 fi
 if [[ -n "$events_found" ]]; then
   {
-    echo "check-no-catalog: FAIL: git tracks a file in an events folder (the collector's output, never committed):"
+    echo "check-no-catalog: FAIL: git tracks a file in an events or phones folder (the collector's output, never committed):"
     printf '%s' "$events_found"
     echo "Fix: git rm --cached <path> (keeps your local copy), then commit."
   } >&2
