@@ -81,6 +81,11 @@ describe("scripts/pr-size.mjs", () => {
       symlinkSync(SCRIPT, join(repo, "link.mjs"));
       const viaLink = spawnSync(process.execPath, [join(repo, "link.mjs"), "no-such-rev"], { cwd: repo, env, encoding: "utf8" });
       expect(viaLink.status).toBe(2);
+      for (const args of [["--output=x"], ["HEAD~1", "-p"]]) {
+        const opt = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: repo, env, encoding: "utf8" });
+        expect(opt.status).toBe(2);
+        expect(opt.stderr).toContain('must not start with "-"');
+      }
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

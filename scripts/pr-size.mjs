@@ -76,6 +76,11 @@ function main(argv) {
     console.error("usage: scripts/pr-size.mjs <base> [head]");
     return 2;
   }
+  // A revision starting with "-" would be read by git as an option.
+  if ([base, head].some((rev) => rev.startsWith("-"))) {
+    console.error(`pr-size: FAIL: a revision must not start with "-": ${base} ${head}`);
+    return 2;
+  }
   let out;
   try {
     out = execFileSync("git", ["diff", "--numstat", "-z", "-M", base, head], { encoding: "utf8" });

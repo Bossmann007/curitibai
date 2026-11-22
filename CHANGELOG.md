@@ -24,7 +24,7 @@ Docs and CI only; no tool, host or runtime behaviour changes.
 - New PR-size guard: `scripts/pr-size.mjs`, run by `.github/workflows/verify.yml` on pull requests only (also when
   the body is edited), fails when a pull request changes more than 400 lines against its base, unless the body has a
   line starting with `Large PR because:` and a reason. `test/` and lockfiles do not count; renames count only edited
-  lines. Checkout now fetches two commits. Rule in CONTRIBUTING.md, tests in `test/prSize.test.ts` and
+  lines; a revision starting with "-" is refused (exit 2). Checkout now fetches two commits. Rule in CONTRIBUTING.md, tests in `test/prSize.test.ts` and
   `test/workflows.test.ts`.
 
 ## 0.18.4 - 2026-11-22
