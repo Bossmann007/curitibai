@@ -651,7 +651,9 @@ in the city's own categories. Built.
 - **robots.txt:** the same `User-agent: *` group recorded for `events_search` (read 2026-11-21, unchanged on
   2026-11-22): no rule disallows `/conteudo/`, the visit window is 02:00–06:00 UTC and the rate one page per 5 s.
   The collector (`scripts/fetch-events.mjs`) reads the page once per run, after the events pages, with the same
-  client: the same window, robots check, 5 s gap, deadline and User-Agent. The server never contacts this host.
+  client: the same window, robots check, 5 s gap, deadline and User-Agent, and only after the events step ended ok or
+  with `layout_changed`. After any non-200 status (403 included), a redirect, a timeout or a network error it makes
+  no request in that run. The server never contacts this host.
 - **Structure seen on 2026-11-22** (one page read at 02:11 UTC inside the visit window; `Content-Type: text/html;
   charset=utf-8`, 65,449 bytes, CRLF line ends, accents as named HTML entities). The content is the one
   `<div class="listaEdital">` under `<h2>Telefones Úteis</h2>`, made of `<address>`, `<p>` and `<div>` blocks with
@@ -669,7 +671,9 @@ in the city's own categories. Built.
 - **Personal data:** every entry on the 2026-11-22 page is a public body or a company (police, emergency services,
   utilities, toll road operators, radio taxi associations), checked by hand; no person's name and no personal phone
   was found, so no entry was dropped. Guards with tests: an entry with a 9-digit mobile number, or whose name holds
-  e-mail-, phone- or CPF/CNPJ-shaped text after `cleanField`, is dropped and counted in `dropped`.
+  e-mail-, phone- or CPF/CNPJ-shaped text after `cleanField`, is dropped and counted in `dropped`. Names of people
+  are not detected (a person's name with a landline number would be kept); the by-hand check above is what covers
+  them on this page.
 - **Fails closed:** an unknown tag in the block, a number in another format (digits left over), an entry before the
   first heading, fewer than 20 or more than 500 entries, or a count outside 0.3x–3x of the previous file's: status
   `layout_changed`, the previous `phones/phones.json` is kept.

@@ -662,8 +662,7 @@ describe("run", () => {
     const h = harness(routes, "2026-11-21T03:30:00Z");
     const res = await run(h.deps);
     expect(res).toMatchObject({ code: "http_error", exit: 1 });
-    // The phones step still reads its one page after the events step stopped.
-    expect(h.calls.map((c) => c.url)).toEqual([`${ORIGIN}/robots.txt`, `${ORIGIN}/eventos/21-11-2026/1`, `${ORIGIN}${PHONES_PATH}`]);
+    expect(h.calls.map((c) => c.url)).toEqual([`${ORIGIN}/robots.txt`, `${ORIGIN}/eventos/21-11-2026/1`]);
     expect(h.lines[0]).toBe(`fetch-events: code=http_error http_status=${status}`);
     expect(readFileSync(eventsFile(), "utf8")).toBe(before);
     expect(readJson(statusFile())).toMatchObject({ code: "http_error", http_status: status });
@@ -675,7 +674,7 @@ describe("run", () => {
       routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 302, headers: { location } };
       const h = harness(routes);
       expect((await run(h.deps)).code).toBe("redirect");
-      expect(h.calls).toHaveLength(3); // robots, the redirected page, the phones page
+      expect(h.calls).toHaveLength(2);
     }
   });
 
@@ -856,7 +855,19 @@ describe("useful phones page", () => {
     expect(robotsAllows(group(ROBOTS)!, PHONES_PATH)).toBe(true);
   });
 
-  it("still reads the phones page when the events step fails on a page, and not after the window closed", async () => {
+  it("after a refusal (403) the run stops: no phones request, the phones status gets the same code", async () => {
+    await run(harness(siteRoutes([ids(3)])).deps);
+    const before = readFileSync(phonesFile(), "utf8");
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 403, body: "x" };
+    const h = harness(routes, "2026-11-21T03:30:00Z");
+    expect(await run(h.deps)).toMatchObject({ code: "http_error", exit: 1, phones: { code: "http_error", entries: 0 } });
+    expect(h.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
+    expect(readFileSync(phonesFile(), "utf8")).toBe(before);
+    expect(readJson(phonesStatus())).toMatchObject({ code: "http_error", success: expect.any(String) });
+  });
+
+  it("still reads the phones page when the events step ends with layout_changed, and not after the window closed", async () => {
     const routes = siteRoutes([ids(3)]);
     routes[`${ORIGIN}/eventos/21-11-2026/1`] = { body: "<html></html>" };
     const res = await run(harness(routes).deps);

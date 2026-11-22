@@ -52,18 +52,26 @@ export interface PhoneItem {
 export interface PhonesData {
   checkedAt: string;
   entries: PhoneItem[];
+  /** Rows dropped because the name or section was empty after cleaning. */
+  skipped: number;
 }
 
-/** Validates the parsed file and cleans the text fields again (the file may have been edited by hand). */
+/**
+ * Validates the parsed file and cleans the text fields again (the file may have been edited by hand). A row whose name
+ * or section is empty after cleaning (only control or format characters) is dropped and counted in `skipped`.
+ */
 export function buildPhones(json: unknown): PhonesData {
   const parsed = PhonesFile.safeParse(json);
   if (!parsed.success) throw new InvalidPhonesError(`${PHONES_FILE} does not have the expected shape.`);
-  const entries = parsed.data.entries.map((e) => ({
-    name: cleanField(e.name, PHONE_NAME_MAX),
-    section: cleanField(e.section, PHONE_SECTION_MAX),
-    numbers: [...e.numbers],
-  }));
-  return { checkedAt: parsed.data.checked_at, entries };
+  const entries: PhoneItem[] = [];
+  let skipped = 0;
+  for (const e of parsed.data.entries) {
+    const name = cleanField(e.name, PHONE_NAME_MAX);
+    const section = cleanField(e.section, PHONE_SECTION_MAX);
+    if (name === "" || section === "") skipped += 1;
+    else entries.push({ name, section, numbers: [...e.numbers] });
+  }
+  return { checkedAt: parsed.data.checked_at, entries, skipped };
 }
 
 /** Reads and validates CURITIBAI_DATA_DIR/phones/phones.json on every call. */
@@ -104,6 +112,7 @@ const Item = z.object({
 export const usefulPhonesOutput = z.object({
   data: z.object({
     total: z.number().int(),
+    skipped_rows: z.number().int(),
     items: z.array(Item),
   }),
   source_url: z.string().url(),
@@ -134,12 +143,12 @@ export function usefulPhonesResult(data: PhonesData, args: UsefulPhonesArgs): z.
     return words.every((w) => text.includes(w) || (/^\d+$/.test(w) && digits.includes(w)));
   });
   return {
-    data: { total: matches.length, items: matches.slice(0, args.limit) },
+    data: { total: matches.length, skipped_rows: data.skipped, items: matches.slice(0, args.limit) },
     source_url: PHONES_SOURCE_URL,
     fetched_at: data.checkedAt,
     attribution: PHONES_ATTRIBUTION,
     license_note: PHONES_LICENSE_NOTE,
-    note: NOTE,
+    note: NOTE + (data.skipped > 0 ? ` ${data.skipped} entries of the file were skipped: empty name or section after cleaning.` : ""),
   };
 }
 

@@ -769,7 +769,8 @@ export function readPreviousPhones(dir) {
 /**
  * The phones step: one GET of PHONES_PATH with the run's client (same window, deadline, robots rules, gap and
  * User-Agent), then phones/phones.json only when the page parsed and the count is within 0.3x–3x of the previous copy;
- * phones/status.json always tried. `skipCode` (the events step stopped before robots.txt was accepted) makes no request.
+ * phones/status.json always tried. `skipCode` (the events step ended with a code other than ok or layout_changed)
+ * makes no request.
  */
 export async function runPhones({ client, now, env, attempt, skipCode }) {
   const out = { code: "ok", httpStatus: undefined, entries: 0, dropped: 0 };
@@ -907,8 +908,8 @@ export function acquireLock(dir, now) {
  * One collector run. Returns `{code, exit, counts}`. Takes the lock first (a locked run makes no request and writes
  * nothing). Each detail read is added to the detail cache at once; events.json is written only when the whole run
  * succeeded and the result passed validation; status.json is always tried. Then the phones step (runPhones) runs with
- * the same client, whatever the events result, once robots.txt was accepted; it never changes events files or the
- * events code. Exit 0 only when both steps are ok. Network, clock, sleep and the recorded robots rules are injectable
+ * the same client, only when the events step ended ok or with layout_changed (any other code: no request, the phones
+ * status gets that code); it never changes events files or the events code. Exit 0 only when both steps are ok. Network, clock, sleep and the recorded robots rules are injectable
  * for tests.
  */
 export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORDED_ROBOTS }) {
@@ -1010,7 +1011,10 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
   }
   let phones = { code, httpStatus, entries: 0, dropped: 0 };
   if (dir !== null && code !== "locked") {
-    phones = await runPhones({ client, now, env, attempt: startedAt.toISOString(), skipCode: robotsAccepted ? null : code });
+    // The phones page is asked for only after an ok or layout_changed events result: after any refusal, error status,
+    // redirect, timeout, network error, window or deadline stop, the host is not asked again in this run.
+    const phonesMayRequest = robotsAccepted && (code === "ok" || code === "layout_changed");
+    phones = await runPhones({ client, now, env, attempt: startedAt.toISOString(), skipCode: phonesMayRequest ? null : code });
   }
   release?.();
   const exit = code === "data_dir_not_set" ? 2 : code === "ok" && phones.code === "ok" ? 0 : 1;

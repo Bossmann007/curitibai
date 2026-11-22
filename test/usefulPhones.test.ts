@@ -43,7 +43,7 @@ describe("usefulPhonesResult", () => {
     expect(r.data.total).toBe(60);
     expect(r.data.items).toHaveLength(50);
     expect(result(undefined, 5).data.items.map((e) => e.name)[0]).toBe("SIATE(ambulância/bombeiros)");
-    expect(result("palavra inexistente").data).toEqual({ total: 0, items: [] });
+    expect(result("palavra inexistente").data).toEqual({ total: 0, skipped_rows: 0, items: [] });
   });
 
   it("returns source URL, fetched_at and attribution, valid against the output schema", () => {
@@ -57,6 +57,21 @@ describe("usefulPhonesResult", () => {
     expect(() => buildPhones(fileWith([{ section: "S", name: "N", numbers: ["(41) 99999-8888"] }]))).toThrow(/expected shape/);
     expect(() => buildPhones(fileWith([{ section: "S", name: "N", numbers: ["153"], extra: "x" }]))).toThrow(/expected shape/);
     expect(() => buildPhones(fileWith(ENTRIES, { source: "https://evil.example/" }))).toThrow(/expected shape/);
+  });
+
+  it("drops and counts a row whose name or section is empty after cleaning", () => {
+    const rows = [
+      { section: "S", name: "\u200b\u202e", numbers: ["153"] }, // only format characters: "" after cleanField
+      { section: "\u0007", name: "Guarda", numbers: ["153"] }, // a control character only: "" after cleanField
+      { section: "S", name: "Defesa Civil", numbers: ["199"] },
+    ];
+    const data = buildPhones(fileWith(rows));
+    expect(data.entries).toEqual([{ name: "Defesa Civil", section: "S", numbers: ["199"] }]);
+    expect(data.skipped).toBe(2);
+    const r = usefulPhonesResult(data, { limit: 20 });
+    expect(r.data).toMatchObject({ total: 1, skipped_rows: 2 });
+    expect(r.note).toMatch(/2 entries .*skipped/);
+    expect(usefulPhonesResult(buildPhones(fileWith()), { limit: 1 }).data.skipped_rows).toBe(0);
   });
 
   it("cleans names again: a hand-edited name holding an e-mail is masked", () => {

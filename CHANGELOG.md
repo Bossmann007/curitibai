@@ -11,8 +11,10 @@ new host: the page is on `turismo.curitiba.pr.gov.br`, already read by the event
 - `scripts/fetch-events.mjs` reads `/conteudo/telefones-uteis/92` once per run, after the events pages, with the same
   client (window, robots.txt check, 5 s gap, deadline, User-Agent), and writes `phones/phones.json` and
   `phones/status.json` in `CURITIBAI_DATA_DIR`. It keeps only section, name and numbers as published; an unknown
-  layout writes `layout_changed` and keeps the previous copy. The phones step runs whatever the events result was,
-  once robots.txt was accepted, and never changes the events files; the exit code is 0 only when both steps are ok,
+  layout writes `layout_changed` and keeps the previous copy. The phones step runs only after an ok or
+  `layout_changed` events result; after any other stop (an error status such as 403, 429 or 5xx, a redirect, a
+  timeout, a network error, the window or the deadline) it makes no request and its status gets the same code. It
+  never changes the events files; the exit code is 0 only when both steps are ok,
   and the run prints one more fixed line (`fetch-events: phones_code=... phones=N phones_dropped=N`).
 - `useful_phones` (optional `query` of 2–100 characters, `limit` up to 50) reads only that local file, no network
   call; words match name, section or number, accents and case ignored. A missing file returns `data_not_available`
