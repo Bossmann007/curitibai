@@ -2,6 +2,31 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.17.0 - 2026-11-22
+
+New tool `guaira_events`: the live public calendar of the Centro Cultural Teatro Guaíra (new host
+`www.teatroguaira.pr.gov.br`; robots.txt `User-agent: *` allows `/calendario-eventos` and `/Evento/`, no crawl delay,
+checked 2026-11-22; no licence found, facts and links only, Teatro Guaíra / Governo do Paraná cited, owner approval
+2026-11-22).
+
+- Input: optional `from`/`to` (default today to 30 days ahead, Curitiba time; at most 366 days), optional `text`
+  (words in the title), optional `city` (default `Curitiba`, so the Cascavel tour dates are left out; `all` keeps
+  every city), `limit` ≤ 50 and `offset`. Events overlapping the range, earliest first.
+- Returns `title`, `start`, `end` (Curitiba local time, as listed), `city`, `state`, `link` (event page), and
+  `venue`, `age_rating`, `price` read strictly from event pages (null when not read or not in a known shape), with
+  `details` saying which; `other_city_rows` and `truncated`. The listing's `Local` is the city, not the venue, so the
+  venue needs the event page: at most 2 new event pages per call, items of the returned page only, cached 6 hours.
+  Cast, directors and programme are never read.
+- Requests: robots.txt first (cached 24 h; the tool stops if the calendar becomes disallowed, and reads no event page
+  if `/Evento/` does), then up to 3 listing pages at fixed URLs, the whole listing cached 1 hour. At most one
+  request per 5 s to the host (a request that would wait over 10 s is not made), no request for 60 s after a failure
+  (a 429's Retry-After when longer, at most 1 hour), a 10-minute host block on 401/403 or a CAPTCHA; never retried.
+  A cold call makes up to 6 requests and can take about 25 s.
+- New error code `layout_changed`: the listing's HTML no longer has the expected cards, dates, city or pager; nothing
+  is returned.
+- Docs: README (tool tables, 21 tools, hosts, licences, fixtures), docs/sources.md (robots.txt group, fields, limits,
+  requests made), SPEC.md for this release (records why venue comes from event pages).
+
 ## 0.15.0 - 2026-11-22
 
 New tool `city_facilities_search` over IPPUC's GeoCuritiba map services (new host `geocuritiba.ippuc.org.br`,

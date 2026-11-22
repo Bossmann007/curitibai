@@ -7,7 +7,9 @@ User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the sam
 Overpass API instances (v0.7) were checked on 2026-11-21 (UTC) with curl and User-Agent `curitibai-mcp/0.7`. The
 "Imuniza Já" vaccination page (v0.12) was checked on 2026-11-21 (UTC) with curl and then with Node.js `fetch` and
 User-Agent `curitibai-mcp/0.7`. IPPUC's GeoCuritiba services (v0.15) were checked on 2026-11-21 (UTC) with curl and
-User-Agent `curitibai-mcp/0.7`, at most one request per 5 s.
+User-Agent `curitibai-mcp/0.7`, at most one request per 5 s. The Centro Cultural Teatro Guaíra calendar (v0.17) was
+checked on 2026-11-22 (06:01–06:03 UTC) with curl and User-Agent `curitibai-mcp/0.7`, GET only, at least 5 s between
+requests.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -54,6 +56,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
+| `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -808,6 +811,126 @@ in the city's own categories. Built.
   curitiba.pr.gov.br addresses). `ecocidadao_synthetic.json` is **synthetic**, with planted cases: a mobile, a webmail
   address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
+
+### `guaira_events`: Centro Cultural Teatro Guaíra calendar (live)
+
+- **Source:** <https://www.teatroguaira.pr.gov.br/calendario-eventos>, the public events calendar of the Centro
+  Cultural Teatro Guaíra (Governo do Paraná), a Drupal view: 15 cards per page with a "Carregar mais" link
+  (`rel="next"`, `?combine=&field_categoria_target_id=All&celepar_evento_periodo_filter=All&page=N`). On 2026-11-22:
+  32 cards on 3 pages (15, 15, 2; page 2 has no next link), starts from 12/11/2026 to 21/02/2027, one card in
+  Cascavel (a Balé Teatro Guaíra tour), the rest in Curitiba. The listing is ordered by start and includes events
+  that started earlier and are still running.
+- **Listing fields read** (each card, `<li class="card ...">`): the title link `<h3><a href="/Evento/<slug>">title</a></h3>`,
+  `Início: dd/mm/yyyy - HH:MM`, `Término: dd/mm/yyyy - HH:MM` and `Local: <city>- <UF>`. The listing's `Local` is the
+  **city**, not the venue. The card image is never read. Titles carry HTML entities (`&quot;`), decoded before
+  cleaning.
+- **Event page fields read** (`/Evento/<slug>`, about 65 KB): only three lines of the body field
+  (`field--name-field-texto`): `Local:` (the venue, e.g. "Auditório Salvador de Ferrante (Guairinha)", "Auditório
+  Bento Munhoz da Rocha Neto (Guairão)"), `Classificação etária:` (e.g. "14 anos") and `Ingressos:` (e.g.
+  "R$20,00 (inteira) | R$10,00 (meia-entrada)"). The same body lists cast, directors, guest soloists and the
+  programme; they are never read. The page also has `<time datetime>` start and end in UTC, the address of the
+  venue and a "Categoria" link, not used. No JSON-LD, no .ics, no API.
+- **Requests** (`src/sources/guaira.ts`): robots.txt first (cached 24 h); then the listing pages at fixed URLs only
+  (the bare path, `?page=1`, `?page=2`; the next link is checked to point to the next page, never followed), at most 3
+  per load, the whole listing cached 1 hour; then at most 2 uncached event pages per call, only for the items of the
+  page being returned, cached 6 hours each. The user's `text`, `city` and dates never reach the source. 1 MB cap
+  (robots.txt 512 KB), 15 s timeout, `text/html` required (robots.txt `text/plain`), redirects only to the same host
+  under the requested path. Worst cold call: 6 requests 5 s apart, about 25 s plus network time.
+- **Rate and failures** (`gated` in `src/sources/guaira.ts`, the GeoCuritiba pattern): request starts at least 5 s
+  apart per server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any
+  failure (a layout change included) no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401,
+  403 or a CAPTCHA 429 blocks the host 10 minutes (`blockHost`). Never retried. A robots.txt 404/410 means no rules;
+  a 5xx, network error or non-text answer fails closed. If robots.txt disallows `/calendario-eventos` the tool
+  returns `source_unavailable` ("robots.txt now disallows the calendar"); if it disallows `/Evento/`, no event page
+  is read.
+- **Fails closed** (`layout_changed`, nothing returned) when a listing page has no single `view-content` block, no
+  card, a card without exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not real, an
+  end before the start, a slug outside `[A-Za-z0-9-]`, markup inside a title, two different event links in a card, or
+  a next link that does not point to the next page. A page 3 that still has a next link is returned with
+  `truncated: true`. An event page without exactly one body field is `details: "not_recognised"`; one that fails to
+  load is `unavailable` and ends event-page reading for that call.
+- **Strict event-page values:** `venue` only when exactly one `Local:` line; `age_rating` only "Livre" or "N anos";
+  `price` only a run of `R$` amounts with an optional short label in parentheses, separated by `|`, or "Gratuito",
+  "Entrada gratuita", "Entrada franca"; anything else (for example "Consulte a bilheteria") is null.
+- **Privacy:** returned fields are title, start, end, city, state, venue, age rating, price and link only; every text
+  goes through `cleanField` (control and format characters, NFC, the PII mask, caps of 120 characters).
+- **Terms / licence:** none found on the site (owner's research and this check, 2026-11-22). Facts and links only,
+  `source` "Centro Cultural Teatro Guaíra / Governo do Paraná", `license_note` "No licence found; facts and links
+  only; Teatro Guaíra / Governo do Paraná cited." Owner approval (2026-11-22, task brief for v0.17.0): publishing
+  facts and links from this no-licence source with that citation.
+- **robots.txt** (fetched 2026-11-22 06:01 UTC; comments above the group left out):
+
+  ```text
+  User-agent: *
+  # CSS, JS, Images
+  Allow: /core/*.css$
+  Allow: /core/*.css?
+  Allow: /core/*.js$
+  Allow: /core/*.js?
+  Allow: /core/*.gif
+  Allow: /core/*.jpg
+  Allow: /core/*.jpeg
+  Allow: /core/*.png
+  Allow: /core/*.svg
+  Allow: /profiles/*.css$
+  Allow: /profiles/*.css?
+  Allow: /profiles/*.js$
+  Allow: /profiles/*.js?
+  Allow: /profiles/*.gif
+  Allow: /profiles/*.jpg
+  Allow: /profiles/*.jpeg
+  Allow: /profiles/*.png
+  Allow: /profiles/*.svg
+  # Directories
+  Disallow: /core/
+  Disallow: /profiles/
+  # Files
+  Disallow: /README.txt
+  Disallow: /web.config
+  # Paths (clean URLs)
+  Disallow: /admin/
+  Disallow: /comment/reply/
+  Disallow: /filter/tips
+  Disallow: /node/add/
+  Disallow: /search/
+  Disallow: /user/register/
+  Disallow: /user/password/
+  Disallow: /user/login/
+  Disallow: /user/logout/
+  # Paths (no clean URLs)
+  Disallow: /index.php/admin/
+  Disallow: /index.php/comment/reply/
+  Disallow: /index.php/filter/tips
+  Disallow: /index.php/node/add/
+  Disallow: /index.php/search/
+  Disallow: /index.php/user/password/
+  Disallow: /index.php/user/register/
+  Disallow: /index.php/user/login/
+  Disallow: /index.php/user/logout/
+
+  Disallow: /print/
+  Disallow: /index.php/print/
+
+  # Noticias Externas
+  Disallow: /external-print/
+  Disallow: /noticias/aen/
+
+  # Login personalizado
+  Disallow: /usuario/
+
+  # Webservices
+  Disallow: /webservices/
+  ```
+
+- **Requests to the host on 2026-11-22:** robots.txt, the three listing pages and two event pages, once each, at least
+  5 s apart (curl, GET); then one cold call of the built tool (robots.txt, 3 listing pages, 2 event pages; 25.5 s):
+  22 Curitiba events from 2026-11-22 to 2026-12-22, 1 Cascavel row left out, venue, age rating and price read for the
+  first two.
+- **Fixtures:** `test/fixtures/guaira/list_page0.html` (4 real cards: one running since 12/11, one with `&quot;` in the
+  title, one on the check day, the Cascavel card; next link to page 1), `list_page1.html` (2 cards, next link to page
+  2), `list_page2.html` (the real last page: 2 cards, no next link), `event_muito_barulho.html` and
+  `event_concerto_osp.html` (the body field only; the guest conductor line and the programme removed) and
+  `robots.txt` (the real file). Image tags and all other page markup were removed.
 
 ### `local_csv_summary`: a file the user downloaded
 

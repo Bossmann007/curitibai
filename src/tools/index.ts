@@ -8,6 +8,7 @@ import { cityServicesSearch } from "./cityServicesSearch.js";
 import { datasetFiles } from "./datasetFiles.js";
 import { detranPrInfo } from "./detranPrInfo.js";
 import { eventsSearch } from "./eventsSearch.js";
+import { guairaEvents } from "./guairaEvents.js";
 import { healthUnitsSearch } from "./healthUnitsSearch.js";
 import { localCsvSummary } from "./localCsvSummary.js";
 import { nextBusesNear } from "./nextBusesNear.js";
@@ -40,4 +41,5 @@ export const tools = [
   vaccinationSitesSearch,
   usefulPhones,
   cityFacilitiesSearch,
+  guairaEvents,
 ] as const;
