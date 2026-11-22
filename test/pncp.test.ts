@@ -910,6 +910,8 @@ describe("procurement_search text search (PNCP site search)", () => {
   });
 
   it("the search timeout leaves the fallback scan room in the budget", () => {
+    // fetchPncp retries once after a network error, each try with its own timeout.
+    expect(2 * PNCP_SEARCH_TIMEOUT_MS).toBeLessThan(CALL_START_BUDGET_MS);
     expect(PNCP_SEARCH_TIMEOUT_MS + PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS);
   });
 
@@ -943,7 +945,7 @@ describe("procurement_search text search (PNCP site search)", () => {
     expect(urls).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl()]);
     sharedCache.clear();
     const second = dataOf(await settle(search({ query: "acao social" })));
-    expect(second.note).toMatch(/^PNCP's fast search was unavailable \(timeout, remembered for 10 minutes\)/);
+    expect(second.note).toMatch(/^PNCP's fast search was unavailable \(timeout; not asked again for about 10 min\)/);
     expect(urls).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl(), pncpUrl()]);
   });
 
@@ -976,5 +978,26 @@ describe("procurement_search text search (PNCP site search)", () => {
     expect(restart.map((c) => c.url)).toEqual([searchUrl("objeto", 6, 3), pncpUrl(1)]);
 
     expect(errorOf(await search({ page_source: "search" }))).toMatchObject({ error: "invalid_argument" });
+  });
+
+  it("a search failure after the first page sends the client to the scan; a 4xx is not remembered", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("objeto", 6, 1)}`]: JSON_ROUTE(searchPage(records(1, 1, PNCP_SEARCH_PAGE_SIZE - 1), 500)),
+      [`GET ${searchUrl("objeto", 6, 2)}`]: { status: 400 },
+    });
+    const first = dataOf(await search({ query: "objeto" }));
+    expect(first).toMatchObject({ partial: true, next_page: 1, next_skip: 0, next_page_source: "scan" });
+    expect(first.items).toHaveLength(1);
+    expect(first.note).toMatch(/\(HTTP 400\); continue with the page scan from its page 1/);
+    sharedCache.clear();
+    await search({ query: "objeto" }); // HTTP 400 was not remembered: the search is asked again
+    expect(calls.map((c) => c.url)).toEqual([1, 2, 1, 2].map((p) => searchUrl("objeto", 6, p)));
+  });
+
+  it("a scan page holds 50: skip of 50 or more is refused for the scan", async () => {
+    const calls = stubFetch({});
+    expect(errorOf(await search({ skip: 50 }))).toMatchObject({ error: "invalid_argument" });
+    expect(errorOf(await search({ query: "x y", skip: 60, page_source: "scan" }))).toMatchObject({ error: "invalid_argument" });
+    expect(calls).toHaveLength(0);
   });
 });

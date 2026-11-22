@@ -309,6 +309,7 @@ const gate = createHostGate(PNCP_GATE);
 export function resetPncpGate(): void {
   gate.reset();
   searchDownUntil = 0;
+  searchDownReason = "";
 }
 
 /** `startBy`: no request starts after it (OutOfTimeError, no request). */
@@ -347,14 +348,20 @@ const searchFailure = (err: unknown) =>
 /** One page of the site search, through the same PNCP gate (spacing, budget), cache and single retry as the Consulta API. */
 export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
   const url = searchUrl(query, modality, page);
+  /** Remembered only when the search as a whole looks down: a timeout, network error, 5xx or a changed format. */
   const down = (reason: string) => {
-    searchDownUntil = Date.now() + SEARCH_DOWN_MS;
-    searchDownReason = reason;
+    if (/^(timeout|network error|HTTP 5\d\d|layout_changed)$/.test(reason)) {
+      searchDownUntil = Date.now() + SEARCH_DOWN_MS;
+      searchDownReason = reason;
+    }
     return new SearchUnavailableError(reason);
   };
   return underOwnBudget(startBy, () =>
     sharedCache.getOrLoad(`GET ${url}`, async () => {
-      if (Date.now() < searchDownUntil) throw new SearchUnavailableError(`${searchDownReason}, remembered for 10 minutes`);
+      if (Date.now() < searchDownUntil) {
+        const left = Math.ceil((searchDownUntil - Date.now()) / 60_000);
+        throw new SearchUnavailableError(`${searchDownReason}; not asked again for about ${left} min`);
+      }
       const got = await gate.run(
         async (): Promise<{ body: string } | { failed: string }> => {
           try {
@@ -367,6 +374,7 @@ export function getSearchPage(query: string, modality: number, page: number, sta
         { startBy },
       );
       if ("failed" in got) throw down(got.failed);
+
       try {
         return parseSearch(got.body);
       } catch (err) {

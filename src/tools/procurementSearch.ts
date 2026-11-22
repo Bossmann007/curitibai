@@ -4,6 +4,7 @@ import {
   getSearchPage,
   MODALITIES,
   PNCP_LICENSE_NOTE,
+  PNCP_PAGE_SIZE,
   publicationUrl,
   SearchUnavailableError,
   searchUrl,
@@ -147,11 +148,14 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
     "a name. With query, uses the search behind the pncp.gov.br site (pages of 100, about 1 s each, newest update " +
     "first; the search word is sent to PNCP; if that search fails, the Consulta scan is used); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
-    "call; continue with next_page and next_skip. Read-only.",
+    "call; continue with next_page, next_skip and next_page_source (passed back as page_source). Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
   handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {
     if (page_source === "search" && query === undefined) return fail("invalid_argument", "page_source 'search' needs query.");
+    if ((query === undefined || page_source === "scan") && skip >= PNCP_PAGE_SIZE) {
+      return fail("invalid_argument", `A scan page holds ${PNCP_PAGE_SIZE} records: skip must be below ${PNCP_PAGE_SIZE}.`);
+    }
     const end = to ?? todayBrasilia();
     const start = from ?? addDays(end, -DEFAULT_DAYS);
     const span = (Date.parse(end) - Date.parse(start)) / 86_400_000;
@@ -192,6 +196,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let refusedNote: string | null = null;
       let budgetReached = false;
       let searchDown: string | null = null;
+      let scanNext = false;
       const started = Date.now();
       for (;;) {
         if (scanned === MAX_PNCP_REQUESTS) {
@@ -213,7 +218,9 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           if (err instanceof SearchUnavailableError) {
             searchDown =
               `PNCP's fast search was unavailable (${err.reason})` +
-              (scanned === 0 ? "; the slower page scan was used, and next_page counts its pages." : "; continue with next_page.");
+              (scanned === 0
+                ? "; the slower page scan was used, and next_page counts its pages."
+                : "; continue with the page scan from its page 1 (page_source 'scan'); results already returned may repeat.");
             if (scanned === 0) {
               searching = false; // same call, same gate and 20 s budget
               if (p !== 1 || firstSkip !== 0) {
@@ -225,7 +232,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
               continue;
             }
             partial = true;
-            nextPage = p;
+            nextPage = 1; // the search is not asked again for a while: continue with the scan
+            scanNext = true;
             break;
           }
           if (err instanceof OutOfTimeError && scanned === 0 && searchDown !== null) {
@@ -291,7 +299,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           modality,
           scanned_pages: { from: firstPage, to: firstPage + scanned - 1 },
           next_page: nextPage,
-          next_page_source: searching ? "search" : "scan",
+          next_page_source: searching && !scanNext ? "search" : "scan",
           next_skip: nextSkip,
           partial,
           discarded,

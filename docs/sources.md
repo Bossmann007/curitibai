@@ -188,8 +188,9 @@ error, timeout or HTTP error after the single retry) or its format fails the str
 same call falls back to the Consulta scan (same gate, same 20 s budget for the whole call, same allow-list and
 masking) and `note` says the fast search was unavailable. The search request times out after 8 s
 (`PNCP_SEARCH_TIMEOUT_MS`; Consulta keeps 25 s), so the scan's first page can still start within the 20 s budget.
-That search failure is not remembered by the gate (the Consulta API is another service on the host); the search alone
-is not asked again for 10 minutes in the process (`SEARCH_DOWN_MS`), and calls go straight to the scan meanwhile.
+That search failure is not remembered by the gate (the Consulta API is another service on the host); after a timeout,
+network error, 5xx or changed format the search alone is not asked again for 10 minutes in the process
+(`SEARCH_DOWN_MS`), and calls go straight to the scan meanwhile; a 4xx for one page or query is not remembered.
 `next_page_source` says which pages `next_page` counts. A 429 or a refusal never falls back: the gate remembers it for the
 whole host and the call returns `rate_limited` or the refusal as before.
 
