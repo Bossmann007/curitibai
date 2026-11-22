@@ -6,7 +6,8 @@ User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the sam
 `curitibai-mcp/0.3`. The INMET API (v0.5) was checked the same day with curl and User-Agent `curitibai-mcp/0.5`. The
 Overpass API instances (v0.7) were checked on 2026-11-21 (UTC) with curl and User-Agent `curitibai-mcp/0.7`. The
 "Imuniza Já" vaccination page (v0.12) was checked on 2026-11-21 (UTC) with curl and then with Node.js `fetch` and
-User-Agent `curitibai-mcp/0.7`.
+User-Agent `curitibai-mcp/0.7`. IPPUC's GeoCuritiba services (v0.15) were checked on 2026-11-21 (UTC) with curl and
+User-Agent `curitibai-mcp/0.7`, at most one request per 5 s.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -47,6 +48,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes) |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**; the local copy holds no detail-page content. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -725,6 +727,87 @@ in the city's own categories. Built.
 - **Prior art** (2026-11-21, `gh search repos imunizaja` and `"vacinacao curitiba"`): one repository without a
   description (`Arthurrfreire/imunizaja-vacinas`, not opened); the search found no MCP server or API client. Built inside this server, reusing its
   HTTP client, cache, masking and paging.
+
+### `city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes
+
+- **Source:** IPPUC (Instituto de Pesquisa e Planejamento Urbano de Curitiba), GeoCuritiba ArcGIS REST
+  services (`currentVersion` 11.5), anonymous GET, `f=json`:
+  - <https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer>:
+    169 layers (point feature layers in thematic groups), capabilities `Query,Map,Data`, `maxRecordCount` 2,000,
+    native spatial reference SIRGAS 2000 / UTM 22S (EPSG 31982). Every point layer has the same fields: `objectid`,
+    `cd_equi`, `tema`, `equipament`, `tipo_equi`, `dep_admin`, `nome_completo`, `nome`, `nome_mapa`, `nome_rua`,
+    `num_pred`, `compl_end`, `divulgar_endereco`, `indfiscal`, `cd_bairro`, `bairro`, `regional`, `nm_distrito`,
+    `func_manha`, `func_tarde`, `func_noite`, `func_24hr`, `telefone`, `ramal`, `email`, `site`, `dt_inauguracao`,
+    `dt_atualiz` (epoch ms), `observacao` (days, hours and notes, lines split by CRLF), `fonte`, `ds_mantenedora`,
+    `coord_e`, `coord_n`, `lat_sirgas`, `lon_sirgas`, `globalid` (among others).
+  - <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/CICLOVIA_dashboard/FeatureServer>: layer 0
+    "ESTRUTURA CICLOVIÁRIA" (polylines: `nome`, `ctba_tipo_ciclovia`, `ctba_localizacao`, `ctba_bairro`,
+    `ctba_regional`, `lenght_km` [sic], `operacional`, `situacaofisica`, ...), layer 1 "PARQUES E BOSQUES" (polygons:
+    `nome`, `areaoficial`, `ctba_tipounidprotinteg_smuc`, `ctba_bairro`, `ctba_regional`, ..., plus `created_user` and
+    `last_edited_user`, never read), layer 2 "BAIRRO". Neighbourhood, regional and kind are coded values; the codes
+    and names are copied into `src/sources/geocuritiba.ts` as published on 2026-11-21, except three neighbourhood
+    names written as the urban-equipment layers write them in `bairro` (checked in the Academia ao Ar Livre layer:
+    "Prado velho" → "Prado Velho", "Barrerinha" → "Barreirinha", "Sitio Cercado" → "Sítio Cercado"), so one `bairro`
+    filter matches both services. An unknown code is `null`.
+- **Layers used** (id: name, record count on 2026-11-21): MapServer 2 Mercado Municipal (4), 3 Armazém da Família (33),
+  4 Sacolão da Família (13), 5 Câmbio Verde (103), 6 Restaurante Popular (6), 8 Feira (80), 14 Rua da Cidadania (10),
+  28 Sanitário Público (37), 34 CRAS (39), 54 Museu (38), 55 Teatro (37), 63 Farol do Saber (43), 64 Biblioteca Geral
+  (13), 68 Conselho Tutelar (10), 85 Clube da Gente (5), 86 Centro de Esporte e Lazer (25), 91 Academia ao Ar Livre
+  (286), 92 Pista de Skate (37), 114 Cemitério Municipal (5), 116 Ecoponto (12), 117 Ecocidadão (40), 156 Posto de
+  Atendimento URBS (11), 162 Posto de Informações Turísticas (3), 163 Feira Turística (27); FeatureServer 0 Estrutura
+  Cicloviária (838, all `operacional` 1 and `situacaofisica` 5 "Construída") and 1 Parques e Bosques (53). The
+  largest answer was about 250 KB (layer 0 with simplified geometry). Layers left out on purpose: health units (see
+  `health_units_search`), schools, bus terminals, police, administrative offices and every other layer not in the
+  list (not surveyed).
+- **Query:** one fixed URL per layer: `where=1=1`, a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
+  `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with
+  `returnGeometry=true`; parks with `returnCentroid=true` and no geometry; bike lanes with geometry simplified
+  (`maxAllowableOffset=0.00005`, about 5 m, `geometryPrecision=5`). The user's `bairro` and position never enter the
+  URL or the cache key: the whole layer is read and filtered in the server. One request per call at most (none when
+  cached), 6-hour cache per layer, 2 MB cap, 15 s timeout, JSON content type required, redirects only to the same host
+  under `/server/rest/services`.
+- **Rate and failures** (`gated` in `src/sources/geocuritiba.ts`): at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes (`blockHost` in `src/http.ts`, the same
+  block as an HTTP 401/403). A cached layer never waits.
+- **Fails closed** (`source_unavailable`, never an empty list) on: an `error` object (ArcGIS answers errors with HTTP
+  200; codes 401, 403, 498 and 499 are a refusal, above), `exceededTransferLimit`, a spatial reference other than 4326, no `features` array, 2,000 records or more, or
+  invalid JSON.
+- **Fields returned:** name (`nome_completo`, else `nome`), address (`nome_rua`, `num_pred`, `compl_end`), `bairro`,
+  `regional`, hours (`observacao` split by lines; in every text field 8 to 11 digits with no separator, such as
+  "Tel 33334444", are masked first, then each line goes through `cleanField`: control and format characters, NFC, PII
+  masking, 160 characters, at most 30 lines), `open_periods` (`func_*`: "Sim" true, "Não" false, else null),
+  `updated` (`dt_atualiz` as a Curitiba date), phones, e-mails, position. When `divulgar_endereco` is not "Sim" the
+  address **and** the position are null (no record had another value on 2026-11-21). Coordinates outside a box around
+  Curitiba (lat −25.7 to −25.3, lon −49.45 to −49.15) are null. Bike lanes not `operacional` = 1 and records without a
+  name are skipped and counted (`skipped_records`).
+- **Contacts (privacy):** `telefone` and `email` are not masked text but filtered by an allowlist, because some layers
+  hold contacts that look personal. Survey of the 24 point layers above on 2026-11-21: Ecocidadão (associations of
+  waste pickers) lists mobiles and Gmail/Hotmail addresses; Museu and Teatro list university, company and personal-name
+  addresses (e.g. a `firstname.lastname@` university address); CRAS, Mercado Municipal, Sacolão and Biblioteca list
+  mobiles next to landlines; Feira has one typo domain (`curitiba.pr.gpv.br`). Kept: three-digit service numbers
+  ("156") and Curitiba landlines (DDD 41 or none, 8 digits starting 2–5), formatted "(41) XXXX-XXXX", at most 8;
+  e-mails at `curitiba.pr.gov.br` or a subdomain, lowercased, at most 3. Dropped: mobiles, 0800 numbers, other area
+  codes, any part not understood, and every other e-mail domain (state and federal government addresses too). A
+  landline of a non-municipal institution (an association, a university) is kept. `ramal` and `site` are not read.
+  The kept e-mails of all 24 point layers (136 distinct on 2026-11-21) were listed: role or unit mailboxes (CRAS,
+  Conselho Tutelar, Faróis do Saber named after their patrons, cemeteries, regional offices). Known limit: the local
+  part of a city address is not checked, and 2 of them could not be told apart from a person's initials and name.
+  Owner decision (2026-11-22): all 136 kept, including two that may be personal staff mailboxes; they are official
+  addresses published by the Prefeitura on a public map. No name detection is added.
+- **Distance:** straight line; to the point, to a park's centroid (not its edge or gate), to the nearest point of a
+  bike segment (local flat projection). `radius_m` at most 3,000.
+- **Terms / licence:** none found on the services, the REST directory or IPPUC's GeoCuritiba pages (owner's research,
+  2026-11-21). Facts only, with `source` "IPPUC / GeoCuritiba", the layer URL and `license_note` "No licence found;
+  facts only; IPPUC cited."
+  Owner approval (2026-11-21): publishing facts from these layers with no licence found, IPPUC cited.
+- **Requests to the host on 2026-11-21:** the two layer lists (once each), 27 count queries and 27 small samples or
+  contact surveys while building, three live calls of the built tool (Ecocidadão: 40 records, 26 landlines kept, no
+  mobile and no webmail address returned; Parques within 3 km of the centre: 5; Estrutura Cicloviária within 3 km: 215)
+  and robots.txt once; at most one request per 5 s.
+- **Fixtures:** `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json` and `ciclovia.json` are
+  real records (4, 2, 3 and 4) trimmed to the fields the tool reads (plus geometry or centroid); they hold only institutional contacts ("156", landlines,
+  curitiba.pr.gov.br addresses). `ecocidadao_synthetic.json` is **synthetic**, with planted cases: a mobile, a webmail
+  address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
+  marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
 
 ### `local_csv_summary`: a file the user downloaded
 

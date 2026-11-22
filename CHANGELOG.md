@@ -2,6 +2,32 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.15.0 - 2026-11-22
+
+New tool `city_facilities_search` over IPPUC's GeoCuritiba map services (new host `geocuritiba.ippuc.org.br`,
+robots.txt 404 on 2026-11-21; no licence found, facts only, IPPUC cited).
+
+- `type`: a curated subset of 26 layers named in Portuguese (feira, rua da cidadania, ecoponto, ecocidadão, câmbio
+  verde, biblioteca, farol do saber, academia ao ar livre, banheiro público, cemitério, CRAS, parque, ciclovia and
+  more), accents and case ignored, with aliases; `list types` returns them with no network call. Optional `bairro`,
+  `near` with `radius_m` (at most 3,000 m), `limit` ≤ 50 and `offset`.
+- Returns name, address, neighbourhood, regional, days and hours as published (`observacao`, one line each) and the
+  `func_manha`/`func_tarde`/`func_noite`/`func_24hr` periods, institutional phones and e-mails only, `updated`
+  (`dt_atualiz`), WGS84 position and distance; source "IPPUC / GeoCuritiba" with the layer URL.
+- One fixed request per layer (whole layer, fixed fields, `outSR=4326`), cached 6 hours; the user's position and
+  neighbourhood are never sent. Fails closed on an ArcGIS error with HTTP 200, a cut layer or another spatial
+  reference. Reuses `src/http.ts` (allowlist, https only, refusal block, size cap).
+- Rate and failures: at most one request per 5 s to the host per server process, across layers (a call whose turn
+  is more than 10 s away gets `rate_limited` with the wait, without a request); after a failure no request for 60 s,
+  or a 429's `Retry-After` when longer, at most 1 hour. An ArcGIS `error` with code 401, 403, 498 or 499 sent with
+  HTTP 200 is a final refusal: the host is blocked for 10 minutes like an HTTP 403 (`blockHost`, now exported from
+  `src/http.ts`).
+- Privacy: text fields go through `cleanField` line by line, after masking 8 to 11 glued digits ("Tel 33334444"); phones keep Curitiba landlines and service numbers only
+  (mobiles dropped), e-mails keep `curitiba.pr.gov.br` addresses only (webmail, universities, companies and other
+  domains dropped); a record whose address is marked not to be shown loses its address and position.
+- Docs: README (tool tables, Curitiba App comparison, privacy, limits, licences), docs/sources.md (robots result,
+  fields, layer ids and counts, contact survey), SPEC.md for this release.
+
 ## 0.14.0 - 2026-11-22
 
 New tool `useful_phones`: useful public phone numbers in Curitiba (emergencies such as SAMU, Defesa Civil and Guarda

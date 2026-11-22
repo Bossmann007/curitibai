@@ -44,7 +44,11 @@ function checkNotRefused(url: string): void {
   refusedHosts.delete(host);
 }
 
-function refuse(url: string, status: number): never {
+/**
+ * Records a final refusal for the URL's host (not asked again for REFUSAL_BLOCK_MS) and throws SourceRefusedError.
+ * Also for refusals a source sends inside a 200 answer (e.g. an ArcGIS `error` with code 401/403/498/499).
+ */
+export function blockHost(url: string, status: number): never {
   refusedHosts.set(new URL(url).hostname.toLowerCase(), { until: Date.now() + REFUSAL_BLOCK_MS, status });
   throw new SourceRefusedError(status);
 }
@@ -209,12 +213,12 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
     }
     if (!res.ok) {
       if (res.status === 429) {
-        if (await isCaptchaPage(res)) refuse(url, 429);
+        if (await isCaptchaPage(res)) blockHost(url, 429);
         const ra = res.headers.get("retry-after")?.trim() ?? "";
         throw new RateLimitedError(/^\d{1,6}$/.test(ra) ? Number(ra) : null);
       }
       await res.body?.cancel().catch(() => undefined);
-      if (res.status === 401 || res.status === 403) refuse(url, res.status);
+      if (res.status === 401 || res.status === 403) blockHost(url, res.status);
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
     return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res, maxBytes) };

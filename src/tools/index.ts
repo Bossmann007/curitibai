@@ -2,6 +2,7 @@ import { busDepartures } from "./busDepartures.js";
 import { busLineStops } from "./busLineStops.js";
 import { busLinesSearch } from "./busLinesSearch.js";
 import { busStopsNear } from "./busStopsNear.js";
+import { cityFacilitiesSearch } from "./cityFacilitiesSearch.js";
 import { cityPointsSearch } from "./cityPointsSearch.js";
 import { cityServicesSearch } from "./cityServicesSearch.js";
 import { datasetFiles } from "./datasetFiles.js";
@@ -38,4 +39,5 @@ export const tools = [
   eventsSearch,
   vaccinationSitesSearch,
   usefulPhones,
+  cityFacilitiesSearch,
 ] as const;
