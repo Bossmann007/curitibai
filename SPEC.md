@@ -24,15 +24,18 @@ public telemetry of ANA (Agência Nacional de Águas e Saneamento Básico), stat
 
 ## Design
 
-- Tool `river_levels`: optional `station` (a code, with or without leading zeros, or text matched against the
-  station name, river and municipality, accents and case ignored), optional `near` `{lat, lon}`. Without `station`,
-  stations are taken nearest to `near` (default: Curitiba centre, Praça Tiradentes).
+- Tool `river_levels`: optional `station` (a code, with or without leading zeros, or the start of a code, or text
+  matched against the station name, river and municipality, accents and case ignored), optional `near` `{lat, lon}`.
+  Stations come nearest to `near` (default: Curitiba centre, Praça Tiradentes) first; without `station`, stations on a
+  river (which report a level) come before rain gauges.
 - Per station: code, name, river, municipality, lat/lon, `distance_km` (with `near`), latest reading time
   (Curitiba time, ISO with `-03:00`), `level_cm`, `flow_m3s`, `rain_mm` of the latest reading, `rain_1h_mm` and
   `rain_24h_mm` (sum of the readings in the hour / 24 h ending at the latest reading; null when no reading in the
   window has a rain value or when the window starts before the fetched period; gaps make it a lower bound),
   `stale: true` when the latest reading is older than 2 h (computed at answer time, not cached), and `status`
-  `ok` or `no_recent_data` (no reading since yesterday 00:00 Curitiba time: listed, values null, never invented).
+  `ok`, `no_recent_data` (no reading since yesterday 00:00 Curitiba time: listed, values null, never invented) or
+  `unavailable` (the station's answer could not be read: values null). The latest reading is the newest row with at
+  least one value; rows dated more than 15 minutes after the read time are ignored.
   Note: "Not for emergencies: Defesa Civil 199."
 - Station list: bundled in code, never downloaded at runtime. Built once on 2026-11-22 from
   `ListaEstacoesTelemetricas` (one 4 MB download by the developer): every station with latitude -25.75 to -25.25
@@ -48,8 +51,10 @@ public telemetry of ANA (Agência Nacional de Águas e Saneamento Básico), stat
 - Cache: 15 minutes per station code (the URL carries dates). A cached station makes no request and never waits.
 - Fail closed: content type not XML, body over 512 KB, no XML declaration, a `<!DOCTYPE`/`<!ENTITY`, a root other
   than `DataTable xmlns="http://MRCS/"`, any `Error` other than the exact "no data" text for the requested code, a row
-  whose `CodEstacao` differs, an unparsable date or number, or neither rows nor `ErrorTable`. Any failure fails the
-  whole call (a station not fetched is never shown as `no_recent_data`).
+  whose `CodEstacao` differs, an unparsable date or number, or neither rows nor `ErrorTable`. Such an answer marks
+  that station `unavailable` (not cached, not a host failure: only the transfer runs inside the host gate, after
+  review). A transfer or host failure (timeout, HTTP error, 429, refusal, gate) fails the whole call, so a station not
+  fetched is never shown as `no_recent_data`.
 
 ## Files
 

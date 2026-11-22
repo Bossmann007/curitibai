@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ANA_SERVICE_URL, curitibaIso, getStationData, STATIONS, type Station, type StationData } from "../sources/ana.js";
+import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATIONS, type Station, type StationData } from "../sources/ana.js";
 import { fold } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { fail, failFrom, ok, type ToolDef } from "./common.js";
@@ -39,7 +39,12 @@ const Item = z.object({
   lat: z.number(),
   lon: z.number(),
   distance_km: z.number().describe("Straight-line distance from `near` (or Curitiba centre), in km."),
-  status: z.enum(["ok", "no_recent_data"]).describe("no_recent_data: the station sent nothing since yesterday 00:00 (Curitiba time); values are null."),
+  status: z
+    .enum(["ok", "no_recent_data", "unavailable"])
+    .describe(
+      "no_recent_data: the station sent nothing since yesterday 00:00 (Curitiba time). unavailable: its answer could not " +
+        "be read (malformed or unexpected). In both cases the values are null.",
+    ),
   reading_time: z.string().nullable().describe("Time of the latest reading, Curitiba time (ISO 8601, -03:00)."),
   stale: z.boolean().nullable().describe("true when the latest reading is older than 2 hours; null without a reading."),
   level_cm: z.number().nullable().describe("River level (Nivel) of the latest reading, in cm."),
@@ -47,7 +52,7 @@ const Item = z.object({
   rain_mm: z.number().nullable().describe("Rain (Chuva) of the latest reading (one 15-minute interval), in mm."),
   rain_1h_mm: z.number().nullable().describe("Sum of the rain values in the hour ending at the latest reading; null when none. A lower bound when readings are missing."),
   rain_24h_mm: z.number().nullable().describe("Sum of the rain values in the 24 hours ending at the latest reading; null when none or when that window starts before yesterday 00:00. A lower bound when readings are missing."),
-  checked_at: z.string().datetime().describe("When this server read the station (cached up to 15 minutes)."),
+  checked_at: z.string().datetime().nullable().describe("When this server read the station (cached up to 15 minutes); null when unavailable."),
 });
 
 export const riverLevelsOutput = z.object({
@@ -68,13 +73,18 @@ type Near = { lat: number; lon: number };
 
 const key = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
-/** Bundled stations matching `station` (code, or text in name, river or municipality), nearest to `near` first. */
+/**
+ * Bundled stations matching `station` (a code, leading zeros optional, or the start of a code; or text in name, river
+ * or municipality), nearest to `near` first. Without `station`, stations on a river (which report a level) come
+ * before rain gauges.
+ */
 export function matchStations(station: string | undefined, near: Near): { s: Station; km: number }[] {
   let found: readonly Station[] = STATIONS;
   if (station !== undefined) {
     if (/^\d{1,8}$/.test(station)) {
       const code = station.padStart(8, "0");
-      found = STATIONS.filter((s) => s.code === code);
+      const exact = STATIONS.filter((s) => s.code === code);
+      found = exact.length > 0 ? exact : STATIONS.filter((s) => s.code.startsWith(station));
     } else {
       const want = key(station);
       found = want === "" ? [] : STATIONS.filter((s) => [s.name, s.river ?? "", s.municipality].some((f) => key(f).includes(want)));
@@ -82,11 +92,16 @@ export function matchStations(station: string | undefined, near: Near): { s: Sta
   }
   return found
     .map((s) => ({ s, km: Math.round(distanceM(near, s) / 100) / 10 }))
-    .sort((a, b) => a.km - b.km || a.s.code.localeCompare(b.s.code));
+    .sort((a, b) => riverFirst(a.s) - riverFirst(b.s) || a.km - b.km || a.s.code.localeCompare(b.s.code));
+  function riverFirst(s: Station): number {
+    return station === undefined && s.river === null ? 1 : 0;
+  }
 }
 
-export function stationItem(s: Station, km: number, d: { value: StationData; fetchedAt: string }, now: number): z.infer<typeof Item> {
-  const r = d.value.latest;
+type Read = { value: StationData; fetchedAt: string } | "unavailable";
+
+export function stationItem(s: Station, km: number, d: Read, now: number): z.infer<typeof Item> {
+  const r = d === "unavailable" ? null : d.value.latest;
   return {
     code: s.code,
     name: s.name,
@@ -95,16 +110,16 @@ export function stationItem(s: Station, km: number, d: { value: StationData; fet
     lat: s.lat,
     lon: s.lon,
     distance_km: km,
-    status: r === null ? "no_recent_data" : "ok",
+    status: d === "unavailable" ? "unavailable" : r === null ? "no_recent_data" : "ok",
     reading_time: r === null ? null : curitibaIso(r.at),
     // Computed at answer time, never cached: a cached reading becomes stale while it sits in the cache.
     stale: r === null ? null : now - r.at > STALE_AFTER_MS,
     level_cm: r?.level_cm ?? null,
     flow_m3s: r?.flow_m3s ?? null,
     rain_mm: r?.rain_mm ?? null,
-    rain_1h_mm: d.value.rain_1h_mm,
-    rain_24h_mm: d.value.rain_24h_mm,
-    checked_at: d.fetchedAt,
+    rain_1h_mm: d === "unavailable" ? null : d.value.rain_1h_mm,
+    rain_24h_mm: d === "unavailable" ? null : d.value.rain_24h_mm,
+    checked_at: d === "unavailable" ? null : d.fetchedAt,
   };
 }
 
@@ -131,10 +146,18 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
     }
     const picked = matches.slice(0, MAX_STATIONS_PER_CALL);
     try {
-      // One station after the other: the host gate spaces the requests 5 s apart. Any failure fails the call, so a
-      // station that was not read is never shown as no_recent_data.
-      const read: { s: Station; km: number; d: { value: StationData; fetchedAt: string } }[] = [];
-      for (const m of picked) read.push({ ...m, d: await getStationData(m.s) });
+      // One station after the other: the host gate spaces the requests 5 s apart. A host or transfer failure fails
+      // the call (a station not read is never shown as no_recent_data); an answer that cannot be read marks only
+      // that station `unavailable`.
+      const read: { s: Station; km: number; d: Read }[] = [];
+      for (const m of picked) {
+        try {
+          read.push({ ...m, d: await getStationData(m.s) });
+        } catch (err) {
+          if (!(err instanceof StationDataError)) throw err;
+          read.push({ ...m, d: "unavailable" });
+        }
+      }
       const now = Date.now();
       const more = matches.slice(MAX_STATIONS_PER_CALL).map((m) => ({ code: m.s.code, name: m.s.name }));
       const out: Output = {
@@ -145,7 +168,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
         },
         source: RIVER_SOURCE,
         source_url: ANA_SERVICE_URL,
-        checked_at: read.map((x) => x.d.fetchedAt).sort()[0]!,
+        checked_at: read.flatMap((x) => (x.d === "unavailable" ? [] : [x.d.fetchedAt])).sort()[0] ?? new Date(now).toISOString(),
         license_note: RIVER_LICENSE_NOTE,
         note: [
           EMERGENCY_NOTE,

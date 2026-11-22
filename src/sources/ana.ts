@@ -121,7 +121,7 @@ export interface StationData {
 /** A real row is about 250 characters; the cap also bounds the regex below. */
 const MAX_ROW_CHARS = 2000;
 const SIMPLE_ELEMENTS = /^(?:\s*<([A-Za-z]\w*)(?:\s*\/>|>[^<]*<\/\1>))*\s*$/;
-const NUMBER = /^-?\d{1,7}(?:\.\d{1,4})?$/;
+const NUMBER = /^[-+]?\d{1,9}(?:\.\d{1,9})?$/;
 const NO_DATA = /^Sem dados para esta estação \(Código: (\d{1,10})\) no período solicitado!$/;
 
 function fail(reason: string): never {
@@ -160,13 +160,18 @@ function rainSum(readings: Reading[], end: number, span: number, fromMs: number)
   return seen ? Math.round(sum * 100) / 100 : null;
 }
 
+/** Rows more than this far after the read time are ignored (a station clock running ahead). */
+const FUTURE_TOLERANCE_MS = 15 * 60 * 1000;
+
 /**
  * Reads one `DadosHidrometeorologicos` answer. Fails closed (source_unavailable) on anything that is not the expected
  * document: no XML declaration, a DOCTYPE or ENTITY, CDATA, a root other than `DataTable xmlns="http://MRCS/"`, an
  * `Error` other than the exact "no data" text for this code, a row for another station, an unparsable date or number,
- * a malformed row, or neither rows nor an `ErrorTable`. The "no data" answer gives `latest: null`.
+ * a malformed row, or neither rows nor an `ErrorTable`. The "no data" answer gives `latest: null`. The latest reading is
+ * the newest row (by time, not row order) with at least one value; rows with no value, or dated more than 15 minutes
+ * after `nowMs`, are not used.
  */
-export function parseStationData(code: string, body: string, fromMs: number): StationData {
+export function parseStationData(code: string, body: string, fromMs: number, nowMs: number): StationData {
   const xml = body.replace(/^﻿/, "").trim();
   if (!/^<\?xml version="1\.0" encoding="utf-8"\?>/i.test(xml)) fail("not XML");
   if (/<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(xml)) fail("DTD or CDATA");
@@ -190,13 +195,17 @@ export function parseStationData(code: string, body: string, fromMs: number): St
     if (at === null) fail("date");
     return { at, flow_m3s: num(element(inner!, "Vazao")), level_cm: num(element(inner!, "Nivel")), rain_mm: num(element(inner!, "Chuva")) };
   });
+  const usable = readings.filter(
+    (r) => r.at <= nowMs + FUTURE_TOLERANCE_MS && (r.level_cm !== null || r.flow_m3s !== null || r.rain_mm !== null),
+  );
+  if (usable.length === 0) return { code, latest: null, rain_1h_mm: null, rain_24h_mm: null };
   // Row order is not trusted: the latest reading is the one with the latest time.
-  const latest = readings.reduce((a, b) => (b.at > a.at ? b : a));
+  const latest = usable.reduce((a, b) => (b.at > a.at ? b : a));
   return {
     code,
     latest,
-    rain_1h_mm: rainSum(readings, latest.at, HOUR_MS, fromMs),
-    rain_24h_mm: rainSum(readings, latest.at, DAY_MS, fromMs),
+    rain_1h_mm: rainSum(usable, latest.at, HOUR_MS, fromMs),
+    rain_24h_mm: rainSum(usable, latest.at, DAY_MS, fromMs),
   };
 }
 
@@ -210,24 +219,37 @@ export function clearAnaCache(): void {
   gate.reset();
 }
 
+/** The station's own answer could not be read (not XML, malformed, an unknown error text): the host itself answered. */
+export class StationDataError extends SourceUnavailableError {
+  constructor(readonly cause: SourceUnavailableError) {
+    super(cause.reason);
+    this.name = "StationDataError";
+  }
+}
+
 /**
  * One GET per station per 15 minutes, through the host gate (5 s between request starts, a turn more than 10 s away
  * is rate_limited, failures remembered 60 s to 1 hour, 401/403/CAPTCHA blocks the host 10 minutes in fetchText).
+ * Only the transfer runs in the gate: an answer that cannot be read is a StationDataError for that station, not a
+ * host failure (it is not cached and does not stop requests for other stations).
  * Keyed by station code (the URL's dates change at midnight). A cached station makes no request and never waits.
  */
 export function getStationData(station: Station): Promise<Cached<StationData>> {
-  return cache.getOrLoad(`ana:${station.code}`, () =>
-    gate.run(async () => {
-      const now = Date.now();
-      const url = stationDataUrl(station.code, now);
-      const res = await fetchText(url, {
+  return cache.getOrLoad(`ana:${station.code}`, async () => {
+    const now = Date.now();
+    const res = await gate.run(() =>
+      fetchText(stationDataUrl(station.code, now), {
         timeoutMs: ANA_TIMEOUT_MS,
         maxBytes: ANA_MAX_BYTES,
         sameHostOnly: true,
         redirectPathPrefix: "/ServiceANA.asmx",
-      });
+      }),
+    );
+    try {
       if (!/^(?:text|application)\/xml\b/i.test(res.contentType.trim())) fail("not XML");
-      return parseStationData(station.code, res.body, requestPeriod(now).fromMs);
-    }),
-  );
+      return parseStationData(station.code, res.body, requestPeriod(now).fromMs, Date.now());
+    } catch (err) {
+      throw err instanceof SourceUnavailableError ? new StationDataError(err) : err;
+    }
+  });
 }

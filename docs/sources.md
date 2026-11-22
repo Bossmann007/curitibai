@@ -842,6 +842,9 @@ cited, the approach the owner approved for no-licence sources).
   IAT-PR, all "Ativo"), with `NomeEstacao`, `CodEstacao`, `NomeRio` (empty for the 0254xxxx rain gauges: `river`
   null) and `Municipio-UF` without "-PR", coordinates as published. To rebuild: download the list once, filter by
   that box (e.g. Python `xml.etree` over the `Table` rows), and replace the array with the date.
+- **Matching:** `station` is a code (leading zeros optional, or the start of a code) or text in the name, river or
+  municipality; nearest to `near` (default Praça Tiradentes) first; without `station`, river stations (which report a
+  level) come before the 0254xxxx rain gauges.
 - **Query:** one URL per station: its bundled code, `dataInicio` yesterday and `dataFim` today as Curitiba dates
   (at least 24 h of rows). User text and position never enter the URL or the cache key (`ana:<code>`).
 - **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s, and with the
@@ -850,15 +853,18 @@ cited, the approach the owner approved for no-licence sources).
 - **Rate and failures** (`src/hostGate.ts`, the same gate as GeoCuritiba): at least 5 s between request starts to the
   host; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure no request
   for 60 s (a 429's `Retry-After` when longer, at most 1 hour) and the same error is returned; 401, 403 and a CAPTCHA
-  429 block the host for 10 minutes (`src/http.ts`). Never retried in a loop. Any failure fails the whole call, so a
-  station that was not read is never shown as `no_recent_data`.
-- **Fails closed** (`source_unavailable`) on: a non-XML content type, an empty body, no XML declaration, a DOCTYPE,
+  429 block the host for 10 minutes (`src/http.ts`). Never retried in a loop. Only the transfer runs inside the gate:
+  an answer that cannot be read (below) marks that station `unavailable` and is not remembered as a host failure nor
+  cached. A transfer or host failure fails the whole call, so a station that was not read is never shown as
+  `no_recent_data`.
+- **Fails closed** (station `unavailable`, values null) on: a non-XML content type, an empty body, no XML declaration, a DOCTYPE,
   ENTITY or CDATA, a root other than `DataTable xmlns="http://MRCS/"`, a truncated document, an `Error` other than the
   exact "no data" text for the requested code, an error table next to rows, a row for another station, a row with
   nested markup or over 2,000 characters, an unparsable date or number (comma decimals included), or neither rows nor
   an error table.
-- **Fields returned:** station facts from the bundled list, `reading_time` (latest by time, row order not trusted;
-  Curitiba time with `-03:00`), `level_cm`, `flow_m3s`, `rain_mm` of that reading; `rain_1h_mm` / `rain_24h_mm` (sum
+- **Fields returned:** station facts from the bundled list, `reading_time` (the newest row with at least one value,
+  by time, row order not trusted; rows more than 15 minutes after the read time are ignored; Curitiba time with
+  `-03:00`), `level_cm`, `flow_m3s`, `rain_mm` of that reading; `rain_1h_mm` / `rain_24h_mm` (sum
   of the readings in (latest − 1 h, latest] / (latest − 24 h, latest] that have a rain value; null when none, or when
   the window starts before yesterday 00:00; gaps are not filled, so the sum is a lower bound); `stale` (latest reading
   older than 2 h, computed at answer time, not cached); `status` `no_recent_data` for the "Sem dados" answer.

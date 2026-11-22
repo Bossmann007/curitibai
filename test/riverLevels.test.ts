@@ -31,7 +31,7 @@ async function levels(args: Record<string, unknown>) {
 
 describe("parseStationData", () => {
   it("reads a real Fazendinha sample: latest reading by time, rain sums over the hour and 24 h ending at it", () => {
-    const d = parseStationData("65010000", FAZENDINHA, FROM_MS);
+    const d = parseStationData("65010000", FAZENDINHA, FROM_MS, NOW);
     expect(d.latest).toEqual({ at: Date.parse("2026-11-22T05:00:00Z"), flow_m3s: 6.98, level_cm: 202, rain_mm: 0 });
     expect(d.rain_1h_mm).toBe(0);
     // 0.20 at 17:15, 0.60 at 17:30 and 0.20 at 18:00 of the 21st; the 0.20 at 01:30 of the 21st is outside.
@@ -39,7 +39,7 @@ describe("parseStationData", () => {
   });
 
   it("reads an empty element as no value, never 0 (ETE Araucária has no flow)", () => {
-    const d = parseStationData("65019980", ARAUCARIA, FROM_MS);
+    const d = parseStationData("65019980", ARAUCARIA, FROM_MS, NOW);
     expect(d.latest).toMatchObject({ flow_m3s: null, level_cm: 169, rain_mm: 0 });
     expect(d.rain_24h_mm).toBe(2.8);
   });
@@ -48,19 +48,19 @@ describe("parseStationData", () => {
     const rows = FAZENDINHA.match(/<DadosHidrometereologicos\b[\s\S]*?<\/DadosHidrometereologicos>/g)!;
     const reversed = FAZENDINHA.replace(rows.join("\r\n      "), [...rows].reverse().join("\r\n      "));
     expect(reversed).not.toBe(FAZENDINHA);
-    expect(parseStationData("65010000", reversed, FROM_MS)).toEqual(parseStationData("65010000", FAZENDINHA, FROM_MS));
+    expect(parseStationData("65010000", reversed, FROM_MS, NOW)).toEqual(parseStationData("65010000", FAZENDINHA, FROM_MS, NOW));
   });
 
   it("gives no 24 h sum when the window starts before the requested period, and no sum without rain values", () => {
     const later = Date.parse("2026-11-21T12:00:00-03:00");
-    expect(parseStationData("65010000", FAZENDINHA, later)).toMatchObject({ rain_1h_mm: 0, rain_24h_mm: null });
+    expect(parseStationData("65010000", FAZENDINHA, later, NOW)).toMatchObject({ rain_1h_mm: 0, rain_24h_mm: null });
     const dry = FAZENDINHA.replace(/<Chuva>[^<]*<\/Chuva>/g, "<Chuva />");
-    expect(parseStationData("65010000", dry, FROM_MS)).toMatchObject({ rain_1h_mm: null, rain_24h_mm: null, latest: { rain_mm: null } });
+    expect(parseStationData("65010000", dry, FROM_MS, NOW)).toMatchObject({ rain_1h_mm: null, rain_24h_mm: null, latest: { rain_mm: null } });
   });
 
   it("reads ANA's 'no data' answer (with its schema) as no reading, only for the requested code", () => {
-    expect(parseStationData("02549127", noData("02549127"), FROM_MS)).toEqual({ code: "02549127", latest: null, rain_1h_mm: null, rain_24h_mm: null });
-    expect(() => parseStationData("02549086", noData("02549127"), FROM_MS)).toThrow(SourceUnavailableError);
+    expect(parseStationData("02549127", noData("02549127"), FROM_MS, NOW)).toEqual({ code: "02549127", latest: null, rain_1h_mm: null, rain_24h_mm: null });
+    expect(() => parseStationData("02549086", noData("02549127"), FROM_MS, NOW)).toThrow(SourceUnavailableError);
   });
 
   const head = '<?xml version="1.0" encoding="utf-8"?>\r\n<DataTable xmlns="http://MRCS/">';
@@ -80,14 +80,25 @@ describe("parseStationData", () => {
     ["a row without a date", row(ok.replace(/<DataHora>.*<\/DataHora>/, ""))],
     ["an impossible date", row(ok.replace("2026-11-22 02:00:00", "2026-02-30 02:00:00"))],
     ["a comma decimal", row(ok.replace("<Nivel>2</Nivel>", "<Nivel>2,5</Nivel>"))],
+    ["an exponent", row(ok.replace("<Nivel>2</Nivel>", "<Nivel>1E-2</Nivel>"))],
     ["markup inside a value", row(ok.replace("<Nivel>2</Nivel>", "<Nivel><b>2</b></Nivel>"))],
     ["an unclosed row", row(ok).replace("</DadosHidrometereologicos>", "")],
   ])("fails closed on %s", (_label, body) => {
-    expect(() => parseStationData("65010000", body, FROM_MS)).toThrow(SourceUnavailableError);
+    expect(() => parseStationData("65010000", body, FROM_MS, NOW)).toThrow(SourceUnavailableError);
   });
 
-  it("accepts the minimal well-formed row the cases above break", () => {
-    expect(parseStationData("65010000", row(ok), FROM_MS).latest).toMatchObject({ level_cm: 2, flow_m3s: 1, rain_mm: 0 });
+  it("accepts the minimal well-formed row the cases above break, and more decimals or a plus sign", () => {
+    expect(parseStationData("65010000", row(ok), FROM_MS, NOW).latest).toMatchObject({ level_cm: 2, flow_m3s: 1, rain_mm: 0 });
+    const precise = row(ok.replace("<Vazao>1</Vazao>", "<Vazao>6.98123</Vazao>").replace("<Chuva>0</Chuva>", "<Chuva>+0.2</Chuva>"));
+    expect(parseStationData("65010000", precise, FROM_MS, NOW).latest).toMatchObject({ flow_m3s: 6.98123, rain_mm: 0.2 });
+  });
+
+  it("takes the newest row with a value: a newer row with every value empty, or dated in the future, is skipped", () => {
+    const rows = FAZENDINHA.match(/<DadosHidrometereologicos\b[\s\S]*?<\/DadosHidrometereologicos>/g)!;
+    const empty = rows[0]!.replace("02:00:00", "02:15:00").replace(/<(Vazao|Nivel|Chuva)>[^<]*<\/\1>/g, "<$1 />");
+    const future = rows[0]!.replace("2026-11-22 02:00:00", "2026-11-23 10:00:00").replace("202.00", "999.00");
+    const body = FAZENDINHA.replace(rows[0]!, `${future}${empty}${rows[0]!}`);
+    expect(parseStationData("65010000", body, FROM_MS, NOW).latest).toEqual({ at: Date.parse("2026-11-22T05:00:00Z"), flow_m3s: 6.98, level_cm: 202, rain_mm: 0 });
   });
 });
 
@@ -168,12 +179,13 @@ describe("river_levels", () => {
     for (const c of calls) expect(c.url).not.toMatch(/iguac|25\.6|49\.4/i);
   });
 
-  it("without arguments reads the 3 stations nearest to Curitiba centre", async () => {
-    const calls = stubFetch({ ...route("02549127"), ...route("02549118"), ...route("02549086") });
+  it("without arguments reads the 3 river stations nearest to Curitiba centre (rain gauges after them)", async () => {
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090"), ...route("65004995") });
     const pending = levels({});
     await vi.advanceTimersByTimeAsync(10_000);
     const out = await pending;
-    expect(out.data.stations.map((s) => [s.code, s.distance_km])).toEqual([["02549127", 6.2], ["02549118", 7.8], ["02549086", 10.3]]);
+    expect(out.data.stations.map((s) => [s.code, s.distance_km])).toEqual([["65009000", 10.4], ["65006090", 11.2], ["65004995", 15.5]]);
+    expect(out.data.more_matches.slice(0, 4).map((m) => m.code)).toEqual(["65006040", "65010000", "65015400", "65019980"]);
     expect(out.data.more_matches).toHaveLength(STATIONS.length - 3);
     expect(calls).toHaveLength(3);
   });
@@ -182,6 +194,7 @@ describe("river_levels", () => {
     const calls = stubFetch({});
     expect(errorOf(await call({ station: "rio amazonas" }))).toEqual({ error: "invalid_argument", message: expect.stringMatching(/No bundled station/) });
     expect(errorOf(await call({ station: "12345678" }))).toMatchObject({ error: "invalid_argument" });
+    expect(errorOf(await call({ station: "999" }))).toMatchObject({ error: "invalid_argument" });
     expect(calls).toHaveLength(0);
   });
 
@@ -197,9 +210,9 @@ describe("river_levels", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("fails closed on a non-XML answer", async () => {
+  it("fails closed on a non-XML answer: the station is unavailable, with no values", async () => {
     stubFetch(route("65010000", { contentType: "text/html; charset=utf-8", body: "<html>maintenance</html>" }));
-    expect(errorOf(await call({ station: "65010000" }))).toEqual({ error: "source_unavailable" });
+    expect((await levels({ station: "65010000" })).data.stations[0]).toMatchObject({ status: "unavailable", level_cm: null, reading_time: null });
   });
 
   it("does not ask again for 60 s after a failure (any station), then asks once more", async () => {
@@ -228,8 +241,31 @@ describe("river_levels", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("fails the whole call when a later station fails: a station not read is never shown as no_recent_data", async () => {
-    const calls = stubFetch({ ...route("02549127"), ...route("02549118", { status: 503 }), ...route("02549086") });
+  it("matches the start of a code", async () => {
+    stubFetch(route("65009000"));
+    expect((await levels({ station: "65009" })).data.stations.map((s) => s.code)).toEqual(["65009000"]);
+  });
+
+  it("marks only a station whose answer cannot be read as unavailable; the host stays open for the others", async () => {
+    const calls = stubFetch({
+      ...route("65009000"),
+      ...route("65006090", { body: noData("65006090").replace("Sem dados", "Erro interno") }),
+      ...route("65004995"),
+    });
+    const pending = levels({});
+    await vi.advanceTimersByTimeAsync(10_000);
+    const out = await pending;
+    expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([["65009000", "no_recent_data"], ["65006090", "unavailable"], ["65004995", "no_recent_data"]]);
+    expect(out.data.stations[1]).toMatchObject({ level_cm: null, rain_24h_mm: null, checked_at: null });
+    expect(calls).toHaveLength(3);
+    // Not a host failure: the next call is not refused (and the unreadable station is asked again, not cached).
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await levels({ station: "65006090" })).data.stations[0]!.status).toBe("unavailable");
+    expect(calls).toHaveLength(4);
+  });
+
+  it("fails the whole call when a later station's transfer fails: a station not read is never shown as no_recent_data", async () => {
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090", { status: 503 }), ...route("65004995") });
     const pending = call({});
     await vi.advanceTimersByTimeAsync(10_000);
     expect(errorOf(await pending)).toEqual({ error: "source_unavailable" });
