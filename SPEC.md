@@ -40,6 +40,8 @@ public toilet / park / bike lane, and when is it open" from IPPUC's GeoCuritiba 
   Curitiba landlines and three-digit service numbers are kept, mobiles and anything not understood are dropped;
   only `curitiba.pr.gov.br` e-mail addresses are kept. Fields not listed above are never requested.
   `divulgar_endereco` other than "Sim" drops the address and the position.
+- Owner decisions: publishing facts from layers with no licence found, IPPUC cited (2026-11-21); every
+  curitiba.pr.gov.br e-mail kept as published, no name detection (2026-11-22).
 - Coordinates in WGS84 (`outSR=4326`); an answer in any other spatial reference fails closed.
 
 ## Files

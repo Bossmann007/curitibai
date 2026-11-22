@@ -752,11 +752,14 @@ in the city's own categories. Built.
   The kept e-mails of all 24 point layers (136 distinct on 2026-11-21) were listed: role or unit mailboxes (CRAS,
   Conselho Tutelar, Faróis do Saber named after their patrons, cemeteries, regional offices). Known limit: the local
   part of a city address is not checked, and 2 of them could not be told apart from a person's initials and name.
+  Owner decision (2026-11-22): all 136 kept, including two that may be personal staff mailboxes; they are official
+  addresses published by the Prefeitura on a public map. No name detection is added.
 - **Distance:** straight line; to the point, to a park's centroid (not its edge or gate), to the nearest point of a
   bike segment (local flat projection). `radius_m` at most 3,000.
 - **Terms / licence:** none found on the services, the REST directory or IPPUC's GeoCuritiba pages (owner's research,
   2026-11-21). Facts only, with `source` "IPPUC / GeoCuritiba", the layer URL and `license_note` "No licence found;
   facts only; IPPUC cited."
+  Owner approval (2026-11-21): publishing facts from these layers with no licence found, IPPUC cited.
 - **Requests to the host on 2026-11-21:** the two layer lists (once each), 27 count queries and 27 small samples or
   contact surveys while building, three live calls of the built tool (Ecocidadão: 40 records, 26 landlines kept, no
   mobile and no webmail address returned; Parques within 3 km of the centre: 5; Estrutura Cicloviária within 3 km: 215)
