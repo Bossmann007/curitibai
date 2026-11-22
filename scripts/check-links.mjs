@@ -3,7 +3,8 @@
 // #fragment, to a heading or an explicit <a id="..."> in that file. External links (http, https, mailto) are not
 // checked. Node built-ins only. Exit 0 = every link resolves; exit 1 lists each broken link as file:line.
 // Usage: node scripts/check-links.mjs [file.md ...] (default: README.md, CONTRIBUTING.md, SECURITY.md,
-// CHANGELOG.md and docs/*.md, from the repository root).
+// CHANGELOG.md and docs/*.md, from the repository root). Inline links and reference definitions ("[x]: path") are
+// checked; setext headings (=== / ---) are not seen.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -64,14 +65,15 @@ function anchorsOf(file) {
       fence = f[1];
       continue;
     }
-    const h = /^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
+    const h = /^ {0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$/.exec(line);
     if (h) {
       const base = slug(h[1]);
       const n = seen.get(base) ?? 0;
       seen.set(base, n + 1);
       anchors.add(n === 0 ? base : `${base}-${n}`);
     }
-    for (const a of line.matchAll(/<a\s+[^>]*\b(?:id|name)="([^"]+)"/g)) anchors.add(a[1]);
+    const prose = line.replace(/(`+)(?:(?!\1).)+?\1/g, (s) => " ".repeat(s.length));
+    for (const a of prose.matchAll(/<a\s+[^>]*\b(?:id|name)="([^"]+)"/g)) anchors.add(a[1]);
   }
   anchorCache.set(file, anchors);
   return anchors;
@@ -83,24 +85,30 @@ let checked = 0;
 for (const file of files) {
   const lines = proseLines(readFileSync(file, "utf8"));
   lines.forEach((line, i) => {
-    for (const m of line.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
-      const target = m[1];
+    const targets = [...line.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)].map((m) => m[1]);
+    const ref = /^ {0,3}\[[^\]]+\]:\s*<?([^\s>]+)/.exec(line);
+    if (ref) targets.push(ref[1]);
+    for (const target of targets) {
       if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue; // http:, https:, mailto: ...
       checked += 1;
+      const where = `${relative(root, file)}:${i + 1}`;
       const hash = target.indexOf("#");
       const pathPart = hash === -1 ? target : target.slice(0, hash);
-      const fragment = hash === -1 ? null : decodeURIComponent(target.slice(hash + 1));
-      const dest = pathPart === "" ? file : resolve(dirname(file), decodeURIComponent(pathPart));
-      const where = `${relative(root, file)}:${i + 1}`;
+      let fragment;
+      let dest;
+      try {
+        fragment = hash === -1 ? null : decodeURIComponent(target.slice(hash + 1));
+        dest = pathPart === "" ? file : resolve(dirname(file), decodeURIComponent(pathPart));
+      } catch {
+        broken.push(`${where}: ${target} (malformed URL encoding)`);
+        continue;
+      }
       if (!existsSync(dest)) {
         broken.push(`${where}: ${target} (no such file)`);
         continue;
       }
-      if (fragment === null) continue;
-      if (statSync(dest).isDirectory() || !dest.endsWith(".md")) {
-        broken.push(`${where}: ${target} (anchor on a file that is not Markdown)`);
-        continue;
-      }
+      // Fragments on other files (GitHub line anchors such as #L10) are not checked.
+      if (fragment === null || statSync(dest).isDirectory() || !dest.endsWith(".md")) continue;
       if (!anchorsOf(dest).has(fragment)) broken.push(`${where}: ${target} (no such anchor)`);
     }
   });

@@ -89,6 +89,8 @@ To use `local_csv_summary`, `city_services_search`, `city_points_search`, `event
 **Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: the tools then read
 only the local file, as before 0.18.0, and make no network call.
 
+<a id="tools"></a>
+
 ## Tools at a glance
 
 All 22 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
@@ -125,7 +127,8 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 
 - **Live tools** ask the source on each call and keep the answer in memory only (10 minutes; 6 hours for the
   vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar). When
-  a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` and no data.
+  a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` and no data; some tools return what they
+  already read with `partial: true`, or `rate_limited` ([Tool reference](docs/tools.md#tool-reference)).
 - **Nightly tools** (`events_search`, `useful_phones`) read a copy that a GitHub Actions workflow collects every night
   and publishes on this repository's `data` branch (details below).
 - **Local tools** read files you download yourself into `CURITIBAI_DATA_DIR`: the URBS daily exports (bus tools and
@@ -155,9 +158,13 @@ schedule, the published files, how to turn it back on and how to run the collect
   `city_facilities_search` never sends the user's position or neighbourhood: it reads a whole layer and filters it in
   the server. `river_levels` never sends the user's text or position: only bundled station codes and dates reach ANA.
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
-  objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through (below).
+  objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through ([details](docs/privacy.md#details)).
 - Contact and removal requests: [GitHub issues of this repository](https://github.com/Bossmann007/curitibai/issues);
   for removal, use the [removal request form](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml).
+
+<!-- Sections that moved to docs/ keep their old ids here, so saved links land on this list. -->
+<a id="tool-reference"></a><a id="compared-with-the-curitiba-app"></a><a id="deferred"></a><a id="limits"></a>
+<a id="local-data-files"></a><a id="privacy-and-safety"></a><a id="collection-rules"></a><a id="development"></a>
 
 ## Documentation
 
@@ -183,6 +190,8 @@ schedule, the published files, how to turn it back on and how to run the collect
 - Issue forms: [something does not work](https://github.com/Bossmann007/curitibai/issues/new?template=bug.yml),
   [suggest a data source](https://github.com/Bossmann007/curitibai/issues/new?template=data-source.yml) and
   [ask for content removal](https://github.com/Bossmann007/curitibai/issues/new?template=removal-request.yml).
+
+<a id="licences-code-and-data"></a>
 
 ## Licences
 
