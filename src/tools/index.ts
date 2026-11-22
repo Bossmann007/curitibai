@@ -14,6 +14,7 @@ import { nextBusesNear } from "./nextBusesNear.js";
 import { openDatasetsSearch } from "./openDatasetsSearch.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
+import { riverLevels } from "./riverLevels.js";
 import { usefulPhones } from "./usefulPhones.js";
 import { vaccinationSitesSearch } from "./vaccinationSitesSearch.js";
 import { weatherAlerts } from "./weatherAlerts.js";
@@ -40,4 +41,5 @@ export const tools = [
   vaccinationSitesSearch,
   usefulPhones,
   cityFacilitiesSearch,
+  riverLevels,
 ] as const;

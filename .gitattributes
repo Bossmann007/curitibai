@@ -2,3 +2,4 @@
 scripts/* text eol=lf
 test/fixtures/carta_servicos_synthetic/carta-servicos.json -text
 test/fixtures/useful_phones/*.html -text
+test/fixtures/ana/*.xml -text

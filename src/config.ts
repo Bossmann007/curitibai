@@ -6,7 +6,7 @@ export const MAX_REDIRECTS = 3;
 /**
  * The only hosts the server contacts (exact match, redirects included). The first five robots.txt return 404 (no
  * restriction); imunizaja.curitiba.pr.gov.br's robots.txt does not disallow /locaisvacinacao/; geocuritiba.ippuc.org.br's robots.txt
- * returns 404 (checked 2026-11-21) (docs/sources.md).
+ * returns 404 (checked 2026-11-21); telemetriaws1.ana.gov.br's robots.txt returns 404 (checked 2026-11-22) (docs/sources.md).
  * The file hosts mid-dadosabertos.curitiba.pr.gov.br and dadosabertos.c3sl.ufpr.br are excluded on purpose:
  * their robots.txt says `Disallow: /`. www.urbs.curitiba.pr.gov.br is out of scope. overpass-api.de is excluded too:
  * its robots.txt disallows /api/.
@@ -19,4 +19,5 @@ export const ALLOWED_HOSTS = [
   "ovp.dresel.systems",
   "imunizaja.curitiba.pr.gov.br",
   "geocuritiba.ippuc.org.br",
+  "telemetriaws1.ana.gov.br",
 ] as const;
