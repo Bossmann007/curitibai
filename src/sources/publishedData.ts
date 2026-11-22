@@ -1,6 +1,6 @@
 import { TtlCache } from "../cache.js";
 import { createHostGate } from "../hostGate.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
+import { fetchText, ResponseTooLargeError, SourceUnavailableError } from "../http.js";
 import { LocalFileError } from "../localfs.js";
 
 /**
@@ -45,18 +45,30 @@ export class InvalidPublishedError extends Error {
   }
 }
 
-// Validated files only; a failure is not cached. One gate for the host: requests at least 1 s apart, and after a
-// failure of the host (network error, timeout, HTTP error other than 404, 429 with its Retry-After) no request to it
-// for at least 60 s. A 404 or a file that fails validation is about that file only: it is decided outside the gate,
-// so it never blocks the other file.
+// Validated files only. Two failure memories, 60 s each, no request meanwhile:
+// - the host gate: requests at least 1 s apart; after a failure of the host (network error, timeout, an HTTP error
+//   other than 404, a 429 with its Retry-After) no request to it for either file;
+// - per file: a 404, a body over the cap, a redirect, a body that is not JSON or fails the schema is about that file
+//   only, so it never blocks the other file.
+export const FILE_FAILURE_WAIT_MS = 60_000;
 const newCache = () => new TtlCache(PUBLISHED_CACHE_TTL_MS, () => Date.now());
 let cache = newCache();
 const gate = createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 });
+const fileFailures = new Map<PublishedFile, { until: number; error: unknown }>();
 
 /** Tests only. */
 export function clearPublishedState(): void {
   cache = newCache();
   gate.reset();
+  fileFailures.clear();
+}
+
+/** Errors of one file, not of the host (decided inside the gate, remembered per file outside it). */
+function isFileError(err: unknown): boolean {
+  return (
+    err instanceof ResponseTooLargeError ||
+    (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason.includes("redirect")))
+  );
 }
 
 /**
@@ -66,29 +78,39 @@ export function clearPublishedState(): void {
 export async function loadPublished<T>(file: PublishedFile, maxBytes: number, build: (json: unknown) => T): Promise<T> {
   const url = publishedUrl(file);
   const { value } = await cache.getOrLoad(url, async () => {
-    const body = await gate.run(async () => {
+    const remembered = fileFailures.get(file);
+    if (remembered !== undefined && Date.now() < remembered.until) throw remembered.error;
+    // Host failures are thrown here and remembered by the gate; file failures come back as values.
+    const fetched = await gate.run(async (): Promise<{ body: string } | { fileError: unknown }> => {
       try {
-        return (
-          await fetchText(url, {
-            maxBytes,
-            timeoutMs: PUBLISHED_TIMEOUT_MS,
-            sameHostOnly: true,
-            redirectPathPrefix: PUBLISHED_PATH_PREFIX,
-          })
-        ).body;
+        const res = await fetchText(url, {
+          maxBytes,
+          timeoutMs: PUBLISHED_TIMEOUT_MS,
+          sameHostOnly: true,
+          redirectPathPrefix: PUBLISHED_PATH_PREFIX,
+        });
+        return { body: res.body };
       } catch (err) {
-        if (err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
+        if (isFileError(err)) return { fileError: err };
         throw err;
       }
     });
-    if (body === null) throw new NotPublishedError();
-    let json: unknown;
     try {
-      json = JSON.parse(body);
-    } catch {
-      throw new InvalidPublishedError();
+      if ("fileError" in fetched) {
+        const err = fetched.fileError;
+        throw err instanceof SourceUnavailableError && err.reason === "HTTP 404" ? new NotPublishedError() : err;
+      }
+      let json: unknown;
+      try {
+        json = JSON.parse(fetched.body);
+      } catch {
+        throw new InvalidPublishedError();
+      }
+      return build(json);
+    } catch (err) {
+      fileFailures.set(file, { until: Date.now() + FILE_FAILURE_WAIT_MS, error: err });
+      throw err;
     }
-    return build(json);
   });
   return value;
 }

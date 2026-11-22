@@ -37,8 +37,9 @@ cost.
   `ALLOWED_HOSTS`), `fetchText` with the existing caps (2 MB, 512 KB), 10 s timeout, `sameHostOnly`,
   `redirectPathPrefix: /Bossmann007/curitibai/data`; JSON parse then the existing `buildEvents` / `buildPhones`
   (strict schemas, fail closed); the validated result cached 1 hour; one `createHostGate` for the host (1 s apart,
-  5 s queue limit, failure memory 60 s or a 429's Retry-After) around the request only: a 404 and the JSON and
-  schema checks are decided outside the gate, so one file's problem never blocks the other. HTTP 404 → `data_not_available` "no published copy yet".
+  5 s queue limit, failure memory 60 s or a 429's Retry-After) for host failures (network, timeout, HTTP errors
+  other than 404, 429); a separate 60 s memory per file for that file's own failures (404, body over the cap, a
+  redirect, not JSON, schema), so one file's problem never blocks the other and is not asked again for 60 s. HTTP 404 → `data_not_available` "no published copy yet".
 - **Freshness**: `checked_at` from the file; `stale: true` after 3 days with a note that the nightly collection may
   have stopped (published copy); `events_search` keeps refusing files over 7 days old. `useful_phones` gains
   `checked_at` and `stale` (keeps `fetched_at`) and, like `events_search`, refuses a `checked_at` in the future. A too-old local file's error now says to remove it to use the

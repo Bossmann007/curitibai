@@ -189,6 +189,33 @@ describe("published nightly copy", () => {
     expect(calls.map((c) => c.url)).toEqual([EVENTS_URL, PHONES_URL]);
   });
 
+  it("an events file over the cap or failing the schema does not block the phones file", async () => {
+    const calls = stubFetch({
+      [`GET ${EVENTS_URL}`]: { body: "x", headers: { "content-length": String(10 * 1024 * 1024) } },
+      [`GET ${PHONES_URL}`]: json({ ...phonesFile(new Date()), count: 1 }),
+    });
+    expect(errorOf(await events())).toMatchObject({ error: "source_unavailable" });
+    expect(errorOf(await phones())).toMatchObject({ error: "invalid_data" });
+    expect(calls.map((c) => c.url)).toEqual([EVENTS_URL, PHONES_URL]);
+  });
+
+  it("remembers a file's own failure (404, invalid) for 60 s: no new request, then asks again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-22T12:00:00Z"));
+    const calls = stubFetch({
+      [`GET ${EVENTS_URL}`]: { status: 404, body: "404: Not Found" },
+      [`GET ${PHONES_URL}`]: { body: "not json" },
+    });
+    for (let i = 0; i < 2; i++) {
+      expect(errorOf(await events())).toMatchObject({ error: "data_not_available" });
+      expect(errorOf(await phones())).toMatchObject({ error: "invalid_data" });
+    }
+    expect(calls).toHaveLength(2);
+    vi.setSystemTime(new Date(Date.now() + 61_000));
+    expect(errorOf(await events())).toMatchObject({ error: "data_not_available" });
+    expect(calls).toHaveLength(3);
+  });
+
   it("useful_phones refuses a checked_at in the future, as events_search does", async () => {
     stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() + 2 * DAY))) });
     expect(errorOf(await phones())).toMatchObject({ error: "invalid_data" });

@@ -452,7 +452,8 @@ The job has `contents: write` only for itself, a 15-minute timeout, and never ov
    `https://raw.githubusercontent.com/Bossmann007/curitibai/data/events/events.json` and
    `https://raw.githubusercontent.com/Bossmann007/curitibai/data/phones/phones.json`, cached 1 hour, at most 2 MB and
    512 KB, same host and path only, checked against the same strict schema as a local file (anything else is
-   `invalid_data` and nothing is returned); after a failure it is not asked again for 60 s. Before the first nightly
+   `invalid_data` and nothing is returned); after a failure it is not asked again for 60 s (a failure of
+   `raw.githubusercontent.com` itself pauses both files, a problem with one file only that file). Before the first nightly
    run has published anything the tools answer `data_not_available`.
 
 **Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: the tools then read

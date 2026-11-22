@@ -720,9 +720,10 @@ in the city's own categories. Built.
   `https://raw.githubusercontent.com/Bossmann007/curitibai/data/events/events.json` or `.../phones/phones.json`:
   fixed URLs, `src/http.ts` allowlist, same host and `/Bossmann007/curitibai/data` path only on redirects, 10 s
   timeout, 2 MB / 512 KB caps, the same strict schemas as the local file (`buildEvents`, `buildPhones`; fail closed),
-  the validated result cached 1 hour, and one host gate `src/hostGate.ts` around the request (one request per second
-  at most, no request for 60 s after a host failure, or a 429's Retry-After); a 404 or a file failing validation is
-  decided outside the gate, so it never blocks the other file. HTTP 404 (before the first run) is `data_not_available`.
+  the validated result cached 1 hour, and one host gate `src/hostGate.ts` (one request per second at most; no
+  request for 60 s after a host failure such as a network error, a 5xx or a 429, or for the 429's Retry-After). A
+  file's own failure (404, body over the cap, a redirect, not JSON, schema) is remembered 60 s for that file only, so
+  it never blocks the other file. HTTP 404 (before the first run) is `data_not_available`.
 - **Freshness:** both tools return the file's `checked_at` and `stale: true` after 3 days, with a note that the
   nightly collection may have stopped; `events_search` refuses a file over 7 days old. GitHub says the `schedule`
   event "can be delayed during periods of high loads" and that "some queued jobs may be dropped", and disables scheduled workflows in public repositories after 60 days
