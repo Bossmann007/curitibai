@@ -207,14 +207,17 @@ A warning the server cannot read makes the tool return `source_unavailable` rath
 
 ### `river_levels` data quality
 
-`river_levels` readings are automatic telemetry: nobody has checked them. ANA publishes validated ("consistidos") data
-only months later, and this tool never reads it. A station can stop sending, or send wrong values (a stuck sensor, a
+`river_levels` readings are automatic telemetry: nobody has checked them. ANA also publishes validated (consistidos)
+series after deeper analysis ([ANA](https://www.gov.br/ana/pt-br/assuntos/noticias-e-eventos/noticias/agencia-disponibiliza-series-historicas-de-dados-de-niveis-e-vazoes-de-estacoes-em-todo-o-pais)); this tool reads only the raw telemetry. A station can stop sending, or send wrong values (a stuck sensor, a
 spike, maintenance). Each station gets a `quality` computed only from the readings of the last 24 h that the tool has
 already read (no extra request), and the raw values are never hidden or changed:
 
-- `out_of_range`: a negative level, flow or rain, or more than 150 mm of rain in one 15-minute reading.
+- `out_of_range`: a negative level, flow or rain, or more than 150 mm of rain in one 15-minute reading. A negative
+  level can be a legitimate gauge zero in a dry spell; the flag errs on the side of caution.
 - `level_spike`: the level jumps more than 100 cm between readings 15 minutes apart and comes back (within 50 cm of the
-  level before) within the next hour. A jump that stays is not flagged, since it may be a real rise.
+  level before) within the next hour. A jump that stays is not flagged, since it may be a real rise. This check does
+  not cover a jump that stays (e.g. a flood wave rising 150 cm in 15 min then receding slowly) or a spike whose return
+  takes over 1 h.
 - `level_jump_unconfirmed`: the same jump in the last hour, not back yet (it has had no time to come back).
 - `level_stuck`: the level is identical for 6 h or more (at least 20 readings) while 10 mm or more of rain fell at the
   station. A flat level on a dry day is normal and is not flagged.
