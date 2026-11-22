@@ -44,8 +44,7 @@ cost.
 
 ## Prior art
 
-"Git scraping" (a scheduled GitHub Actions job committing scraped JSON to the repository, Simon Willison 2020) is the
-pattern adopted; no extra action or service is used. The collector, schemas, HTTP client and host gate are reused.
+The "git scraping" pattern (a scheduled GitHub Actions job committing collected JSON to the repository) is adopted; no extra action or service is used. The collector, schemas, HTTP client and host gate are reused.
 
 ## Files
 

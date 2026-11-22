@@ -29,7 +29,7 @@ pubgit() { git -C "$pub" -c "http.https://github.com/.extraheader=$auth" "$@"; }
 git -C "$pub" init -q
 git -C "$pub" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
 rc=0
-pubgit ls-remote --exit-code --heads origin "$BRANCH" >/dev/null || rc=$?
+pubgit ls-remote --exit-code origin "refs/heads/$BRANCH" >/dev/null || rc=$?
 if [[ $rc == 0 ]]; then
   pubgit fetch -q --depth=1 origin "$BRANCH"
   git -C "$pub" checkout -q -b "$BRANCH" FETCH_HEAD

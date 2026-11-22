@@ -816,8 +816,11 @@ must run at the top of a checkout (exit 2 elsewhere).
 - **Terms inherited by anyone reusing the server's output**: PNCP and INMET data are treated under CC BY-ND 3.0 (the
   gov.br notice: attribution, no derivatives); CNES data under the strictest of the Ministry's notices (CC BY-ND 3.0,
   CC BY-NC-SA 4.0, MIT: attribution, non-commercial, no derivatives). Each tool's `license_note` says which applies.
-  The Carta de Serviços catalog (no licence found) and the events calendar (no licence published; facts and links
-  only) are not part of this repository.
+  The Carta de Serviços catalog (no licence found) is not part of this repository. The events calendar and the
+  "Telefones Úteis" page of the Instituto Municipal de Turismo (no licence published) are not on `main`; since 0.18.0
+  the nightly workflow publishes facts and links only from them (event titles, dates, times, places, categories and
+  links; phone names, sections and numbers) on the separate public branch `data`, with the Instituto cited in each
+  tool's `attribution` (owner approval, 2026-11-22).
 - **IPPUC / GeoCuritiba data** (`city_facilities_search`): no licence found (checked 2026-11-21); facts only, with
   IPPUC cited as "IPPUC / GeoCuritiba" and the layer URL in every result.
 - **ANA telemetry data** (`river_levels`): no licence found (checked 2026-11-22); facts only, with ANA cited and the

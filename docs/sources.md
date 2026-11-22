@@ -721,8 +721,8 @@ in the city's own categories. Built.
   the validated result cached 1 hour, and the host gate `src/hostGate.ts` (one request per second at most, no
   request for 60 s after a failure). HTTP 404 (before the first run) is `data_not_available`.
 - **Freshness:** both tools return the file's `checked_at` and `stale: true` after 3 days, with a note that the
-  nightly collection may have stopped; `events_search` refuses a file over 7 days old. GitHub "can delay" scheduled
-  runs at busy times and may drop queued jobs, and disables scheduled workflows in public repositories after 60 days
+  nightly collection may have stopped; `events_search` refuses a file over 7 days old. GitHub says the `schedule`
+  event "can be delayed during periods of high loads" and that "some queued jobs may be dropped", and disables scheduled workflows in public repositories after 60 days
   without repository activity
   (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
   checked 2026-11-22); README "Events" says how to re-enable it.
