@@ -245,6 +245,7 @@ export interface SearchPage extends ParsedPage {
  * supplier, user and free-text fields (`fornecedor_*`, `usuario_nome`, `informacao_complementar`) never reach it.
  */
 export function parseSearch(body: string): SearchPage {
+  if (body.trim() === "") return { items: [], received: 0, discarded: 0, lastPage: true, oldestUpdate: null };
   const json = parseJson(body) as { items?: unknown; total?: unknown } | null;
   const list = json?.items;
   if (!Array.isArray(list) || typeof json?.total !== "number") throw new SourceUnavailableError("unexpected PNCP response");

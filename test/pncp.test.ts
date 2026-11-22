@@ -775,12 +775,14 @@ describe("procurement_search host gate (PNCP)", () => {
     const starts: number[] = [];
     globalThis.fetch = (async (input: string | URL) => {
       starts.push(Date.now());
-      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      const url = new URL(String(input));
+      const page = Number(url.searchParams.get("pagina"));
+      if (url.pathname === "/api/search") return new Response(searchPage([]), { status: 200 });
       return new Response(syntheticPncpPage(page * 100, 0, 0), { status: 200 });
     }) as typeof fetch;
     const t0 = Date.now();
     const a = search();
-    const b = search({ modality: 8 });
+    const b = search({ query: "bb", modality: 8 });
     await vi.advanceTimersByTimeAsync(PNCP_MIN_INTERVAL_MS - 1);
     expect(starts).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1);
@@ -816,8 +818,9 @@ describe("procurement_search text search (PNCP site search)", () => {
         searchPage(
           [
             ...records(1, 1, 0),
+            ...records(3, 1, 0, { dataPublicacaoPncp: "" }),
             ...records(2, 1, 0, { dataPublicacaoPncp: "2026-11-20T08:00:00", dataAtualizacao: "2026-11-20T08:00:00" }),
-            ...records(300, 98, 0, { dataPublicacaoPncp: "2026-09-01T08:00:00", dataAtualizacao: "2026-10-01T08:00:00" }),
+            ...records(300, 97, 0, { dataPublicacaoPncp: "2026-09-01T08:00:00", dataAtualizacao: "2026-10-01T08:00:00" }),
           ],
           5000,
         ),
@@ -825,7 +828,7 @@ describe("procurement_search text search (PNCP site search)", () => {
     });
     const data = dataOf(await search({ query: "objeto" }));
     expect(data.items.map((i) => i.pncp_id)).toEqual(["76417005000186-1-000001/2026"]);
-    expect(data).toMatchObject({ partial: false, next_page: null });
+    expect(data).toMatchObject({ partial: false, next_page: null, discarded: 1 });
     expect(calls).toHaveLength(1);
   });
 
@@ -859,6 +862,8 @@ describe("procurement_search text search (PNCP site search)", () => {
     expect(calls).toHaveLength(1);
     resetPncpGate();
     resetHostRefusals();
+    stubFetch({ [`GET ${searchUrl("vazio", 6, 1)}`]: { status: 204 } });
+    expect(dataOf(await search({ query: "Vazio" }))).toMatchObject({ items: [], partial: false, next_page: null });
     for (const body of ['{"items":[]}', '{"data":[],"total":0}', "<html></html>"]) {
       stubFetch({ [`GET ${searchUrl("outro", 6, 1)}`]: JSON_ROUTE(body) });
       expect(errorOf(await search({ query: "outro" }))).toEqual({ error: "source_unavailable" });

@@ -45,7 +45,8 @@ export const procurementSearchInput = {
     .optional()
     .describe(
       "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to " +
-        "PNCP's site search; only results whose returned object or body name contain it are kept.",
+        "PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object " +
+        "or body name contain it are kept.",
     ),
   from: isoDate.optional().describe(`First publication date, YYYY-MM-DD. Default: ${DEFAULT_DAYS} days before 'to'.`),
   to: isoDate.optional().describe("Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days."),
@@ -147,14 +148,16 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     const f = compact(start);
     const t = compact(end);
     const needle = query === undefined ? null : fold(query).replace(/\s+/g, " ");
-    const sent = query?.replace(/\s+/g, " ");
+    const sent = query?.replace(/\s+/g, " ").toLowerCase();
     /** Search results outside the window are dropped; once a page reaches updates older than `start`, none can follow. */
     const loadPage = async (p: number, startBy: number) => {
       if (sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
       const res = await getSearchPage(sent, modality, p, startBy);
-      const inWindow = (it: Procurement) => it.published_at !== null && it.published_at.slice(0, 10) >= start && it.published_at.slice(0, 10) <= end;
+      const day = (it: Procurement) => it.published_at?.slice(0, 10) ?? null;
+      const undated = res.value.items.filter((it) => day(it) === null).length;
+      const items = res.value.items.filter((it) => day(it) !== null && day(it)! >= start && day(it)! <= end);
       const old = res.value.oldestUpdate !== null && res.value.oldestUpdate < start;
-      return { ...res, value: { ...res.value, items: res.value.items.filter(inWindow), lastPage: res.value.lastPage || old } };
+      return { ...res, value: { ...res.value, items, discarded: res.value.discarded + undated, lastPage: res.value.lastPage || old } };
     };
     const matches = (it: Procurement) =>
       needle === null || fold(it.body_name).includes(needle) || (it.object !== null && fold(it.object).includes(needle));
@@ -227,7 +230,12 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
       if (sent !== undefined) {
-        notes.splice(1, 0, "Text searched with PNCP's site search (word matches); results kept only when the returned object or body name contains the query.");
+        notes.splice(
+          1,
+          0,
+          "Text searched with PNCP's site search (whole words, newest update first; a record updated between calls can " +
+            "move, so next_page may repeat or skip one); results kept only when the returned object or body name contains the query.",
+        );
       }
       if (refusedNote !== null) notes.unshift(refusedNote);
       else if (partial) {

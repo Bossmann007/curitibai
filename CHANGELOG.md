@@ -12,7 +12,10 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   stops once results were last updated before `from` (the search sorts by update date). A result is kept only when
   the returned object or body name contains the query (accents and case ignored), so a withheld object still never
   matches; supplier, user and free-text fields of the search records are never read. Without `query` nothing changes.
-  `page`/`next_page` count search pages when `query` is set, and `source_url` is the search URL.
+  `page`/`next_page` count search pages when `query` is set, and `source_url` is the search URL. Limits: the search
+  matches whole words ("merend" no longer finds "merenda"); a window far in the past reads every newer match first;
+  a record updated between calls moves to the top, so following `next_page` may repeat or skip one; a record with no
+  readable publication date is counted in `discarded`.
 
 ## 0.19.0 - 2026-11-22
 
