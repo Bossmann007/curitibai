@@ -4,9 +4,9 @@ Status: Accepted (introduced in v0.16.0, PR [#7](https://github.com/Bossmann007/
 
 ## Context
 
-Live tools that query small hosts (`river_levels`, `guaira_events`, `city_facilities_search`) must stay
-polite to small public hosts: space requests, stop asking after a failure, never retry a refusal, and still answer an
-MCP client within a reasonable time. Each source writing its own spacing and failure logic had drifted.
+Live tools that query small public hosts (`river_levels`, `guaira_events`, `city_facilities_search`) must stay polite:
+space requests, stop asking after a failure, never retry a refusal, and still answer an MCP client within a reasonable
+time. GeoCuritiba had its own gate; v0.16.0 moved it to `src/hostGate.ts` to share it with ANA (CHANGELOG 0.16.0).
 
 ## Decision
 

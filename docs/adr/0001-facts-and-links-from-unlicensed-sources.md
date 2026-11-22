@@ -37,6 +37,6 @@ Where it is written:
 - The Carta de Serviços catalog (no licence found) is not in the repository at all; the user keeps a local copy in
   `CURITIBAI_DATA_DIR`. `scripts/check-no-catalog`, run by `scripts/verify`, fails if it, a URBS export, collector
   output or an HTML capture is tracked.
-- Every new source needs a `docs/sources.md` entry (format, terms, robots.txt, date checked) and an owner approval
-  before it ships.
+- Every new or changed source needs a `docs/sources.md` entry (format, terms, robots.txt, date checked); so far each
+  no-licence source shipped with an owner approval recorded there.
 - Removal requests have a form in the issue tracker; removed content leaves with the next release.

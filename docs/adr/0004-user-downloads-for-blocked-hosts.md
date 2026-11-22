@@ -6,9 +6,9 @@ Status: Accepted (rule set 2026-11-19 to 2026-11-21; owner's note 2026-11-21 in 
 
 Some of the most useful Curitiba data sits on hosts this project may not read automatically:
 
-- `mid-dadosabertos.curitiba.pr.gov.br` (the open-data portal's file host) and the UFPR mirror
-  `dadosabertos.c3sl.ufpr.br/curitiba/` answer robots.txt with `Disallow: /`. The URBS bus exports and the 156 file
-  live there.
+- `mid-dadosabertos.curitiba.pr.gov.br` (the open-data portal's file host, where the 156 file is) and the UFPR
+  mirror's `/curitiba/` answer robots.txt with `Disallow: /`. The mirror's `/curitibaurbs/` (the URBS bus exports) has
+  no robots.txt of its own (404) and is treated as disallowed too.
 - `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) answers robots.txt with `Disallow: /`.
 - `www.curitiba.pr.gov.br` allows `/servicos/` in robots.txt but answered HTTP 403 to non-browser clients on
   2026-11-19.
