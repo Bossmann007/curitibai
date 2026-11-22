@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parsePhonesPage } from "../scripts/fetch-events.mjs";
 import { DATA_DIR_ENV } from "../src/localfs.js";
+import { REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
 import { buildPhones, PHONES_SOURCE_URL, usefulPhonesOutput, usefulPhonesResult } from "../src/tools/usefulPhones.js";
 import { connectClient, errorOf, fixture } from "./helpers.js";
 
@@ -18,7 +19,8 @@ const fileWith = (entries: object[] = ENTRIES, extra: object = {}) => ({
   entries,
   ...extra,
 });
-const result = (query?: string, limit = 20) => usefulPhonesResult(buildPhones(fileWith()), { query, limit });
+const NOW = new Date("2026-11-22T12:00:00Z");
+const result = (query?: string, limit = 20) => usefulPhonesResult(buildPhones(fileWith()), { query, limit }, NOW);
 
 describe("usefulPhonesResult", () => {
   it("filters by every word, accent- and case-insensitive, in page order", () => {
@@ -46,10 +48,23 @@ describe("usefulPhonesResult", () => {
     expect(result("palavra inexistente").data).toEqual({ total: 0, skipped_rows: 0, items: [] });
   });
 
-  it("returns source URL, fetched_at and attribution, valid against the output schema", () => {
+  it("returns source URL, fetched_at, checked_at, stale and attribution, valid against the output schema", () => {
     const r = usefulPhonesOutput.parse(result("samu"));
-    expect(r).toMatchObject({ source_url: PHONES_SOURCE_URL, fetched_at: "2026-11-22T02:11:30.000Z" });
-    expect(r.note).toMatch(/no network call/);
+    expect(r).toMatchObject({
+      source_url: PHONES_SOURCE_URL,
+      fetched_at: "2026-11-22T02:11:30.000Z",
+      checked_at: "2026-11-22T02:11:30.000Z",
+      stale: false,
+    });
+    expect(r.note).toMatch(/^Read from the local file phones\/phones\.json/);
+  });
+
+  it("marks the file stale after 3 days (still answered: phones change rarely)", () => {
+    const later = new Date("2026-11-25T03:00:00Z");
+    const r = usefulPhonesResult(buildPhones(fileWith()), { query: "samu", limit: 20 }, later);
+    expect(r.stale).toBe(true);
+    expect(r.data.items).toHaveLength(1);
+    expect(r.note).toMatch(/more than 3 days old \(stale: true\)\.$/);
   });
 
   it("refuses a file with another shape, an unknown number format or another source", () => {
@@ -105,7 +120,8 @@ describe("useful_phones tool", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("data_not_available with how to run the collector when the copy is missing", async () => {
+  it("data_not_available with how to run the collector when the copy is missing (remote reading off)", async () => {
+    vi.stubEnv(REMOTE_DATA_ENV, "0");
     const err = errorOf(await call({}));
     expect(err).toMatchObject({ error: "data_not_available" });
     expect(JSON.stringify(err)).toMatch(/scripts\/fetch-events\.mjs/);

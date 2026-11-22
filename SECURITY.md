@@ -23,6 +23,10 @@ Por exemplo:
   pessoal no `local_csv_summary`, contato de um lugar do OpenStreetMap);
 - o servidor contornando um 403, um CAPTCHA, um login ou o robots.txt de uma fonte;
 - texto de uma fonte que faz o servidor executar algo, gravar um arquivo ou mudar de comportamento.
+- o workflow noturno (`.github/workflows/collect.yml`) gravando em `main`, publicando no branch `data` algo além de
+  `events/events.json`, `events/status.json` e `phones/phones.json`, ou entregando o token do GitHub ao coletor;
+- `events_search` ou `useful_phones` aceitando uma cópia publicada fora do formato esperado, ou lendo outra URL além
+  das duas fixas do branch `data`.
 
 ## Fora do escopo
 
@@ -35,4 +39,6 @@ Por exemplo:
 
 O servidor não grava arquivos, não guarda nem registra as consultas (só um cache em memória), não usa conta, chave nem
 telemetria, e só fala com os hosts listados no README ("Privacy and safety"). O coletor de eventos
-(`scripts/fetch-events.mjs`) roda à parte, só quando você o executa, e grava só em `CURITIBAI_DATA_DIR/events/`.
+(`scripts/fetch-events.mjs`) roda à parte, quando você o executa ou no workflow noturno do GitHub, e grava só em
+`CURITIBAI_DATA_DIR/events/` e `CURITIBAI_DATA_DIR/phones/`; o workflow publica só esses três arquivos no branch
+público `data` (fatos e links), nunca em `main`. `CURITIBAI_REMOTE_DATA=0` desliga a leitura da cópia publicada.

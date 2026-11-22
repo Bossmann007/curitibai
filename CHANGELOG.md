@@ -2,6 +2,35 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.0 - 2026-11-22
+
+Events and useful phones update themselves (owner request, 2026-11-22: "era pra ele pegar automático"; only if free).
+New host for the server: `raw.githubusercontent.com` (two fixed files of this repository's `data` branch; robots.txt
+404, checked 2026-11-22).
+
+- New workflow `.github/workflows/collect.yml`: every night at 02:37 UTC (inside the Turismo site's robots.txt
+  `Visit-time`) and on `workflow_dispatch`, on `ubuntu-latest` only (standard runner, free in public repositories),
+  35-minute timeout (above the collector's 30-minute deadline), never two runs at once, `contents: write` for this job only, actions pinned by commit SHA, only
+  on `Bossmann007/curitibai` `main`. It runs `scripts/publish-data.sh`: the previous files from the `data` branch go
+  into a temporary `CURITIBAI_DATA_DIR`, `scripts/fetch-events.mjs` runs once unchanged (same robots.txt, window
+  and 5 s rules, no retry), and only `events/events.json`, `events/status.json` and `phones/phones.json` are
+  committed to the orphan branch `data` (never `main`, no force push); the commit is skipped when none changed (rare:
+  `status.json` records every attempt). A failed run keeps the
+  previous files, changes only `events/status.json` and ends red. The first run after merge creates the branch.
+- `events_search` and `useful_phones`: the local file in `CURITIBAI_DATA_DIR` first (as before, errors included);
+  else the published copy over HTTPS (fixed URLs, cached 1 hour, 2 MB / 512 KB caps, same strict schemas, fail
+  closed, host gate with 60 s failure memory; HTTP 404 before the first run is `data_not_available`).
+  `CURITIBAI_REMOTE_DATA=0` (or `off`) turns remote reading off. New errors for these tools: `source_unavailable`
+  and `rate_limited` (published copy unreadable). `openWorldHint` is now true for both.
+- `useful_phones` output gains `checked_at` (same value as `fetched_at`, kept) and `stale` (true after 3 days), and
+  refuses a `checked_at` in the future (`invalid_data`), as `events_search` does. Both
+  tools' notes say which copy answered; a stale published copy adds that the nightly collection may have stopped.
+- Docs: README (how updating works, the public `data` branch holds facts and links only, GitHub's 60-day rule for
+  scheduled workflows and how to re-enable, delayed or dropped runs, the opt-out, ten hosts), docs/sources.md,
+  SECURITY.md, SPEC.md for this release. Tests: remote read path, local-first precedence, schema fail-closed, cache,
+  stale, opt-out, and a check that workflows use only `ubuntu-latest` and SHA-pinned actions; the smoke test runs with
+  `CURITIBAI_REMOTE_DATA=0` and also calls `useful_phones` and `events_search`.
+
 ## 0.17.0 - 2026-11-22
 
 New tool `guaira_events`: the live public calendar of the Centro Cultural Teatro Guaíra (new host

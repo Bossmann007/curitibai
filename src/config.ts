@@ -8,7 +8,9 @@ export const MAX_REDIRECTS = 3;
  * restriction); imunizaja.curitiba.pr.gov.br's robots.txt does not disallow /locaisvacinacao/; geocuritiba.ippuc.org.br's robots.txt
  * returns 404 (checked 2026-11-21); telemetriaws1.ana.gov.br's robots.txt returns 404 (checked 2026-11-22);
  * www.teatroguaira.pr.gov.br's robots.txt does not disallow /calendario-eventos or /Evento/ (checked 2026-11-22, and
- * re-read by the guaira_events source every 24 h) (docs/sources.md).
+ * re-read by the guaira_events source every 24 h); raw.githubusercontent.com's robots.txt returns 404 (checked 2026-11-22) and
+ * is asked only for the two fixed files of this repository's `data` branch (src/sources/publishedData.ts)
+ * (docs/sources.md).
  * The file hosts mid-dadosabertos.curitiba.pr.gov.br and dadosabertos.c3sl.ufpr.br are excluded on purpose:
  * their robots.txt says `Disallow: /`. www.urbs.curitiba.pr.gov.br is out of scope. overpass-api.de is excluded too:
  * its robots.txt disallows /api/.
@@ -23,4 +25,5 @@ export const ALLOWED_HOSTS = [
   "geocuritiba.ippuc.org.br",
   "telemetriaws1.ana.gov.br",
   "www.teatroguaira.pr.gov.br",
+  "raw.githubusercontent.com",
 ] as const;

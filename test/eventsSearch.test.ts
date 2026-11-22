@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
+import { REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
 import { buildEvents, eventsSearchOutput, eventsSearchResult, EVENTS_ATTRIBUTION, EVENTS_LICENSE_NOTE } from "../src/tools/eventsSearch.js";
 import { connectClient, errorOf } from "./helpers.js";
 
@@ -148,7 +149,8 @@ describe("events_search tool", () => {
     expect(parsed.data.items.map((e) => e.id)).toEqual([1]);
   });
 
-  it("data_not_available when the file is missing or older than 7 days", async () => {
+  it("data_not_available when the file is missing (remote reading off) or older than 7 days", async () => {
+    vi.stubEnv(REMOTE_DATA_ENV, "0");
     const client = await connectClient();
     expect(errorOf(await client.callTool({ name: "events_search", arguments: {} }))).toMatchObject({ error: "data_not_available" });
     write(JSON.stringify(fileWith([ev(1, "2026-11-01", "2027-12-31")], "2020-01-01T00:00:00.000Z")));

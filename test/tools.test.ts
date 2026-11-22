@@ -41,8 +41,12 @@ describe("tools/list", () => {
     }
     expect(listed.find((t) => t.name === "local_csv_summary")?.annotations?.openWorldHint).toBe(false);
     expect(listed.find((t) => t.name === "detran_pr_info")?.annotations?.openWorldHint).toBe(false);
-    for (const name of ["city_services_search", "bus_lines_search", "bus_line_stops", "bus_departures", "bus_stops_near", "next_buses_near", "city_points_search", "events_search", "useful_phones"]) {
+    for (const name of ["city_services_search", "bus_lines_search", "bus_line_stops", "bus_departures", "bus_stops_near", "next_buses_near", "city_points_search"]) {
       expect(listed.find((t) => t.name === name)?.annotations?.openWorldHint).toBe(false);
+    }
+    // Local file first, else the published nightly copy over HTTPS (src/sources/publishedData.ts).
+    for (const name of ["events_search", "useful_phones"]) {
+      expect(listed.find((t) => t.name === name)?.annotations?.openWorldHint).toBe(true);
     }
   });
 });

@@ -1,0 +1,40 @@
+name: collect
+
+# Nightly run of scripts/fetch-events.mjs (events and useful phones of turismo.curitiba.pr.gov.br), published to the
+# orphan branch `data` (never main) by scripts/publish-data.sh. README "Events and useful phones" explains it.
+on:
+  schedule:
+    # 02:37 UTC: inside the site's robots.txt Visit-time (0200-0600). An odd minute, away from the busy top of the hour.
+    # The collector checks the window (02:00-05:50 UTC) and robots.txt itself and stops on its own; a run GitHub starts
+    # late gets window_closed and publishes only status.json.
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    # Forks and other branches never crawl the site or push.
+    if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'
+    # Standard GitHub-hosted runner only (free for public repositories); never a larger runner.
+    runs-on: ubuntu-latest
+    # Above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes.
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # No npm ci: the collector uses Node built-ins only, so no dependency code runs with contents: write.
+      - run: scripts/publish-data.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
