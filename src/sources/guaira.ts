@@ -166,7 +166,10 @@ function card(html: string): ListingRow {
 export function parseListingPage(html: string, n: number): ListingPage {
   const blocks = html.split('<div class="view-content">');
   if (blocks.length !== 2) throw new LayoutChangedError("view block");
-  const cards = (blocks[1] as string).split('<li class="card').slice(1);
+  // The card list ends at its first </ul> (cards hold no list): markup after it never reaches the last card.
+  const listEnd = (blocks[1] as string).indexOf("</ul>");
+  if (listEnd < 0) throw new LayoutChangedError("card list");
+  const cards = (blocks[1] as string).slice(0, listEnd).split('<li class="card').slice(1);
   if (cards.length === 0) throw new LayoutChangedError("no cards");
   const rows = cards.map(card);
   const next = [...html.matchAll(/<a\b[^>]*\brel="next"[^>]*>/g)];
@@ -200,8 +203,11 @@ const VENUE = /<strong>Local:\s*<\/strong>\s*([^<]{1,200})</g;
 const AGE = /<strong>Classificação etária:\s*<\/strong>\s*([^<]{1,80})</g;
 const TICKETS = /<strong>Ingressos:\s*<\/strong>\s*([^<]{1,300})/g;
 const AMOUNT = String.raw`R\$\s?\d{1,5}(?:\.\d{3})*(?:,\d{2})?(?:\s*\([\p{L} -]{1,30}\))?`;
-const PRICE_RUN = new RegExp(String.raw`^${AMOUNT}(?:\s*\|\s*${AMOUNT}){0,5}`, "u");
-const FREE = /^(gratuito|entrada gratuita|entrada franca)(?![\p{L}])/iu;
+/** After a value only the end of the text, or the end of a sentence (". " and more), may follow; else null. */
+const VALUE_END = String.raw`(?=\.?$|\.\s)`;
+const PRICE_RUN = new RegExp(String.raw`^${AMOUNT}(?:\s*\|\s*${AMOUNT}){0,5}${VALUE_END}`, "u");
+const FREE = new RegExp(String.raw`^(gratuito|entrada gratuita|entrada franca)${VALUE_END}`, "iu");
+const AGE_VALUE = new RegExp(String.raw`^(livre|\d{1,2}\s*anos)${VALUE_END}`, "iu");
 
 function single(re: RegExp, s: string): string | null {
   const all = [...s.matchAll(re)];
@@ -223,7 +229,7 @@ export function parseEventPage(html: string): EventDetails {
   const venueRaw = single(VENUE, body);
   const venue = venueRaw === null ? null : cleanField(venueRaw, EVENT_PLACE_MAX) || null;
   const ageRaw = single(AGE, body);
-  const age = ageRaw === null ? null : /^(livre|\d{1,2}\s*anos)(?![\p{L}])/iu.exec(ageRaw)?.[1] ?? null;
+  const age = ageRaw === null ? null : AGE_VALUE.exec(ageRaw)?.[1] ?? null;
   const ticketsRaw = single(TICKETS, body);
   const price = ticketsRaw === null ? null : (PRICE_RUN.exec(ticketsRaw)?.[0] ?? FREE.exec(ticketsRaw)?.[1] ?? null);
   return {
@@ -307,8 +313,9 @@ async function getHtml(url: string, pathPrefix: string): Promise<string> {
 }
 
 /**
- * The robots.txt rules for this server, read through the gate and cached 24 h. A 404 or 410 means no rules (RFC
- * 9309); any other failure, or an answer that is not text/plain, fails closed.
+ * The robots.txt rules for this server, read through the gate and cached 24 h. A 404 or 410 means no rules; any
+ * other failure (other 4xx included, which RFC 9309 would read as "allow"), or an answer that is not text/plain,
+ * fails closed: stricter than the RFC on purpose.
  */
 function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
   return robotsCache.getOrLoad("robots", () =>
@@ -372,9 +379,10 @@ export function cachedDetails(link: string): EventDetails | null {
 }
 
 /**
- * Reads up to `max` uncached event pages for `links` (in order) through the gate and caches each 6 hours. Stops at
- * the first request that cannot be made or fails: that link is `unavailable` (a failure) or stays `not_read` (no
- * slot, robots.txt), and the rest stay `not_read`. Never throws.
+ * Reads up to `max` uncached event pages for `links` (in order) through the gate and caches each 6 hours (a 404 or
+ * 410 page as `unavailable`, without a host failure). Stops at the first request that fails (that link is
+ * `unavailable`) or cannot be made (no slot, a failure remembered, robots.txt: it stays `not_read`); the rest stay
+ * `not_read`. Never throws.
  */
 export async function readDetails(links: readonly string[], max: number = MAX_DETAILS_PER_CALL): Promise<{ details: Map<string, EventDetails>; stopped: "robots" | "failed" | "busy" | null }> {
   const details = new Map<string, EventDetails>();
@@ -391,18 +399,28 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
     try {
       await assertAllowed(new URL(link).pathname);
     } catch (err) {
-      stopped = err instanceof RobotsDisallowedError ? "robots" : "failed";
+      // robots.txt could not be read (no slot, a failure remembered): no event page was asked for.
+      stopped = err instanceof RobotsDisallowedError ? "robots" : "busy";
       continue;
     }
+    let asked = false;
     try {
-      const value = await gated(async () => parseEventPage(await getHtml(link, EVENT_PATH_PREFIX)));
+      const value = await gated(async () => {
+        asked = true;
+        try {
+          return parseEventPage(await getHtml(link, EVENT_PATH_PREFIX));
+        } catch (err) {
+          // A removed event (404/410) is a fact about that page, not a host failure: cached, not remembered.
+          if (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason === "HTTP 410")) return NO_DETAILS("unavailable");
+          throw err;
+        }
+      });
       detailsCache.set(link, { value, expiresAt: Date.now() + DETAILS_CACHE_TTL_MS });
       details.set(link, value);
-    } catch (err) {
-      // No slot within 10 s (another call holds the host): not a failure of this page.
-      const busy = err instanceof RateLimitedError && Date.now() >= retryAt;
-      if (!busy) details.set(link, NO_DETAILS("unavailable"));
-      stopped = busy ? "busy" : "failed";
+    } catch {
+      // Refused by the gate before a request (no slot, a failure remembered): this page stays not_read.
+      if (asked) details.set(link, NO_DETAILS("unavailable"));
+      stopped = asked ? "failed" : "busy";
     }
   }
   return { details, stopped };

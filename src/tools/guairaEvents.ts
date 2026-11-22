@@ -116,7 +116,7 @@ export function resolveRange(args: GuairaEventsArgs, today: string): { from: str
   const from = args.from ?? today;
   const to = args.to ?? addDays(from, GUAIRA_DEFAULT_RANGE_DAYS);
   const span = (Date.parse(to) - Date.parse(from)) / 86_400_000;
-  if (span < 0) return { error: "'from' is after 'to'." };
+  if (span < 0) return { error: args.from === undefined ? "'to' is before today (the default 'from')." : "'from' is after 'to'." };
   if (span > GUAIRA_MAX_RANGE_DAYS) return { error: `The range is at most ${GUAIRA_MAX_RANGE_DAYS} days.` };
   return { from, to };
 }
@@ -144,7 +144,7 @@ export function selectRows(listing: Listing, args: GuairaEventsArgs, range: { fr
 const STOP_NOTES: Record<string, string> = {
   robots: "robots.txt does not allow event pages now, so venue, age rating and price were not read.",
   failed: "An event page could not be read; no more event pages are read in this call (venue, age rating and price stay null).",
-  busy: "The source is busy with another request; some event pages were not read this time.",
+  busy: "The source is busy or failed a moment ago; some event pages were not read this time.",
 };
 
 export function buildResult(

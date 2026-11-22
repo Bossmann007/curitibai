@@ -114,6 +114,11 @@ describe("parseListingPage", () => {
     ["a city without a state", (h) => h.replace(/Curitiba-\s+PR/, "Curitiba")],
     ["a next link to another page", (h) => h.replace("page=1\"", "page=5\"")],
   ];
+  it("ignores markup after the card list, even an event link", () => {
+    const html = list(0).replace("  </ul>", '  </ul><div class="destaques"><a href="/Evento/Outro">x</a><p><strong>Local:</strong> Curitiba- PR</p></div>');
+    expect(parseListingPage(html, 0).rows).toHaveLength(4);
+  });
+
   it.each(broken)("fails closed on %s", (_name, edit) => {
     const html = edit(list(0));
     expect(html).not.toBe(list(0));
@@ -145,10 +150,15 @@ describe("parseEventPage", () => {
       age_rating: null,
       price: null,
     });
-    expect(parseEventPage(body("<strong>Ingressos: </strong>Entrada franca, retirar 1h antes<br /><strong>Classificação etária:</strong> Livre<br />"))).toMatchObject({
+    expect(parseEventPage(body("<strong>Ingressos: </strong>Entrada franca. Retirar 1h antes<br /><strong>Classificação etária:</strong> Livre<br />"))).toMatchObject({
       price: "Entrada franca",
       age_rating: "Livre",
     });
+    // A known prefix followed by anything else is not the whole value: null, never a part of it.
+    for (const tickets of ["R$ 40,00 (inteira) / R$ 20,00 (meia)", "R$ 30,00 e R$ 15,00", "Gratuito para menores de 12 anos; R$ 20,00 demais", "Entrada franca, exceto sábado"]) {
+      expect(parseEventPage(body(`<strong>Ingressos: </strong>${tickets}<br />`)).price).toBeNull();
+    }
+    expect(parseEventPage(body("<strong>Classificação etária:</strong> Livre para maiores de 16 anos<br />")).age_rating).toBeNull();
     expect(parseEventPage(body("<strong>Local:</strong> Sala, fone 41 99999-8888<br />")).venue).toBe("Sala, fone [masked]");
     expect(parseEventPage(body("<strong>Local:</strong> A<br /><strong>Local:</strong> B<br />")).venue).toBeNull();
     expect(parseEventPage("<p>nothing</p>").status).toBe("not_recognised");
@@ -189,6 +199,7 @@ describe("guaira_events", () => {
     expect((await search({ from: "2027-02-20", to: "2027-02-20" })).data.items.map((i) => i.start)).toEqual(["2027-02-20T20:00"]);
     vi.stubGlobal("fetch", vi.fn());
     expect(errorOf(await call({ from: "2026-12-01", to: "2026-11-01" }))).toEqual({ error: "invalid_date_range", message: "'from' is after 'to'." });
+    expect(errorOf(await call({ to: "2026-11-01" }))).toEqual({ error: "invalid_date_range", message: "'to' is before today (the default 'from')." });
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -299,6 +310,23 @@ describe("requests to the Teatro Guaíra host", () => {
     expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
     expect(out.data.items.map((i) => i.details)).toEqual(["unavailable", "not_read", "not_read", "not_read"]);
     expect(out.note).toMatch(/could not be read/);
+  });
+
+  it("treats a removed event page (404) as that page only: no host failure, the next page is still read", async () => {
+    const calls = stubFetch(routes({ [`GET ${MUITO}`]: { status: 404 } }));
+    const out = await search({});
+    expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, MIA]);
+    expect(out.data.items.map((i) => i.details)).toEqual(["unavailable", "not_recognised", "not_read", "not_read"]);
+    expect(out.note).not.toMatch(/could not be read/);
+  });
+
+  it("leaves event pages not_read (not unavailable) while a failure is remembered", async () => {
+    const calls = stubFetch(routes({ [`GET ${MUITO}`]: { status: 500 } }));
+    await search({});
+    const out = await search({});
+    expect(calls).toHaveLength(5);
+    expect(out.data.items.map((i) => i.details)).toEqual(["not_read", "not_read", "not_read", "not_read"]);
+    expect(out.note).toMatch(/busy or failed a moment ago/);
   });
 
   it("does not follow a redirect to another host", async () => {

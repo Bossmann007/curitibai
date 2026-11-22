@@ -50,8 +50,8 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
 - robots.txt read through the same gate, cached 24 h, before any listing or event page read. Matcher: the group for
   `curitibai-mcp` if present, else `*`; `Allow`/`Disallow` with `*` and `$`, longest match wins, ties allow. If
   `/calendario-eventos` becomes disallowed the tool stops (`source_unavailable`, fixed message); if `/Evento/` does,
-  no event page is read. A robots.txt 404/410 allows all (RFC 9309); a 5xx, network error or any other answer fails
-  closed (`source_unavailable`).
+  no event page is read. A robots.txt 404/410 allows all; a 5xx, network error or any other answer, other 4xx included,
+  fails closed (`source_unavailable`; stricter than RFC 9309 on purpose).
 - Listing: fixed URLs only (the bare path, then `?page=1`, `?page=2`); `rel="next"` is a yes/no, its href is never
   followed; cap 3 pages per load; one cache entry for the whole listing, 1 hour. Worst cold call: robots.txt, 3
   listing pages and 2 event pages, 5 s apart, about 25 s plus network time (MCP clients commonly time out at 60 s).
@@ -59,11 +59,13 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
   exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not a real date, end before start,
   a slug not `[A-Za-z0-9-]`, markup inside a title, or a `rel="next"` link that does not point to the next page.
   Nothing is returned then. An event page that does not have exactly one body field is `not_recognised` (fields
-  null); an event page that fails to load is `unavailable` (the rest of the call is kept, and no more event pages are
-  read in that call).
+  null); an event page answering 404/410 is `unavailable` for that event only (cached, not a host failure); any
+  other failure is `unavailable` (the rest of the call is kept, and no more event pages are read in that call; a
+  page the gate refuses before a request stays `not_read`).
 - Event page fields are strict: `venue` the text after `Local:` up to the next tag; `age_rating` only "Livre" or
   "N anos"; `price` only a run of "R$ 20,00 (inteira) | R$ 10,00 (meia-entrada)"-shaped amounts, or "Gratuito" /
-  "Entrada gratuita" / "Entrada franca"; anything else is null. Never invented.
+  "Entrada gratuita" / "Entrada franca"; each value must be the whole text or end a sentence, so a known
+  prefix followed by other text is null, never a part. Never invented.
 - Privacy: only title, dates, city, venue, age rating, price and link are returned; cast, directors, programme,
   contacts and images are never read into the result. Every text field goes through `cleanField` (control and format
   characters, NFC, the existing PII mask, cap); HTML entities are decoded first.
