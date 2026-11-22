@@ -58,8 +58,9 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**; the local copy holds no detail-page content. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
-| `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does, 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
+| `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does (run by the user or, since v0.18, by the nightly GitHub workflow), 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
 | `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
+| `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the two fixed files `/Bossmann007/curitibai/data/events/events.json` and `/Bossmann007/curitibai/data/phones/phones.json`, published by this project's own nightly workflow (below) |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -686,6 +687,43 @@ in the city's own categories. Built.
   first heading, fewer than 20 or more than 500 entries, or a count outside 0.3x–3x of the previous file's: status
   `layout_changed`, the previous `phones/phones.json` is kept.
 - **Not covered:** the page has no Ouvidoria entry, and it was not compared with the Curitiba App's own list.
+
+### Published nightly copy of the events and phones files (since 0.18.0)
+
+- **What runs:** `.github/workflows/collect.yml`, cron `37 2 * * *` (02:37 UTC, inside the Turismo site's robots.txt
+  `Visit-time` 0200-0600) plus `workflow_dispatch`, on `ubuntu-latest` only (standard GitHub-hosted runner, free in
+  public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>), timeout 15
+  minutes, concurrency group `collect` (a run never overlaps another; a queued one waits), job permission
+  `contents: write` only (workflow default `contents: read`), actions pinned by full commit SHA, and only on
+  `Bossmann007/curitibai` `main` (forks and other branches skip the job). No `npm ci`: the collector uses Node
+  built-ins only.
+- **Same collector rules:** the job runs `scripts/publish-data.sh`, which runs `scripts/fetch-events.mjs` once,
+  unchanged (window 02:00–05:50 UTC, robots.txt group compared on every run, one request per 5 s, 15 s per request,
+  no redirect, no retry, User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)`). Before the
+  run it copies the previous `events/events.json`, `events/status.json` and `phones/phones.json` from the `data`
+  branch into a temporary `CURITIBAI_DATA_DIR`, so the 0.3x–3x ratio check and "a failed run keeps the previous
+  file" work as on a local machine. The detail cache (`events/details.json`) and `phones/status.json` are not
+  published, so every run reads every detail page again (about 5 minutes for 50 events).
+- **What is published:** only `events/events.json`, `events/status.json` and `phones/phones.json`, committed by
+  `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
+  without force, only when one of them changed. A failed run changes only `events/status.json` and the job ends
+  with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
+  collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
+  approval, 2026-11-22: facts and links).
+- **How the server reads it:** `src/sources/publishedData.ts`. A local file in `CURITIBAI_DATA_DIR` always wins
+  (errors included); only when the data folder is not set or has no such file, and `CURITIBAI_REMOTE_DATA` is not
+  `0`/`off`, it reads
+  `https://raw.githubusercontent.com/Bossmann007/curitibai/data/events/events.json` or `.../phones/phones.json`:
+  fixed URLs, `src/http.ts` allowlist, same host and `/Bossmann007/curitibai/data` path only on redirects, 10 s
+  timeout, 2 MB / 512 KB caps, the same strict schemas as the local file (`buildEvents`, `buildPhones`; fail closed),
+  the validated result cached 1 hour, and the host gate `src/hostGate.ts` (one request per second at most, no
+  request for 60 s after a failure). HTTP 404 (before the first run) is `data_not_available`.
+- **Freshness:** both tools return the file's `checked_at` and `stale: true` after 3 days, with a note that the
+  nightly collection may have stopped; `events_search` refuses a file over 7 days old. GitHub "can delay" scheduled
+  runs at busy times and may drop queued jobs, and disables scheduled workflows in public repositories after 60 days
+  without repository activity
+  (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
+  checked 2026-11-22); README "Events" says how to re-enable it.
 
 ### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
 

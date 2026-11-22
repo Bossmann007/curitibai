@@ -1,12 +1,14 @@
 // Starts the built server over stdio, calls tools/list, city_services_search on the synthetic catalog fixture, and
 // bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic URBS fixtures, and
-// city_facilities_search with "list types". No network needed: none of them fetches anything.
+// city_facilities_search with "list types", useful_phones on a local copy and events_search with no copy. No network
+// needed: none of them fetches anything (CURITIBAI_REMOTE_DATA=0 turns the published copy of events and phones off).
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parsePhonesPage } from "./fetch-events.mjs";
 
 const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "city_facilities_search", "city_points_search", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "guaira_events", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "places_search", "procurement_search", "river_levels", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
@@ -19,10 +21,24 @@ copyFileSync(join(fixtures, "carta_servicos_synthetic", "carta-servicos.json"), 
 for (const kind of ["linhas", "pontosLinha", "tabelaLinha", "pois"]) {
   copyFileSync(join(fixtures, "urbs_synthetic", `${kind}.json`), join(dataDir, "urbs", `2026_11_20_${kind}.json`));
 }
+// The collector's own output for the trimmed phones fixture, as the collector would write it.
+const phoneEntries = parsePhonesPage(readFileSync(join(fixtures, "useful_phones", "telefones_uteis_trimmed.html"), "utf8")).entries;
+mkdirSync(join(dataDir, "phones"));
+writeFileSync(
+  join(dataDir, "phones", "phones.json"),
+  JSON.stringify({
+    format: 1,
+    source: "https://turismo.curitiba.pr.gov.br/conteudo/telefones-uteis/92",
+    checked_at: new Date().toISOString(),
+    count: phoneEntries.length,
+    dropped: 0,
+    entries: phoneEntries,
+  }),
+);
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: ["dist/server.js"],
-  env: { PATH: process.env.PATH ?? "", CURITIBAI_DATA_DIR: dataDir },
+  env: { PATH: process.env.PATH ?? "", CURITIBAI_DATA_DIR: dataDir, CURITIBAI_REMOTE_DATA: "0" },
   stderr: "pipe",
 });
 const client = new Client({ name: "smoke", version: "0.0.0" });
@@ -45,6 +61,8 @@ const next = await client.callTool({
 const pois = await client.callTool({ name: "city_points_search", arguments: { category: "feira" } });
 // "list types" makes no network call.
 const facilityTypes = await client.callTool({ name: "city_facilities_search", arguments: { type: "list types" } });
+const phones = await client.callTool({ name: "useful_phones", arguments: { query: "samu" } });
+const noEvents = await client.callTool({ name: "events_search", arguments: {} });
 await client.close();
 clearTimeout(timer);
 cleanup();
@@ -76,6 +94,16 @@ if (facilityTypes.isError || !(facilityTypes.structuredContent?.data?.types?.len
   console.error("smoke: city_facilities_search returned no types");
   process.exit(1);
 }
+if (phones.isError || phones.structuredContent?.data?.items?.[0]?.numbers?.[0] !== "192") {
+  console.error("smoke: useful_phones did not read the local copy");
+  process.exit(1);
+}
+if (!noEvents.isError || !/"data_not_available"/.test(noEvents.content?.[0]?.text ?? "")) {
+  console.error("smoke: events_search with no local copy and CURITIBAI_REMOTE_DATA=0 is not data_not_available");
+  process.exit(1);
+}
+console.log("smoke: events_search OK (no local copy, remote reading off: data_not_available, no network)");
+console.log(`smoke: useful_phones OK (local copy, ${phones.structuredContent.data.total} match for "samu")`);
 console.log(`smoke: city_facilities_search OK (${facilityTypes.structuredContent.data.types.length} types listed, no network)`);
 console.log(`smoke: city_points_search OK (${pois.structuredContent.data.total} synthetic feiras)`);
 console.log(`smoke: next_buses_near OK (${next.structuredContent.data.total} synthetic departure(s) from 06:30 within 60 min)`);
