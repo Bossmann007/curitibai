@@ -395,6 +395,22 @@ describe("river_levels", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("returns the station read before a CAPTCHA page on a later station, and a cached station after a refusal", async () => {
+    const page = '<html><div class="cf-turnstile">verify you are human</div></html>';
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090", { contentType: "text/html", body: page }), ...route("65004995") });
+    const pending = levels({});
+    await vi.advanceTimersByTimeAsync(10_000);
+    const out = await pending;
+    expect(out.data).toMatchObject({ partial: true, stations: [expect.objectContaining({ code: "65009000" })] });
+    expect(out.note).toContain("Partial: 2 station(s) not read (partial: true). The source refused this server with a CAPTCHA; it is not asked again for 10 minutes.");
+    expect(calls).toHaveLength(2);
+    // Inside the block: the cached station is still returned without a request; the refused ones are not read.
+    const again = await levels({ station: "6500" });
+    expect(again.data.partial).toBe(true);
+    expect(again.data.stations.map((s) => s.code)).toEqual(["65009000"]);
+    expect(calls).toHaveLength(2);
+  });
+
   it("says nothing about when ANA publishes validated data (the delay is not verified)", async () => {
     stubFetch(route("65010000"));
     const out = await levels({ station: "65010000" });

@@ -90,9 +90,13 @@ export function refusedPageNote(page: number, status: number): string {
   return `The source refused page ${page} (HTTP ${status}); it is not asked again. What was found before is returned and next_page is null.`;
 }
 
-/** Note for river_levels when the host refused a station after others were read: those are kept (partial). */
+/**
+ * Note for river_levels when the host refused a station after others were read: those are kept (partial). Status 429
+ * is only recorded for a CAPTCHA page (a plain 429 is rate_limited), so it is named as such.
+ */
 export function refusedStationsNote(count: number, status: number): string {
-  return `Partial: ${count} station(s) not read (partial: true). The source refused this server (HTTP ${status}); it is not asked again for 10 minutes.`;
+  const how = status === 429 ? "with a CAPTCHA" : `(HTTP ${status})`;
+  return `Partial: ${count} station(s) not read (partial: true). The source refused this server ${how}; it is not asked again for 10 minutes.`;
 }
 
 /** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
