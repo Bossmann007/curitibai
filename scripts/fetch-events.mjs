@@ -4,7 +4,7 @@
 // events/status.json, plus its own detail cache (events/details.json) and run lock (events/.lock); then, in the same
 // run, reads the site's one "Telefones Úteis" page and writes phones/phones.json and phones/status.json.
 // Run by hand (or by a scheduler) inside the window the site's robots.txt asks for; the MCP server never contacts
-// this host (it is not in src/config.ts ALLOWED_HOSTS). Node built-ins only. See README "Events" and docs/sources.md.
+// this host (it is not in src/config.ts ALLOWED_HOSTS). Node built-ins only. See docs/local-data.md "Events" and docs/sources.md.
 //
 // Prints only fixed status lines, counts and the exit code: never page text, titles or HTML.
 import { lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -51,7 +51,7 @@ export const ROBOTS_RECORDED_ON = "2026-11-21";
  * The whole `User-agent: *` group of the site's robots.txt as read on ROBOTS_RECORDED_ON: one "key: value" per
  * directive, key in lower case, comment removed, in file order. Every run compares the live group with this list as a
  * whole (order ignored, repeats counted): any added, removed or changed directive, Crawl-delay and Allow included,
- * stops the run with robots_changed before any page. To accept a change, edit this list (README "Events").
+ * stops the run with robots_changed before any page. To accept a change, edit this list (docs/local-data.md "Events").
  */
 export const RECORDED_ROBOTS = Object.freeze([
   "request-rate: 1/5",
@@ -79,7 +79,7 @@ export const RECORDED_ROBOTS = Object.freeze([
 
 /**
  * Text that marks an empty list page, which would allow a count of 0. No empty page has been seen, so it is null and a
- * day with no events stops with layout_changed (README "Events" explains it).
+ * day with no events stops with layout_changed (docs/local-data.md "Events" explains it).
  */
 export const NO_EVENTS_MARKER = null;
 

@@ -6,7 +6,8 @@ oficial do MCP e o `zod`.
 ## Antes de começar
 
 Rode `scripts/verify`. Ele precisa terminar com `verify: OK` antes e depois da sua mudança. Ele confere que nenhum
-catálogo, export da URBS, saída do coletor de eventos ou página HTML capturada entrou no git, e roda `npm ci`,
+catálogo, export da URBS, saída do coletor de eventos ou página HTML capturada entrou no git e que todo link relativo
+dos arquivos Markdown (README, `docs/` e estes guias) aponta para um arquivo e uma âncora que existem, e roda `npm ci`,
 `tsc --noEmit`, `eslint`, os testes (`vitest`), o build, um teste do servidor por stdio e os limites de tempo de
 `bus_stops_near` e `next_buses_near`. Os testes rodam sem rede: toda chamada é simulada.
 
@@ -23,9 +24,9 @@ catálogo, export da URBS, saída do coletor de eventos ou página HTML capturad
   de teste tem dígito verificador inválido (um teste confere), exceto `123.456.789-09` nos testes que checam o
   mascaramento de um CPF válido (`test/pncp.test.ts` e `test/fetchEvents.test.ts`). Uma ferramenta nova não devolve nomes de pessoas físicas, e texto livre passa pelo mesmo mascaramento
   de contato que os objetos do PNCP.
-- **Fonte nova ou alterada.** Atualize `docs/sources.md` (formato, termos, robots.txt, data da checagem), a seção de
-  licenças do README, o `license_note` da ferramenta e o `CHANGELOG.md`. Host novo entra em `ALLOWED_HOSTS`
-  (`src/config.ts`) e na lista de hosts do README.
+- **Fonte nova ou alterada.** Atualize `docs/sources.md` (formato, termos, robots.txt, data da checagem), as
+  licenças em [docs/licences.md](docs/licences.md), o `license_note` da ferramenta e o `CHANGELOG.md`. Host novo entra em `ALLOWED_HOSTS`
+  (`src/config.ts`) e na lista de hosts de [docs/privacy.md](docs/privacy.md#details).
 - **Só leitura.** Nenhuma ferramenta grava, faz login, paga, agenda ou abre protocolo.
 
 As decisões que dão forma ao projeto (só fatos de fontes sem licença, coleta noturna no branch `data`, o limite de
@@ -36,7 +37,8 @@ mudança que contraria uma delas traz uma ADR nova no mesmo pull request.
 
 1. Crie um branch a partir de `main`.
 2. Faça a mudança com teste. Comportamento novo vem com teste que falhava antes.
-3. Atualize README, `docs/sources.md` e `CHANGELOG.md` quando o comportamento mudar.
+3. Atualize README, `docs/tools.md` (e os outros arquivos de `docs/` afetados), `docs/sources.md` e `CHANGELOG.md`
+   quando o comportamento mudar.
 4. Rode `scripts/verify`.
 5. Abra o pull request para `main` com o modelo preenchido e o fim da saída do `scripts/verify`. O
    `scripts/verify` local é a verificação obrigatória; o workflow `.github/workflows/verify.yml` está configurado para

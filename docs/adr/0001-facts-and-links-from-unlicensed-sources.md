@@ -21,9 +21,9 @@ fetched. A refusal (HTTP 401/403, a CAPTCHA, a login) is never bypassed. Content
 Where it is written:
 
 - `CONTRIBUTING.md`, "Regras": "Só fatos" and "robots.txt e nada de contornar".
-- README, "Licences (code and data)" and "Collection rules".
-- `docs/sources.md:857` (IPPUC, owner approval 2026-11-21), `docs/sources.md:870` (ANA, 2026-11-22),
-  `docs/sources.md:1016` (Teatro Guaíra, 2026-11-22), `docs/sources.md:722` (Turismo events and phones on the `data`
+- `docs/licences.md` and `docs/privacy.md`, "Collection rules".
+- `docs/sources.md:883` (IPPUC, owner approval 2026-11-21), `docs/sources.md:896` (ANA, 2026-11-22),
+  `docs/sources.md:1042` (Teatro Guaíra, 2026-11-22), `docs/sources.md:748` (Turismo events and phones on the `data`
   branch, 2026-11-22).
 - `SPEC.md:3` (v0.18.0 approval: the public `data` branch holds facts and links only).
 - PRs [#5](https://github.com/Bossmann007/curitibai/pull/5) (v0.15.0),

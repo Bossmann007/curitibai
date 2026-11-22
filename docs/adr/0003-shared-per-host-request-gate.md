@@ -29,7 +29,7 @@ published `data` copy. Overpass (`src/sources/osm.ts:136-163`) predates it and k
   read is returned with `partial: true` and a note (`src/tools/riverLevels.ts:240`, `src/tools/common.ts:94-99`,
   `src/tools/guairaEvents.ts:187`); an error only when nothing was read.
 
-Where it is written: README "Collection rules", `docs/sources.md:54` (GeoCuritiba), CHANGELOG 0.16.0 to 0.18.4, PRs
+Where it is written: `docs/privacy.md` "Collection rules", `docs/sources.md:80` (GeoCuritiba), CHANGELOG 0.16.0 to 0.18.4, PRs
 [#7](https://github.com/Bossmann007/curitibai/pull/7), [#9](https://github.com/Bossmann007/curitibai/pull/9),
 [#12](https://github.com/Bossmann007/curitibai/pull/12), [#14](https://github.com/Bossmann007/curitibai/pull/14).
 

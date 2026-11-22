@@ -6,6 +6,14 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Docs and CI only; no tool, host or runtime behaviour changes.
 
+- Docs split: the README is now a short entry point (install, the 22 tools, how data stays updated, privacy notice).
+  The per-tool detail, the comparison with the Curitiba App, deferred tools and limits moved to `docs/tools.md`; the
+  local files and the nightly collection to `docs/local-data.md`; collection rules and privacy details to
+  `docs/privacy.md`; development to `docs/development.md`; licences to `docs/licences.md`. Text moved, not rewritten.
+  `docs/sources.md` has a table of contents. `scripts/verify` now checks that every relative inline link and anchor in
+  README.md, CONTRIBUTING.md, SECURITY.md, CHANGELOG.md and `docs/*.md` resolves (`scripts/check-links.mjs`, Node
+  built-ins only). The README keeps the old ids of the moved sections (`#tools`, `#tool-reference`, `#limits`, ...),
+  so saved links still land on the page.
 - New `docs/adr/` with an index and four architecture decision records, each citing where the decision is already
   written and the owner approval: 0001 facts and links only from sources with no licence found; 0002 nightly GitHub
   Actions collection to the orphan `data` branch; 0003 the shared per-host request gate (`src/hostGate.ts`); 0004 no

@@ -4,7 +4,7 @@ labels: [enhancement]
 body:
   - type: markdown
     attributes:
-      value: "Uma fonte só entra se o robots.txt permitir, se não exigir login nem CAPTCHA e se não devolver dados pessoais. Nada é contornado (veja \"Collection rules\" no README)."
+      value: "Uma fonte só entra se o robots.txt permitir, se não exigir login nem CAPTCHA e se não devolver dados pessoais. Nada é contornado (veja \"Collection rules\" em docs/privacy.md)."
   - type: input
     id: url
     attributes: { label: Endereço da fonte, placeholder: "https://..." }
