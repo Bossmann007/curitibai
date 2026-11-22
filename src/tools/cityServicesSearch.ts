@@ -262,7 +262,7 @@ export function cityServicesSearchResult(catalog: Catalog, args: CityServicesSea
 
 const NOT_AVAILABLE =
   `The catalog is not shipped with this server. Put ${CATALOG_FILE} in the folder set by CURITIBAI_DATA_DIR ` +
-  "(see the README).";
+  "(see docs/local-data.md).";
 
 export const cityServicesSearch: ToolDef<typeof cityServicesSearchInput, typeof cityServicesSearchOutput> = {
   name: "city_services_search",

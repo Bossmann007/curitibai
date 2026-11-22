@@ -3,7 +3,7 @@
 // #fragment, to a heading or an explicit <a id="..."> in that file. External links (http, https, mailto) are not
 // checked. Node built-ins only. Exit 0 = every link resolves; exit 1 lists each broken link as file:line.
 // Usage: node scripts/check-links.mjs [file.md ...] (default: README.md, CONTRIBUTING.md, SECURITY.md,
-// CHANGELOG.md and docs/*.md, from the repository root). Inline links and reference definitions ("[x]: path") are
+// CHANGELOG.md, docs/*.md and docs/adr/*.md, from the repository root). Inline links and reference definitions ("[x]: path") are
 // checked; setext headings (=== / ---) are not seen.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -15,6 +15,9 @@ function defaultFiles() {
   const files = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md"].map((f) => join(root, f));
   for (const f of readdirSync(join(root, "docs")).sort()) {
     if (f.endsWith(".md")) files.push(join(root, "docs", f));
+  }
+  for (const f of readdirSync(join(root, "docs", "adr")).sort()) {
+    if (f.endsWith(".md")) files.push(join(root, "docs", "adr", f));
   }
   return files.filter((f) => existsSync(f));
 }

@@ -139,7 +139,7 @@ export function urbsNote({ file, date, skipped, emptyFields }: UrbsSource, now: 
 const NOT_AVAILABLE = (kind: UrbsKind) =>
   `URBS data is not shipped with this server. Download the daily file YYYY_MM_DD_${kind}.json.xz from ` +
   `${URBS_MIRROR_URL}, decompress it with \`xz -d\`, and put it in the folder "${URBS_SUBDIR}" inside ` +
-  "CURITIBAI_DATA_DIR (see the README).";
+  "CURITIBAI_DATA_DIR (see docs/local-data.md).";
 
 /** Loads the newest file of `kind`, or the error result to return (v0.6 codes). */
 export async function loadUrbsOrFail<K extends UrbsKind>(kind: K): Promise<UrbsFile<K> | CallToolResult> {
