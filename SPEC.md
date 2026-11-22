@@ -131,7 +131,8 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   updates are older than `from`; local re-match keeps the "never a withheld object" rule. Choice A of the brief
   (evidence in docs/sources.md); B (in-process index of Consulta pages) not built. Fallback to the Consulta scan in the
   same call when the search fails or its format changes; never on a 429 or refusal. Query sent accent-stripped and
-  lower-cased.
+  lower-cased. Search timeout 8 s; search failure remembered 10 minutes (search only); `next_page_source` /
+  `page_source` tag continuations (review round 2).
 
 Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the user's query text goes to PNCP; fallback to the page scan when the search fails or its format changes.
 

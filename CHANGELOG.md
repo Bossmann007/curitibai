@@ -18,8 +18,15 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   readable publication date is counted in `discarded`.
 - Fallback (owner decision 2026-11-22): when the search fails (network error, timeout or HTTP error after the single
   retry) or its format changed (`layout_changed`), the same call falls back to the Consulta page scan (same gate, 20 s
-  budget for the whole call, allow-list and masking), and `note` says the fast search was unavailable; `next_page`
-  then counts Consulta pages. A 429 or a refusal never falls back (`rate_limited` or the refusal, as before).
+  budget for the whole call, allow-list and masking), and `note` says the fast search was unavailable. A 429 or a
+  refusal never falls back (`rate_limited` or the refusal, as before). The search request times out after 8 s (it
+  answers in 0.45–1.7 s; Consulta keeps 25 s), so the scan still fits in the budget; after a search failure the
+  search is not asked for 10 minutes in the process and calls go straight to the scan. If no scan page can start
+  within the budget after a failed search, the answer is `source_unavailable`, never `rate_limited`.
+- New output `next_page_source` (`search` or `scan`) and input `page_source`: pass them back with `next_page`.
+  `page_source: "scan"` with `query` continues the fallback scan; a search page that has to fall back restarts the
+  scan at page 1 (said in `note`); `page_source: "search"` without `query` is `invalid_argument`. `skip` now accepts
+  up to 100 (a search page holds 100).
 - The query is sent to the search accent-stripped and lower-cased, so "saúde" and "saude" are one request. The
   search word is sent to PNCP (docs/privacy.md, tool description).
 

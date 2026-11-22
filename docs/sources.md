@@ -186,8 +186,11 @@ withheld object never matches), and the Consulta API otherwise. The query is sen
 Owner decision (Enzo, 2026-11-22): the endpoint is undocumented and may change, so when the search fails (network
 error, timeout or HTTP error after the single retry) or its format fails the strict check (`layout_changed`), the
 same call falls back to the Consulta scan (same gate, same 20 s budget for the whole call, same allow-list and
-masking) and `note` says the fast search was unavailable. That search failure is not remembered by the gate (the
-Consulta API is another service on the host). A 429 or a refusal never falls back: the gate remembers it for the
+masking) and `note` says the fast search was unavailable. The search request times out after 8 s
+(`PNCP_SEARCH_TIMEOUT_MS`; Consulta keeps 25 s), so the scan's first page can still start within the 20 s budget.
+That search failure is not remembered by the gate (the Consulta API is another service on the host); the search alone
+is not asked again for 10 minutes in the process (`SEARCH_DOWN_MS`), and calls go straight to the scan meanwhile.
+`next_page_source` says which pages `next_page` counts. A 429 or a refusal never falls back: the gate remembers it for the
 whole host and the call returns `rate_limited` or the refusal as before.
 
 **Curitiba municipal bodies, read from PNCP.** Every body with a buying unit in Curitiba (`codigoIbge` 4106902) and

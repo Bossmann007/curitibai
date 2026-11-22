@@ -71,12 +71,19 @@ export const procurementSearchInput = {
     .min(1)
     .max(1000)
     .default(1)
-    .describe("Upstream page (of the site search when query is set) to start from; pass the previous result's next_page to continue."),
+    .describe("Upstream page to start from; pass the previous result's next_page (with page_source) to continue."),
+  page_source: z
+    .enum(["search", "scan"])
+    .optional()
+    .describe(
+      "Which pages 'page' counts: pass the previous result's next_page_source. Default: 'search' with query, 'scan' " +
+        "without. 'scan' with query continues the fallback page scan; 'search' needs query.",
+    ),
   skip: z
     .number()
     .int()
     .min(0)
-    .max(50)
+    .max(100)
     .default(0)
     .describe("Matches to skip on the first scanned page; pass the previous result's next_skip to continue."),
 };
@@ -107,6 +114,9 @@ export const procurementSearchOutput = envelope(
     modality: z.number().int(),
     scanned_pages: z.object({ from: z.number().int(), to: z.number().int() }),
     next_page: z.number().int().nullable(),
+    next_page_source: z
+      .enum(["search", "scan"])
+      .describe("Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."),
     next_skip: z.number().int(),
     partial: z.boolean(),
     discarded: z.number().int().describe("Records of a listed body dropped because a required field was missing or malformed."),
@@ -140,7 +150,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "call; continue with next_page and next_skip. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
-  handler: async ({ query, from, to, modality, limit, page, skip }) => {
+  handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {
+    if (page_source === "search" && query === undefined) return fail("invalid_argument", "page_source 'search' needs query.");
     const end = to ?? todayBrasilia();
     const start = from ?? addDays(end, -DEFAULT_DAYS);
     const span = (Date.parse(end) - Date.parse(start)) / 86_400_000;
@@ -152,7 +163,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     /** Sent accent-stripped and lower-cased, so "saúde" and "saude" are one request and one cache entry. */
     const sent = needle ?? undefined;
     /** False once the site search failed in this call: the Consulta scan is used instead (fallback). */
-    let searching = sent !== undefined;
+    let searching = sent !== undefined && page_source !== "scan";
     /** Search results outside the window are dropped; once a page reaches updates older than `start`, none can follow. */
     const loadPage = async (p: number, startBy: number) => {
       if (!searching || sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
@@ -174,6 +185,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let partial = false;
       let discarded = 0;
       let p = page;
+      let firstPage = page;
+      let firstSkip = skip;
       let scanned = 0;
       let rateLimitNote: string | null = null;
       let refusedNote: string | null = null;
@@ -203,11 +216,20 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
               (scanned === 0 ? "; the slower page scan was used, and next_page counts its pages." : "; continue with next_page.");
             if (scanned === 0) {
               searching = false; // same call, same gate and 20 s budget
+              if (p !== 1 || firstSkip !== 0) {
+                // A search page number means nothing to the scan: restart it from the first page.
+                searchDown += " The scan restarted from its page 1 (the requested page counted search results).";
+                p = firstPage = 1;
+                firstSkip = 0;
+              }
               continue;
             }
             partial = true;
             nextPage = p;
             break;
+          }
+          if (err instanceof OutOfTimeError && scanned === 0 && searchDown !== null) {
+            return fail("source_unavailable", `${searchDown} The page scan could not start within the ${CALL_START_BUDGET_MS / 1000} s budget; try again.`);
           }
           if (err instanceof OutOfTimeError && scanned > 0) {
             partial = true; // the host gate's next turn comes after the time budget
@@ -227,8 +249,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
         scanned++;
-        if (!(scanned === 1 && skip > 0)) discarded += res.value.discarded;
-        const skipped = scanned === 1 ? skip : 0;
+        if (!(scanned === 1 && firstSkip > 0)) discarded += res.value.discarded;
+        const skipped = scanned === 1 ? firstSkip : 0;
         const found = res.value.items.filter(matches);
         const room = limit - items.length;
         const taken = found.slice(skipped, skipped + room);
@@ -267,14 +289,15 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           from: start,
           to: end,
           modality,
-          scanned_pages: { from: page, to: page + scanned - 1 },
+          scanned_pages: { from: firstPage, to: firstPage + scanned - 1 },
           next_page: nextPage,
+          next_page_source: searching ? "search" : "scan",
           next_skip: nextSkip,
           partial,
           discarded,
           note: notes.join(" "),
         },
-        source_url: searching && sent !== undefined ? searchUrl(sent, modality, page) : publicationUrl(f, t, modality, page),
+        source_url: searching && sent !== undefined ? searchUrl(sent, modality, firstPage) : publicationUrl(f, t, modality, firstPage),
         fetched_at: fetchedAt,
         license_note: PNCP_LICENSE_NOTE,
       });

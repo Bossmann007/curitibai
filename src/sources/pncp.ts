@@ -282,15 +282,15 @@ export const MAX_RETRY_AFTER_S = 5;
  * One retry at most: after a connection error (PNCP reset about half of the connections on 2026-11-19), or after an
  * HTTP 429 whose Retry-After is at most 5 s. Never after a timeout or any other HTTP error.
  */
-async function fetchPncp(url: string): Promise<string> {
+async function fetchPncp(url: string, timeoutMs = PNCP_TIMEOUT_MS): Promise<string> {
   try {
-    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+    return (await fetchText(url, { timeoutMs })).body;
   } catch (err) {
     if (err instanceof RateLimitedError) {
       if (err.retryAfterS === null || err.retryAfterS > MAX_RETRY_AFTER_S) throw err;
       await new Promise((r) => setTimeout(r, err.retryAfterS! * 1000));
     } else if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
-    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+    return (await fetchText(url, { timeoutMs })).body;
   }
 }
 
@@ -308,6 +308,7 @@ const gate = createHostGate(PNCP_GATE);
 /** Tests only. */
 export function resetPncpGate(): void {
   gate.reset();
+  searchDownUntil = 0;
 }
 
 /** `startBy`: no request starts after it (OutOfTimeError, no request). */
@@ -330,18 +331,34 @@ export class SearchUnavailableError extends Error {
   }
 }
 
+/**
+ * The search answered in 0.45–1.7 s per page (2026-11-22); 8 s leaves the fallback scan room in the 20 s budget.
+ * A timeout is not retried (fetchPncp).
+ */
+export const PNCP_SEARCH_TIMEOUT_MS = 8_000;
+/** After a search failure, the search is not asked for 10 minutes in the process (the Consulta API still is). */
+export const SEARCH_DOWN_MS = 10 * 60_000;
+let searchDownUntil = 0;
+let searchDownReason = "";
+
 const searchFailure = (err: unknown) =>
   err instanceof SourceUnavailableError && !(err instanceof RateLimitedError) && !(err instanceof SourceRefusedError);
 
 /** One page of the site search, through the same PNCP gate (spacing, budget), cache and single retry as the Consulta API. */
 export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
   const url = searchUrl(query, modality, page);
+  const down = (reason: string) => {
+    searchDownUntil = Date.now() + SEARCH_DOWN_MS;
+    searchDownReason = reason;
+    return new SearchUnavailableError(reason);
+  };
   return underOwnBudget(startBy, () =>
     sharedCache.getOrLoad(`GET ${url}`, async () => {
+      if (Date.now() < searchDownUntil) throw new SearchUnavailableError(`${searchDownReason}, remembered for 10 minutes`);
       const got = await gate.run(
         async (): Promise<{ body: string } | { failed: string }> => {
           try {
-            return { body: await fetchPncp(url) };
+            return { body: await fetchPncp(url, PNCP_SEARCH_TIMEOUT_MS) };
           } catch (err) {
             if (searchFailure(err)) return { failed: (err as SourceUnavailableError).reason };
             throw err;
@@ -349,11 +366,11 @@ export function getSearchPage(query: string, modality: number, page: number, sta
         },
         { startBy },
       );
-      if ("failed" in got) throw new SearchUnavailableError(got.failed);
+      if ("failed" in got) throw down(got.failed);
       try {
         return parseSearch(got.body);
       } catch (err) {
-        if (searchFailure(err)) throw new SearchUnavailableError("layout_changed");
+        if (searchFailure(err)) throw down("layout_changed");
         throw err;
       }
     }),
