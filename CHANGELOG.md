@@ -15,7 +15,8 @@ The two Low findings left by the v0.18.1 review. No new tool, no new host.
   rating, price) an optional enrichment. `partial: true` now means only that listing pages are missing (`truncated`),
   so a cold call is no longer always partial. Items whose event page was not read yet (time budget, the 2-page cap
   per call, a refusal) are counted in the new `details_pending` field, with a note to call again for venue and
-  price. The 5 s gate, the caches and the 20 s budget are unchanged.
+  price. The 5 s gate, the caches and the 20 s budget are unchanged. A client that used `partial` as its signal to
+  call again for event-page details should use `details_pending > 0` instead.
 
 ## 0.18.1 - 2026-11-22
 

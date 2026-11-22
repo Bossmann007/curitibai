@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { dateInCuritiba } from "../sources/detran.js";
 import {
+  cachedDetails,
   CALENDAR_URL,
   getListing,
   LayoutChangedError,
@@ -86,8 +87,8 @@ export const guairaEventsOutput = z.object({
       .number()
       .int()
       .describe(
-        "Items on this page whose event page was not read yet (details: \"not_read\"): venue, age rating and price are " +
-          "an optional enrichment, filled by later calls.",
+        "Items on this page whose event page was not read yet (details: \"not_read\") or failed in this call (a removed " +
+          "page is not counted): venue, age rating and price are an optional enrichment, filled by later calls.",
       ),
     items: z.array(Item),
   }),
@@ -175,7 +176,8 @@ export function buildResult(
     const d = details.get(r.link) ?? NO_DETAILS("not_read");
     return { ...r, venue: d.venue, age_rating: d.age_rating, price: d.price, details: d.status, link: r.link };
   });
-  const notRead = items.filter((i) => i.details === "not_read").length;
+  // Pending: not read yet, or failed in this call without being cached (a 404/410 page is cached as unavailable).
+  const notRead = items.filter((i) => i.details === "not_read" || (i.details === "unavailable" && cachedDetails(i.link) === null)).length;
   const extra = [
     `Venue, age rating and price come from each event page; at most ${MAX_DETAILS_PER_CALL} new event pages are read per call (cached 6 hours).`,
     notRead > 0 ? `${notRead} item(s) on this page have no venue, age rating or price yet (details_pending: ${notRead}); call again for venue and price.` : "",

@@ -195,7 +195,8 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
           if (err instanceof OutOfTimeError) outOfTime.push(m.s);
           else if (err instanceof RateLimitedError) {
             limited.push(m.s);
-            limitedErr ??= err;
+            // The note names the longest wait (a remembered 429's Retry-After can outlast a queue refusal).
+            if (limitedErr === null || (err.retryAfterS ?? 0) > (limitedErr.retryAfterS ?? 0)) limitedErr = err;
           } else if (err instanceof StationDataError) read.push({ ...m, d: "unavailable" });
           else throw err;
         }

@@ -439,6 +439,7 @@ describe("requests to the Teatro Guaíra host", () => {
     const out = await search({});
     expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
     expect(out.data.items.map((i) => i.details)).toEqual(["unavailable", "not_read", "not_read", "not_read"]);
+    expect(out.data).toMatchObject({ partial: false, details_pending: 4 }); // the failed page is not cached: asked again later
     expect(out.note).toMatch(/could not be read/);
   });
 
@@ -448,6 +449,7 @@ describe("requests to the Teatro Guaíra host", () => {
     const out = await search({});
     expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, MIA]);
     expect(out.data.items.map((i) => i.details)).toEqual(["unavailable", "not_recognised", "not_read", "not_read"]);
+    expect(out.data.details_pending).toBe(2); // the removed page is cached as unavailable: not pending
     expect(out.note).not.toMatch(/could not be read/);
   });
 
