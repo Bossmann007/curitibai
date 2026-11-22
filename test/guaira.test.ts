@@ -353,6 +353,18 @@ describe("requests to the Teatro Guaíra host", () => {
     expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL]);
   });
 
+  it("asks nothing, robots.txt included, while a failure is remembered (busy, not robots_failed)", async () => {
+    stubFetch(routes());
+    await search({ limit: 1 }); // robots.txt cached from here for 24 h
+    vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000 - 5 * 60 * 1000);
+    stubFetch(routes({ [`GET ${OSP}`]: { status: 403 } }));
+    expect((await search({ from: "2026-11-22", offset: 2, limit: 1 })).data.items[0]!.details).toBe("unavailable"); // listing reloaded, then the event page refused: host blocked 10 minutes
+    vi.setSystemTime(Date.now() + 6 * 60 * 1000); // robots.txt cache expired, block still on
+    const calls = stubFetch(routes());
+    expect(await readDetails([JON])).toEqual({ details: new Map(), stopped: "busy" });
+    expect(calls).toHaveLength(0);
+  });
+
   it("keeps the listing when an event page fails, and reads no more event pages in that call", async () => {
     const calls = stubFetch(routes({ [`GET ${MUITO}`]: { status: 500 } }));
     const out = await search({});
