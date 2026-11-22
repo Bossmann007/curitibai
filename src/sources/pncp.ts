@@ -145,14 +145,25 @@ export interface ParsedPage {
  */
 export function parseContratacoes(body: string): ParsedPage {
   if (body.trim() === "") return { items: [], received: 0, discarded: 0, lastPage: true };
-  let json: unknown;
+  const json = parseJson(body);
+  const list = (json as { data?: unknown } | null)?.data;
+  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+  const { items, discarded } = parseRecords(list);
+  const remaining = (json as { paginasRestantes?: unknown }).paginasRestantes;
+  const lastPage = typeof remaining === "number" ? remaining <= 0 : list.length < PNCP_PAGE_SIZE;
+  return { items, received: list.length, discarded, lastPage };
+}
+
+function parseJson(body: string): unknown {
   try {
-    json = JSON.parse(body);
+    return JSON.parse(body);
   } catch {
     throw new SourceUnavailableError("PNCP response is not JSON");
   }
-  const list = (json as { data?: unknown } | null)?.data;
-  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+}
+
+/** Records in the Consulta API shape; see parseContratacoes. */
+function parseRecords(list: unknown[]): { items: Procurement[]; discarded: number } {
   const items: Procurement[] = [];
   let discarded = 0;
   for (const rec of list) {
@@ -198,9 +209,69 @@ export function parseContratacoes(body: string): ParsedPage {
       link: `https://pncp.gov.br/app/editais/${cnpj}/${year}/${seq}`,
     });
   }
-  const remaining = (json as { paginasRestantes?: unknown }).paginasRestantes;
-  const lastPage = typeof remaining === "number" ? remaining <= 0 : list.length < PNCP_PAGE_SIZE;
-  return { items, received: list.length, discarded, lastPage };
+  return { items, discarded };
+}
+
+/**
+ * The search behind the pncp.gov.br site (`/api/search`, docs/sources.md): no key or login, a page of 100 in about 1 s.
+ * Not in the Consulta OpenAPI. Filtered to Curitiba (PNCP's own municipality id 4006, not the IBGE code) and one
+ * modality; results come newest update first (`ordenacao=-data` sorts by `data_atualizacao_pncp`).
+ */
+export const PNCP_SEARCH = "https://pncp.gov.br/api/search";
+export const PNCP_SEARCH_PAGE_SIZE = 100;
+export const CURITIBA_SEARCH_MUNICIPIO = "4006";
+
+export function searchUrl(query: string, modality: number, page: number): string {
+  const params = new URLSearchParams({
+    q: query,
+    tipos_documento: "edital",
+    ordenacao: "-data",
+    status: "todos",
+    municipios: CURITIBA_SEARCH_MUNICIPIO,
+    modalidades: String(modality),
+    pagina: String(page),
+    tam_pagina: String(PNCP_SEARCH_PAGE_SIZE),
+  });
+  return `${PNCP_SEARCH}?${params.toString()}`;
+}
+
+export interface SearchPage extends ParsedPage {
+  /** Date (YYYY-MM-DD) of the oldest `data_atualizacao_pncp` on the page; null when none was readable. */
+  oldestUpdate: string | null;
+}
+
+/**
+ * Copies only the fields parseRecords reads from each search record into the Consulta shape, so the search's
+ * supplier, user and free-text fields (`fornecedor_*`, `usuario_nome`, `informacao_complementar`) never reach it.
+ */
+export function parseSearch(body: string): SearchPage {
+  const json = parseJson(body) as { items?: unknown; total?: unknown } | null;
+  const list = json?.items;
+  if (!Array.isArray(list) || typeof json?.total !== "number") throw new SourceUnavailableError("unexpected PNCP response");
+  let oldestUpdate: string | null = null;
+  const records = list.map((rec: unknown) => {
+    if (typeof rec !== "object" || rec === null) return null;
+    const r = rec as Record<string, unknown>;
+    const updated = dateTime(r.data_atualizacao_pncp)?.slice(0, 10) ?? null;
+    if (updated !== null && (oldestUpdate === null || updated < oldestUpdate)) oldestUpdate = updated;
+    return {
+      numeroControlePNCP: r.numero_controle_pncp,
+      orgaoEntidade: { cnpj: r.orgao_cnpj, razaoSocial: r.orgao_nome },
+      unidadeOrgao: { codigoIbge: r.codigo_ibge },
+      anoCompra: r.ano,
+      sequencialCompra: r.numero_sequencial,
+      modalidadeId: r.modalidade_licitacao_id,
+      objetoCompra: r.description,
+      valorTotalEstimado: r.valor_total_estimado,
+      situacaoCompraId: r.situacao_id,
+      situacaoCompraNome: r.situacao_nome,
+      dataPublicacaoPncp: r.data_publicacao_pncp,
+      dataAberturaProposta: r.data_inicio_recebimento_propostas,
+      dataEncerramentoProposta: r.data_fim_recebimento_propostas,
+    };
+  });
+  const { items, discarded } = parseRecords(records);
+  return { items, received: list.length, discarded, lastPage: list.length < PNCP_SEARCH_PAGE_SIZE, oldestUpdate };
 }
 
 /** Longest Retry-After (seconds) the server waits for before its single retry; anything longer is returned as rate_limited. */
@@ -243,5 +314,13 @@ export function getPublicationPage(from: string, to: string, modality: number, p
   const url = publicationUrl(from, to, modality, page);
   return underOwnBudget(startBy, () =>
     sharedCache.getOrLoad(`GET ${url}`, async () => parseContratacoes(await gate.run(() => fetchPncp(url), { startBy }))),
+  );
+}
+
+/** One page of the site search, through the same PNCP gate, cache and single retry as the Consulta API. */
+export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
+  const url = searchUrl(query, modality, page);
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${url}`, async () => parseSearch(await gate.run(() => fetchPncp(url), { startBy }))),
   );
 }

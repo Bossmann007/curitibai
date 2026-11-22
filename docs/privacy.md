@@ -77,8 +77,11 @@ behind it.
   OSM does not reliably say whether a school is public, so `school` can include private ones (their names are
   institutions', not people's). A `website` that the guard would mask, as written or percent-decoded (for example a `wa.me/55...` link), is dropped;
   this fails closed, so a link with a long digit run (some social-media ids) or over 300 characters is dropped too.
-- `procurement_search` never returns the supplier: its output is built field by field, and the PNCP endpoint it uses
-  has no supplier field. The object text can name people, and a name cannot be told apart from other text by a rule,
+- `procurement_search` never returns the supplier: its output is built field by field, and the PNCP Consulta endpoint it uses
+  has no supplier field. Since 0.19.1 a `query` is sent to PNCP's site search (`pncp.gov.br/api/search`), whose
+  records do carry supplier, publishing-user and free-text fields; only the fields the Consulta path reads are copied
+  from them, so none of those can reach the output, and a result is kept only when the returned object or body name
+  contains the query. The object text can name people, and a name cannot be told apart from other text by a rule,
   so the gate is by modality: for **dispensa (8), inexigibilidade (9), credenciamento (12, since 0.13.2), inaplicabilidade (14)** and any unknown modality
   the object is withheld (`object: null`, `object_withheld: "may_name_a_person"`); body, modality, value, status, dates
   and the PNCP link are still returned. For the other (competitive) modalities the object is returned as published,

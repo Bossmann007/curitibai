@@ -1,9 +1,11 @@
 import { z } from "zod";
 import {
   getPublicationPage,
+  getSearchPage,
   MODALITIES,
   PNCP_LICENSE_NOTE,
   publicationUrl,
+  searchUrl,
   type Procurement,
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
@@ -41,7 +43,10 @@ export const procurementSearchInput = {
     .min(2)
     .max(100)
     .optional()
-    .describe("Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS')."),
+    .describe(
+      "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to " +
+        "PNCP's site search; only results whose returned object or body name contain it are kept.",
+    ),
   from: isoDate.optional().describe(`First publication date, YYYY-MM-DD. Default: ${DEFAULT_DAYS} days before 'to'.`),
   to: isoDate.optional().describe("Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days."),
   modality: z
@@ -64,7 +69,7 @@ export const procurementSearchInput = {
     .min(1)
     .max(1000)
     .default(1)
-    .describe("Upstream page to start scanning from; pass the previous result's next_page to continue."),
+    .describe("Upstream page (of the site search when query is set) to start from; pass the previous result's next_page to continue."),
   skip: z
     .number()
     .int()
@@ -128,8 +133,9 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade, " +
     "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
-    "a name. Scans upstream pages of 50 until limit items match, at most 5 pages and no new page after 20 s per call (PNCP takes " +
-    "8–13 s per page); continue with next_page and next_skip. Read-only.",
+    "a name. With query, uses the search behind the pncp.gov.br site (pages of 100, about 1 s each, newest update " +
+    "first); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
+    "call; continue with next_page and next_skip. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
   handler: async ({ query, from, to, modality, limit, page, skip }) => {
@@ -141,6 +147,15 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     const f = compact(start);
     const t = compact(end);
     const needle = query === undefined ? null : fold(query).replace(/\s+/g, " ");
+    const sent = query?.replace(/\s+/g, " ");
+    /** Search results outside the window are dropped; once a page reaches updates older than `start`, none can follow. */
+    const loadPage = async (p: number, startBy: number) => {
+      if (sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
+      const res = await getSearchPage(sent, modality, p, startBy);
+      const inWindow = (it: Procurement) => it.published_at !== null && it.published_at.slice(0, 10) >= start && it.published_at.slice(0, 10) <= end;
+      const old = res.value.oldestUpdate !== null && res.value.oldestUpdate < start;
+      return { ...res, value: { ...res.value, items: res.value.items.filter(inWindow), lastPage: res.value.lastPage || old } };
+    };
     const matches = (it: Procurement) =>
       needle === null || fold(it.body_name).includes(needle) || (it.object !== null && fold(it.object).includes(needle));
 
@@ -172,7 +187,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         }
         let res;
         try {
-          res = await getPublicationPage(f, t, modality, p, started + CALL_START_BUDGET_MS);
+          res = await loadPage(p, started + CALL_START_BUDGET_MS);
         } catch (err) {
           if (err instanceof OutOfTimeError && scanned > 0) {
             partial = true; // the host gate's next turn comes after the time budget
@@ -211,6 +226,9 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         p++;
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
+      if (sent !== undefined) {
+        notes.splice(1, 0, "Text searched with PNCP's site search (word matches); results kept only when the returned object or body name contains the query.");
+      }
       if (refusedNote !== null) notes.unshift(refusedNote);
       else if (partial) {
         const why = budgetReached ? ` (the ${CALL_START_BUDGET_MS / 1000} s time budget was reached)` : "";
@@ -230,7 +248,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           discarded,
           note: notes.join(" "),
         },
-        source_url: publicationUrl(f, t, modality, page),
+        source_url: sent === undefined ? publicationUrl(f, t, modality, page) : searchUrl(sent, modality, page),
         fetched_at: fetchedAt,
         license_note: PNCP_LICENSE_NOTE,
       });

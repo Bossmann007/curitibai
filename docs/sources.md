@@ -65,7 +65,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 |---|---|---|
 | `dadosabertos.curitiba.pr.gov.br` | 404 (HTML "not found" page, rechecked 2026-11-19) | No restriction (RFC 9309: a 4xx robots.txt means no rules). **Contacted.** |
 | `apidadosabertos.saude.gov.br` (Ministry of Health open-data API) | 404 (HTML "404 Not Found", checked 2026-11-19) | No restriction. **Contacted** (v0.2, `health_units_search`). |
-| `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309). **Contacted** (v0.3, `procurement_search`, `/api/consulta` only) |
+| `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309; rechecked 2026-11-22, 404 with the HTML page again after two connection resets). **Contacted** (v0.3, `procurement_search`, `/api/consulta`; since v0.19.1 also `/api/search` when `query` is set) |
 | `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
 | `ovp.dresel.systems` (Overpass API, OpenStreetMap, run by Christian Dresel) | 404, Apache HTML "Not Found" (checked 2026-11-21 03:26 UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). **Contacted** (v0.7, `places_search`, `POST /api-sa/interpreter` only) |
 | `overpass.private.coffee` (formerly `overpass.kumi.systems`) | 404 (checked 2026-11-21 02:43 UTC) | Allowed, and its terms allow "any project", but **it did not answer any Overpass request** from 02:44 to 03:20 UTC on 2026-11-21 (504 "server is probably too busy", then timeouts). Not used |
@@ -162,6 +162,28 @@ Checked live on **2026-11-19** with curl, User-Agent `curitibai-mcp/0.3`, before
 Research-only requests on 2026-11-19 (not made by the code): `/api/pncp/v1/modalidades`, `/api/pncp/v3/api-docs`, one
 `/api/search/` query, the app's JavaScript bundles, the manual pages, and a walk of every result page for modalities 4,
 6, 8, 9, 11 and 12 (62 pages of 50, one request at a time), plus page 1 of every other modality code (1–20) to list the bodies below.
+
+**Text search (v0.19.1, checked 2026-11-22 with curl, User-Agent `curitibai-mcp/0.19.1`, GET only, at least 6 s
+between requests).** On 2026-11-22 `procurement_search {query:"merenda"}` took 25 s and returned 0 items, partial,
+after 4 Consulta pages: the Consulta API has no text parameter (its OpenAPI lists none), so a query was matched
+client-side page by page at 8–13 s per page. Findings:
+
+| Field | Value |
+|---|---|
+| URL | `GET https://pncp.gov.br/api/search?q=<text>&tipos_documento=edital&ordenacao=-data&status=todos&municipios=4006&modalidades=<code>&pagina=<n>&tam_pagina=100` (no trailing slash: both forms answered 200; notice 11/26) |
+| Documentation | **None found**: not in the Consulta OpenAPI (`/api/consulta/v3/api-docs`) nor in the *Manual de Integração*. It is the search behind the public site's "Buscar" page: the app bundle's `environment` sets `searchURL:"/api/search"`, and the result panel (`default-src_app_result-panel_...js`) builds exactly these parameters (`q`, `tipos_documento`, `ordenacao` default `-data`, `pagina`, `tam_pagina`, `status`, `anos`, `orgaos`, `unidades`, `esferas`, `poderes`, `ufs`, `municipios`, `modalidades`, ...) |
+| Access | No key, no login, no cookie; `access-control-allow-origin: *`; `cache-control: max-age=120`. The app's CAPTCHA (`usarCaptcha`) guards only the detail of a `compras` record (`getDetail` in the `consultas` chunk), never the search, and the server never asks for that detail. gov.br/pncp: "Todas as buscas podem ser feitas sem necessidade de cadastro ou login". robots.txt: 404 (no rules) |
+| Filters | `municipios` takes PNCP's own municipality id, not the IBGE code: **Curitiba is 4006** (read from `municipio_id` of records with `codigo_ibge` 4106902). `modalidades=9` returned only modality 9. `q` matches the object and the body name ("FAS" found FUNDACAO DE ACAO SOCIAL FAS). `tam_pagina=100` worked. No date filter (only `anos`), so the window is applied client-side |
+| Order | `ordenacao=-data` sorts by `data_atualizacao_pncp`, newest first (publication dates are not in order: an item published 2026-01-07 sat among items of 2026-11-17 because it was updated then). An update is never before publication, so once a page reaches updates older than `from`, no later item can be in the window and the scan stops |
+| Latency | 0.45–1.7 s per page of 50–100 (against 8–13 s for a Consulta page of 50) |
+| Record fields | Flat: `numero_controle_pncp`, `orgao_cnpj`, `orgao_nome`, `codigo_ibge`, `municipio_id`, `ano`, `numero_sequencial` (strings), `modalidade_licitacao_id`, `description` (the object), `valor_total_estimado`, `situacao_id`/`situacao_nome`, `data_publicacao_pncp`, `data_atualizacao_pncp`, `data_inicio_recebimento_propostas`, `data_fim_recebimento_propostas`, **plus** `fornecedor_*`, `usuario_nome`, `informacao_complementar`, `link_sistema_origem`. `parseSearch` copies only the first group into the Consulta shape and runs the same field-by-field builder, allow-list and modality gate |
+| Live "merenda" (2026-11-22) | `municipios=4006`, all modalities: 21 results, none from a listed Curitiba municipal body except one Fundação Cultural inexigibilidade (modality 9, object withheld, so not matched); the others are federal, state and consortium bodies with a unit in Curitiba |
+| Connection resets | As on 2026-11-19, most new connections were reset (curl error 56) and answered on a later attempt; after about 40 requests in 40 minutes every connection was reset for several minutes, and the research stopped. The server keeps its single retry after a connection error and the 6 s gate |
+
+Decision: `procurement_search` uses the site search when `query` is set (same host, same gate, budget, page cap,
+cache and fail-closed parsing; a result is kept only when its returned object or body name contains the query, so a
+withheld object never matches), and the Consulta API otherwise. Risk: the endpoint is undocumented and may change;
+a changed shape returns `source_unavailable` (no fallback to the slow scan, which would add load).
 
 **Curitiba municipal bodies, read from PNCP.** Every body with a buying unit in Curitiba (`codigoIbge` 4106902) and
 `esferaId` `M` in the results published from 2026-10-01 to 2026-11-18 (modalities 1, 4, 6, 8, 9, 11 and 12 had results;

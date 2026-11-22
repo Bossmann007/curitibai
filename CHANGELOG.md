@@ -2,6 +2,18 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.1 - 2026-11-22
+
+- `procurement_search` with `query` now uses the search behind the pncp.gov.br site (`GET /api/search`, filtered to
+  Curitiba and the modality; no key or login, robots.txt allows it; docs/sources.md) instead of reading Consulta
+  pages and matching client-side. A search page of 100 takes about 1 s instead of 8–13 s for 50, so a text match is
+  found on the first call: on 2026-11-22 `{query:"merenda"}` took 25 s, read 4 pages and returned 0 items, partial.
+  The same host gate (6 s), 20 s budget, 5-page cap and cache apply. The window is applied client-side, and the scan
+  stops once results were last updated before `from` (the search sorts by update date). A result is kept only when
+  the returned object or body name contains the query (accents and case ignored), so a withheld object still never
+  matches; supplier, user and free-text fields of the search records are never read. Without `query` nothing changes.
+  `page`/`next_page` count search pages when `query` is set, and `source_url` is the search URL.
+
 ## 0.19.0 - 2026-11-22
 
 Usability fixes found by calling every tool as a user (Praça Tiradentes). No new tool, no new host.

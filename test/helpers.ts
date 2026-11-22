@@ -5,7 +5,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
 import { datasetUrl, filesListUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { CNES_TYPES_URL, establishmentsUrl } from "../src/sources/cnes.js";
-import { publicationUrl } from "../src/sources/pncp.js";
+import { publicationUrl, searchUrl } from "../src/sources/pncp.js";
 import { ALERTS_URL, FORECAST_URL } from "../src/sources/inmet.js";
 import { OVERPASS_URL, placesQuery } from "../src/sources/osm.js";
 
@@ -104,6 +104,48 @@ export function pncpUrl(page = 1, modality = 6): string {
 /** PNCP route backed by the synthetic fixture (invented values, planted personal data). One page: the last. */
 export function pncpRoutes(): Record<string, Route> {
   return { [`GET ${pncpUrl()}`]: { body: fixture("pncp_contratacoes_synthetic.json"), contentType: JSON_TYPE } };
+}
+
+/**
+ * A Consulta-shape record as PNCP's site search returns it. The original keys are kept too, so the planted supplier,
+ * user and free-text values are in every search page the tests serve.
+ */
+export function toSearchRecord(r: Record<string, unknown>): Record<string, unknown> {
+  const org = r.orgaoEntidade as Record<string, unknown>;
+  const unit = r.unidadeOrgao as Record<string, unknown>;
+  return {
+    ...r,
+    numero_controle_pncp: r.numeroControlePNCP,
+    orgao_cnpj: org.cnpj,
+    orgao_nome: org.razaoSocial,
+    codigo_ibge: unit.codigoIbge,
+    ano: String(r.anoCompra),
+    numero_sequencial: String(r.sequencialCompra),
+    modalidade_licitacao_id: String(r.modalidadeId),
+    description: r.objetoCompra,
+    valor_total_estimado: r.valorTotalEstimado,
+    situacao_id: String(r.situacaoCompraId),
+    situacao_nome: r.situacaoCompraNome,
+    data_publicacao_pncp: r.dataPublicacaoPncp,
+    data_atualizacao_pncp: r.dataAtualizacao ?? r.dataPublicacaoPncp,
+    data_inicio_recebimento_propostas: r.dataAberturaProposta ?? "",
+    data_fim_recebimento_propostas: r.dataEncerramentoProposta ?? "",
+    fornecedor_nome: "FORNECEDOR PESSOA FICTICIA",
+    fornecedor_ni: "12345678900",
+    usuario_nome: "USUARIO FICTICIO",
+    informacao_complementar: "Contato fulana.ficticia@example.invalid",
+  };
+}
+
+/** A site search page body from Consulta-shape records. */
+export function searchPage(records: Record<string, unknown>[], total = records.length): string {
+  return JSON.stringify({ items: records.map(toSearchRecord), total });
+}
+
+/** Site search routes for `query` backed by the synthetic fixture (every modality's records on one page). */
+export function pncpSearchRoutes(query: string, modality = 6): Record<string, Route> {
+  const records = (JSON.parse(fixture("pncp_contratacoes_synthetic.json")) as { data: Record<string, unknown>[] }).data;
+  return { [`GET ${searchUrl(query, modality, 1)}`]: { body: searchPage(records), contentType: JSON_TYPE } };
 }
 
 /** INMET routes backed by the synthetic fixtures (invented values, real shape). */

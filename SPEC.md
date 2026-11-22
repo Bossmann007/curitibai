@@ -124,6 +124,13 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
 - `local_csv_summary` `file_not_found`, `events_search` and `useful_phones` `data_not_available` messages point to
   `docs/local-data.md` and the nightly run.
 
+## v0.19.1 changes (task brief "curitibai v0.19.1 — procurement_search should find a text match on the first call", 2026-11-22)
+
+- `procurement_search` with `query`: PNCP site search (`/api/search`, `municipios=4006`, `modalidades`, pages of
+  100, `src/sources/pncp.ts` `getSearchPage`/`parseSearch`) through the PNCP gate; window client-side; stop when
+  updates are older than `from`; local re-match keeps the "never a withheld object" rule. Choice A of the brief
+  (evidence in docs/sources.md); B (in-process index of Consulta pages) not built.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
