@@ -74,6 +74,17 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   it, what is ready is returned with `partial: true` and a note; a request in flight is never cut, and the Guaíra
   listing load is never cut (a partial listing would be cached 1 hour).
 
+## v0.18.2 changes (task brief "curitibai v0.18.2 — the two Lows left by the v0.18.1 review", 2026-11-22)
+
+- `river_levels`: a `rate_limited` from the host gate in the middle of a call no longer discards the stations read.
+  When at least one station was read in the call or is cached, those are returned with `partial: true` and a note
+  (the same shape as the time-budget partial, refused stations first in `more_matches`); `rate_limited` is returned
+  only when no station is available. Other host or transfer failures still fail the whole call.
+- `guaira_events`: the listing (title, dates, city, link) is the complete answer; venue, age rating and price are an
+  optional enrichment. `partial: true` only when listing pages are missing (`truncated`); items whose event page was
+  not read yet (time budget, the 2-page cap, a refusal) are counted in `details_pending` with the note "call again for
+  venue and price". Gate, cache and budget unchanged.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
