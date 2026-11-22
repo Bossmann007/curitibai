@@ -154,6 +154,10 @@ const NOTE =
   "next to them (such as 'Fax') are not kept. In an emergency call 190, 192 or 193 directly; numbers can change, so " +
   "confirm on the source page.";
 
+function phonesAgeDays(data: PhonesData, now: Date): number {
+  return (now.getTime() - Date.parse(data.checkedAt)) / 86_400_000;
+}
+
 /** The result for already loaded entries: page order, filtered by every query word (accent-insensitive). */
 export function usefulPhonesResult(
   data: PhonesData,
@@ -161,7 +165,7 @@ export function usefulPhonesResult(
   now: Date = new Date(),
   origin: DataOrigin = "local",
 ): z.infer<typeof usefulPhonesOutput> {
-  const stale = (now.getTime() - Date.parse(data.checkedAt)) / 86_400_000 > PHONES_STALE_DAYS;
+  const stale = phonesAgeDays(data, now) > PHONES_STALE_DAYS;
   const words = args.query === undefined ? [] : queryWords(args.query);
   const matches = data.entries.filter((e) => {
     const text = fold(`${e.name} ${e.section} ${e.numbers.join(" ")}`);
@@ -229,6 +233,8 @@ export const usefulPhones: ToolDef<typeof usefulPhonesInput, typeof usefulPhones
       if (err instanceof SourceUnavailableError || err instanceof UrlNotAllowedError) return failFrom(err);
       return fail("invalid_data", `${PHONES_FILE} could not be read.`);
     }
-    return ok(usefulPhonesResult(data, args, new Date(), origin));
+    const now = new Date();
+    if (phonesAgeDays(data, now) < -1 / 24) return fail("invalid_data", `checked_at in ${PHONES_FILE} is in the future.`);
+    return ok(usefulPhonesResult(data, args, now, origin));
   },
 };

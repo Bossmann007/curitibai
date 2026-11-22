@@ -162,6 +162,21 @@ describe("published nightly copy", () => {
     expect(err.message).toMatch(/no published copy yet/);
   });
 
+  it("a missing events file does not make the phones file fail (one failure memory per file)", async () => {
+    const calls = stubFetch({
+      [`GET ${EVENTS_URL}`]: { status: 404, body: "404: Not Found" },
+      [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))),
+    });
+    expect(errorOf(await events())).toMatchObject({ error: "data_not_available" });
+    expect((await phones({ query: "samu" })).isError).toBeFalsy();
+    expect(calls.map((c) => c.url)).toEqual([EVENTS_URL, PHONES_URL]);
+  });
+
+  it("useful_phones refuses a checked_at in the future, as events_search does", async () => {
+    stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() + 2 * DAY))) });
+    expect(errorOf(await phones())).toMatchObject({ error: "invalid_data" });
+  });
+
   it("caches a good file for 1 hour, then asks again", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-22T12:00:00Z"));

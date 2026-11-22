@@ -154,7 +154,8 @@ when it exists, else the copy the nightly collection publishes (see [Events](#ev
 and returns `{data, source_url, fetched_at, checked_at, stale, attribution, license_note, note}` (`fetched_at` and
 `checked_at` both hold the file's `checked_at`; `stale: true` after 3 days); its errors are
 `data_not_available` (no local file and no published copy, or `CURITIBAI_REMOTE_DATA=0`; the message says how to run
-the collector), `invalid_data` (not UTF-8 JSON, the wrong shape, a number in an unknown format, or over 512 KB),
+the collector), `invalid_data` (not UTF-8 JSON, the wrong shape, a number in an unknown format, `checked_at` in the
+future, or over 512 KB),
 `source_unavailable` and `rate_limited` (the published copy could not be read), `file_not_allowed` and
 `invalid_argument`.
 `events_search` reads `CURITIBAI_DATA_DIR/events/events.json` the same way (local file first, else the published
@@ -437,8 +438,9 @@ GitHub-hosted runners is free" in public repositories, per
 [GitHub's billing page](https://docs.github.com/en/billing/concepts/product-billing/github-actions); no larger runner
 is used). It follows exactly the rules below (window, robots.txt check, 5 s gap, no retry) and then
 `scripts/publish-data.sh` commits only `events/events.json`, `events/status.json` and `phones/phones.json` to the
-orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`), and only
-when one of them changed. A run that fails (`window_closed`, `robots_changed`, `http_error`, ...) keeps the previous
+orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). It skips
+the commit when none of them changed, which is rare: `events/status.json` records every attempt, so most nights add
+one small commit. A run that fails (`window_closed`, `robots_changed`, `http_error`, ...) keeps the previous
 files, updates only `events/status.json`, shows as failed in the Actions tab and is not retried until the next night.
 The job has `contents: write` only for itself, a 15-minute timeout, and never overlaps another run.
 
@@ -476,7 +478,10 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
 - A manual run: `gh workflow run collect.yml` (or **Run workflow** in the Actions tab). Outside 02:00–05:50 UTC it
   makes no request to the site and only records `window_closed`.
 - The detail cache (`events/details.json`) is not published, so every nightly run reads every detail page again:
-  about 5 minutes for the 50 or so events seen on 2026-11-21, well inside the 15-minute timeout.
+  about 5 minutes for the 50 or so events seen on 2026-11-21. The collector reads at most 10 list pages (100 events;
+  a pager showing more stops the run), so a full run is at most about 112 requests, 5 s apart: about 10 to 12
+  minutes, inside the job's 15-minute timeout. A job GitHub stops at the timeout publishes nothing that night (not
+  even `status.json`); it shows as failed in Actions.
 
 **Running the collector yourself** (optional; a local file always wins over the published copy).
 `events_search` then reads `events/events.json` inside `CURITIBAI_DATA_DIR`. **The server never contacts the events

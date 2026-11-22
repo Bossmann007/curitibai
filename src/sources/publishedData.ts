@@ -1,5 +1,5 @@
 import { TtlCache } from "../cache.js";
-import { createHostGate } from "../hostGate.js";
+import { createHostGate, type HostGate } from "../hostGate.js";
 import { fetchText, SourceUnavailableError } from "../http.js";
 import { LocalFileError } from "../localfs.js";
 
@@ -45,15 +45,19 @@ export class InvalidPublishedError extends Error {
   }
 }
 
-// Validated files only; a failure is not cached here, the gate remembers it (at least 60 s, no request meanwhile).
+// Validated files only; a failure is not cached here, the file's gate remembers it (at least 60 s, no request
+// meanwhile). One gate per file, so a missing or broken events file never answers for the phones file.
 const newCache = () => new TtlCache(PUBLISHED_CACHE_TTL_MS, () => Date.now());
 let cache = newCache();
-const gate = createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 });
+const gates: Record<PublishedFile, HostGate> = {
+  "events/events.json": createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 }),
+  "phones/phones.json": createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 }),
+};
 
 /** Tests only. */
 export function clearPublishedState(): void {
   cache = newCache();
-  gate.reset();
+  for (const g of Object.values(gates)) g.reset();
 }
 
 /**
@@ -63,7 +67,7 @@ export function clearPublishedState(): void {
 export async function loadPublished<T>(file: PublishedFile, maxBytes: number, build: (json: unknown) => T): Promise<T> {
   const url = publishedUrl(file);
   const { value } = await cache.getOrLoad(url, () =>
-    gate.run(async () => {
+    gates[file].run(async () => {
       let body: string;
       try {
         ({ body } = await fetchText(url, {

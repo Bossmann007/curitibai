@@ -14,14 +14,16 @@ New host for the server: `raw.githubusercontent.com` (two fixed files of this re
   on `Bossmann007/curitibai` `main`. It runs `scripts/publish-data.sh`: the previous files from the `data` branch go
   into a temporary `CURITIBAI_DATA_DIR`, `scripts/fetch-events.mjs` runs once unchanged (same robots.txt, window
   and 5 s rules, no retry), and only `events/events.json`, `events/status.json` and `phones/phones.json` are
-  committed to the orphan branch `data` (never `main`, no force push), only when one changed. A failed run keeps the
+  committed to the orphan branch `data` (never `main`, no force push); the commit is skipped when none changed (rare:
+  `status.json` records every attempt). A failed run keeps the
   previous files, changes only `events/status.json` and ends red. The first run after merge creates the branch.
 - `events_search` and `useful_phones`: the local file in `CURITIBAI_DATA_DIR` first (as before, errors included);
   else the published copy over HTTPS (fixed URLs, cached 1 hour, 2 MB / 512 KB caps, same strict schemas, fail
   closed, host gate with 60 s failure memory; HTTP 404 before the first run is `data_not_available`).
   `CURITIBAI_REMOTE_DATA=0` (or `off`) turns remote reading off. New errors for these tools: `source_unavailable`
   and `rate_limited` (published copy unreadable). `openWorldHint` is now true for both.
-- `useful_phones` output gains `checked_at` (same value as `fetched_at`, kept) and `stale` (true after 3 days). Both
+- `useful_phones` output gains `checked_at` (same value as `fetched_at`, kept) and `stale` (true after 3 days), and
+  refuses a `checked_at` in the future (`invalid_data`), as `events_search` does. Both
   tools' notes say which copy answered; a stale published copy adds that the nightly collection may have stopped.
 - Docs: README (how updating works, the public `data` branch holds facts and links only, GitHub's 60-day rule for
   scheduled workflows and how to re-enable, delayed or dropped runs, the opt-out, ten hosts), docs/sources.md,

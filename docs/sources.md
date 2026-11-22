@@ -706,7 +706,9 @@ in the city's own categories. Built.
   published, so every run reads every detail page again (about 5 minutes for 50 events).
 - **What is published:** only `events/events.json`, `events/status.json` and `phones/phones.json`, committed by
   `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
-  without force, only when one of them changed. A failed run changes only `events/status.json` and the job ends
+  without force; the commit is skipped when none changed (rare, since `events/status.json` records every attempt).
+  At most 10 list pages (100 events) plus robots.txt and the phones page is about 112 requests 5 s apart, about 10
+  to 12 minutes, inside the 15-minute job timeout. A failed run changes only `events/status.json` and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
   approval, 2026-11-22: facts and links).
