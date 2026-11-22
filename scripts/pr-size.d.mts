@@ -3,6 +3,8 @@
 export interface NumstatRow {
   path: string;
   lines: number;
+  /** Old path of a rename. */
+  from?: string;
 }
 export const LIMIT: number;
 export const EXPLANATION: string;
@@ -13,4 +15,5 @@ export function checkPrSize(
   rows: NumstatRow[],
   body: string | undefined,
   limit?: number,
+  fullLines?: (path: string) => number,
 ): { total: number; counted: NumstatRow[]; ok: boolean; explained: boolean };

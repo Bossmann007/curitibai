@@ -49,7 +49,8 @@ describe("GitHub Actions workflows", () => {
     const verify = readFileSync(new URL("verify.yml", DIR), "utf8");
     expect(verify).toContain("types: [opened, synchronize, reopened, edited]");
     expect(verify).toContain("fetch-depth: 2");
-    expect(verify).toMatch(/- if: \$\{\{ !cancelled\(\) && github\.event_name == 'pull_request' \}\}\n {8}run: scripts\/pr-size\.mjs HEAD\^1 HEAD\n {8}env:\n {10}PR_BODY: \$\{\{ github\.event\.pull_request\.body \}\}\n/);
+    expect(verify).toContain("if: github.event.action != 'edited' || github.event.pull_request.state == 'open'");
+    expect(verify).toMatch(/- if: \$\{\{ !cancelled\(\) && steps\.checkout\.outcome == 'success' && github\.event_name == 'pull_request' \}\}\n {8}run: scripts\/pr-size\.mjs HEAD\^1 HEAD\n {8}env:\n {10}PR_BODY: \$\{\{ github\.event\.pull_request\.body \}\}\n/);
     expect(code(verify).filter((l) => l.includes("pull_request.body"))).toEqual(["          PR_BODY: ${{ github.event.pull_request.body }}"]);
   });
 

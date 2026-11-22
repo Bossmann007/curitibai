@@ -18,10 +18,14 @@ concurrency:
 
 jobs:
   verify:
+    # Edits of a closed PR run nothing. Any edit of an open PR runs the whole job: skipping title edits would post a
+    # skipped (passing) verify over a failed one on the same commit.
+    if: github.event.action != 'edited' || github.event.pull_request.state == 'open'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # Two commits: on pull_request HEAD is GitHub's merge commit and HEAD^1 the base, for the PR-size step.
@@ -35,8 +39,9 @@ jobs:
         env:
           CURITIBAI_SKIP_AUDIT: "1"
       # PR-size guard (CONTRIBUTING.md): over 400 changed lines fails unless the PR body explains it. Runs even when
-      # verify failed, so both results show. The body is passed in the environment, never inside the script text.
-      - if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+      # verify failed (not when checkout did), so both results show. The body is passed in the environment, never inside
+      # the script text.
+      - if: ${{ !cancelled() && steps.checkout.outcome == 'success' && github.event_name == 'pull_request' }}
         run: scripts/pr-size.mjs HEAD^1 HEAD
         env:
           PR_BODY: ${{ github.event.pull_request.body }}

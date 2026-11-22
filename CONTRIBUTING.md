@@ -49,8 +49,10 @@ Pull requests pequenos, até cerca de 400 linhas alteradas (adicionadas mais rem
 corpo do pull request tenha uma linha que comece com `Large PR because:` seguida do motivo. Editar o corpo roda o
 workflow de novo.
 
-Não contam: tudo em `test/` (testes e fixtures), `package-lock.json` e arquivos `*.lock`. Um arquivo renomeado ou
-movido (por exemplo dentro de `docs/`) conta só as linhas editadas, porque o git detecta a renomeação. Texto copiado
+Não contam: tudo em `test/` (testes e fixtures), `package-lock.json` e arquivos `*.lock` de qualquer pasta. Um
+arquivo renomeado ou movido (por exemplo dentro de `docs/`) conta só as linhas editadas, porque o git detecta a
+renomeação; um arquivo movido de `test/` para fora conta inteiro. A linha `Large PR because:` precisa estar visível:
+dentro de um comentário HTML ou de um bloco de código ela não vale. Texto copiado
 de um arquivo para outro novo (por exemplo um trecho do README que vira um arquivo em `docs/`) não é renomeação e
 conta inteiro; explique com `Large PR because:` ou divida o pull request.
 

@@ -4,13 +4,14 @@ Status: Accepted (introduced in v0.16.0, PR [#7](https://github.com/Bossmann007/
 
 ## Context
 
-Live tools that make several requests per call (`river_levels`, `guaira_events`, `city_facilities_search`) must stay
+Live tools that query small hosts (`river_levels`, `guaira_events`, `city_facilities_search`) must stay
 polite to small public hosts: space requests, stop asking after a failure, never retry a refusal, and still answer an
 MCP client within a reasonable time. Each source writing its own spacing and failure logic had drifted.
 
 ## Decision
 
-One gate per host, created with `createHostGate` (`src/hostGate.ts:65`):
+One gate per host, created with `createHostGate` (`src/hostGate.ts:65`), for ANA, GeoCuritiba, Teatro Guaíra and the
+published `data` copy. Overpass (`src/sources/osm.ts:136-163`) predates it and keeps its own queue.
 
 - **Spacing:** at least `minIntervalMs` between two request starts from the process; slots are reserved, so calls
   queue. Third-party hosts use 5 s (`src/sources/ana.ts:19`, `src/sources/geocuritiba.ts:436`,
@@ -22,11 +23,11 @@ One gate per host, created with `createHostGate` (`src/hostGate.ts:65`):
   (`REFUSAL_BLOCK_MS`, `src/http.ts:31`); `refusalWaitMs` lets a gate remember it as long
   (`src/sources/guaira.ts:306`), and `river_levels` checks the block before the gate (CHANGELOG 0.18.4).
 - **Time budget:** a `startBy` option refuses a slot later than the call's budget with `OutOfTimeError`, before
-  reserving it and without counting it as a host failure (`src/hostGate.ts:19-30`). The live tools use a 20 s start
-  budget (`CALL_START_BUDGET_MS`, `src/tools/common.ts:17`).
+  reserving it and without counting it as a host failure (`src/hostGate.ts:19-30`). `river_levels` and `guaira_events`
+  use a 20 s start budget (`CALL_START_BUDGET_MS`, `src/tools/common.ts:12-17`).
 - **Partial results:** when the budget, a rate limit, a refusal or a host failure stops a call midway, what was already
-  read is returned with `partial: true` and a note (`src/tools/common.ts:12-17`, `src/tools/common.ts:94-99`); an error
-  only when nothing was read.
+  read is returned with `partial: true` and a note (`src/tools/riverLevels.ts:240`, `src/tools/common.ts:94-99`,
+  `src/tools/guairaEvents.ts:187`); an error only when nothing was read.
 
 Where it is written: README "Collection rules", `docs/sources.md:54` (GeoCuritiba), CHANGELOG 0.16.0 to 0.18.4, PRs
 [#7](https://github.com/Bossmann007/curitibai/pull/7), [#9](https://github.com/Bossmann007/curitibai/pull/9),
