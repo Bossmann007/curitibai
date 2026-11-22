@@ -7,9 +7,10 @@ User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the sam
 Overpass API instances (v0.7) were checked on 2026-11-21 (UTC) with curl and User-Agent `curitibai-mcp/0.7`. The
 "Imuniza Já" vaccination page (v0.12) was checked on 2026-11-21 (UTC) with curl and then with Node.js `fetch` and
 User-Agent `curitibai-mcp/0.7`. IPPUC's GeoCuritiba services (v0.15) were checked on 2026-11-21 (UTC) with curl and
-User-Agent `curitibai-mcp/0.7`, at most one request per 5 s. The Centro Cultural Teatro Guaíra calendar (v0.17) was
-checked on 2026-11-22 (06:01–06:03 UTC) with curl and User-Agent `curitibai-mcp/0.7`, GET only, at least 5 s between
-requests.
+User-Agent `curitibai-mcp/0.7`, at most one request per 5 s. ANA's telemetry web service (v0.16) was checked on
+2026-11-22 (UTC) with curl and Node.js `fetch`, at most one request per 5 s (one research check on 2026-11-21 by the
+owner's researcher, recorded as reported). The Centro Cultural Teatro Guaíra calendar (v0.17) was checked
+on 2026-11-22 (06:01–06:03 UTC) with curl and User-Agent `curitibai-mcp/0.7`, GET only, at least 5 s between requests.
 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
@@ -51,6 +52,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
 | `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes) |
+| `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
+| `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /` | **Disallowed. Never contacted**; the local copy holds no detail-page content. `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -769,7 +772,7 @@ in the city's own categories. Built.
   URL or the cache key: the whole layer is read and filtered in the server. One request per call at most (none when
   cached), 6-hour cache per layer, 2 MB cap, 15 s timeout, JSON content type required, redirects only to the same host
   under `/server/rest/services`.
-- **Rate and failures** (`gated` in `src/sources/geocuritiba.ts`): at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes (`blockHost` in `src/http.ts`, the same
+- **Rate and failures** (the host gate in `src/hostGate.ts`, used by `src/sources/geocuritiba.ts`): at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes (`blockHost` in `src/http.ts`, the same
   block as an HTTP 401/403). A cached layer never waits.
 - **Fails closed** (`source_unavailable`, never an empty list) on: an `error` object (ArcGIS answers errors with HTTP
   200; codes 401, 403, 498 and 499 are a refusal, above), `exceededTransferLimit`, a spatial reference other than 4326, no `features` array, 2,000 records or more, or
@@ -812,6 +815,74 @@ in the city's own categories. Built.
   address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
 
+### `river_levels`: ANA telemetry (stations operated by IAT-PR)
+
+Owner approval: 2026-11-22 (river levels and rain from ANA's public telemetry; no licence found, facts only, ANA
+cited, the approach the owner approved for no-licence sources).
+
+- **Source:** ANA (Agência Nacional de Águas e Saneamento Básico) telemetry web service
+  <https://telemetriaws1.ana.gov.br/ServiceANA.asmx> (ASP.NET `.asmx`, anonymous GET, XML, no key). Operation used:
+  `DadosHidrometeorologicos?codEstacao=<code>&dataInicio=dd/mm/yyyy&dataFim=dd/mm/yyyy`. Answer: an ADO.NET
+  `DataTable` (`xmlns="http://MRCS/"`) with an inline XML schema and one `DadosHidrometereologicos` [sic] row per
+  15-minute reading, newest first: `CodEstacao`, `DataHora` ("2026-11-22 02:00:00 ", Brasília time, UTC−3, no
+  daylight saving since 2019), `Vazao` (flow, m³/s), `Nivel` (level, cm), `Chuva` (rain of the interval, mm). An
+  empty element (`<Vazao />`) is no value. A station with no rows answers HTTP 200 with an `ErrorTable`: "Sem dados
+  para esta estação (Código: X) no período solicitado!" (the same text for a code that does not exist).
+- **Scheme:** the owner's research (2026-11-21) found plain http only. On 2026-11-22 `https://` answered 200
+  `text/xml; charset=utf-8` with a valid certificate (curl on macOS and Node.js 26 `fetch`), so the server uses https
+  like every other host and the https-only allowlist is unchanged. If https stops working the tool returns
+  `source_unavailable`; it never falls back to http.
+- **robots.txt:** 404 (no rules). `dadosabertos.ana.gov.br` has `Crawl-delay: 60`; it is a different host and is not
+  used. **Licence:** none found: "No licence found; facts only; ANA cited." (owner decision, 2026-11-22).
+- **Live check on 2026-11-22** (one request per ≥ 5 s, period 21–22 Nov): 65010000 Fazendinha (rio Pequeno) and
+  65019980 ETE Araucária (rio Iguaçu) sent 105 rows each, latest 02:00 (05:00 UTC, fetched 05:50 UTC); 02549127,
+  65009000, 02549086, 02549090, 65006040 and 02549125 answered "Sem dados". The owner's researcher found 4 of 8
+  stations with readings on 2026-11-21. Many stations send nothing on a given day.
+- **Station list (bundled, `STATIONS` in `src/sources/ana.ts`):** never downloaded at runtime. Built once on
+  2026-11-22 from `ServiceANA.asmx/ListaEstacoesTelemetricas?statusEstacoes=&origem=` (4,048,777 bytes, 5,477
+  stations): every station with latitude −25.75 to −25.25 and longitude −49.55 to −49.00 (25 stations, all operated by
+  IAT-PR, all "Ativo"), with `NomeEstacao`, `CodEstacao`, `NomeRio` (empty for the 0254xxxx rain gauges: `river`
+  null) and `Municipio-UF` without "-PR", coordinates as published. To rebuild: download the list once, filter by
+  that box (e.g. Python `xml.etree` over the `Table` rows), and replace the array with the date.
+- **Matching:** `station` is a code (leading zeros optional, or the start of a code) or text in the name, river or
+  municipality; nearest to `near` (default Praça Tiradentes) first; without `station`, river stations (which report a
+  level) come before the 0254xxxx rain gauges.
+- **Query:** one URL per station: its bundled code, `dataInicio` yesterday and `dataFim` today as Curitiba dates
+  (at least 24 h of rows). User text and position never enter the URL or the cache key (`ana:<code>`).
+- **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s, and with the
+  10 s timeout the worst case is about 30 s. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
+  XML content type required; redirects only to the same host under `/ServiceANA.asmx`.
+- **Rate and failures** (`src/hostGate.ts`, the same gate as GeoCuritiba): at least 5 s between request starts to the
+  host; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure no request
+  for 60 s (a 429's `Retry-After` when longer, at most 1 hour) and the same error is returned; 401, 403 and a CAPTCHA
+  429 block the host for 10 minutes (`src/http.ts`). Never retried in a loop. Only the transfer runs inside the gate:
+  an answer that cannot be read (below) marks that station `unavailable` and is not remembered as a host failure nor
+  cached. A transfer or host failure fails the whole call, so a station that was not read is never shown as
+  `no_recent_data`.
+- **Fails closed** (station `unavailable`, values null) on: a non-XML content type, an empty body, no XML declaration, a DOCTYPE,
+  ENTITY or CDATA, a root other than `DataTable xmlns="http://MRCS/"`, a truncated document, an `Error` other than the
+  exact "no data" text for the requested code, an error table next to rows, a row for another station, a row with
+  nested markup or over 2,000 characters, an unparsable date or number (comma decimals included), or neither rows nor
+  an error table.
+- **Fields returned:** station facts from the bundled list, `reading_time` (the newest row with at least one value,
+  by time, row order not trusted; rows more than 15 minutes after the read time are ignored; Curitiba time with
+  `-03:00`), `level_cm`, `flow_m3s`, `rain_mm` of that reading; `rain_1h_mm` / `rain_24h_mm` (sum
+  of the readings in (latest − 1 h, latest] / (latest − 24 h, latest] that have a rain value; null when none, or when
+  the window starts before yesterday 00:00; gaps are not filled, so the sum is a lower bound); `stale` (latest reading
+  older than 2 h, computed at answer time, not cached); `status` `no_recent_data` for the "Sem dados" answer.
+- **Data quality (v0.16.1, owner request 2026-11-22):** readings are automatic telemetry that nobody has checked (ANA
+  publishes validated "consistidos" data only months later); a station can stop or send wrong values (stuck sensor,
+  spikes, maintenance). `quality` (`ok` | `suspect` | `unknown`) and `quality_reasons` come only from the readings of
+  the 24 h ending at the latest one, already read (no new request); values are never changed. Checks
+  (`assessQuality` in `src/sources/ana.ts`): `out_of_range` (negative level, flow or rain, or rain over 150 mm in one
+  reading), `level_spike` (a jump over 100 cm between readings ≤ 15 minutes apart that comes back within 50 cm within
+  1 h), `level_jump_unconfirmed` (that jump in the last hour, not back yet), `level_stuck` (identical level for ≥ 6 h and ≥ 20
+  readings while ≥ 10 mm of rain fell). `unknown`: no reading, or under 8 readings in the 24 h (`too_few_readings`; level readings for a station that reports a level).
+  Level and flow are not cross-checked (flow is missing at ETE Araucária and follows the level at Fazendinha). The
+  thresholds are judgement calls; both real samples stay `ok` (ETE Araucária moves up to about 40 cm in 15 minutes).
+  `ok` does not prove a value is right. Not for emergencies (Defesa Civil 199); official flood alerts come from
+  Defesa Civil and INMET (`weather_alerts`).
+
 ### `guaira_events`: Centro Cultural Teatro Guaíra calendar (live)
 
 - **Source:** <https://www.teatroguaira.pr.gov.br/calendario-eventos>, the public events calendar of the Centro
@@ -836,9 +907,10 @@ in the city's own categories. Built.
   page being returned, cached 6 hours each. The user's `text`, `city` and dates never reach the source. 1 MB cap
   (robots.txt 512 KB), 15 s timeout, `text/html` required (robots.txt `text/plain`), redirects only to the same host
   under the requested path. Worst cold call: 6 requests 5 s apart, about 25 s plus network time.
-- **Rate and failures** (`gated` in `src/sources/guaira.ts`, the GeoCuritiba pattern): request starts at least 5 s
-  apart per server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any
-  failure (a layout change included) no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401,
+- **Rate and failures** (the shared gate `src/hostGate.ts`, one per host): request starts at least 5 s apart per
+  server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any failure inside
+  `gate.run` (an HTTP error, a layout change, or a 200 event page that is not a page of the site, such as a WAF page
+  without Drupal's settings script) no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401,
   403, a CAPTCHA 429, or a 200 page that does not parse, is not a Drupal page of the site (no
   `drupal-settings-json` script) and matches the same CAPTCHA/challenge markers (none on the real pages) blocks the
   host 10 minutes (`blockHost`), and the gate then remembers that refusal for 10 minutes from when it saw it (it can

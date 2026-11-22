@@ -24,10 +24,50 @@ checked 2026-11-22; no licence found, facts and links only, Teatro Guaíra / Gov
   (a 429's Retry-After when longer, at most 1 hour), a 10-minute host block on 401/403 or a CAPTCHA (also a 200 challenge page that does not parse); never retried. A
   removed event page (404/410) is `unavailable` for that event only, without a host failure.
   A cold call makes up to 6 requests and can take about 25 s.
+- Uses the shared host gate `src/hostGate.ts` from 0.16.0, which gains an optional `refusalWaitMs` (a final
+  refusal remembered for the 10-minute host block; only this host sets it) and `failing()`. A 200 answer that is not
+  a page of the site (a WAF or CAPTCHA page) fails inside `gate.run`, so the 60 s failure memory applies.
 - New error code `layout_changed`: the listing's HTML no longer has the expected cards, dates, city or pager; nothing
   is returned.
-- Docs: README (tool tables, 21 tools, hosts, licences, fixtures), docs/sources.md (robots.txt group, fields, limits,
+- Docs: README (tool tables, 22 tools, hosts, licences, fixtures), docs/sources.md (robots.txt group, fields, limits,
   requests made), SPEC.md for this release (records why venue comes from event pages).
+
+## 0.16.1 - 2026-11-22
+
+`river_levels` is honest about data quality (owner request, 2026-11-22). No new request, no new host.
+
+- Each station has `quality` (`ok`, `suspect`, `unknown`) and `quality_reasons`, computed only from the readings of
+  the 24 h ending at the latest one that were already read. Checks: `out_of_range` (negative level, flow or rain, or
+  rain over 150 mm in one reading), `level_spike` (a level jump over 100 cm in 15 minutes that comes back within an
+  hour), `level_jump_unconfirmed` (that jump in the last hour, not back yet), `level_stuck` (level identical for 6 h or more
+  while 10 mm or more of rain fell). `unknown` without readings or with under 8 readings (`too_few_readings`). Raw
+  values are never hidden or changed; `stale` stays a separate flag.
+- When a station is suspect, the note names it and says to treat its values with caution. The general note now says
+  the readings are unchecked telemetry, that `quality` cannot prove a value is right, and that official flood alerts
+  come from Defesa Civil and INMET (`weather_alerts`).
+- Docs: a "`river_levels` data quality" section in the README, the same in short in docs/sources.md, SPEC.md
+  addendum.
+
+## 0.16.0 - 2026-11-22
+
+New tool `river_levels` over ANA's public telemetry web service (new host `telemetriaws1.ana.gov.br`, robots.txt 404
+on 2026-11-22; no licence found, facts only, ANA cited; owner approval 2026-11-22).
+
+- Optional `station` (code, or text in the station name, river or municipality) and `near` (default Curitiba
+  centre). Returns up to 3 of the 25 bundled IAT-PR stations around Curitiba, nearest first: code, name, river,
+  municipality, position, latest reading time (Curitiba time), level (cm), flow (m³/s), rain of the latest reading and
+  the sums over the last 1 h and 24 h, `stale` when the reading is older than 2 h, and `no_recent_data` for stations
+  that sent nothing or `unavailable` when a station's answer cannot be read (never invented values). Without
+  `station`, river stations come before rain gauges. Note: "Not for emergencies: Defesa Civil 199."
+- The station list is bundled (built once on 2026-11-22 from `ListaEstacoesTelemetricas`), never downloaded at
+  runtime. Only bundled codes and dates reach ANA.
+- https is used: ANA documents plain http, but https answered with a valid certificate on 2026-11-22.
+- Network: at least 5 s between request starts to the host, 15-minute cache per station, failures remembered 60 s to
+  1 hour, 10-minute host block on 401/403/CAPTCHA, at most 3 stations per call. The GeoCuritiba gate moved to
+  `src/hostGate.ts` and is shared (no behaviour change). The XML parser fails closed on anything unexpected (that
+  station is `unavailable`; a transfer or host failure fails the call).
+- Docs: README (21 tools, ten network tools, eight hosts), docs/sources.md (host, robots, licence, fields, limits,
+  how the station list was built), SPEC.md for this release.
 
 ## 0.15.0 - 2026-11-22
 

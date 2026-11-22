@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from "vitest";
 import { sharedCache } from "../src/cache.js";
 import { resetHostRefusals } from "../src/http.js";
+import { clearAnaCache } from "../src/sources/ana.js";
 import { clearGeoCuritibaCache } from "../src/sources/geocuritiba.js";
 import { clearGuairaState } from "../src/sources/guaira.js";
 import { clearVaccinationCache } from "../src/sources/imunizaja.js";
@@ -12,6 +13,7 @@ beforeEach(() => {
   resetOverpassCooldown();
   clearVaccinationCache();
   clearGeoCuritibaCache();
+  clearAnaCache();
   clearGuairaState();
   resetHostRefusals();
   vi.stubGlobal("fetch", vi.fn(async (input: unknown) => {

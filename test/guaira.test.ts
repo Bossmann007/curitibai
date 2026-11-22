@@ -33,7 +33,8 @@ function routes(over: Record<string, Route> = {}): Record<string, Route> {
     [`GET ${listingPageUrl(2)}`]: { body: list(2), contentType: HTML },
     [`GET ${MUITO}`]: { body: fixture("guaira/event_muito_barulho.html"), contentType: HTML },
     [`GET ${OSP}`]: { body: fixture("guaira/event_concerto_osp.html"), contentType: HTML },
-    [`GET ${MIA}`]: { body: fixture("guaira/event_concerto_osp.html").replace("field--name-field-texto", "x"), contentType: HTML },
+    // A real site page whose body field is missing: Drupal's settings script present, so not a WAF page.
+    [`GET ${MIA}`]: { body: `<script data-drupal-selector="drupal-settings-json">{}</script>${fixture("guaira/event_concerto_osp.html").replace("field--name-field-texto", "x")}`, contentType: HTML },
     ...over,
   };
 }
@@ -363,6 +364,20 @@ describe("requests to the Teatro Guaíra host", () => {
     const calls = stubFetch(routes());
     expect(await readDetails([JON])).toEqual({ details: new Map(), stopped: "busy" });
     expect(calls).toHaveLength(0);
+  });
+
+  it("treats a 200 event page that is not a page of the site (a WAF page) as a failure remembered 60 s", async () => {
+    const calls = stubFetch(routes({ [`GET ${MUITO}`]: { body: "<html><h1>Request blocked</h1></html>", contentType: HTML } }));
+    expect((await search({})).data.items.map((i) => i.details)).toEqual(["unavailable", "not_read", "not_read", "not_read"]);
+    expect((await search({})).note).toMatch(/busy or failed a moment ago/);
+    expect(calls).toHaveLength(5);
+  });
+
+  it("treats a 200 listing page that is not the calendar as a failure remembered 60 s", async () => {
+    const calls = stubFetch(routes({ [`GET ${listingPageUrl(0)}`]: { body: "<html><h1>Request blocked</h1></html>", contentType: HTML } }));
+    expect(errorOf(await call({}))).toMatchObject({ error: "layout_changed" });
+    expect(errorOf(await call({}))).toMatchObject({ error: "layout_changed" });
+    expect(calls).toHaveLength(2);
   });
 
   it("keeps the listing when an event page fails, and reads no more event pages in that call", async () => {

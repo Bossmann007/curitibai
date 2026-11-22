@@ -43,11 +43,12 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
   Teatro Guaíra / Governo do Paraná cited."
 - Requests: host `www.teatroguaira.pr.gov.br` added to `ALLOWED_HOSTS`; `src/http.ts` reused (https only, refusal
   block on 401/403 or a CAPTCHA 429, size cap); same host only on redirects, below the requested path.
-- Gate (pattern of `src/sources/geocuritiba.ts`, copied, not shared: the parallel v0.16 branch builds its own):
-  requests to the host start at least 5 s apart; a call whose turn is more than 10 s away gets `rate_limited` without
-  a request; after a failure, no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401/403, a
+- Gate: the shared `src/hostGate.ts` (merged with v0.16.0), one gate for this host. Requests to the host start at
+  least 5 s apart; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure
+  (inside `gate.run`: a layout change, a 200 answer that is not a page of the site, any HTTP error), no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401/403, a
   CAPTCHA 429, or a 200 page that does not parse, is not a Drupal page of the site and matches the CAPTCHA/challenge
-  markers blocks the host 10 minutes (`blockHost`; the gate remembers it as long). Never retried in a loop.
+  markers blocks the host 10 minutes (`blockHost`; the gate remembers it as long, through the new optional
+  `refusalWaitMs` of `createHostGate`, unused by the other hosts). Never retried in a loop.
 - robots.txt read through the same gate, cached 24 h, before any listing or event page read. Matcher: the group for
   `curitibai-mcp` if present, else `*`; `Allow`/`Disallow` with `*` and `$`, longest match wins, ties allow. If
   `/calendario-eventos` becomes disallowed the tool stops (`source_unavailable`, fixed message); if `/Evento/` does,
@@ -79,7 +80,8 @@ No existing MCP server or feed for this calendar (no .ics, no JSON-LD).
 
 ## Files
 
-- `src/sources/guaira.ts` (URLs, robots matcher, gate, listing and event-page parsers, caches),
+- `src/sources/guaira.ts` (URLs, robots matcher, listing and event-page parsers, caches), `src/hostGate.ts`
+  (optional `refusalWaitMs`, `failing()`),
   `src/tools/guairaEvents.ts`, `src/tools/index.ts`, `src/tools/common.ts` (`layout_changed`), `src/config.ts`
   (host), `src/server.ts` and `package*.json` (0.17.0).
 - `test/guaira.test.ts`, `test/fixtures/guaira/*` (real samples trimmed to the fields read), `test/setup.ts`,

@@ -1,5 +1,6 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { blockHost, CAPTCHA, fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, SourceUnavailableError } from "../http.js";
+import { createHostGate } from "../hostGate.js";
+import { blockHost, CAPTCHA, fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
 import { cleanField, EVENT_PLACE_MAX, EVENT_TITLE_MAX } from "../mask.js";
 import { decodeEntities } from "../text.js";
 
@@ -265,70 +266,38 @@ export function parseEventPage(html: string): EventDetails {
 export const GUAIRA_MIN_INTERVAL_MS = 5_000;
 /** A request whose turn would come later than this is not made (rate_limited with the wait). */
 export const GUAIRA_MAX_QUEUE_WAIT_MS = 10_000;
-/** After a failure no request to the host for 60 s, or a 429's Retry-After when longer, at most 1 hour. */
-const FAILURE_WAIT_S = 60;
-const MAX_FAILURE_WAIT_S = 3600;
-
-let nextAllowedAt = 0;
-let retryAt = 0;
-let lastError: unknown = null;
 
 // `() => Date.now()` (not Date.now itself) so a faked clock in tests reaches the caches.
 const listingCache = new TtlCache(LISTING_CACHE_TTL_MS, () => Date.now());
 const robotsCache = new TtlCache(ROBOTS_CACHE_TTL_MS, () => Date.now());
 const detailsCache = new Map<string, { value: EventDetails; expiresAt: number }>();
 
+/**
+ * The shared host gate (src/hostGate.ts): request starts 5 s apart, a turn more than 10 s away refused, any failure
+ * (a layout change or a 200 answer that is not a page of the site included) remembered 60 s, a 429's Retry-After
+ * when longer (at most 1 hour), and a final refusal for the 10-minute host block. Never retried.
+ */
+const gate = createHostGate({
+  minIntervalMs: GUAIRA_MIN_INTERVAL_MS,
+  maxQueueWaitMs: GUAIRA_MAX_QUEUE_WAIT_MS,
+  refusalWaitMs: REFUSAL_BLOCK_MS,
+});
+
 /** Tests only. */
 export function clearGuairaState(): void {
   listingCache.clear();
   robotsCache.clear();
   detailsCache.clear();
-  nextAllowedAt = 0;
-  retryAt = 0;
-  lastError = null;
+  gate.reset();
 }
 
-function rememberedFailure(now: number): unknown {
-  if (now >= retryAt) return null;
-  return lastError instanceof RateLimitedError ? new RateLimitedError(Math.ceil((retryAt - now) / 1000)) : lastError;
-}
-
-/**
- * Runs one request to the host (same pattern as GeoCuritiba's gate): refused at once while a failure is remembered;
- * otherwise waits for its 5-second slot (or gives up with rate_limited when that slot is more than 10 s away); any
- * failure, a layout change included, is then remembered for at least 60 s (a 429's Retry-After when longer, at most
- * 1 hour). Never retried.
- */
-async function gated<T>(task: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const failed = rememberedFailure(now);
-  if (failed !== null) throw failed;
-  const start = Math.max(now, nextAllowedAt);
-  if (start - now > GUAIRA_MAX_QUEUE_WAIT_MS) throw new RateLimitedError(Math.ceil((start - now) / 1000));
-  nextAllowedAt = start + GUAIRA_MIN_INTERVAL_MS;
-  if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));
-  const failedMeanwhile = rememberedFailure(Date.now());
-  if (failedMeanwhile !== null) throw failedMeanwhile;
-  try {
-    return await task();
-  } catch (err) {
-    // A final refusal is remembered for the 10-minute block from when it is seen (it can outlast src/http.ts's own
-    // block by up to that long when the refusal came from that block: conservative on purpose).
-    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : err instanceof SourceRefusedError ? REFUSAL_BLOCK_MS / 1000 : 0;
-    const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
-    retryAt = Date.now() + wait * 1000;
-    lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
-    throw lastError;
-  }
-}
-
-/** Every normal page of the site carries Drupal's settings script; a challenge page served instead does not. */
+/** Every normal page of the site carries Drupal's settings script; a challenge or WAF page served instead does not. */
 const DRUPAL_PAGE = 'data-drupal-selector="drupal-settings-json"';
 
 /**
- * A page that did not parse, is not a Drupal page of the site and has the CAPTCHA/challenge markers of src/http.ts
- * (none on the real pages, 2026-11-22) is a final refusal: host blocked 10 minutes, recorded as a CAPTCHA 429 as in
- * src/http.ts. A normal page with a captcha form or an injected challenge script is not.
+ * Called inside gate.run for a page that did not parse: one with the CAPTCHA/challenge markers of src/http.ts and no
+ * Drupal settings script is a final refusal (host blocked 10 minutes, recorded as a CAPTCHA 429 as in src/http.ts).
+ * A normal page with a captcha form or an injected challenge script is not.
  */
 function refuseIfChallenge(url: string, html: string): void {
   if (!html.includes(DRUPAL_PAGE) && CAPTCHA.test(html)) blockHost(url, 429);
@@ -352,7 +321,7 @@ async function getHtml(url: string, pathPrefix: string): Promise<string> {
  */
 function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
   return robotsCache.getOrLoad("robots", () =>
-    gated(async () => {
+    gate.run(async () => {
       try {
         const res = await fetchText(ROBOTS_URL, { timeoutMs: GUAIRA_TIMEOUT_MS, maxBytes: ROBOTS_MAX_BYTES, sameHostOnly: true });
         if (!/^text\/plain\b/i.test(res.contentType.trim())) throw new SourceUnavailableError("robots.txt not text/plain");
@@ -390,7 +359,7 @@ export function getListing(): Promise<Cached<Listing>> {
       const url = listingPageUrl(n);
       const u = new URL(url);
       await assertAllowed(`${u.pathname}${u.search}`);
-      const pageRes = await gated(async () => {
+      const pageRes = await gate.run(async () => {
         const html = await getHtml(url, CALENDAR_PATH);
         try {
           return parseListingPage(html, n);
@@ -439,7 +408,7 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
     }
     if (stopped !== null || fetched >= max) continue;
     fetched++;
-    if (rememberedFailure(Date.now()) !== null) {
+    if (gate.failing()) {
       stopped = "busy"; // a failure is remembered: nothing is asked, robots.txt included
       continue;
     }
@@ -452,12 +421,16 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
     }
     let asked = false;
     try {
-      const value = await gated(async () => {
+      const value = await gate.run(async () => {
         asked = true;
         try {
           const html = await getHtml(link, EVENT_PATH_PREFIX);
           const parsed = parseEventPage(html);
-          if (parsed.status === "not_recognised") refuseIfChallenge(link, html);
+          if (parsed.status === "not_recognised") {
+            refuseIfChallenge(link, html);
+            // A 200 answer that is not a page of the site (a WAF or error page): a host failure, remembered 60 s.
+            if (!html.includes(DRUPAL_PAGE)) throw new SourceUnavailableError("not a page of the site");
+          }
           return parsed;
         } catch (err) {
           // A removed event (404/410) is a fact about that page, not a host failure: cached, not remembered.
