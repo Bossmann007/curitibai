@@ -2,6 +2,38 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.0 - 2026-11-22
+
+Usability fixes found by calling every tool as a user (Praça Tiradentes). No new tool, no new host.
+
+- `health_units_search` and `procurement_search` keep asking for pages until `limit` matches are found, instead of
+  stopping after 5 (CNES) or 2 (PNCP) pages: "cajuru" found nothing on the first call because "UMS CAJURU" is on
+  page 6. New caps per call: at most 20 CNES pages or 5 PNCP pages, and no page starts after 20 s (the budget of
+  `river_levels` and `guaira_events`; a page already asked for is never cut). PNCP takes 8–13 s per page, so a call
+  usually reads 2 or 3 pages. The 15 s second-page rule of PNCP is replaced by the 20 s budget. `note` says whether
+  the page cap or the time budget stopped the scan; `partial`, `next_page` and `next_skip` work as before.
+- CNES and PNCP requests now go through a host gate (`src/hostGate.ts`, ADR 0003), like ANA, GeoCuritiba and Teatro
+  Guaíra: CNES at least 400 ms between request starts, PNCP at least 6 s (at most 20 requests in 2 minutes, the rate
+  at which PNCP answered 429). After a failure neither host is asked again for 60 s (a 429's Retry-After when longer,
+  at most 1 hour; 10 minutes after a refusal): following `next_page` inside the wait makes no request and returns the
+  same error (`rate_limited` with the remaining wait after a 429, `source_unavailable` after a timeout, network error
+  or refusal). Every 429 wait is now clamped to 60 s–1 hour: Retry-After 30 or none says 60 s, over 1 hour says about
+  60 minutes. When the gate's next turn would start after the 20 s budget before any page was read, the answer is
+  `rate_limited` (about 1 minute) instead of `source_unavailable`.
+- `open_datasets_search`: when the portal finds nothing, the query is retried once without accents and then once
+  with a synonym from a short list in `src/sources/portalSynonyms.ts` ("ônibus" and "busão" → "transporte
+  coletivo", checked live); `note` says which query matched or lists every query tried. A failed retry keeps the
+  empty answer as `partial` with the reason in `note`, which says that `total` 0 then means unknown, not none. No
+  retry or later page starts after 20 s (the same budget).
+- `river_levels`: stations with a recent reading (`status: ok`) come first, nearest first, then the others; fields
+  unchanged. Before, PONTE BR-277 (no recent data) came first near the centre.
+- `local_csv_summary` `file_not_found` now has a message: save the CSV in `CURITIBAI_DATA_DIR`, see
+  `docs/local-data.md`.
+- `events_search` and `useful_phones` `data_not_available`: before the first published copy, the message says the
+  nightly GitHub collection publishes it (scheduled around 02:37 UTC; GitHub can delay it; one constant,
+  `NIGHTLY_RUN_UTC`, checked against the cron and the docs) and points to `docs/local-data.md` to run the collector
+  locally; other messages point to `docs/local-data.md` instead of the README.
+
 ## 0.18.5 - 2026-11-22
 
 Docs and CI only; no tool, host or runtime behaviour changes.

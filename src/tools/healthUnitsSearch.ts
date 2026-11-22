@@ -10,11 +10,15 @@ import {
 } from "../sources/cnes.js";
 import { fold } from "../text.js";
 import { RateLimitedError, SourceRefusedError } from "../http.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { HEALTH_NOTE } from "./cityPointsSearch.js";
-import { envelope, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
+import { CALL_START_BUDGET_MS, envelope, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
 
-/** Upstream pages requested per call, at most. Curitiba has thousands of units; one call never walks them all. */
-export const MAX_CNES_REQUESTS = 5;
+/**
+ * Upstream pages requested per call, at most (0.3–1.2 s each on 2026-11-19), and none starts after
+ * CALL_START_BUDGET_MS. Curitiba has thousands of units; one call never walks them all.
+ */
+export const MAX_CNES_REQUESTS = 20;
 
 export const SCOPE_NOTE =
   "Public-administration units only (natureza jurídica group 1: municipal, state and federal bodies, autarquias, " +
@@ -83,13 +87,15 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   description:
     "Search active public-administration health units in Curitiba in the Ministry of Health CNES open API: CNES code, " +
     "name, unit type, address, neighbourhood, CEP, unit phone, management sphere. Filters by name text and unit type. " +
-    "Scans at most 5 upstream pages of 20 per call; continue with next_page and next_skip. Private and non-profit units are not " +
+    "Scans upstream pages of 20 until limit units match, at most 20 pages and no new page after 20 s per call; continue with next_page and next_skip. Private and non-profit units are not " +
     "returned. Read-only.",
   inputSchema: healthUnitsSearchInput,
   outputSchema: healthUnitsSearchOutput,
   handler: async ({ name, unit_type, limit, page, skip }) => {
+    const started = Date.now(); // the unit-type load counts toward the time budget too
+    const startBy = started + CALL_START_BUDGET_MS;
     try {
-      const types = await getUnitTypes();
+      const types = await getUnitTypes(startBy);
       let serverType: number | null = null;
       let clientTypes: Set<number> | null = null;
       if (unit_type !== undefined) {
@@ -125,16 +131,29 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       let scanned = 0;
       let rateLimitNote: string | null = null;
       let refusedNote: string | null = null;
+      let budgetReached = false;
       for (;;) {
         if (scanned === MAX_CNES_REQUESTS) {
           partial = true; // capped: more pages may hold matches
           nextPage = p;
           break;
         }
+        if (scanned > 0 && Date.now() - started > CALL_START_BUDGET_MS) {
+          partial = true; // return what we have rather than risk the client's timeout
+          budgetReached = true;
+          nextPage = p;
+          break;
+        }
         let res;
         try {
-          res = await getEstablishmentsPage(p, serverType);
+          res = await getEstablishmentsPage(p, serverType, startBy);
         } catch (err) {
+          if (err instanceof OutOfTimeError && scanned > 0) {
+            partial = true; // the host gate's next turn comes after the time budget
+            budgetReached = true;
+            nextPage = p;
+            break;
+          }
           if (scanned === 0) throw err;
           partial = true;
           if (err instanceof SourceRefusedError) {
@@ -176,7 +195,10 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       }
       const notes = [SCOPE_NOTE, HEALTH_NOTE];
       if (refusedNote !== null) notes.unshift(refusedNote);
-      else if (partial) notes.unshift(`Stopped after ${scanned} upstream page(s); continue with next_page.`);
+      else if (partial) {
+        const why = budgetReached ? ` (the ${CALL_START_BUDGET_MS / 1000} s time budget was reached)` : "";
+        notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
+      }
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);
       return ok({
         data: {

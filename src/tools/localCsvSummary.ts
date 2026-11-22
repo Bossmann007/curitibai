@@ -234,6 +234,10 @@ async function scan(
   return s;
 }
 
+const FILE_NOT_FOUND =
+  "No file with that name in CURITIBAI_DATA_DIR. Save the CSV you downloaded into that folder and pass its name; " +
+  "see docs/local-data.md.";
+
 export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localCsvSummaryOutput> = {
   name: "local_csv_summary",
   title: "Summarise a CSV downloaded by hand",
@@ -315,7 +319,7 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
         note: LOCAL_NOTE,
       });
     } catch (err) {
-      if (err instanceof LocalFileError) return fail(err.code);
+      if (err instanceof LocalFileError) return fail(err.code, err.code === "file_not_found" ? FILE_NOT_FOUND : undefined);
       if (err instanceof CsvError) return fail(err.code);
       return fail("invalid_csv");
     }

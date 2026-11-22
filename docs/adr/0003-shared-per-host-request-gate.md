@@ -10,12 +10,13 @@ time. GeoCuritiba had its own gate; v0.16.0 moved it to `src/hostGate.ts` to sha
 
 ## Decision
 
-One gate per host, created with `createHostGate` (`src/hostGate.ts:65`), for ANA, GeoCuritiba, Teatro Guaíra and the
-published `data` copy. Overpass (`src/sources/osm.ts:136-163`) predates it and keeps its own queue.
+One gate per host, created with `createHostGate` (`src/hostGate.ts:65`), for ANA, GeoCuritiba, Teatro Guaíra, the
+published `data` copy, and since v0.19.0 CNES and PNCP. Overpass (`src/sources/osm.ts:136-163`) predates it and keeps its own queue.
 
 - **Spacing:** at least `minIntervalMs` between two request starts from the process; slots are reserved, so calls
   queue. Third-party hosts use 5 s (`src/sources/ana.ts:19`, `src/sources/geocuritiba.ts:436`,
-  `src/sources/guaira.ts:272`); this project's own published copy uses 1 s (`src/sources/publishedData.ts:58`). A slot
+  `src/sources/guaira.ts:272`); this project's own published copy uses 1 s (`src/sources/publishedData.ts:58`); CNES 400 ms with a 5 s queue limit
+  (`src/sources/cnes.ts`, pages took 0.3–1.2 s) and PNCP 6 s, at most 20 requests in 2 minutes (`src/sources/pncp.ts`). A slot
   more than `maxQueueWaitMs` away (10 s for the 5 s hosts) returns `rate_limited` with the wait, without a request.
 - **Failure memory:** after a failure, no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; the
   same error is returned instead (`src/hostGate.ts:3-5`). The gate never retries.

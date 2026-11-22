@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { CNES_TYPES_URL, establishmentsUrl, isPublicAdministration, parseEstablishments } from "../src/sources/cnes.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  CNES_GATE,
+  CNES_MIN_INTERVAL_MS,
+  CNES_TYPES_URL,
+  establishmentsUrl,
+  isPublicAdministration,
+  parseEstablishments,
+} from "../src/sources/cnes.js";
 import { MAX_CNES_REQUESTS } from "../src/tools/healthUnitsSearch.js";
 import { cnesRoutes, connectClient, errorOf, fixture, stubFetch, syntheticPage, type Route } from "./helpers.js";
 
@@ -123,15 +130,59 @@ describe("health_units_search", () => {
 
   it(`caps the scan at ${MAX_CNES_REQUESTS} upstream pages and says partial`, async () => {
     const routes: Record<string, Route> = { ...cnesRoutes() };
-    for (let p = 1; p <= 10; p++) {
+    for (let p = 1; p <= MAX_CNES_REQUESTS + 5; p++) {
       routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage("UMS", p * 100), contentType: JSON_TYPE };
     }
     const calls = stubFetch(routes);
     const client = await connectClient();
     const res = await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } });
     const data = dataOf(res);
-    expect(data).toMatchObject({ units: [], partial: true, next_page: 6, scanned_pages: { from: 1, to: 5 } });
+    expect(data).toMatchObject({
+      units: [],
+      partial: true,
+      next_page: MAX_CNES_REQUESTS + 1,
+      scanned_pages: { from: 1, to: MAX_CNES_REQUESTS },
+    });
+    expect(data.note).toMatch(new RegExp(`^Stopped after ${MAX_CNES_REQUESTS} upstream page\\(s\\); continue with next_page\\.`));
     expect(calls.filter((c) => c.url !== CNES_TYPES_URL)).toHaveLength(MAX_CNES_REQUESTS);
+  });
+
+  it("keeps scanning past page 5 on the first call when the only match is on page 6", async () => {
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    for (let p = 1; p <= 7; p++) {
+      const prefix = p === 6 ? "UMS CAJURU" : "UMS OUTRA";
+      routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage(prefix, p * 100, p === 7 ? 3 : 20), contentType: JSON_TYPE };
+    }
+    stubFetch(routes);
+    const client = await connectClient();
+    const res = await client.callTool({ name: "health_units_search", arguments: { name: "cajuru", limit: 3 } });
+    const data = dataOf(res);
+    expect(data.units.map((u) => u.name)).toEqual(["UMS CAJURU 600", "UMS CAJURU 601", "UMS CAJURU 602"]);
+    expect(data).toMatchObject({ partial: false, next_page: 6, next_skip: 3, scanned_pages: { from: 1, to: 6 } });
+  });
+
+  it("stops asking for pages once the 20 s time budget is spent and says so", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    const types = fixture("cnes_tipounidades_synthetic.json");
+    let pages = 0;
+    globalThis.fetch = (async (input: string | URL) => {
+      const url = String(input);
+      if (url === CNES_TYPES_URL) return new Response(types, { status: 200, headers: { "content-type": JSON_TYPE } });
+      pages++;
+      t += 7_000; // three 7 s pages pass the 20 s budget
+      return new Response(syntheticPage("UMS", pages * 100), { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    try {
+      const client = await connectClient();
+      const data = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } }));
+      expect(pages).toBe(3);
+      expect(data).toMatchObject({ units: [], partial: true, next_page: 4, scanned_pages: { from: 1, to: 3 } });
+      expect(data.note).toMatch(/^Stopped after 3 upstream page\(s\) \(the 20 s time budget was reached\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
   });
 
   it.each([3, 7, 20])("following next_page/next_skip with limit %i visits every unit exactly once", async (limit) => {
@@ -236,5 +287,69 @@ describe("health_units_search", () => {
       const res = await client.callTool({ name: "health_units_search", arguments: {} });
       expect(errorOf(res)).toEqual({ error: "source_unavailable" });
     }
+  });
+});
+
+describe("health_units_search host gate (CNES)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("spaces a no-match scan 400 ms apart, one request per page", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    CNES_GATE.minIntervalMs = CNES_MIN_INTERVAL_MS;
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    for (let p = 1; p <= 4; p++) {
+      routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage("UMS", p * 100, p === 4 ? 3 : 20), contentType: JSON_TYPE };
+    }
+    const calls = stubFetch(routes);
+    const starts: number[] = [];
+    const inner = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
+      starts.push(Date.now());
+      return inner(input, init);
+    }) as typeof fetch;
+    const t0 = Date.now();
+    const client = await connectClient();
+    const pending = client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } });
+    await vi.advanceTimersByTimeAsync(5 * CNES_MIN_INTERVAL_MS);
+    expect(dataOf(await pending)).toMatchObject({ units: [], partial: false, scanned_pages: { from: 1, to: 4 } });
+    expect(calls).toHaveLength(5); // unit types + 4 pages
+    expect(starts.map((t) => t - t0)).toEqual([0, 400, 800, 1200, 1600]);
+  });
+
+  it("is rate_limited, not source_unavailable, when the gate's first page turn comes after the 20 s budget", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    const types = fixture("cnes_tipounidades_synthetic.json");
+    let pages = 0;
+    globalThis.fetch = (async (input: string | URL) => {
+      if (String(input) !== CNES_TYPES_URL) pages++;
+      t += 21_000; // the unit-type load takes 21 s
+      return new Response(types, { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    try {
+      const client = await connectClient();
+      const res = await client.callTool({ name: "health_units_search", arguments: { name: "cajuru" } });
+      expect(errorOf(res)).toEqual({ error: "rate_limited", message: "The source is limiting requests; wait about 1 minute before trying again." });
+      expect(pages).toBe(0);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
+  it("remembers a 429: a second call inside the wait makes no request", async () => {
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    routes[`GET ${establishmentsUrl(1, null)}`] = { body: syntheticPage("UMS", 100), contentType: JSON_TYPE };
+    routes[`GET ${establishmentsUrl(2, null)}`] = { status: 429, headers: { "retry-after": "120" } };
+    const calls = stubFetch(routes);
+    const client = await connectClient();
+    const first = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } }));
+    expect(first).toMatchObject({ partial: true, next_page: 2 });
+    expect(calls).toHaveLength(3);
+    const second = await client.callTool({ name: "health_units_search", arguments: { name: "nao bate", page: 2 } });
+    expect(errorOf(second)).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(3);
   });
 });

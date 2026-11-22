@@ -165,7 +165,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
   description:
     "Latest river level (cm), flow (m³/s) and rain (mm; last reading, last 1 h and 24 h) at ANA telemetry stations " +
     "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
-    "municipality text); stations come nearest to `near` (default Curitiba centre) first. At most 3 stations read per " +
+    "municipality text); the stations nearest to `near` (default Curitiba centre) are read, and those with a recent reading are listed first, by distance. At most 3 stations read per " +
     "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); when the source is limiting requests, the stations already read " +
     "are returned with partial: true (rate_limited only when none was read), and likewise when the source refuses this server or fails (source_unavailable only when none was read); your position and text are never sent. `stale` marks readings older than 2 h; " +
     "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
@@ -219,7 +219,10 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       const left = [...failed, ...refused, ...limited, ...outOfTime];
       const now = Date.now();
       const more = [...left, ...matches.slice(MAX_STATIONS_PER_CALL).map((m) => m.s)].map((s) => ({ code: s.code, name: s.name }));
-      const stations = read.map((x) => stationItem(x.s, x.km, x.d, now));
+      // Stations with a recent reading first; the sort is stable, so each group keeps the distance order.
+      const stations = read
+        .map((x) => stationItem(x.s, x.km, x.d, now))
+        .sort((a, b) => Number(a.status !== "ok") - Number(b.status !== "ok"));
       const suspect = stations.filter((s) => s.quality === "suspect").map((s) => s.code);
       const out: Output = {
         data: {

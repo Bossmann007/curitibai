@@ -293,6 +293,20 @@ describe("river_levels", () => {
     for (const c of calls) expect(c.url).not.toMatch(/iguac|25\.6|49\.4/i);
   });
 
+  it("lists stations with a recent reading first, by distance, then the rest, keeping every field", async () => {
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090"), ...route("65019980") });
+    const pending = levels({ station: "Rio Iguaçu", near: { lat: -25.429, lon: -49.2713 } });
+    await vi.advanceTimersByTimeAsync(10_000);
+    const out = await pending;
+    expect(calls).toHaveLength(3);
+    expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([
+      ["65019980", "ok"],
+      ["65009000", "no_recent_data"],
+      ["65006090", "no_recent_data"],
+    ]);
+    expect(out.data.stations[1]).toMatchObject({ name: "PONTE BR-277", distance_km: 10.2, reading_time: null, quality: "unknown" });
+  });
+
   it("without arguments reads the 3 river stations nearest to Curitiba centre (rain gauges after them)", async () => {
     const calls = stubFetch({ ...route("65009000"), ...route("65006090"), ...route("65004995") });
     const pending = levels({});

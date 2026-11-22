@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { NIGHTLY_RUN_UTC } from "../src/sources/publishedData.js";
 
 const DIR = new URL("../.github/workflows/", import.meta.url);
 const workflows = readdirSync(DIR)
@@ -34,6 +35,10 @@ describe("GitHub Actions workflows", () => {
   it("collect: nightly inside the robots Visit-time plus manual runs, 35 min (above the collector's 30-minute deadline), no overlap, write only on the job", () => {
     const lines = code(collect).map((l) => l.trimEnd());
     expect(lines).toContain('    - cron: "37 2 * * *"');
+    // The tools' "scheduled around 02:37 UTC" and the docs come from the same constant.
+    const [hh, mm] = NIGHTLY_RUN_UTC.split(":").map(Number);
+    expect(lines).toContain(`    - cron: "${mm} ${hh} * * *"`);
+    expect(readFileSync(new URL("../docs/local-data.md", import.meta.url), "utf8")).toContain(`at ${NIGHTLY_RUN_UTC} UTC`);
     expect(lines).toContain("  workflow_dispatch:");
     expect(collect).toMatch(/^permissions:\n {2}contents: read\n/m);
     expect(collect).toMatch(/^ {4}permissions:\n {6}contents: write\n/m);
