@@ -15,7 +15,7 @@ import {
 import { fold } from "../text.js";
 import { page, pagingInput } from "./busCommon.js";
 import { queryWords } from "./cityServicesSearch.js";
-import { CALL_START_BUDGET_MS, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 import { addDays } from "./eventsSearch.js";
 
 export const GUAIRA_SOURCE = "Centro Cultural Teatro Guaíra / Governo do Paraná";
@@ -212,7 +212,7 @@ export const guairaEvents: ToolDef<typeof guairaEventsInput, typeof guairaEvents
   inputSchema: guairaEventsInput,
   outputSchema: guairaEventsOutput,
   handler: async (args) => {
-    const startBy = Date.now() + CALL_START_BUDGET_MS;
+    const startBy = callStartBy();
     if (args.text !== undefined && queryWords(args.text).length === 0) {
       return fail("invalid_argument", "text must contain at least one letter or digit.");
     }

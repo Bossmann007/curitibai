@@ -712,8 +712,9 @@ in the city's own categories. Built.
   the 5 s gap, plus response time: about 10 to 15 minutes; the collector's own 30-minute deadline always comes before the
   35-minute job timeout, so a slow run still stops cleanly and publishes `status.json`. `useful_phones` reads
   `phones/status.json` from the same copy as the phones (local or published; a local file never makes a request) and,
-  when the last phones run failed, names its `code` (and HTTP status) in the note; a missing or invalid status file
-  (strict schema, `code` only lower-case letters and `_`) adds nothing and never fails the answer. A failed run
+  when the last phones run failed (an attempt not older than the phones), names its `code` (and HTTP status) in the
+  note; a missing or invalid status file (strict schema, `code` only lower-case letters and `_`) adds nothing and never
+  fails the answer, and its failures are remembered for that file only, never for the host. A failed run
   changes only the `status.json` files and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
@@ -898,9 +899,11 @@ cited, the approach the owner approved for no-licence sources).
 - **Query:** one URL per station: its bundled code, `dataInicio` yesterday and `dataFim` today as Curitiba dates
   (at least 24 h of rows). User text and position never enter the URL or the cache key (`ana:<code>`).
 - **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s. Time budget
-  (v0.18.1): no request starts later than 20 s after the call began (only requests of other calls sharing the gate
+  (v0.18.1): no request starts later than 20 s after the call began, plus 1 s of slack for the call's first request
+  starting a few ms late (only requests of other calls sharing the gate
   can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note. A
-  request already started is never cut, so the bound is 20 s plus the 10 s timeout. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
+  request already started is never cut, so the bound is 21 s plus the 10 s timeout. A call that joins another call's
+  in-flight load of a station, which ran out of that other call's budget, tries once more under its own. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
   XML content type required; redirects only to the same host under `/ServiceANA.asmx`.
 - **Rate and failures** (`src/hostGate.ts`, the same gate as GeoCuritiba): at least 5 s between request starts to the
   host; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure no request
@@ -962,11 +965,11 @@ cited, the approach the owner approved for no-licence sources).
   page being returned, cached 6 hours each (at most 500 pages: expired ones are swept and the oldest evicted on
   insert). The user's `text`, `city` and dates never reach the source. 1 MB cap
   (robots.txt 512 KB), 15 s timeout, `text/html` required (robots.txt `text/plain`), redirects only to the same host
-  under the requested path. Time budget (v0.18.1): no event page is asked for later than 20 s after the call began;
+  under the requested path. Time budget (v0.18.1): no event page (nor robots.txt for it) is asked for later than 20 s after the call began, plus 1 s of slack;
   those items stay `details: "not_read"`, with `partial: true` and a note. The listing load (robots.txt and up to 3
   pages, starts at 0 to 15 s) is never cut, since a partial listing would be cached 1 hour, and a request already
   started is never cut. A cold call: 5 requests 5 s apart (the first event page at 20 s, the second left for the
-  next call), about 20 s plus network time; the bound is 20 s plus the 15 s timeout.
+  next call), about 20 s plus network time; the bound is 21 s plus the 15 s timeout.
 - **Rate and failures** (the shared gate `src/hostGate.ts`, one per host): request starts at least 5 s apart per
   server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any failure inside
   `gate.run` (an HTTP error, a layout change, or a 200 event page that is not a page of the site, such as a WAF page

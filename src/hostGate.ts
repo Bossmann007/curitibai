@@ -21,7 +21,8 @@ export interface HostGateOptions {
  * reserved, never remembered as a failure of the host, and no request is made.
  */
 export class OutOfTimeError extends Error {
-  constructor() {
+  /** @param startBy the budget that was exceeded (a caller sharing a load can tell another call's budget from its own). */
+  constructor(readonly startBy: number) {
     super("out_of_time");
     this.name = "OutOfTimeError";
   }
@@ -64,7 +65,7 @@ export function createHostGate(options: HostGateOptions): HostGate {
       const failed = rememberedFailure(now);
       if (failed !== null) throw failed;
       const start = Math.max(now, nextAllowedAt);
-      if (runOptions.startBy !== undefined && start > runOptions.startBy) throw new OutOfTimeError();
+      if (runOptions.startBy !== undefined && start > runOptions.startBy) throw new OutOfTimeError(runOptions.startBy);
       if (start - now > options.maxQueueWaitMs) throw new RateLimitedError(Math.ceil((start - now) / 1000));
       nextAllowedAt = start + options.minIntervalMs;
       if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));

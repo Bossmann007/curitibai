@@ -214,6 +214,19 @@ describe("guaira_events", () => {
     expect(out.note).toMatch(/event\(s\) in other cities/);
   });
 
+  it("still reads the first event page when the call's first request starts a few ms late (1 s slack)", async () => {
+    const calls = stubFetch(routes());
+    // An earlier read takes the slots at -4.99 s (robots.txt, then cached 24 h) and 0.01 s (OSP): this call's listing
+    // pages start at 5.01, 10.01 and 15.01 s, and its first event page's slot is 20.01 s after the call began.
+    vi.setSystemTime(NOW.getTime() - 4_990);
+    const early = readDetails([OSP]);
+    await vi.advanceTimersByTimeAsync(4_990);
+    const out = await search({ limit: 1 });
+    await early;
+    expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, OSP, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
+    expect(out.data.items[0]).toMatchObject({ details: "read" });
+  });
+
   it("serves the listing from the cache for 1 hour and fills the next event pages on the next call", async () => {
     const calls = stubFetch(routes());
     await search({});

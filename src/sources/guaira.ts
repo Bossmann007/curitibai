@@ -342,7 +342,7 @@ async function getHtml(url: string, pathPrefix: string): Promise<string> {
  * other failure (other 4xx included, which RFC 9309 would read as "allow"), or an answer that is not text/plain,
  * fails closed: stricter than the RFC on purpose.
  */
-function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
+function getRobotsRules(startBy?: number): Promise<Cached<RobotsRule[]>> {
   return robotsCache.getOrLoad("robots", () =>
     gate.run(async () => {
       try {
@@ -353,13 +353,13 @@ function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
         if (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason === "HTTP 410")) return [];
         throw err;
       }
-    }),
+    }, startBy === undefined ? {} : { startBy }),
   );
 }
 
 /** Throws RobotsDisallowedError when robots.txt disallows `pathAndQuery` for this server. */
-async function assertAllowed(pathAndQuery: string): Promise<void> {
-  const rules = (await getRobotsRules()).value;
+async function assertAllowed(pathAndQuery: string, startBy?: number): Promise<void> {
+  const rules = (await getRobotsRules(startBy)).value;
   if (!isPathAllowed(rules, pathAndQuery)) throw new RobotsDisallowedError(pathAndQuery);
 }
 
@@ -446,10 +446,18 @@ export async function readDetails(
       continue;
     }
     try {
-      await assertAllowed(new URL(link).pathname);
+      await assertAllowed(new URL(link).pathname, startBy);
     } catch (err) {
-      // No event page was asked for: robots.txt disallows it, there was no slot, or robots.txt could not be read.
-      stopped = err instanceof RobotsDisallowedError ? "robots" : err instanceof RateLimitedError ? "busy" : "robots_failed";
+      // No event page was asked for: robots.txt disallows it, there was no slot (or none before `startBy`), or
+      // robots.txt could not be read.
+      stopped =
+        err instanceof RobotsDisallowedError
+          ? "robots"
+          : err instanceof OutOfTimeError
+            ? "out_of_time"
+            : err instanceof RateLimitedError
+              ? "busy"
+              : "robots_failed";
       continue;
     }
     let asked = false;

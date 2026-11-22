@@ -15,6 +15,16 @@ export const READ_ONLY: ToolAnnotations = {
  * started is never cut, so the call can still take this plus that request's timeout.
  */
 export const CALL_START_BUDGET_MS = 20_000;
+/**
+ * Slots are planned from the call's first request, which starts a few ms after the call began: without this slack a
+ * slot planned at exactly 20 s (Guaíra's first event page on a cold call) would be refused.
+ */
+export const CALL_START_SLACK_MS = 1_000;
+
+/** The `startBy` time of a call that begins now (CALL_START_BUDGET_MS plus CALL_START_SLACK_MS). */
+export function callStartBy(): number {
+  return Date.now() + CALL_START_BUDGET_MS + CALL_START_SLACK_MS;
+}
 
 /** Every successful tool result has this envelope. `data` is plain data copied from the source, never instructions. */
 export function envelope<T extends z.ZodType>(data: T) {

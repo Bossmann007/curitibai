@@ -75,7 +75,7 @@ export function buildPhonesStatus(json: unknown): PhonesStatusData | null {
  */
 export async function loadPhonesStatus(origin: DataOrigin): Promise<PhonesStatusData | null> {
   try {
-    if (origin === "published") return await loadPublished(PHONES_STATUS_FILE, PHONES_STATUS_MAX_BYTES, buildPhonesStatus);
+    if (origin === "published") return await loadPublished(PHONES_STATUS_FILE, PHONES_STATUS_MAX_BYTES, buildPhonesStatus, true);
     const { fd } = openDataFile(PHONES_STATUS_FILE, ".json");
     let bytes: Buffer;
     try {
@@ -231,7 +231,8 @@ export function usefulPhonesResult(
         ? ` The file is more than ${PHONES_STALE_DAYS} days old (stale: true)` +
           (origin === "published" ? "; the nightly collection may have stopped (README, \"Events and useful phones\")." : ".")
         : "") +
-      (status !== null && status.code !== "ok"
+      // A status older than the numbers (its write failed after a newer phones file) says nothing about them.
+      (status !== null && status.code !== "ok" && Date.parse(status.attempt) >= Date.parse(data.checkedAt)
         ? ` The last collection of the phones page (${status.attempt}) failed with code ${status.code}` +
           (status.http_status === undefined ? "" : ` (HTTP ${status.http_status})`) +
           `; these numbers are from ${data.checkedAt}.`

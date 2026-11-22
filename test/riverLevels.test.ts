@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assessQuality, getStationData, parseStationData, requestPeriod, STATIONS, stationDataUrl, type Reading, type Station } from "../src/sources/ana.js";
+import { OutOfTimeError } from "../src/hostGate.js";
 import { SourceUnavailableError } from "../src/http.js";
 import { riverLevelsOutput } from "../src/tools/riverLevels.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
@@ -458,6 +459,18 @@ describe("river_levels", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(errorOf(await pending)).toEqual({ error: "source_unavailable" });
     expect(calls).toHaveLength(2);
+  });
+
+  it("a call joining another call's load that ran out of time reads the station under its own budget", async () => {
+    const calls = stubFetch({ ...route("02549127"), ...route("65010000") });
+    const other = getStationData(station("02549127")); // slot 0; the next slot is 5 s away
+    const short = getStationData(station("65010000"), Date.now() + 1_000);
+    const own = getStationData(station("65010000"), Date.now() + 20_000); // joins the same load
+    await expect(short).rejects.toBeInstanceOf(OutOfTimeError);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await own).value.latest).not.toBeNull();
+    await other;
+    expect(calls.map((c) => c.url)).toEqual([urlFor("02549127"), urlFor("65010000")]);
   });
 
   it("refuses a call whose turn is more than 10 s away, without a request", async () => {

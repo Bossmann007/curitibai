@@ -261,7 +261,8 @@ describe("published nightly copy", () => {
     expect(err.message).toMatch(/nightly collection may have stopped/);
   });
   describe("phones/status.json (last phones run)", () => {
-    const failed = { attempt: "2026-11-22T02:40:00.000Z", success: "2026-11-19T02:40:00.000Z", code: "http_error", http_status: 500 };
+    // After the phones files' checked_at in these tests (now - 1 h): the failed run is the last one.
+    const failed = { attempt: new Date().toISOString(), success: "2026-11-19T02:40:00.000Z", code: "http_error", http_status: 500 };
     // The status request waits for the host gate's 1 s slot after the phones file: fake time runs it.
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ["setTimeout"] });
@@ -276,7 +277,7 @@ describe("published nightly copy", () => {
       const checked = new Date(Date.now() - 3600_000);
       const calls = stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(checked)), [`GET ${PHONES_STATUS_URL}`]: json(failed) });
       const out = usefulPhonesOutput.parse((await phonesNow()).structuredContent);
-      expect(out.note).toContain(`The last collection of the phones page (2026-11-22T02:40:00.000Z) failed with code http_error (HTTP 500); these numbers are from ${checked.toISOString()}.`);
+      expect(out.note).toContain(`The last collection of the phones page (${failed.attempt}) failed with code http_error (HTTP 500); these numbers are from ${checked.toISOString()}.`);
       expect(calls.map((c) => c.url)).toEqual([PHONES_URL, PHONES_STATUS_URL]);
     });
 
@@ -298,8 +299,27 @@ describe("published nightly copy", () => {
       }
     });
 
+    it("a status failure of the host (HTTP 500) is not remembered for the host: the events file is still asked", async () => {
+      const calls = stubFetch({
+        [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))),
+        [`GET ${PHONES_STATUS_URL}`]: { status: 500 },
+        [`GET ${EVENTS_URL}`]: json(eventsFile(new Date())),
+      });
+      expect((await phonesNow()).isError).toBeFalsy();
+      const pending = events();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect((await pending).isError).toBeFalsy();
+      expect(calls.map((c) => c.url)).toEqual([PHONES_URL, PHONES_STATUS_URL, EVENTS_URL]);
+    });
+
+    it("says nothing about a failed run older than the numbers (its status write came before a newer phones file)", async () => {
+      const older = { ...failed, attempt: new Date(Date.now() - 2 * 3600_000).toISOString() };
+      stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))), [`GET ${PHONES_STATUS_URL}`]: json(older) });
+      expect(usefulPhonesOutput.parse((await phonesNow()).structuredContent).note).not.toMatch(/last collection/);
+    });
+
     it("local: reads the local status only, never the network", async () => {
-      writeLocal("phones/phones.json", JSON.stringify(phonesFile(new Date())));
+      writeLocal("phones/phones.json", JSON.stringify(phonesFile(new Date(Date.now() - 3600_000))));
       writeLocal("phones/status.json", JSON.stringify({ ...failed, code: "layout_changed", http_status: undefined }));
       const calls = stubFetch({});
       const out = usefulPhonesOutput.parse((await phonesNow()).structuredContent);

@@ -69,7 +69,8 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   CAPTCHA/challenge markers block the host 10 minutes); a station whose XML content cannot be read is remembered 60 s
   for that station only.
 - `guaira_events`: the event-page details cache holds at most 500 entries (expired swept, oldest evicted on insert).
-- `river_levels` and `guaira_events`: per-call start budget of 20 s (`CALL_START_BUDGET_MS`); no request starts after
+- `river_levels` and `guaira_events`: per-call start budget of 20 s (`CALL_START_BUDGET_MS`, plus 1 s
+  `CALL_START_SLACK_MS`); no request starts after
   it, what is ready is returned with `partial: true` and a note; a request in flight is never cut, and the Guaíra
   listing load is never cut (a partial listing would be cached 1 hour).
 

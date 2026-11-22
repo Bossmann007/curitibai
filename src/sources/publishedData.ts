@@ -75,7 +75,13 @@ function isFileError(err: unknown): boolean {
  * Reads the published `file` (capped at `maxBytes`, same host and path only, no retry), parses it as JSON and passes
  * it to `build`, the same strict validation the local file gets: anything else throws and nothing is returned.
  */
-export async function loadPublished<T>(file: PublishedFile, maxBytes: number, build: (json: unknown) => T): Promise<T> {
+export async function loadPublished<T>(
+  file: PublishedFile,
+  maxBytes: number,
+  build: (json: unknown) => T,
+  /** An optional file (phones/status.json): any failure is about that file only, never remembered for the host. */
+  optional = false,
+): Promise<T> {
   const url = publishedUrl(file);
   const { value } = await cache.getOrLoad(url, async () => {
     const remembered = fileFailures.get(file);
@@ -91,7 +97,7 @@ export async function loadPublished<T>(file: PublishedFile, maxBytes: number, bu
         });
         return { body: res.body };
       } catch (err) {
-        if (isFileError(err)) return { fileError: err };
+        if (optional || isFileError(err)) return { fileError: err };
         throw err;
       }
     });

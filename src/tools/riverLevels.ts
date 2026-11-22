@@ -3,7 +3,7 @@ import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATION
 import { fold } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { OutOfTimeError } from "../hostGate.js";
-import { CALL_START_BUDGET_MS, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const RIVER_SOURCE = "ANA (Agência Nacional de Águas e Saneamento Básico) telemetry; stations operated by IAT-PR";
 export const RIVER_LICENSE_NOTE = "No licence found; facts only; ANA cited.";
@@ -169,7 +169,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       return fail("invalid_argument", "No bundled station matches `station`; try a river (\"iguacu\") or a municipality, or omit it.");
     }
     const picked = matches.slice(0, MAX_STATIONS_PER_CALL);
-    const startBy = Date.now() + CALL_START_BUDGET_MS;
+    const startBy = callStartBy();
     try {
       // One station after the other: the host gate spaces the requests 5 s apart. A host or transfer failure fails
       // the call (a station not read is never shown as no_recent_data); an answer that cannot be read marks only

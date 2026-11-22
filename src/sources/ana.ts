@@ -1,6 +1,6 @@
 import { TtlCache, type Cached } from "../cache.js";
 import { blockHost, CAPTCHA, fetchText, SourceUnavailableError, type FetchResult } from "../http.js";
-import { createHostGate } from "../hostGate.js";
+import { createHostGate, OutOfTimeError } from "../hostGate.js";
 import { dateInCuritiba } from "./detran.js";
 
 /**
@@ -358,7 +358,17 @@ function checkDocument(res: FetchResult): void {
  * for other stations. `startBy` (the caller's time budget): no request starts after it (OutOfTimeError, no request).
  * Keyed by station code (the URL's dates change at midnight). A cached station makes no request and never waits.
  */
-export function getStationData(station: Station, startBy?: number): Promise<Cached<StationData>> {
+export async function getStationData(station: Station, startBy?: number): Promise<Cached<StationData>> {
+  try {
+    return await loadStation(station, startBy);
+  } catch (err) {
+    // A load shared with another call ran out of that call's time, not this one's: try once more under this call's own.
+    if (err instanceof OutOfTimeError && err.startBy !== startBy) return loadStation(station, startBy);
+    throw err;
+  }
+}
+
+function loadStation(station: Station, startBy: number | undefined): Promise<Cached<StationData>> {
   return cache.getOrLoad(`ana:${station.code}`, async () => {
     const remembered = stationFailures.get(station.code);
     if (remembered !== undefined && Date.now() < remembered.until) throw remembered.error;
