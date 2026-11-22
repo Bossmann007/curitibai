@@ -494,12 +494,13 @@ describe("procurement_search paging", () => {
 
   it(`caps the scan at ${MAX_PNCP_REQUESTS} upstream pages and says partial`, async () => {
     const routes: Record<string, Route> = {};
-    for (let p = 1; p <= 5; p++) routes[`GET ${pncpUrl(p)}`] = { body: syntheticPncpPage(p * 100, 1, 5 - p), contentType: JSON_TYPE };
+    const last = MAX_PNCP_REQUESTS + 3;
+    for (let p = 1; p <= last; p++) routes[`GET ${pncpUrl(p)}`] = { body: syntheticPncpPage(p * 100, 1, last - p), contentType: JSON_TYPE };
     const calls = stubFetch(routes);
     const data = dataOf(await search({ limit: 20 }));
-    expect(data).toMatchObject({ partial: true, next_page: 3, scanned_pages: { from: 1, to: 2 } });
-    expect(data.items).toHaveLength(2);
-    expect(data.note).toMatch(/Stopped after 2 upstream page/);
+    expect(data).toMatchObject({ partial: true, next_page: MAX_PNCP_REQUESTS + 1, scanned_pages: { from: 1, to: MAX_PNCP_REQUESTS } });
+    expect(data.items).toHaveLength(MAX_PNCP_REQUESTS);
+    expect(data.note).toMatch(new RegExp(`^Stopped after ${MAX_PNCP_REQUESTS} upstream page\\(s\\); continue with next_page\\.`));
     expect(calls).toHaveLength(MAX_PNCP_REQUESTS);
   });
 
@@ -628,7 +629,7 @@ describe("procurement_search paging", () => {
     globalThis.Date.now = () => t;
     globalThis.fetch = (async () => {
       if (n++ === 0) {
-        t += 16_000; // the 429 and its retry wait take 16 s
+        t += 21_000; // the 429 and its retry wait take 21 s
         return new Response("", { status: 429, headers: { "retry-after": "0" } });
       }
       return new Response(syntheticPncpPage(1, 1, 3), { status: 200 });
@@ -637,7 +638,7 @@ describe("procurement_search paging", () => {
       const data = dataOf(await search({ limit: 20 }));
       expect(n).toBe(2);
       expect(data).toMatchObject({ partial: true, next_page: 2, scanned_pages: { from: 1, to: 1 } });
-      expect(data.note).toMatch(/^Stopped after 1 upstream page\(s\) \(the 15 s time budget was reached\); continue with next_page\./);
+      expect(data.note).toMatch(/^Stopped after 1 upstream page\(s\) \(the 20 s time budget was reached\); continue with next_page\./);
     } finally {
       globalThis.Date.now = real;
     }
@@ -648,25 +649,47 @@ describe("procurement_search paging", () => {
     let t = 1_000_000;
     globalThis.Date.now = () => t;
     globalThis.fetch = (async (input: string | URL) => {
-      t += 10_000; // two normal 10 s pages: over the budget, but the cap is the reason
+      t += 4_000; // five 4 s pages: 20 s in all, but the cap is the reason
       const page = Number(new URL(String(input)).searchParams.get("pagina"));
-      return new Response(syntheticPncpPage(page * 10, 1, 3), { status: 200 });
+      return new Response(syntheticPncpPage(page * 10, 1, 9), { status: 200 });
     }) as typeof fetch;
     try {
       const data = dataOf(await search({ limit: 20 }));
-      expect(data).toMatchObject({ partial: true, next_page: 3, scanned_pages: { from: 1, to: 2 } });
-      expect(data.note).toMatch(/^Stopped after 2 upstream page\(s\); continue with next_page\./);
+      expect(data).toMatchObject({ partial: true, next_page: 6, scanned_pages: { from: 1, to: 5 } });
+      expect(data.note).toMatch(/^Stopped after 5 upstream page\(s\); continue with next_page\./);
     } finally {
       globalThis.Date.now = real;
     }
   });
 
-  it("skips the second page when the first was slow", async () => {
+  it("keeps scanning until the time budget when the only match is on page 3", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    let n = 0;
+    globalThis.fetch = (async (input: string | URL) => {
+      n++;
+      t += 9_000; // 9 s pages, as PNCP answered: pages 1-3 start before 20 s, page 4 would not
+      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      return new Response(syntheticPncpPage(page * 100, page === 3 ? 1 : 0, 9), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const data = dataOf(await search({ limit: 20 }));
+      expect(n).toBe(3);
+      expect(data.items.map((i) => i.pncp_id)).toEqual(["76417005000186-1-000300/2026"]);
+      expect(data).toMatchObject({ partial: true, next_page: 4, scanned_pages: { from: 1, to: 3 } });
+      expect(data.note).toMatch(/\(the 20 s time budget was reached\)/);
+    } finally {
+      globalThis.Date.now = real;
+    }
+  });
+
+  it("asks for no second page when the first took the whole budget", async () => {
     const real = Date.now;
     let t = 1_000_000;
     globalThis.Date.now = () => t;
     globalThis.fetch = (async () => {
-      t += 16_000; // the first page takes 16 s
+      t += 21_000; // the first page takes 21 s
       return new Response(syntheticPncpPage(1, 1, 3), { status: 200 });
     }) as typeof fetch;
     try {

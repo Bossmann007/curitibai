@@ -322,12 +322,18 @@ describe("local_csv_summary", () => {
     ["sub", "file_not_allowed"],
     [".", "file_not_allowed"],
     ["/etc/passwd", "file_not_allowed"],
-    ["missing.csv", "file_not_found"],
     ["empty.csv", "invalid_csv"],
     ["open-quote.csv", "invalid_csv"],
   ])("rejects %s with %s", async (file, code) => {
     const res = await call({ file });
     expect(errorOf(res)).toEqual({ error: code });
+  });
+
+  it("says where to put the file when it is not found", async () => {
+    expect(errorOf(await call({ file: "missing.csv" }))).toEqual({
+      error: "file_not_found",
+      message: expect.stringMatching(/CURITIBAI_DATA_DIR.*docs\/local-data\.md/),
+    });
   });
 
   it("rejects an absolute path to a CSV outside the folder", async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import { tools } from "../src/tools/index.js";
 import { datasetUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
-import { connectClient, errorOf, FILES_UNIDADES, happyRoutes, ID_TRANSPORTE, ID_UNIDADES, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
+import { connectClient, errorOf, FILES_UNIDADES, fixture, happyRoutes, ID_TRANSPORTE, ID_UNIDADES, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
 
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
 
@@ -139,6 +139,72 @@ describe("each tool returns the envelope, valid against its output schema", () =
     const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "saude", limit: 10 } });
     expect(res.structuredContent).toMatchObject({
       data: { partial: true, total: 10, note: "The source is limiting requests; wait 30 s before trying again." },
+    });
+  });
+
+  /** Portal search stub keyed by the search term: listed terms get the "saude" results page, others none. */
+  function stubPortalByTerm(withResults: string[], refuse: Record<string, number> = {}): string[] {
+    const terms: string[] = [];
+    globalThis.fetch = (async (_input: string | URL, init?: RequestInit) => {
+      const term = (init?.body as URLSearchParams).get("Parametros.Termo")!;
+      terms.push(term);
+      if (refuse[term] !== undefined) return new Response("", { status: refuse[term], headers: { "retry-after": "30" } });
+      return new Response(fixture(withResults.includes(term) ? "portal_busca_saude.html" : "portal_busca_vazia.html"), {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }) as typeof fetch;
+    return terms;
+  }
+  const datasetsData = (res: Awaited<ReturnType<Awaited<ReturnType<typeof connectClient>>["callTool"]>>) =>
+    (res.structuredContent as { data: { total: number | null; partial: boolean; note?: string; datasets: unknown[] } }).data;
+
+  it("open_datasets_search retries without accents, then with a synonym, and says which query matched", async () => {
+    const terms = stubPortalByTerm(["transporte coletivo"]);
+    const client = await connectClient();
+    const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "ônibus" } }));
+    expect(terms).toEqual(["ônibus", "onibus", "transporte coletivo"]);
+    expect(data.total).toBe(10);
+    expect(data.datasets).toHaveLength(5);
+    expect(data.note).toBe('No results for "ônibus", "onibus"; showing results for "transporte coletivo".');
+  });
+
+  it("open_datasets_search stops retrying at the first query with results", async () => {
+    const terms = stubPortalByTerm(["Saude"]);
+    const client = await connectClient();
+    const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "Saúde" } }));
+    expect(terms).toEqual(["Saúde", "Saude"]);
+    expect(data.note).toBe('No results for "Saúde"; showing results for "Saude".');
+  });
+
+  it("open_datasets_search names every query tried when none matched, and tries no duplicate", async () => {
+    const terms = stubPortalByTerm([]);
+    const client = await connectClient();
+    const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "onibus" } }));
+    expect(terms).toEqual(["onibus", "transporte coletivo"]);
+    expect(data).toMatchObject({ total: 0, partial: false, datasets: [] });
+    expect(data.note).toBe('No results for "onibus" or "transporte coletivo".');
+  });
+
+  it("open_datasets_search makes one request for a query with no accent and no synonym", async () => {
+    const terms = stubPortalByTerm([]);
+    const client = await connectClient();
+    const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "feiras" } }));
+    expect(terms).toEqual(["feiras"]);
+    expect(data).not.toHaveProperty("note");
+  });
+
+  it("open_datasets_search keeps the empty answer as partial when a retry is rate limited", async () => {
+    const terms = stubPortalByTerm([], { onibus: 429 });
+    const client = await connectClient();
+    const res = await client.callTool({ name: "open_datasets_search", arguments: { query: "ônibus" } });
+    expect(res.isError).toBeFalsy();
+    expect(terms).toEqual(["ônibus", "onibus"]);
+    expect(datasetsData(res)).toMatchObject({
+      total: 0,
+      partial: true,
+      datasets: [],
+      note: "The source is limiting requests; wait 30 s before trying again.",
     });
   });
 

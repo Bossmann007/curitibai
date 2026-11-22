@@ -161,6 +161,18 @@ describe("published nightly copy", () => {
     const err = errorOf(await events()) as { error: string; message: string };
     expect(err.error).toBe("data_not_available");
     expect(err.message).toMatch(/no published copy yet/);
+    expect(err.message).toMatch(/nightly GitHub collection publishes it \(next run about 02:37 UTC\)/);
+    expect(err.message).toMatch(/docs\/local-data\.md/);
+    expect(err.message).not.toMatch(/README/);
+  });
+
+  it("phones before the first nightly run (HTTP 404) points to the nightly run and docs/local-data.md", async () => {
+    stubFetch({ [`GET ${PHONES_URL}`]: { status: 404, body: "404: Not Found" }, [`GET ${PHONES_STATUS_URL}`]: { status: 404, body: "" } });
+    const err = errorOf(await phones()) as { error: string; message: string };
+    expect(err.error).toBe("data_not_available");
+    expect(err.message).toMatch(/nightly GitHub collection publishes it \(next run about 02:37 UTC\)/);
+    expect(err.message).toMatch(/docs\/local-data\.md/);
+    expect(err.message).not.toMatch(/README/);
   });
 
   it("a missing events file (HTTP 404) does not make the phones file fail", async () => {

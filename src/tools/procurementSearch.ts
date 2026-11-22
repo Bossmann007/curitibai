@@ -8,16 +8,17 @@ import {
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
 import { RateLimitedError, SourceRefusedError } from "../http.js";
-import { envelope, fail, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
+import { CALL_START_BUDGET_MS, envelope, fail, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
 
-/** Upstream pages requested per call, at most (8–13 s each on 2026-11-19). */
-export const MAX_PNCP_REQUESTS = 2;
+/**
+ * Upstream pages requested per call, at most, and none starts after CALL_START_BUDGET_MS: at 8–13 s per page
+ * (2026-11-19) that is usually 2 or 3 pages. Kept low because PNCP answered 429 after about 20 requests in 2 minutes.
+ */
+export const MAX_PNCP_REQUESTS = 5;
 export const DEFAULT_MODALITY = 6;
 export const DEFAULT_DAYS = 30;
 /** PNCP refuses a range over 365 days (HTTP 422). */
 export const MAX_RANGE_DAYS = 365;
-/** A second upstream page is requested only if the first took less than this, so one call stays well under a minute. */
-export const SECOND_PAGE_BUDGET_MS = 15_000;
 
 export const SCOPE_NOTE =
   "Procurement published in PNCP by Curitiba municipal bodies (the city, its câmara, funds, foundations, institutes, " +
@@ -126,7 +127,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade, " +
     "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
-    "a name. Scans at most 2 upstream pages of 50 per call; continue with next_page and next_skip. Read-only.",
+    "a name. Scans upstream pages of 50 until limit items match, at most 5 pages and no new page after 20 s per call (PNCP takes " +
+    "8–13 s per page); continue with next_page and next_skip. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
   handler: async ({ query, from, to, modality, limit, page, skip }) => {
@@ -161,7 +163,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           break;
         }
         // Wall clock since the first request, so a 429 retry wait counts too.
-        if (scanned > 0 && Date.now() - started > SECOND_PAGE_BUDGET_MS) {
+        if (scanned > 0 && Date.now() - started > CALL_START_BUDGET_MS) {
           partial = true; // the source is slow: return what we have rather than risk the client's timeout
           budgetReached = true;
           nextPage = p;
@@ -204,7 +206,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
       if (refusedNote !== null) notes.unshift(refusedNote);
       else if (partial) {
-        const why = budgetReached ? ` (the ${SECOND_PAGE_BUDGET_MS / 1000} s time budget was reached)` : "";
+        const why = budgetReached ? ` (the ${CALL_START_BUDGET_MS / 1000} s time budget was reached)` : "";
         notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
       }
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);

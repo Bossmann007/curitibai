@@ -229,7 +229,7 @@ export function usefulPhonesResult(
       (data.skipped > 0 ? ` ${data.skipped} entries of the file were skipped: empty name or section after cleaning.` : "") +
       (stale
         ? ` The file is more than ${PHONES_STALE_DAYS} days old (stale: true)` +
-          (origin === "published" ? "; the nightly collection may have stopped (README, \"Events and useful phones\")." : ".")
+          (origin === "published" ? "; the nightly collection may have stopped (see docs/local-data.md)." : ".")
         : "") +
       // A status older than the numbers (its write failed after a newer phones file) says nothing about them.
       (status !== null && status.code !== "ok" && Date.parse(status.attempt) >= Date.parse(data.checkedAt)
@@ -242,11 +242,11 @@ export function usefulPhonesResult(
 
 const NOT_AVAILABLE =
   `No phones file. Run scripts/fetch-events.mjs between 02:00 and 05:50 UTC with CURITIBAI_DATA_DIR set; it writes ` +
-  `${PHONES_FILE} there. Or leave ${REMOTE_DATA_ENV} unset to read the published copy (see the README, "Events and useful phones").`;
+  `${PHONES_FILE} there. Or leave ${REMOTE_DATA_ENV} unset to read the published copy (see docs/local-data.md).`;
 
 const NOT_PUBLISHED =
-  `No local ${PHONES_FILE} and no published copy yet: the nightly collection has not published it. Try again ` +
-  "tomorrow, or run scripts/fetch-events.mjs (see the README).";
+  `No local ${PHONES_FILE} and no published copy yet: the nightly GitHub collection publishes it (next run about ` +
+  "02:37 UTC); try again after that. To run the collector yourself, see docs/local-data.md.";
 
 export const usefulPhones: ToolDef<typeof usefulPhonesInput, typeof usefulPhonesOutput> = {
   name: "useful_phones",

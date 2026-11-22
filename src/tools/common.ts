@@ -10,9 +10,9 @@ export const READ_ONLY: ToolAnnotations = {
 };
 
 /**
- * Per-call time budget of the live tools that space requests 5 s apart (river_levels, guaira_events): no new request
- * starts later than this after the call began; what is ready is returned with `partial: true`. A request already
- * started is never cut, so the call can still take this plus that request's timeout.
+ * Per-call time budget of the live tools that make several requests (river_levels, guaira_events, health_units_search,
+ * procurement_search): no new request starts later than this after the call began; what is ready is returned with
+ * `partial: true`. A request already started is never cut, so the call can still take this plus that request's timeout.
  */
 export const CALL_START_BUDGET_MS = 20_000;
 /**

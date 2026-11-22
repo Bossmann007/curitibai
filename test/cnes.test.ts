@@ -123,15 +123,59 @@ describe("health_units_search", () => {
 
   it(`caps the scan at ${MAX_CNES_REQUESTS} upstream pages and says partial`, async () => {
     const routes: Record<string, Route> = { ...cnesRoutes() };
-    for (let p = 1; p <= 10; p++) {
+    for (let p = 1; p <= MAX_CNES_REQUESTS + 5; p++) {
       routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage("UMS", p * 100), contentType: JSON_TYPE };
     }
     const calls = stubFetch(routes);
     const client = await connectClient();
     const res = await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } });
     const data = dataOf(res);
-    expect(data).toMatchObject({ units: [], partial: true, next_page: 6, scanned_pages: { from: 1, to: 5 } });
+    expect(data).toMatchObject({
+      units: [],
+      partial: true,
+      next_page: MAX_CNES_REQUESTS + 1,
+      scanned_pages: { from: 1, to: MAX_CNES_REQUESTS },
+    });
+    expect(data.note).toMatch(new RegExp(`^Stopped after ${MAX_CNES_REQUESTS} upstream page\\(s\\); continue with next_page\\.`));
     expect(calls.filter((c) => c.url !== CNES_TYPES_URL)).toHaveLength(MAX_CNES_REQUESTS);
+  });
+
+  it("keeps scanning past page 5 on the first call when the only match is on page 6", async () => {
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    for (let p = 1; p <= 7; p++) {
+      const prefix = p === 6 ? "UMS CAJURU" : "UMS OUTRA";
+      routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage(prefix, p * 100, p === 7 ? 3 : 20), contentType: JSON_TYPE };
+    }
+    stubFetch(routes);
+    const client = await connectClient();
+    const res = await client.callTool({ name: "health_units_search", arguments: { name: "cajuru", limit: 3 } });
+    const data = dataOf(res);
+    expect(data.units.map((u) => u.name)).toEqual(["UMS CAJURU 600", "UMS CAJURU 601", "UMS CAJURU 602"]);
+    expect(data).toMatchObject({ partial: false, next_page: 6, next_skip: 3, scanned_pages: { from: 1, to: 6 } });
+  });
+
+  it("stops asking for pages once the 20 s time budget is spent and says so", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    const types = fixture("cnes_tipounidades_synthetic.json");
+    let pages = 0;
+    globalThis.fetch = (async (input: string | URL) => {
+      const url = String(input);
+      if (url === CNES_TYPES_URL) return new Response(types, { status: 200, headers: { "content-type": JSON_TYPE } });
+      pages++;
+      t += 7_000; // three 7 s pages pass the 20 s budget
+      return new Response(syntheticPage("UMS", pages * 100), { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    try {
+      const client = await connectClient();
+      const data = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } }));
+      expect(pages).toBe(3);
+      expect(data).toMatchObject({ units: [], partial: true, next_page: 4, scanned_pages: { from: 1, to: 3 } });
+      expect(data.note).toMatch(/^Stopped after 3 upstream page\(s\) \(the 20 s time budget was reached\); continue with next_page\./);
+    } finally {
+      globalThis.Date.now = real;
+    }
   });
 
   it.each([3, 7, 20])("following next_page/next_skip with limit %i visits every unit exactly once", async (limit) => {

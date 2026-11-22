@@ -113,6 +113,15 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   `HEAD^1..HEAD` (GitHub's merge commit and its base), more than 400 counted lines fails unless the body has a
   `Large PR because:` line with a reason; `test/` and lockfiles excluded.
 
+## v0.19.0 changes (task brief "curitibai v0.19.0 — usability fixes found by calling every tool", 2026-11-22)
+
+- `health_units_search` and `procurement_search` scan pages until `limit` matches, a page cap (CNES 20, PNCP 5) or
+  the 20 s per-call budget (`CALL_START_BUDGET_MS`); `note` says which limit stopped the scan.
+- `open_datasets_search` retries an empty query without accents, then with `src/sources/portalSynonyms.ts`.
+- `river_levels` lists stations with status `ok` first (stable, so distance order is kept in each group).
+- `local_csv_summary` `file_not_found`, `events_search` and `useful_phones` `data_not_available` messages point to
+  `docs/local-data.md` and the nightly run.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
