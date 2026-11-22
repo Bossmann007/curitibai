@@ -23,7 +23,8 @@ jobs:
     if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'
     # Standard GitHub-hosted runner only (free for public repositories); never a larger runner.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes.
+    timeout-minutes: 35
     permissions:
       contents: write
     steps:

@@ -16,7 +16,7 @@ cost.
   Turismo site's robots.txt `Visit-time` 0200-0600) and `workflow_dispatch`. `runs-on: ubuntu-latest` only (standard
   runner, free in public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>;
   never a larger runner). Workflow permissions `contents: read`; the job alone `contents: write`. Actions pinned by
-  full commit SHA (the same two as `verify.yml`). `timeout-minutes: 15`. Concurrency group `collect`,
+  full commit SHA (the same two as `verify.yml`). `timeout-minutes: 35` (above the collector's 30-minute deadline). Concurrency group `collect`,
   `cancel-in-progress: false`. Job only when `github.repository == 'Bossmann007/curitibai'` and the ref is `main`. No
   `npm ci` (the collector uses Node built-ins only, so no dependency code runs with write access).
 - **Publish** `scripts/publish-data.sh`: fetch `data` (when it exists) into a temporary folder; copy the previous
@@ -27,9 +27,9 @@ cost.
   stops before collecting (so a network error never makes a new orphan). The collector already keeps the previous
   `events.json` / `phones.json` on any failure and always writes `status.json`.
 - **Timing:** typical run about 5 minutes (50 events); with 10 list pages of 10 events, about 112 requests with a
-  5 s gap after each plus response time, which approaches the 15-minute job timeout (owner's number) when the site is
-  slow. The collector's own 30-minute deadline is not changed; a job killed at the timeout publishes nothing that
-  night. Raising the timeout is the owner's call (PR body).
+  5 s gap after each plus response time, about 10–15 minutes, more when the site is slow. The job timeout is 35
+  minutes (owner decision, 2026-11-22), above the collector's unchanged 30-minute deadline, so the collector always
+  stops first, keeps the previous files and writes `status.json`, and the run still publishes.
 - **Server** `src/sources/publishedData.ts`: `loadLocalOrPublished` reads the local file first (today's behaviour,
   every error kept); only `data_dir_not_set` or `file_not_found` fall through to the published copy, unless
   `CURITIBAI_REMOTE_DATA` is `0` or `off`. Published copy: fixed URLs

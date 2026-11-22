@@ -10,7 +10,7 @@ New host for the server: `raw.githubusercontent.com` (two fixed files of this re
 
 - New workflow `.github/workflows/collect.yml`: every night at 02:37 UTC (inside the Turismo site's robots.txt
   `Visit-time`) and on `workflow_dispatch`, on `ubuntu-latest` only (standard runner, free in public repositories),
-  15-minute timeout, never two runs at once, `contents: write` for this job only, actions pinned by commit SHA, only
+  35-minute timeout (above the collector's 30-minute deadline), never two runs at once, `contents: write` for this job only, actions pinned by commit SHA, only
   on `Bossmann007/curitibai` `main`. It runs `scripts/publish-data.sh`: the previous files from the `data` branch go
   into a temporary `CURITIBAI_DATA_DIR`, `scripts/fetch-events.mjs` runs once unchanged (same robots.txt, window
   and 5 s rules, no retry), and only `events/events.json`, `events/status.json` and `phones/phones.json` are

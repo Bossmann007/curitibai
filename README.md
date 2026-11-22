@@ -442,7 +442,7 @@ orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of th
 the commit when none of them changed, which is rare: `events/status.json` records every attempt, so most nights add
 one small commit. A run that fails (`window_closed`, `robots_changed`, `http_error`, ...) keeps the previous
 files, updates only `events/status.json`, shows as failed in the Actions tab and is not retried until the next night.
-The job has `contents: write` only for itself, a 15-minute timeout, and never overlaps another run.
+The job has `contents: write` only for itself, a 35-minute timeout (above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes), and never overlaps another run.
 
 `events_search` and `useful_phones` read, in this order:
 
@@ -480,9 +480,9 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
   makes no request to the site and only records `window_closed`.
 - The detail cache (`events/details.json`) is not published, so every nightly run reads every detail page again:
   about 5 minutes for the 50 or so events seen on 2026-11-21. With 10 list pages of 10 events (a pager showing more
-  stops the run) it is about 112 requests, each followed by the 5 s gap, plus the site's response time: close to the
-  job's 15-minute timeout when the site is slow. A job GitHub stops at the timeout publishes nothing that night (not
-  even `status.json`) and shows as failed in Actions.
+  stops the run) it is about 112 requests, each followed by the 5 s gap, plus the site's response time: about 10
+  to 15 minutes, more when the site is slow. The collector stops itself at its 30-minute deadline (or 05:50 UTC),
+  keeps the previous files and records the code in `status.json`, before the job's 35-minute timeout.
 - `phones/status.json` is not published: a failed phones step shows only as `stale: true` in `useful_phones` after
   3 days (and in the run's log in Actions).
 

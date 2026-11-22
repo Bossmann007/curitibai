@@ -692,8 +692,8 @@ in the city's own categories. Built.
 
 - **What runs:** `.github/workflows/collect.yml`, cron `37 2 * * *` (02:37 UTC, inside the Turismo site's robots.txt
   `Visit-time` 0200-0600) plus `workflow_dispatch`, on `ubuntu-latest` only (standard GitHub-hosted runner, free in
-  public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>), timeout 15
-  minutes, concurrency group `collect` (a run never overlaps another; a queued one waits), job permission
+  public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>), timeout 35
+  minutes (above the collector's 30-minute deadline), concurrency group `collect` (a run never overlaps another; a queued one waits), job permission
   `contents: write` only (workflow default `contents: read`), actions pinned by full commit SHA, and only on
   `Bossmann007/curitibai` `main` (forks and other branches skip the job). No `npm ci`: the collector uses Node
   built-ins only.
@@ -708,8 +708,8 @@ in the city's own categories. Built.
   `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
   without force; the commit is skipped when none changed (rare, since `events/status.json` records every attempt).
   A typical run takes about 5 minutes; 10 list pages of 10 events would be about 112 requests, each followed by
-  the 5 s gap, plus response time: near the 15-minute job timeout when the site is slow (a job killed then publishes
-  nothing that night). `phones/status.json` is not published, so a failed phones step shows only as `stale` after
+  the 5 s gap, plus response time: about 10 to 15 minutes; the collector's own 30-minute deadline always comes before the
+  35-minute job timeout, so a slow run still stops cleanly and publishes `status.json`. `phones/status.json` is not published, so a failed phones step shows only as `stale` after
   3 days. A failed run changes only `events/status.json` and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner

@@ -31,14 +31,14 @@ describe("GitHub Actions workflows", () => {
     }
   });
 
-  it("collect: nightly inside the robots Visit-time plus manual runs, 15 min, no overlap, write only on the job", () => {
+  it("collect: nightly inside the robots Visit-time plus manual runs, 35 min (above the collector's 30-minute deadline), no overlap, write only on the job", () => {
     const lines = code(collect).map((l) => l.trimEnd());
     expect(lines).toContain('    - cron: "37 2 * * *"');
     expect(lines).toContain("  workflow_dispatch:");
     expect(collect).toMatch(/^permissions:\n {2}contents: read\n/m);
     expect(collect).toMatch(/^ {4}permissions:\n {6}contents: write\n/m);
     expect(lines.filter((l) => l.includes("contents: write"))).toHaveLength(1);
-    expect(lines).toContain("    timeout-minutes: 15");
+    expect(lines).toContain("    timeout-minutes: 35");
     expect(collect).toMatch(/^concurrency:\n {2}group: collect\n {2}cancel-in-progress: false\n/m);
     expect(collect).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
     expect(collect).toContain("persist-credentials: false");
