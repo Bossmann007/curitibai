@@ -35,6 +35,7 @@ export const ErrorResult = z.object({
     "invalid_argument",
     "data_not_available",
     "invalid_data",
+    "layout_changed",
   ]),
   message: z.string().optional(),
 });

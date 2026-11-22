@@ -1,4 +1,4 @@
-import { RateLimitedError } from "./http.js";
+import { RateLimitedError, SourceRefusedError } from "./http.js";
 
 /** After a failure no request to the host for 60 s, or a 429's Retry-After when longer, at most 1 hour. */
 const FAILURE_WAIT_S = 60;
@@ -9,10 +9,17 @@ export interface HostGateOptions {
   minIntervalMs: number;
   /** A request whose turn would come later than this gives up without a request (rate_limited with the wait). */
   maxQueueWaitMs: number;
+  /**
+   * When set, a final refusal (SourceRefusedError) is remembered this long instead of 60 s, so the gate refuses first
+   * for as long as src/http.ts blocks the host (guaira_events: REFUSAL_BLOCK_MS). Capped at 1 hour.
+   */
+  refusalWaitMs?: number;
 }
 
 export interface HostGate {
   run<T>(task: () => Promise<T>): Promise<T>;
+  /** True while a failure is remembered (a `run` now would be refused without a request). */
+  failing(): boolean;
   /** Tests only: forget the schedule and any remembered failure. */
   reset(): void;
 }
@@ -50,12 +57,20 @@ export function createHostGate(options: HostGateOptions): HostGate {
       try {
         return await task();
       } catch (err) {
-        const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : 0;
+        const asked =
+          err instanceof RateLimitedError
+            ? (err.retryAfterS ?? 0)
+            : err instanceof SourceRefusedError && options.refusalWaitMs !== undefined
+              ? options.refusalWaitMs / 1000
+              : 0;
         const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
         retryAt = Date.now() + wait * 1000;
         lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
         throw lastError;
       }
+    },
+    failing(): boolean {
+      return rememberedFailure(Date.now()) !== null;
     },
     reset(): void {
       nextAllowedAt = 0;

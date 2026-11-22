@@ -19,14 +19,14 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 21 tools over public
-data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, places, events, weather, river levels and rain,
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 22 tools over public
+data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, places, events, weather, river levels and rain, Teatro Guaíra events,
 municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
 
 **Independent, unofficial project. It has no link with the Prefeitura Municipal de Curitiba and is not affiliated
 with, endorsed by or connected to it, URBS, the Ministério da Saúde, PNCP / the Ministério da Gestão e Inovação em
 Serviços Públicos, Detran-PR / the Governo do Paraná, INMET (Instituto Nacional de Meteorologia), the Instituto
-Municipal de Turismo de Curitiba, IPPUC (Instituto de Pesquisa e Planejamento Urbano de Curitiba), ANA (Agência Nacional de Águas e Saneamento Básico), IAT-PR (Instituto Água e Terra), or OpenStreetMap / the OSM Foundation.** Names cited here (for example "Curitiba
+Municipal de Turismo de Curitiba, IPPUC (Instituto de Pesquisa e Planejamento Urbano de Curitiba), ANA (Agência Nacional de Águas e Saneamento Básico), IAT-PR (Instituto Água e Terra), the Centro Cultural Teatro Guaíra, or OpenStreetMap / the OSM Foundation.** Names cited here (for example "Curitiba
 App") belong to their owners and appear only to identify them. Data is provided as is, with no warranty: it may be
 incomplete or outdated, so confirm anything important on the official channels before you go or act:
 [URBS](https://www.urbs.curitiba.pr.gov.br/) (buses), [Imuniza Já](https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/)
@@ -93,8 +93,8 @@ To use `local_csv_summary`, `city_services_search`, `city_points_search`, `event
 
 ## Tools at a glance
 
-All 21 tools are read-only. "Network" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
-the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` or data bundled in the code, and
+All 22 tools are read-only. "Network" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` or data bundled in the code, and
 make no network call. [Tool reference](#tool-reference) has every input, output and error.
 
 | Area | Tool | What it answers | Data |
@@ -111,6 +111,7 @@ make no network call. [Tool reference](#tool-reference) has every input, output 
 | City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
 | City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Network (Overpass); police and fire stations bundled |
 | City | `events_search` | Events from the Instituto Municipal de Turismo calendar | Local (file from the separate collector) |
+| City | `guaira_events` | What is on at the Teatro Guaíra (dates, city, venue, age rating, price, event page) | Network (Teatro Guaíra calendar) |
 | City | `useful_phones` | Useful public phone numbers (emergencies, city services, transport, radio taxis) | Local (file from the separate collector) |
 | Weather | `weather_forecast` | INMET's forecast for Curitiba, up to 5 days | Network (INMET) |
 | Weather | `weather_alerts` | INMET's active warnings that cover Curitiba | Network (INMET) |
@@ -125,11 +126,12 @@ make no network call. [Tool reference](#tool-reference) has every input, output 
 
 ## Tool reference
 
-All tools are read-only. Seven of the ten network tools return `{data, source_url, fetched_at, license_note}`;
+All tools are read-only. Seven of the eleven network tools return `{data, source_url, fetched_at, license_note}`;
 `vaccination_sites_search` returns `{data, source_url, checked_at, attribution, license_note, note}`, with `checked_at`
-the time the server read the page, and `city_facilities_search` and `river_levels` return `{data, source, source_url, checked_at,
-license_note, note}`, with `checked_at` the time the server read the layer (for `river_levels`, the oldest read time among
-the returned stations).
+the time the server read the page, and `city_facilities_search`, `river_levels` and `guaira_events` return `{data, source,
+source_url, checked_at, license_note, note}`, with `checked_at` the time the server read the layer (for `river_levels`,
+the oldest read time among the returned stations; for `guaira_events`, the calendar). `guaira_events` also returns
+`layout_changed` (nothing returned) when the calendar's HTML no longer has the expected shape.
 When a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` as JSON text with
 `isError: true`, and no data. `local_csv_summary` makes no network call and returns `{data, source: "local_file",
 read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_not_found`, `no_header_detected`,
@@ -181,6 +183,7 @@ wait in `note`.
 | `vaccination_sites_search` | optional `text` (2–100 chars; every word must appear in the unit name, the address, which ends with the neighbourhood, or the regional; accents and case ignored), optional `vaccine` (2–100 chars; every word must appear in the same vaccine line), optional `near` (`{lat, lon}`), `limit` ≤ 50 (default 20), `offset` | Curitiba's public vaccination sites (about 100 municipal health units): `name`, `address`, `regional`, `hours` and `vaccines` **as published** (e.g. "Horário (segunda a sexta) : Das 7h às 19h", "Vacinas (12 anos ou mais)"), `lat`/`lon` (read from the page's map link, which is never returned; null when missing or outside Curitiba), and `distance_m` with `near` (nearest first, straight line; sites without coordinates are left out and counted in `note`); `total`, `next_offset`, `skipped_units`. Every text field is untrusted third-party text, cleaned and masked. The page shows **no update date**: `note` says to confirm by phone or with the 156 before going. **Not for emergencies** (192 SAMU). One page read per call at most, cached 6 hours | The Prefeitura's "Imuniza Já" page (`GET imunizaja.curitiba.pr.gov.br/locaisvacinacao/`, HTML, checked 2026-11-21); no licence found |
 | `city_facilities_search` | `type` (Portuguese, accents and case ignored: `feira`, `feira turistica`, `rua da cidadania`, `ecoponto`, `ecocidadao`, `cambio verde`, `armazem da familia`, `sacolao da familia`, `mercado municipal`, `restaurante popular`, `banheiro publico`, `biblioteca`, `farol do saber`, `museu`, `teatro`, `academia ao ar livre`, `clube da gente`, `centro de esporte e lazer`, `pista de skate`, `cemiterio`, `cras`, `conselho tutelar`, `posto urbs`, `informacoes turisticas`, `parque`, `ciclovia`, or an alias; `list types` returns them all with no network call), optional `bairro` (2–60 chars; the whole name, accents and case ignored), optional `near` (`{lat, lon}`) with `radius_m` (default 1000, at most 3000), `limit` ≤ 50 (default 20), `offset` | Facilities of one IPPUC layer: `name`, `kind` (park or bike-lane kind), `address` (null when the record says the address is not to be shown, and then no position either), `bairro`, `regional`, `hours` (the record's `observacao`, one line each, **as published**: days, hours and notes), `open_periods` (`morning`, `afternoon`, `night`, `all_day` from `func_manha`, `func_tarde`, `func_noite`, `func_24hr`), `phones` (Curitiba landlines and three-digit service numbers only; mobiles, 0800 and other area codes dropped), `emails` (curitiba.pr.gov.br addresses only), `updated` (`dt_atualiz`, YYYY-MM-DD), `length_km` (bike lanes), `area` (parks, as published), `lat`/`lon` (WGS84; a park's centroid, a bike segment's first point) and `distance_m` with `near` (straight line; to a park's centroid, to the nearest point of a bike segment); `total`, `next_offset`, `skipped_records`. Text is cleaned and masked. Hours can be outdated: `note` says to confirm with the 156. One layer read per call at most, cached 6 hours; at most one request per 5 s to the host (a call that would wait over 10 s gets `rate_limited`), no request for 60 s after a failure (a 429's Retry-After when longer, at most 1 hour), and an ArcGIS auth error is a refusal (10-minute host block); the user's position and `bairro` are never sent | IPPUC, GeoCuritiba ArcGIS REST (`GET geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer/<layer>/query` and `.../GeoCuritiba/CICLOVIA_dashboard/FeatureServer/<0 or 1>/query`, checked 2026-11-21); no licence found |
 | `river_levels` | optional `station` (2–60 chars: a station code, leading zeros optional, or the start of a code, or text matched against the station name, river and municipality, accents and case ignored, e.g. `iguacu`, `fazendinha`, `araucaria`), optional `near` (`{lat, lon}`; default Curitiba centre) | Up to 3 stations of the 25 bundled ANA telemetry stations around Curitiba (all operated by IAT-PR), nearest first (without `station`, river stations before rain gauges): `code`, `name`, `river` (null for rain gauges), `municipality`, `lat`/`lon`, `distance_km`, `status` (`ok`; `no_recent_data` when the station sent nothing since yesterday 00:00 Curitiba time; `unavailable` when its answer could not be read; values null in both, never invented), `reading_time` (newest reading with a value, Curitiba time, ISO with `-03:00`), `stale` (latest reading older than 2 h, computed at answer time), `level_cm`, `flow_m3s`, `rain_mm` (latest 15-minute reading), `rain_1h_mm` and `rain_24h_mm` (sum of the readings in the hour / 24 h ending at the latest reading; null when no rain value, or when the 24 h window starts before yesterday 00:00; a lower bound when readings are missing), `checked_at`, `quality` (`ok`: no check fired, which does not prove a value is right; `suspect`: treat the values with caution; `unknown`: no reading or under 8 readings in the 24 h) and `quality_reasons` (`out_of_range`, `level_spike`, `level_jump_unconfirmed`, `level_stuck`, `too_few_readings`; see [Data quality](#river_levels-data-quality)), separate from `stale`; `total_matches` and `more_matches` (matching stations not read). `note` starts with "Not for emergencies: Defesa Civil 199." and names the suspect stations. At most 3 stations per call, each cached 15 minutes; at most one request per 5 s to the host (a call that would wait over 10 s gets `rate_limited`), no request for 60 s after a failure (a 429's Retry-After when longer, at most 1 hour), 401/403/CAPTCHA blocks the host 10 minutes; a transfer or host failure fails the whole call (a station not read is never shown as `no_recent_data`). No match: `invalid_argument`. The user's text and position are never sent | ANA telemetry web service (`GET telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos`, checked 2026-11-22); no licence found |
+| `guaira_events` | optional `from`/`to` (YYYY-MM-DD; default today to 30 days ahead, Curitiba time; at most 366 days), optional `text` (2–100 chars; every word must appear in the title, accents and case ignored; never sent to the source), optional `city` (whole name, accents and case ignored; default `Curitiba`, `all` for every city), `limit` ≤ 50 (default 20), `offset` | Events overlapping the range, earliest first: `title`, `start` and `end` (`YYYY-MM-DDTHH:MM`, Curitiba local time, as listed), `city`, `state`, `venue`, `age_rating` ("Livre" or "N anos") and `price` (amounts as published, or "Gratuito"/"Entrada franca"), `details` (`read`, `not_read`, `not_recognised`, `unavailable`) and `link` (the event page); `total`, `next_offset`, `other_city_rows`, `truncated`. Venue, age rating and price come from event pages, at most 2 new ones per call (cached 6 hours), and are null otherwise; cast, directors and programme are never read. Text is cleaned and masked. Calendar cached 1 hour (at most 3 listing pages); at most one request per 5 s to the host (a call that would wait over 10 s gets `rate_limited`), no request for 60 s after a failure (a 429's Retry-After when longer, at most 1 hour), 10-minute block on 401/403 or a CAPTCHA; robots.txt read first (cached 24 h) and the tool stops if the calendar becomes disallowed. A cold call can take about 25 s | Centro Cultural Teatro Guaíra (`GET www.teatroguaira.pr.gov.br/calendario-eventos`, `?page=1`, `?page=2` and `/Evento/<slug>`, checked 2026-11-22); no licence found |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
 The file links point to `mid-dadosabertos.curitiba.pr.gov.br`. That host's robots.txt says `Disallow: /`, so this
@@ -204,12 +207,13 @@ A warning the server cannot read makes the tool return `source_unavailable` rath
 
 ### `river_levels` data quality
 
-`river_levels` readings are automatic telemetry: nobody has checked them. ANA publishes validated ("consistidos") data
-only months later, and this tool never reads it. A station can stop sending, or send wrong values (a stuck sensor, a
+`river_levels` readings are automatic telemetry: nobody has checked them. ANA also publishes validated (consistidos)
+series after deeper analysis ([ANA](https://www.gov.br/ana/pt-br/assuntos/noticias-e-eventos/noticias/agencia-disponibiliza-series-historicas-de-dados-de-niveis-e-vazoes-de-estacoes-em-todo-o-pais)); this tool reads only the raw telemetry. A station can stop sending, or send wrong values (a stuck sensor, a
 spike, maintenance). Each station gets a `quality` computed only from the readings of the last 24 h that the tool has
 already read (no extra request), and the raw values are never hidden or changed:
 
-- `out_of_range`: a negative level, flow or rain, or more than 150 mm of rain in one 15-minute reading.
+- `out_of_range`: a negative level, flow or rain, or more than 150 mm of rain in one 15-minute reading. A negative
+  level can be a legitimate gauge zero in a dry spell; the flag errs on the side of caution.
 - `level_spike`: the level jumps more than 100 cm between readings 15 minutes apart and comes back (within 50 cm of the
   level before) within the next hour. A jump that stays is not flagged, since it may be a real rise.
 - `level_jump_unconfirmed`: the same jump in the last hour, not back yet (it has had no time to come back).
@@ -217,7 +221,9 @@ already read (no extra request), and the raw values are never hidden or changed:
   station. A flat level on a dry day is normal and is not flagged.
 
 Any of these makes the station `suspect`, and the note says to treat its values with caution. `ok` only means that no
-check fired: the tool flags suspicious readings but cannot prove that a value is right. `unknown` means no reading, or
+check fired: the tool flags suspicious readings but cannot prove that a value is right. `ok` does not cover a jump
+that stays (for example a flood wave rising 150 cm in 15 minutes, then receding slowly) or a spike whose return takes
+over 1 h. `unknown` means no reading, or
 fewer than 8 readings in the 24 h (level readings, for a station that reports a level). Level and flow are not compared with each other (flow is missing at some stations and
 follows the level where present). `stale` (latest reading older than 2 h) is a separate flag.
 
@@ -261,7 +267,7 @@ Compared on 2026-11-21 with public sources (the App Store listing above), not wi
 | `city156_categories`, `city156_stats` | Same reason. Download the 156 file by hand and use `local_csv_summary` (see below) |
 | Bus lines, timetables and stops **fetched by the server** | The URBS website is out of scope (it refuses non-browser clients), its WebService needs a login, and the export mirror is treated as disallowed. The bus tools read files you download instead (see below); for a GTFS route, see "Alternatives" |
 | Real-time bus positions and fares | Not in the daily exports the bus tools read |
-| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
+| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector), plus since v0.17 `guaira_events` (the Teatro Guaíra calendar, live); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | Only an undocumented form (`coletalixo.curitiba.pr.gov.br`), no published dataset or API; not used |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
@@ -496,7 +502,9 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
 ### Privacy notice
 
 - No user accounts; the server does not store or log queries. Search terms go only to the source they query, and
-  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station).
+  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station;
+  1 hour for the Teatro Guaíra calendar, 6 hours for its event pages).
+  `guaira_events` sends no search term at all: it reads the whole calendar and filters it in the server.
   `city_facilities_search` never sends the user's position or neighbourhood: it reads a whole layer and filters it in
   the server. `river_levels` never sends the user's text or position: only bundled station codes and dates reach ANA.
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
@@ -510,8 +518,11 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   host or path it disallows is never fetched. The events collector (the only collector) reads robots.txt on every run,
   stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
+  `guaira_events` reads the Teatro Guaíra robots.txt itself (cached 24 h), stops if the calendar becomes disallowed
+  and reads no event page if `/Evento/` does; a cold call makes up to 6 requests, at least 5 s apart.
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
-  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable` with the message "the source refused
+  429 whose HTML page is a CAPTCHA as a final refusal (`guaira_events` also treats a 200 page that does not parse and
+  looks like a CAPTCHA or challenge that way) (`source_unavailable` with the message "the source refused
   this server; it is not asked again for 10 minutes (per host)"; no retry, no other headers, no browser
   fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
   with `next_page: null`). The block is per host, not per path: a 403 on one portal path pauses every tool that uses
@@ -528,16 +539,19 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
 - No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
   (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/` (`events.json`,
   `status.json`, its detail cache `details.json` and its lock `.lock`). The cache is in
-  memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, 15 minutes per ANA station, parsed result only) and is keyed by the request sent to
+  memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, 15 minutes per ANA station; 1 hour
+  for the Teatro Guaíra calendar, 6 hours for its event pages and 24 hours for its robots.txt; parsed result only) and is keyed by the request sent to
   the source.
-- The server contacts exactly eight hosts, `https://dadosabertos.curitiba.pr.gov.br`,
+- The server contacts exactly nine hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
   any other host, or outside `/locaisvacinacao`, are refused) and `https://geocuritiba.ippuc.org.br` (fixed layer
   queries under `/server/rest/services`; redirects to any other host or outside that path are refused) and
   `https://telemetriaws1.ana.gov.br` (`/ServiceANA.asmx/DadosHidrometeorologicos` for bundled station codes; ANA documents
   plain http, but https answered with a valid certificate on 2026-11-22, so https is used; redirects to any other host
-  or outside `/ServiceANA.asmx` are refused), on the default port and without credentials. Every redirect hop is checked
+  or outside `/ServiceANA.asmx` are refused) and `https://www.teatroguaira.pr.gov.br` (robots.txt, the calendar pages
+  under `/calendario-eventos` and event pages under `/Evento`; redirects to any other host or outside those paths are
+  refused), on the default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a URL.
   No user text ever enters an Overpass query: the query is built from the category allowlist, and name filters are
   applied to the result.
@@ -545,8 +559,8 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   `https://turismo.curitiba.pr.gov.br`, from its own allowlist, and only paths of the list and event pages plus
   robots.txt.
 - Requests use the User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)` (the repository as contact), a 10 s timeout per request (25 s for PNCP, which is slow;
-  15 s for INMET and the vaccination page; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
-  response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
+  15 s for INMET, the vaccination page, GeoCuritiba and the Teatro Guaíra pages; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
+  response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass, 2 MB for GeoCuritiba, 1 MB for the Teatro Guaíra pages and 512 KB for its robots.txt). A body over the cap is `source_unavailable`
   with a message naming the cap.
 - `vaccination_sites_search` reads the page by its known element ids only (region headers, unit name, address,
   schedule spans, map link), never its whole text. Each text field has control and format characters (bidi, zero
@@ -658,6 +672,11 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   2026-11-22; robots.txt is 404). `river_levels` returns only facts (station, time, level, flow, rain) with `source`
   naming ANA and IAT-PR, the service URL and `license_note` "No licence found; facts only; ANA cited." Readings are
   automatic and unvalidated; the tool is not for emergencies (Defesa Civil 199).
+- Teatro Guaíra: no licence or terms of use was found for the calendar (checked 2026-11-22; robots.txt allows
+  `/calendario-eventos` and `/Evento/`). `guaira_events` returns only facts and links (title, dates, city, venue, age
+  rating, price, event page) with `source` "Centro Cultural Teatro Guaíra / Governo do Paraná" and `license_note` "No
+  licence found; facts and links only; Teatro Guaíra / Governo do Paraná cited." The calendar is a web page, not an
+  API: a layout change returns `layout_changed`, and dates, venues and prices can change after they are read.
 - Detran-PR: no terms of use or licence was found on `detran.pr.gov.br` or `legislacao.pr.gov.br`, so
   `detran_pr_info` carries only public facts (dates, a fee, addresses and phone numbers of public offices), each with
   its source URL and check date. The data is a snapshot taken by hand on 2026-11-19 and is not refreshed: the
@@ -737,6 +756,8 @@ must run at the top of a checkout (exit 2 elsewhere).
   IPPUC cited as "IPPUC / GeoCuritiba" and the layer URL in every result.
 - **ANA telemetry data** (`river_levels`): no licence found (checked 2026-11-22); facts only, with ANA cited and the
   service URL in every result.
+- **Teatro Guaíra calendar** (`guaira_events`): no licence found (checked 2026-11-22); facts and links only, with
+  "Centro Cultural Teatro Guaíra / Governo do Paraná" cited and the calendar URL in every result.
 - **Test fixtures with real third-party content**:
 
 | File | Source | Licence |
@@ -745,6 +766,7 @@ must run at the top of a checkout (exit 2 elsewhere).
 | `test/fixtures/portal_arquivos_unidades.json` | 3 rows of a dataset's file list on the [same portal](https://dadosabertos.curitiba.pr.gov.br/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), with the portal's notice above |
 | `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json`, `ciclovia.json` | A few records of IPPUC's [GeoCuritiba](https://geocuritiba.ippuc.org.br/server/rest/services) layers (Feira, Rua da Cidadania, Parques e Bosques, Estrutura Cicloviária), recorded 2026-11-21, trimmed to institutional fields | No licence found; facts only, IPPUC cited |
 | `test/fixtures/ana/65010000_fazendinha.xml`, `65019980_ete_araucaria.xml`, `02549127_no_data.xml` | Answers of ANA's [telemetry web service](https://telemetriaws1.ana.gov.br/ServiceANA.asmx) (`DadosHidrometeorologicos`, 21–22 Nov 2026), recorded 2026-11-22; the two data samples without the XML schema block (only station code, time, flow, level and rain; no personal data) | No licence found; facts only, ANA cited |
+| `test/fixtures/guaira/list_page0.html`, `list_page1.html`, `list_page2.html`, `event_muito_barulho.html`, `event_concerto_osp.html`, `robots.txt` | Pages of the [Teatro Guaíra calendar](https://www.teatroguaira.pr.gov.br/calendario-eventos), recorded 2026-11-22, trimmed to the cards and the body-field lines read (images, cast and programme left out), and its robots.txt | No licence found; facts and links only, Teatro Guaíra / Governo do Paraná cited |
 | `test/fixtures/osm_library_recorded.json` | Overpass answer from [OpenStreetMap](https://www.openstreetmap.org/), recorded 2026-11-21 | © OpenStreetMap contributors, [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) |
 
   Every other fixture is synthetic (invented values).
