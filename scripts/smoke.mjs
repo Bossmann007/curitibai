@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "city_facilities_search", "city_points_search", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "places_search", "procurement_search", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
+const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "city_facilities_search", "city_points_search", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "places_search", "procurement_search", "river_levels", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
 // The URBS fixtures have no date in their names (scripts/check-no-catalog blocks dated files), so the data folder is a
 // temporary copy: the catalog fixture plus the URBS fixtures under the dated names the server looks for.

@@ -1,5 +1,6 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { blockHost, fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { blockHost, fetchText, SourceUnavailableError } from "../http.js";
+import { createHostGate } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
 import { fold } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
@@ -435,64 +436,23 @@ const cache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS);
 export const GEOCURITIBA_MIN_INTERVAL_MS = 5_000;
 /** A call whose turn would come later than this gives up without a request (rate_limited with the wait). */
 export const GEOCURITIBA_MAX_QUEUE_WAIT_MS = 10_000;
-/** After a failure no request to the host for 60 s, or a 429's Retry-After when longer, at most 1 hour. */
-const FAILURE_WAIT_S = 60;
-const MAX_FAILURE_WAIT_S = 3600;
 
-/** Earliest time (ms) the next request may start; reserved when a request is scheduled, so calls are serialized. */
-let nextAllowedAt = 0;
-/** After a failure, no request before this time; the same error is returned instead. */
-let retryAt = 0;
-let lastError: unknown = null;
+/** 5 s between requests, failures remembered 60 s to 1 hour (see createHostGate). */
+const gate = createHostGate({ minIntervalMs: GEOCURITIBA_MIN_INTERVAL_MS, maxQueueWaitMs: GEOCURITIBA_MAX_QUEUE_WAIT_MS });
 
 /** Tests only. */
 export function clearGeoCuritibaCache(): void {
   cache.clear();
-  nextAllowedAt = 0;
-  retryAt = 0;
-  lastError = null;
-}
-
-/** The remembered failure, with the remaining wait for a 429; null when no failure is remembered. */
-function rememberedFailure(now: number): unknown {
-  if (now >= retryAt) return null;
-  return lastError instanceof RateLimitedError ? new RateLimitedError(Math.ceil((retryAt - now) / 1000)) : lastError;
+  gate.reset();
 }
 
 /**
- * Runs one request to the host: refused at once while a failure is remembered; otherwise waits for its 5-second slot
- * (or gives up with rate_limited when that slot is more than 10 s away); a failure is then remembered for at least
- * 60 s (a 429's Retry-After when longer, at most 1 hour).
- */
-async function gated<T>(task: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const failed = rememberedFailure(now);
-  if (failed !== null) throw failed;
-  const start = Math.max(now, nextAllowedAt);
-  if (start - now > GEOCURITIBA_MAX_QUEUE_WAIT_MS) throw new RateLimitedError(Math.ceil((start - now) / 1000));
-  nextAllowedAt = start + GEOCURITIBA_MIN_INTERVAL_MS;
-  if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));
-  // A failure of an earlier request while this one waited is not asked again.
-  const failedMeanwhile = rememberedFailure(Date.now());
-  if (failedMeanwhile !== null) throw failedMeanwhile;
-  try {
-    return await task();
-  } catch (err) {
-    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : 0;
-    const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
-    retryAt = Date.now() + wait * 1000;
-    lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
-    throw lastError;
-  }
-}
-
-/**
- * One GET of the type's fixed layer URL per cache period (6 hours), through `gated` (5 s between requests to the host,
+ * One GET of the type's fixed layer URL per cache period (6 hours), through the gate (5 s between requests to the host,
  * failures remembered); same host and path only on redirects. A cached layer makes no request and never waits.
  */
 export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>> {
   const url = layerQueryUrl(t);
-  return cache.getOrLoad(`GET ${url}`, () => gated(async () => {
+  return cache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
     const res = await fetchText(url, {
       timeoutMs: GEOCURITIBA_TIMEOUT_MS,
       maxBytes: GEOCURITIBA_MAX_BYTES,

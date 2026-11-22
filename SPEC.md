@@ -1,62 +1,71 @@
-# SPEC: v0.15.0 `city_facilities_search` (GeoCuritiba / IPPUC)
+# SPEC: v0.16.0 `river_levels` (ANA telemetry, IAT-PR stations)
 
-Approved: Enzo 2026-11-21 (OpenBot card "v0.15 do CuritibAI: equipamentos da cidade (GeoCuritiba)"; "pode aprovar").
-Scope frozen.
+Approved: Enzo 2026-11-22 (river levels and rain in Curitiba from the public ANA telemetry; owner approved the
+no-licence approach: facts only, ANA cited). Scope frozen.
 
 ## Goal
 
-A read-only tool that answers "where is the nearest feira / Rua da Cidadania / ecoponto / library / outdoor gym /
-public toilet / park / bike lane, and when is it open" from IPPUC's GeoCuritiba map services.
+A read-only tool that answers "how high is the river near me, and how much did it rain in the last hours" from the
+public telemetry of ANA (Agência Nacional de Águas e Saneamento Básico), stations operated by IAT-PR around Curitiba.
 
-## Source
+## Source (checked again on 2026-11-22)
 
-- Urban equipment: `https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer`
-  (169 layers, Query, max 2,000 records per query; fields include `func_manha`/`func_tarde`/`func_noite`,
-  `observacao`, `telefone`, `email`, `dt_atualiz`, `fonte`).
-- Parks and bike lanes: `https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/CICLOVIA_dashboard/FeatureServer`
-  (layer 0 bike structure, layer 1 parks and woods).
-- robots.txt of the host: 404 (no rules). No licence published: record "no licence found", facts only, cite IPPUC.
+- Web service `telemetriaws1.ana.gov.br/ServiceANA.asmx` (ASP.NET, anonymous GET, XML, no key).
+  `DadosHidrometeorologicos?codEstacao=<code>&dataInicio=dd/mm/yyyy&dataFim=dd/mm/yyyy` returns 15-minute rows
+  (`CodEstacao`, `DataHora` in Brasília time, `Vazao` m³/s, `Nivel` cm, `Chuva` mm per reading; an empty element is
+  no value). A station with no rows answers HTTP 200 with an `ErrorTable` whose `Error` is
+  "Sem dados para esta estação (Código: X) no período solicitado!" (also for a code that does not exist).
+- Scheme: the research brief said plain http is the only scheme. On 2026-11-22 `https://` answered 200 `text/xml`
+  with a valid certificate, from curl and from Node 26 `fetch`. The server uses **https only**, like every other host,
+  and `isAllowedUrl` is unchanged.
+- robots.txt: 404 (no rules), on 2026-11-21 and 2026-11-22. `dadosabertos.ana.gov.br` (Crawl-delay 60) is another
+  host and is not used.
+- Licence: none found. Owner decision (2026-11-22): "no licence found; facts only; ANA cited".
 
 ## Design
 
-- Tool `city_facilities_search`: `type` (alias map over a curated subset of layer names in Portuguese, plus
-  "list types"), optional `bairro`, optional `near` `{lat, lon}` with `radius_m` ≤ 3000, `limit` ≤ 50 (and `offset`).
-- Returns name, address, bairro, days/hours as published (`observacao` lines and `func_*` periods), institutional
-  phone/e-mail only, `dt_atualiz`, source "IPPUC / GeoCuritiba" with the layer URL, license_note "No licence found;
-  facts only; IPPUC cited."
-- Host added to `ALLOWED_HOSTS`; `src/http.ts` reused (final refusal, 10-minute per-host block, https only, size cap).
-  Cache 6 h per layer query. One upstream request per call (none when cached), never more than 2.
-- Rate and failures (review of d688df8): requests to the host are serialized with at least 5 s between them (any
-  layer); a call whose turn is more than 10 s away gets `rate_limited` with the wait, without a request. After a
-  failure, no request for 60 s, or a 429's `Retry-After` when longer, capped at 1 hour; the same error is returned.
-  An ArcGIS `error` with code 401/403/498/499 sent with HTTP 200 is a final refusal (`blockHost` from `src/http.ts`,
-  10-minute host block).
-- Implementation choice: each layer is read whole with one fixed URL (`where=1=1`, fixed `outFields`, `outSR=4326`)
-  and filtered in the server, so user input never reaches the upstream URL or the cache key. All curated layers
-  had under 2,000 records on 2026-11-21 (largest 838).
-- Privacy: every free-text field goes through the existing mask (`cleanField`, per line), after masking 8 to 11
-  digits with no separator (the shared mask needs a separator below 10 digits). The contact fields
-  themselves are not masked but filtered by an allowlist, since masking would hide every institutional contact:
-  Curitiba landlines and three-digit service numbers are kept, mobiles and anything not understood are dropped;
-  only `curitiba.pr.gov.br` e-mail addresses are kept. Fields not listed above are never requested.
-  `divulgar_endereco` other than "Sim" drops the address and the position.
-- Owner decisions: publishing facts from layers with no licence found, IPPUC cited (2026-11-21); every
-  curitiba.pr.gov.br e-mail kept as published, no name detection (2026-11-22).
-- Coordinates in WGS84 (`outSR=4326`); an answer in any other spatial reference fails closed.
+- Tool `river_levels`: optional `station` (a code, with or without leading zeros, or text matched against the
+  station name, river and municipality, accents and case ignored), optional `near` `{lat, lon}`. Without `station`,
+  stations are taken nearest to `near` (default: Curitiba centre, Praça Tiradentes).
+- Per station: code, name, river, municipality, lat/lon, `distance_km` (with `near`), latest reading time
+  (Curitiba time, ISO with `-03:00`), `level_cm`, `flow_m3s`, `rain_mm` of the latest reading, `rain_1h_mm` and
+  `rain_24h_mm` (sum of the readings in the hour / 24 h ending at the latest reading; null when no reading in the
+  window has a rain value or when the window starts before the fetched period; gaps make it a lower bound),
+  `stale: true` when the latest reading is older than 2 h (computed at answer time, not cached), and `status`
+  `ok` or `no_recent_data` (no reading since yesterday 00:00 Curitiba time: listed, values null, never invented).
+  Note: "Not for emergencies: Defesa Civil 199."
+- Station list: bundled in code, never downloaded at runtime. Built once on 2026-11-22 from
+  `ListaEstacoesTelemetricas` (one 4 MB download by the developer): every station with latitude -25.75 to -25.25
+  and longitude -49.55 to -49.00 (25 stations, all IAT-PR). Many of them send nothing on a given day.
+- Request period: `dataInicio` = yesterday, `dataFim` = today, both Curitiba dates (≥ 24 h of rows).
+- Only codes from the bundled list reach the URL; the user's text and position are never sent.
+- Network (same pattern as v0.15, gate extracted to `src/hostGate.ts` and shared with GeoCuritiba): at least 5 s
+  between request starts to the host; a call whose turn is more than 10 s away gets `rate_limited` without a request;
+  after a failure no request for 60 s (a 429's Retry-After when longer, at most 1 hour) and the same error is
+  returned; 401/403/CAPTCHA blocks the host for 10 minutes (`src/http.ts`). Never retried in a loop.
+- At most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s; with a 10 s timeout each,
+  the worst case is about 30 s. More matches are counted in `more_matches` and named in the note.
+- Cache: 15 minutes per station code (the URL carries dates). A cached station makes no request and never waits.
+- Fail closed: content type not XML, body over 512 KB, no XML declaration, a `<!DOCTYPE`/`<!ENTITY`, a root other
+  than `DataTable xmlns="http://MRCS/"`, any `Error` other than the exact "no data" text for the requested code, a row
+  whose `CodEstacao` differs, an unparsable date or number, or neither rows nor `ErrorTable`. Any failure fails the
+  whole call (a station not fetched is never shown as `no_recent_data`).
 
 ## Files
 
-- `src/sources/geocuritiba.ts` (types, URLs, parser, contact filters, cache), `src/tools/cityFacilitiesSearch.ts`,
-  `src/tools/index.ts`, `src/config.ts` (host), `src/server.ts` and `package*.json` (0.15.0).
-- `test/cityFacilities.test.ts`, `test/fixtures/geocuritiba/*`, `test/setup.ts`, `test/tools.test.ts`,
-  `scripts/smoke.mjs`, `scripts/verify` (step label).
-- README, docs/sources.md, CHANGELOG 0.15.0.
+- `src/hostGate.ts` (new, gate factory), `src/sources/geocuritiba.ts` (uses it; exports unchanged),
+  `src/sources/ana.ts` (stations, URL, parser, cache), `src/tools/riverLevels.ts`, `src/tools/index.ts`,
+  `src/config.ts` (host), `src/server.ts` and `package*.json` (0.16.0).
+- `test/riverLevels.test.ts`, `test/fixtures/ana/*`, `test/setup.ts`, `test/tools.test.ts`, `scripts/smoke.mjs`,
+  `scripts/verify` (step label).
+- README, docs/sources.md, CHANGELOG 0.16.0.
 
 ## Out of scope
 
-Rivers and rain (ANA), fuel prices (ANP), air quality, roadworks, accidents.
+Alerts or flood thresholds, history beyond 24 h, charts, other ANA operations, fuel prices (ANP), air quality.
 
 ## Check
 
-`scripts/verify` exits 0: typecheck, lint, tests (parser on fixtures, alias→layer mapping, bairro filter, distance
-filter, refusal handling, mask and contact filters, limits), build, smoke (lists the tool and calls "list types").
+`scripts/verify` exits 0: typecheck, lint, tests (parser on real XML samples, fail-closed cases, rain sums and
+stale flag, no-data stations, station matching, 5 s spacing / 10 s queue / failure memory / refusal with fake timers,
+15-minute cache, dates in Curitiba time with the clock at 01:00 UTC), build, smoke (lists 21 tools).

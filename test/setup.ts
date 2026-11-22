@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from "vitest";
 import { sharedCache } from "../src/cache.js";
 import { resetHostRefusals } from "../src/http.js";
+import { clearAnaCache } from "../src/sources/ana.js";
 import { clearGeoCuritibaCache } from "../src/sources/geocuritiba.js";
 import { clearVaccinationCache } from "../src/sources/imunizaja.js";
 import { resetOverpassCooldown } from "../src/sources/osm.js";
@@ -11,6 +12,7 @@ beforeEach(() => {
   resetOverpassCooldown();
   clearVaccinationCache();
   clearGeoCuritibaCache();
+  clearAnaCache();
   resetHostRefusals();
   vi.stubGlobal("fetch", vi.fn(async (input: unknown) => {
     throw new Error(`unexpected network call in test: ${String(input)}`);

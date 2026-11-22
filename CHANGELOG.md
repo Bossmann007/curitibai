@@ -2,6 +2,25 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.16.0 - 2026-11-22
+
+New tool `river_levels` over ANA's public telemetry web service (new host `telemetriaws1.ana.gov.br`, robots.txt 404
+on 2026-11-22; no licence found, facts only, ANA cited; owner approval 2026-11-22).
+
+- Optional `station` (code, or text in the station name, river or municipality) and `near` (default Curitiba
+  centre). Returns up to 3 of the 25 bundled IAT-PR stations around Curitiba, nearest first: code, name, river,
+  municipality, position, latest reading time (Curitiba time), level (cm), flow (m³/s), rain of the latest reading and
+  the sums over the last 1 h and 24 h, `stale` when the reading is older than 2 h, and `no_recent_data` for stations
+  that sent nothing (never invented values). Note: "Not for emergencies: Defesa Civil 199."
+- The station list is bundled (built once on 2026-11-22 from `ListaEstacoesTelemetricas`), never downloaded at
+  runtime. Only bundled codes and dates reach ANA.
+- https is used: ANA documents plain http, but https answered with a valid certificate on 2026-11-22.
+- Network: at least 5 s between request starts to the host, 15-minute cache per station, failures remembered 60 s to
+  1 hour, 10-minute host block on 401/403/CAPTCHA, at most 3 stations per call. The GeoCuritiba gate moved to
+  `src/hostGate.ts` and is shared (no behaviour change). The XML parser fails closed on anything unexpected.
+- Docs: README (21 tools, ten network tools, eight hosts), docs/sources.md (host, robots, licence, fields, limits,
+  how the station list was built), SPEC.md for this release.
+
 ## 0.15.0 - 2026-11-22
 
 New tool `city_facilities_search` over IPPUC's GeoCuritiba map services (new host `geocuritiba.ippuc.org.br`,
