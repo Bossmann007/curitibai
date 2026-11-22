@@ -59,6 +59,20 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   `test/usefulPhones.test.ts`, `test/tools.test.ts`, `test/setup.ts`, `scripts/smoke.mjs`, `scripts/verify` (label).
 - README, docs/sources.md, SECURITY.md, CHANGELOG 0.18.0.
 
+## v0.18.1 changes (task brief "curitibai v0.18.1 — close the open Low findings", 2026-11-22)
+
+- `phones/status.json` is now published (`scripts/publish-data.sh` `FILES`) and read by `useful_phones` from the same
+  copy as the phones (third fixed URL); a failed last phones run's `code` goes into the note. A missing or invalid
+  status (strict schema, `code` matching `^[a-z_]{1,40}$`) adds nothing and never fails the answer. This lifts the
+  "publishing `phones/status.json`" exclusion below.
+- `river_levels`: an HTTP 200 answer that is not ANA's XML document is a host failure inside the gate (60 s memory;
+  CAPTCHA/challenge markers block the host 10 minutes); a station whose XML content cannot be read is remembered 60 s
+  for that station only.
+- `guaira_events`: the event-page details cache holds at most 500 entries (expired swept, oldest evicted on insert).
+- `river_levels` and `guaira_events`: per-call start budget of 20 s (`CALL_START_BUDGET_MS`); no request starts after
+  it, what is ready is returned with `partial: true` and a note; a request in flight is never cut, and the Guaíra
+  listing load is never cut (a partial listing would be cached 1 hour).
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);

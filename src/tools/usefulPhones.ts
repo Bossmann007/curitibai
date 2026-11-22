@@ -6,6 +6,7 @@ import {
   type DataOrigin,
   InvalidPublishedError,
   loadLocalOrPublished,
+  loadPublished,
   NotPublishedError,
   publishedUrl,
   REMOTE_DATA_ENV,
@@ -46,6 +47,47 @@ export const PhonesFile = z
     entries: z.array(PhoneRow).max(500),
   })
   .refine((f) => f.count === f.entries.length, { message: "count does not match entries" });
+
+/** Written by the same phones step on every attempt (scripts/fetch-events.mjs runPhones); published nightly too. */
+export const PHONES_STATUS_FILE = "phones/status.json";
+export const PHONES_STATUS_MAX_BYTES = 4 * 1024;
+
+/** The collector's status record. `code` goes into the note, so it is a closed shape: lower-case letters and "_". */
+export const PhonesStatus = z
+  .object({
+    attempt: z.string().datetime(),
+    success: z.string().datetime().nullable(),
+    code: z.string().regex(/^[a-z_]{1,40}$/),
+    http_status: z.number().int().min(100).max(599).optional(),
+  })
+  .strict();
+export type PhonesStatusData = z.infer<typeof PhonesStatus>;
+
+/** The parsed status, or null when it does not have the expected shape (never an error: the phones still answer). */
+export function buildPhonesStatus(json: unknown): PhonesStatusData | null {
+  const parsed = PhonesStatus.safeParse(json);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * The last phones run's status from the same copy that answered (a local phones file never makes a request), or null
+ * when it is absent, unreadable or not in the expected shape. Never throws.
+ */
+export async function loadPhonesStatus(origin: DataOrigin): Promise<PhonesStatusData | null> {
+  try {
+    if (origin === "published") return await loadPublished(PHONES_STATUS_FILE, PHONES_STATUS_MAX_BYTES, buildPhonesStatus);
+    const { fd } = openDataFile(PHONES_STATUS_FILE, ".json");
+    let bytes: Buffer;
+    try {
+      bytes = await readAllCapped(fd, PHONES_STATUS_MAX_BYTES);
+    } finally {
+      closeFile(fd);
+    }
+    return buildPhonesStatus(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
+  } catch {
+    return null;
+  }
+}
 
 export class InvalidPhonesError extends Error {
   constructor(message: string) {
@@ -164,6 +206,7 @@ export function usefulPhonesResult(
   args: UsefulPhonesArgs,
   now: Date = new Date(),
   origin: DataOrigin = "local",
+  status: PhonesStatusData | null = null,
 ): z.infer<typeof usefulPhonesOutput> {
   const stale = phonesAgeDays(data, now) > PHONES_STALE_DAYS;
   const words = args.query === undefined ? [] : queryWords(args.query);
@@ -187,6 +230,11 @@ export function usefulPhonesResult(
       (stale
         ? ` The file is more than ${PHONES_STALE_DAYS} days old (stale: true)` +
           (origin === "published" ? "; the nightly collection may have stopped (README, \"Events and useful phones\")." : ".")
+        : "") +
+      (status !== null && status.code !== "ok"
+        ? ` The last collection of the phones page (${status.attempt}) failed with code ${status.code}` +
+          (status.http_status === undefined ? "" : ` (HTTP ${status.http_status})`) +
+          `; these numbers are from ${data.checkedAt}.`
         : ""),
   };
 }
@@ -235,6 +283,6 @@ export const usefulPhones: ToolDef<typeof usefulPhonesInput, typeof usefulPhones
     }
     const now = new Date();
     if (phonesAgeDays(data, now) < -1 / 24) return fail("invalid_data", `checked_at in ${PHONES_FILE} is in the future.`);
-    return ok(usefulPhonesResult(data, args, now, origin));
+    return ok(usefulPhonesResult(data, args, now, origin, await loadPhonesStatus(origin)));
   },
 };

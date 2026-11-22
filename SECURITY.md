@@ -24,9 +24,10 @@ Por exemplo:
 - o servidor contornando um 403, um CAPTCHA, um login ou o robots.txt de uma fonte;
 - texto de uma fonte que faz o servidor executar algo, gravar um arquivo ou mudar de comportamento.
 - o workflow noturno (`.github/workflows/collect.yml`) gravando em `main`, publicando no branch `data` algo além de
-  `events/events.json`, `events/status.json` e `phones/phones.json`, ou entregando o token do GitHub ao coletor;
+  `events/events.json`, `events/status.json`, `phones/phones.json` e `phones/status.json`, ou entregando o token do
+  GitHub ao coletor;
 - `events_search` ou `useful_phones` aceitando uma cópia publicada fora do formato esperado, ou lendo outra URL além
-  das duas fixas do branch `data`.
+  das três fixas do branch `data`.
 
 ## Fora do escopo
 

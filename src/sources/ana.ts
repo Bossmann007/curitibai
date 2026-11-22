@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
+import { blockHost, CAPTCHA, fetchText, SourceUnavailableError, type FetchResult } from "../http.js";
 import { createHostGate } from "../hostGate.js";
 import { dateInCuritiba } from "./detran.js";
 
@@ -257,6 +257,18 @@ export function assessQuality(readings: readonly Reading[]): { quality: Quality;
 const FUTURE_TOLERANCE_MS = 15 * 60 * 1000;
 
 /**
+ * The answer as ANA's XML document (BOM and outer spaces removed), or source_unavailable: no XML declaration, a DOCTYPE,
+ * ENTITY or CDATA, or a root other than `DataTable xmlns="http://MRCS/"` closed at the end (a truncated document too).
+ */
+export function xmlDocument(body: string): string {
+  const xml = body.replace(/^﻿/, "").trim();
+  if (!/^<\?xml version="1\.0" encoding="utf-8"\?>/i.test(xml)) fail("not XML");
+  if (/<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(xml)) fail("DTD or CDATA");
+  if (!/^<\?xml[^>]*\?>\s*<DataTable xmlns="http:\/\/MRCS\/">/.test(xml) || !xml.endsWith("</DataTable>")) fail("unexpected root");
+  return xml;
+}
+
+/**
  * Reads one `DadosHidrometeorologicos` answer. Fails closed (source_unavailable) on anything that is not the expected
  * document: no XML declaration, a DOCTYPE or ENTITY, CDATA, a root other than `DataTable xmlns="http://MRCS/"`, an
  * `Error` other than the exact "no data" text for this code, a row for another station, an unparsable date or number,
@@ -265,10 +277,7 @@ const FUTURE_TOLERANCE_MS = 15 * 60 * 1000;
  * after `nowMs`, are not used.
  */
 export function parseStationData(code: string, body: string, fromMs: number, nowMs: number): StationData {
-  const xml = body.replace(/^﻿/, "").trim();
-  if (!/^<\?xml version="1\.0" encoding="utf-8"\?>/i.test(xml)) fail("not XML");
-  if (/<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(xml)) fail("DTD or CDATA");
-  if (!/^<\?xml[^>]*\?>\s*<DataTable xmlns="http:\/\/MRCS\/">/.test(xml) || !xml.endsWith("</DataTable>")) fail("unexpected root");
+  const xml = xmlDocument(body);
   const errors = [...xml.matchAll(/<ErrorTable\b[^>]*>([\s\S]*?)<\/ErrorTable>/g)];
   const rowOpen = xml.match(/<DadosHidrometereologicos\b/g)?.length ?? 0;
   const rows = [...xml.matchAll(/<DadosHidrometereologicos\b[^>]*>([\s\S]*?)<\/DadosHidrometereologicos>/g)];
@@ -306,14 +315,19 @@ export function parseStationData(code: string, body: string, fromMs: number, now
 // `() => Date.now()` (not `Date.now` bound at load) so the cache follows the clock tests set.
 const cache = new TtlCache(ANA_CACHE_TTL_MS, () => Date.now());
 const gate = createHostGate({ minIntervalMs: ANA_MIN_INTERVAL_MS, maxQueueWaitMs: ANA_MAX_QUEUE_WAIT_MS });
+/** A station whose own answer could not be read is not asked again for this long (the host stays open). */
+export const STATION_FAILURE_WAIT_MS = 60_000;
+/** At most one entry per bundled station. */
+const stationFailures = new Map<string, { until: number; error: StationDataError }>();
 
 /** Tests only. */
 export function clearAnaCache(): void {
   cache.clear();
   gate.reset();
+  stationFailures.clear();
 }
 
-/** The station's own answer could not be read (not XML, malformed, an unknown error text): the host itself answered. */
+/** The station's own answer could not be read (malformed row, an unknown error text): the host itself answered. */
 export class StationDataError extends SourceUnavailableError {
   constructor(readonly cause: SourceUnavailableError) {
     super(cause.reason);
@@ -322,28 +336,50 @@ export class StationDataError extends SourceUnavailableError {
 }
 
 /**
+ * Inside the gate: an answer that is not ANA's XML document (wrong content type, an HTML maintenance, WAF or CAPTCHA
+ * page, a truncated document) is a failure of the host, remembered 60 s like an HTTP error. One that carries the
+ * CAPTCHA/challenge markers of src/http.ts blocks the host 10 minutes (recorded as a CAPTCHA 429).
+ */
+function checkDocument(res: FetchResult): void {
+  try {
+    if (!/^(?:text|application)\/xml\b/i.test(res.contentType.trim())) fail("not XML");
+    xmlDocument(res.body);
+  } catch (err) {
+    if (CAPTCHA.test(res.body)) blockHost(res.url, 429);
+    throw err;
+  }
+}
+
+/**
  * One GET per station per 15 minutes, through the host gate (5 s between request starts, a turn more than 10 s away
- * is rate_limited, failures remembered 60 s to 1 hour, 401/403/CAPTCHA blocks the host 10 minutes in fetchText).
- * Only the transfer runs in the gate: an answer that cannot be read is a StationDataError for that station, not a
- * host failure (it is not cached and does not stop requests for other stations).
+ * is rate_limited, failures remembered 60 s to 1 hour, 401/403/CAPTCHA blocks the host 10 minutes). An answer that is
+ * not ANA's XML document is a host failure (checkDocument). An XML document whose content cannot be read is a
+ * StationDataError for that station only: not cached, remembered 60 s for that station, and it does not stop requests
+ * for other stations. `startBy` (the caller's time budget): no request starts after it (OutOfTimeError, no request).
  * Keyed by station code (the URL's dates change at midnight). A cached station makes no request and never waits.
  */
-export function getStationData(station: Station): Promise<Cached<StationData>> {
+export function getStationData(station: Station, startBy?: number): Promise<Cached<StationData>> {
   return cache.getOrLoad(`ana:${station.code}`, async () => {
+    const remembered = stationFailures.get(station.code);
+    if (remembered !== undefined && Date.now() < remembered.until) throw remembered.error;
     const now = Date.now();
-    const res = await gate.run(() =>
-      fetchText(stationDataUrl(station.code, now), {
+    const res = await gate.run(async () => {
+      const r = await fetchText(stationDataUrl(station.code, now), {
         timeoutMs: ANA_TIMEOUT_MS,
         maxBytes: ANA_MAX_BYTES,
         sameHostOnly: true,
         redirectPathPrefix: "/ServiceANA.asmx",
-      }),
-    );
+      });
+      checkDocument(r);
+      return r;
+    }, startBy === undefined ? {} : { startBy });
     try {
-      if (!/^(?:text|application)\/xml\b/i.test(res.contentType.trim())) fail("not XML");
       return parseStationData(station.code, res.body, requestPeriod(now).fromMs, Date.now());
     } catch (err) {
-      throw err instanceof SourceUnavailableError ? new StationDataError(err) : err;
+      if (!(err instanceof SourceUnavailableError)) throw err;
+      const error = new StationDataError(err);
+      stationFailures.set(station.code, { until: Date.now() + STATION_FAILURE_WAIT_MS, error });
+      throw error;
     }
   });
 }

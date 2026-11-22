@@ -9,7 +9,7 @@ import { LocalFileError } from "../localfs.js";
  */
 export const PUBLISHED_ORIGIN = "https://raw.githubusercontent.com";
 export const PUBLISHED_PATH_PREFIX = "/Bossmann007/curitibai/data";
-export const PUBLISHED_FILES = ["events/events.json", "phones/phones.json"] as const;
+export const PUBLISHED_FILES = ["events/events.json", "phones/phones.json", "phones/status.json"] as const;
 export type PublishedFile = (typeof PUBLISHED_FILES)[number];
 
 export function publishedUrl(file: PublishedFile): string {

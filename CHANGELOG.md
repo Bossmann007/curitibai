@@ -2,6 +2,29 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.1 - 2026-11-22
+
+Robustness fixes for the open Low findings of the last code reviews. No new tool, no new host.
+
+- `river_levels`: an HTTP 200 answer that is not ANA's XML document (a non-XML content type, invalid or truncated
+  XML, an HTML maintenance, WAF or CAPTCHA page) is now a host failure inside the host gate: the call fails with
+  `source_unavailable` and the host is not asked again for 60 s (before, the station was shown `unavailable` and
+  every call asked again). A page with CAPTCHA or challenge markers blocks the host for 10 minutes, as the other
+  sources do. A station whose XML content cannot be read stays `unavailable` for that station only and is not asked
+  again for 60 s; other stations are still read.
+- `guaira_events`: the event-page details cache is capped at 500 entries; expired entries are swept and the oldest
+  evicted on insert (it was an unbounded map).
+- `useful_phones`: the nightly workflow now also publishes `phones/status.json` (`scripts/publish-data.sh`), and
+  `useful_phones` reads it from the same copy as the phones (a local file never makes a request; a third fixed URL
+  on `raw.githubusercontent.com` otherwise). When the last phones run failed, the note names its `code` (and HTTP
+  status). The status file has a strict schema; a missing or invalid one adds nothing and never fails the answer.
+- `river_levels` and `guaira_events`: per-call time budget of 20 s. No request starts after it; what is ready is
+  returned with a new output field `partial: true` and a note (`river_levels`: stations not read come first in
+  `more_matches`; `guaira_events`: event pages stay `details: "not_read"`). A request already started is never cut,
+  and the Guaíra listing load is never cut, so the bound is 20 s plus one request's timeout (10 s ANA, 15 s Guaíra).
+  A cold `guaira_events` call now takes about 20 s and reads one event page instead of two (about 25 s before).
+- Docs: README, docs/sources.md, SECURITY.md, SPEC.md (v0.18.1 changes).
+
 ## 0.18.0 - 2026-11-22
 
 Events and useful phones update themselves (owner request, 2026-11-22: "era pra ele pegar automático"; only if free).

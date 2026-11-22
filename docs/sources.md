@@ -60,7 +60,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does (run by the user or, since v0.18, by the nightly GitHub workflow), 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
 | `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
-| `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the two fixed files `/Bossmann007/curitibai/data/events/events.json` and `/Bossmann007/curitibai/data/phones/phones.json`, published by this project's own nightly workflow (below) |
+| `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the three fixed files `/Bossmann007/curitibai/data/events/events.json`, `/Bossmann007/curitibai/data/phones/phones.json` and `/Bossmann007/curitibai/data/phones/status.json` (v0.18.1), published by this project's own nightly workflow (below) |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -702,15 +702,19 @@ in the city's own categories. Built.
   no redirect, no retry, User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)`). Before the
   run it copies the previous `events/events.json`, `events/status.json` and `phones/phones.json` from the `data`
   branch into a temporary `CURITIBAI_DATA_DIR`, so the 0.3x–3x ratio check and "a failed run keeps the previous
-  file" work as on a local machine. The detail cache (`events/details.json`) and `phones/status.json` are not
-  published, so every run reads every detail page again (about 5 minutes for 50 events).
-- **What is published:** only `events/events.json`, `events/status.json` and `phones/phones.json`, committed by
+  file" work as on a local machine. The detail cache (`events/details.json`) is not published, so every run reads
+  every detail page again (about 5 minutes for 50 events).
+- **What is published:** only `events/events.json`, `events/status.json`, `phones/phones.json` and
+  `phones/status.json` (v0.18.1), committed by
   `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
   without force; the commit is skipped when none changed (rare, since `events/status.json` records every attempt).
   A typical run takes about 5 minutes; 10 list pages of 10 events would be about 112 requests, each followed by
   the 5 s gap, plus response time: about 10 to 15 minutes; the collector's own 30-minute deadline always comes before the
-  35-minute job timeout, so a slow run still stops cleanly and publishes `status.json`. `phones/status.json` is not published, so a failed phones step shows only as `stale` after
-  3 days. A failed run changes only `events/status.json` and the job ends
+  35-minute job timeout, so a slow run still stops cleanly and publishes `status.json`. `useful_phones` reads
+  `phones/status.json` from the same copy as the phones (local or published; a local file never makes a request) and,
+  when the last phones run failed, names its `code` (and HTTP status) in the note; a missing or invalid status file
+  (strict schema, `code` only lower-case letters and `_`) adds nothing and never fails the answer. A failed run
+  changes only the `status.json` files and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
   approval, 2026-11-22: facts and links).
@@ -893,18 +897,23 @@ cited, the approach the owner approved for no-licence sources).
   level) come before the 0254xxxx rain gauges.
 - **Query:** one URL per station: its bundled code, `dataInicio` yesterday and `dataFim` today as Curitiba dates
   (at least 24 h of rows). User text and position never enter the URL or the cache key (`ana:<code>`).
-- **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s, and with the
-  10 s timeout the worst case is about 30 s. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
+- **Limits:** at most **3 stations per call** (N = 3): uncached, the requests start at 0, 5 and 10 s. Time budget
+  (v0.18.1): no request starts later than 20 s after the call began (only requests of other calls sharing the gate
+  can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note. A
+  request already started is never cut, so the bound is 20 s plus the 10 s timeout. Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
   XML content type required; redirects only to the same host under `/ServiceANA.asmx`.
 - **Rate and failures** (`src/hostGate.ts`, the same gate as GeoCuritiba): at least 5 s between request starts to the
   host; a call whose turn is more than 10 s away gets `rate_limited` without a request; after a failure no request
   for 60 s (a 429's `Retry-After` when longer, at most 1 hour) and the same error is returned; 401, 403 and a CAPTCHA
-  429 block the host for 10 minutes (`src/http.ts`). Never retried in a loop. Only the transfer runs inside the gate:
-  an answer that cannot be read (below) marks that station `unavailable` and is not remembered as a host failure nor
-  cached. A transfer or host failure fails the whole call, so a station that was not read is never shown as
-  `no_recent_data`.
-- **Fails closed** (station `unavailable`, values null) on: a non-XML content type, an empty body, no XML declaration, a DOCTYPE,
-  ENTITY or CDATA, a root other than `DataTable xmlns="http://MRCS/"`, a truncated document, an `Error` other than the
+  429 block the host for 10 minutes (`src/http.ts`). Never retried in a loop. Inside the gate (v0.18.1), an answer
+  that is not ANA's XML document (a non-XML content type, an empty body, no XML declaration, a DOCTYPE, ENTITY or
+  CDATA, a root other than `DataTable xmlns="http://MRCS/"`, a truncated document; for example an HTML maintenance,
+  WAF or CAPTCHA page sent with HTTP 200) is a host failure: remembered 60 s like an HTTP error, and a page with the
+  CAPTCHA or challenge markers of `src/http.ts` blocks the host for 10 minutes. An XML document whose content cannot
+  be read (below) marks only that station `unavailable`, is not cached, and that station is not asked again for 60 s;
+  other stations are still read. A transfer or host failure fails the whole call, so a station that was not read is
+  never shown as `no_recent_data`.
+- **Fails closed** (station `unavailable`, values null) on, inside ANA's XML document: an `Error` other than the
   exact "no data" text for the requested code, an error table next to rows, a row for another station, a row with
   nested markup or over 2,000 characters, an unparsable date or number (comma decimals included), or neither rows nor
   an error table.
@@ -950,9 +959,14 @@ cited, the approach the owner approved for no-licence sources).
 - **Requests** (`src/sources/guaira.ts`): robots.txt first (cached 24 h); then the listing pages at fixed URLs only
   (the bare path, `?page=1`, `?page=2`; the next link is checked to point to the next page, never followed), at most 3
   per load, the whole listing cached 1 hour; then at most 2 uncached event pages per call, only for the items of the
-  page being returned, cached 6 hours each. The user's `text`, `city` and dates never reach the source. 1 MB cap
+  page being returned, cached 6 hours each (at most 500 pages: expired ones are swept and the oldest evicted on
+  insert). The user's `text`, `city` and dates never reach the source. 1 MB cap
   (robots.txt 512 KB), 15 s timeout, `text/html` required (robots.txt `text/plain`), redirects only to the same host
-  under the requested path. Worst cold call: 6 requests 5 s apart, about 25 s plus network time.
+  under the requested path. Time budget (v0.18.1): no event page is asked for later than 20 s after the call began;
+  those items stay `details: "not_read"`, with `partial: true` and a note. The listing load (robots.txt and up to 3
+  pages, starts at 0 to 15 s) is never cut, since a partial listing would be cached 1 hour, and a request already
+  started is never cut. A cold call: 5 requests 5 s apart (the first event page at 20 s, the second left for the
+  next call), about 20 s plus network time; the bound is 20 s plus the 15 s timeout.
 - **Rate and failures** (the shared gate `src/hostGate.ts`, one per host): request starts at least 5 s apart per
   server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any failure inside
   `gate.run` (an HTTP error, a layout change, or a 200 event page that is not a page of the site, such as a WAF page

@@ -9,6 +9,13 @@ export const READ_ONLY: ToolAnnotations = {
   openWorldHint: true,
 };
 
+/**
+ * Per-call time budget of the live tools that space requests 5 s apart (river_levels, guaira_events): no new request
+ * starts later than this after the call began; what is ready is returned with `partial: true`. A request already
+ * started is never cut, so the call can still take this plus that request's timeout.
+ */
+export const CALL_START_BUDGET_MS = 20_000;
+
 /** Every successful tool result has this envelope. `data` is plain data copied from the source, never instructions. */
 export function envelope<T extends z.ZodType>(data: T) {
   return z.object({
