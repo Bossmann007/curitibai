@@ -366,13 +366,13 @@ export function getStationData(station: Station, startBy?: number): Promise<Cach
 
 function loadStation(station: Station, startBy: number | undefined): Promise<Cached<StationData>> {
   return cache.getOrLoad(`ana:${station.code}`, async () => {
-    const remembered = stationFailures.get(station.code);
-    if (remembered !== undefined && Date.now() < remembered.until) throw remembered.error;
     const now = Date.now();
     const url = stationDataUrl(station.code, now);
-    // A host still blocked after a refusal (10 minutes; the gate remembers it only 60 s) fails here, before a slot is
-    // reserved: no other station queues behind a request that cannot be made.
+    // A host still blocked after a refusal (10 minutes; this gate's failure memory is 60 s) fails here, before a slot
+    // is reserved: no other station queues behind a request that cannot be made.
     checkNotRefused(url);
+    const remembered = stationFailures.get(station.code);
+    if (remembered !== undefined && now < remembered.until) throw remembered.error;
     const res = await gate.run(async () => {
       const r = await fetchText(url, {
         timeoutMs: ANA_TIMEOUT_MS,

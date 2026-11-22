@@ -14,7 +14,7 @@ Two `river_levels` fixes. No new tool, no new host.
 - A host or transfer failure on a later station (HTTP 5xx, a timeout, a network error, or an HTTP 200 answer that is
   not ANA's XML document) no longer drops the stations already read. They are returned with `partial: true`, the
   failed stations first in `more_matches`, and a note naming the failure (for example "The source failed (HTTP
-  500)"); the host is not asked again for about 1 minute. `source_unavailable` is returned only when no station was
+  500)"); the host is not asked again for up to about 1 minute. `source_unavailable` is returned only when no station was
   read or cached. A station that was not read is never shown as `no_recent_data`. This matches the 429 and 403 paths.
 
 ## 0.18.3 - 2026-11-22

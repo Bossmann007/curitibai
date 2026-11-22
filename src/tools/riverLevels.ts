@@ -83,7 +83,7 @@ export const riverLevelsOutput = z.object({
       .describe(
         "true when some picked stations were not read: the 20 s time budget ran out, the source was limiting requests " +
           "(rate_limited), the source refused this server (HTTP 401/403 or a CAPTCHA; not asked again for 10 minutes), or " +
-          "the source failed (HTTP 5xx, timeout, network error; not asked again for about 1 minute), after at least one " +
+          "the source failed (for example HTTP 5xx, a timeout or a network error; not asked again for up to about 1 minute), after at least one " +
           "station was read or found in the cache; the stations read are returned.",
       ),
     stations: z.array(Item),
@@ -240,7 +240,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
             ? `Partial: ${outOfTime.length} station(s) not read because the ${CALL_START_BUDGET_MS / 1000} s time budget of this call ran out (partial: true); call again (stations read are cached 15 minutes).`
             : "",
           failedErr !== null
-            ? `Partial: ${failed.length} station(s) not read (partial: true). The source failed (${failedErr.reason}); it is not asked again for about 1 minute.`
+            ? `Partial: ${failed.length} station(s) not read (partial: true). The source failed (${failedErr.reason}); it is not asked again for up to about 1 minute.`
             : "",
           refusedErr !== null ? refusedStationsNote(refused.length, refusedErr.status) : "",
           limitedErr !== null

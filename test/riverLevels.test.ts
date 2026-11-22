@@ -519,7 +519,7 @@ describe("river_levels", () => {
     expect(out.data.partial).toBe(true);
     expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([["65009000", "no_recent_data"]]);
     expect(out.data.more_matches.slice(0, 2).map((m) => m.code)).toEqual(["65006090", "65004995"]);
-    expect(out.note).toContain(`Partial: 2 station(s) not read (partial: true). The source failed (${kind}); it is not asked again for about 1 minute.`);
+    expect(out.note).toContain(`Partial: 2 station(s) not read (partial: true). The source failed (${kind}); it is not asked again for up to about 1 minute.`);
     // The failure is remembered 60 s: the third station is not asked.
     expect(calls).toHaveLength(2);
   });
