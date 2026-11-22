@@ -31,7 +31,7 @@ git -C "$pub" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
 rc=0
 pubgit ls-remote --exit-code origin "refs/heads/$BRANCH" >/dev/null || rc=$?
 if [[ $rc == 0 ]]; then
-  pubgit fetch -q --depth=1 origin "$BRANCH"
+  pubgit fetch -q --depth=1 origin "refs/heads/$BRANCH"
   git -C "$pub" checkout -q -b "$BRANCH" FETCH_HEAD
 elif [[ $rc == 2 ]]; then
   echo "publish-data: no '$BRANCH' branch yet; this run creates it (orphan)"

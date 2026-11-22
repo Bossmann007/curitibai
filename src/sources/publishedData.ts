@@ -1,5 +1,5 @@
 import { TtlCache } from "../cache.js";
-import { createHostGate, type HostGate } from "../hostGate.js";
+import { createHostGate } from "../hostGate.js";
 import { fetchText, SourceUnavailableError } from "../http.js";
 import { LocalFileError } from "../localfs.js";
 
@@ -45,19 +45,18 @@ export class InvalidPublishedError extends Error {
   }
 }
 
-// Validated files only; a failure is not cached here, the file's gate remembers it (at least 60 s, no request
-// meanwhile). One gate per file, so a missing or broken events file never answers for the phones file.
+// Validated files only; a failure is not cached. One gate for the host: requests at least 1 s apart, and after a
+// failure of the host (network error, timeout, HTTP error other than 404, 429 with its Retry-After) no request to it
+// for at least 60 s. A 404 or a file that fails validation is about that file only: it is decided outside the gate,
+// so it never blocks the other file.
 const newCache = () => new TtlCache(PUBLISHED_CACHE_TTL_MS, () => Date.now());
 let cache = newCache();
-const gates: Record<PublishedFile, HostGate> = {
-  "events/events.json": createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 }),
-  "phones/phones.json": createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 }),
-};
+const gate = createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 });
 
 /** Tests only. */
 export function clearPublishedState(): void {
   cache = newCache();
-  for (const g of Object.values(gates)) g.reset();
+  gate.reset();
 }
 
 /**
@@ -66,29 +65,31 @@ export function clearPublishedState(): void {
  */
 export async function loadPublished<T>(file: PublishedFile, maxBytes: number, build: (json: unknown) => T): Promise<T> {
   const url = publishedUrl(file);
-  const { value } = await cache.getOrLoad(url, () =>
-    gates[file].run(async () => {
-      let body: string;
+  const { value } = await cache.getOrLoad(url, async () => {
+    const body = await gate.run(async () => {
       try {
-        ({ body } = await fetchText(url, {
-          maxBytes,
-          timeoutMs: PUBLISHED_TIMEOUT_MS,
-          sameHostOnly: true,
-          redirectPathPrefix: PUBLISHED_PATH_PREFIX,
-        }));
+        return (
+          await fetchText(url, {
+            maxBytes,
+            timeoutMs: PUBLISHED_TIMEOUT_MS,
+            sameHostOnly: true,
+            redirectPathPrefix: PUBLISHED_PATH_PREFIX,
+          })
+        ).body;
       } catch (err) {
-        if (err instanceof SourceUnavailableError && err.reason === "HTTP 404") throw new NotPublishedError();
+        if (err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
         throw err;
       }
-      let json: unknown;
-      try {
-        json = JSON.parse(body);
-      } catch {
-        throw new InvalidPublishedError();
-      }
-      return build(json);
-    }),
-  );
+    });
+    if (body === null) throw new NotPublishedError();
+    let json: unknown;
+    try {
+      json = JSON.parse(body);
+    } catch {
+      throw new InvalidPublishedError();
+    }
+    return build(json);
+  });
   return value;
 }
 

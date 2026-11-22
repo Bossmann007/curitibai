@@ -478,10 +478,12 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
 - A manual run: `gh workflow run collect.yml` (or **Run workflow** in the Actions tab). Outside 02:00–05:50 UTC it
   makes no request to the site and only records `window_closed`.
 - The detail cache (`events/details.json`) is not published, so every nightly run reads every detail page again:
-  about 5 minutes for the 50 or so events seen on 2026-11-21. The collector reads at most 10 list pages (100 events;
-  a pager showing more stops the run), so a full run is at most about 112 requests, 5 s apart: about 10 to 12
-  minutes, inside the job's 15-minute timeout. A job GitHub stops at the timeout publishes nothing that night (not
-  even `status.json`); it shows as failed in Actions.
+  about 5 minutes for the 50 or so events seen on 2026-11-21. With 10 list pages of 10 events (a pager showing more
+  stops the run) it is about 112 requests, each followed by the 5 s gap, plus the site's response time: close to the
+  job's 15-minute timeout when the site is slow. A job GitHub stops at the timeout publishes nothing that night (not
+  even `status.json`) and shows as failed in Actions.
+- `phones/status.json` is not published: a failed phones step shows only as `stale: true` in `useful_phones` after
+  3 days (and in the run's log in Actions).
 
 **Running the collector yourself** (optional; a local file always wins over the published copy).
 `events_search` then reads `events/events.json` inside `CURITIBAI_DATA_DIR`. **The server never contacts the events

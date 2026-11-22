@@ -162,13 +162,30 @@ describe("published nightly copy", () => {
     expect(err.message).toMatch(/no published copy yet/);
   });
 
-  it("a missing events file does not make the phones file fail (one failure memory per file)", async () => {
+  it("a missing events file (HTTP 404) does not make the phones file fail", async () => {
     const calls = stubFetch({
       [`GET ${EVENTS_URL}`]: { status: 404, body: "404: Not Found" },
       [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))),
     });
     expect(errorOf(await events())).toMatchObject({ error: "data_not_available" });
     expect((await phones({ query: "samu" })).isError).toBeFalsy();
+    expect(calls.map((c) => c.url)).toEqual([EVENTS_URL, PHONES_URL]);
+  });
+
+  it("a 429 from the host stops requests for both files (one gate for the host, Retry-After kept)", async () => {
+    const calls = stubFetch({ [`GET ${EVENTS_URL}`]: { status: 429, headers: { "retry-after": "1800" } } });
+    expect(errorOf(await events())).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await phones())).toMatchObject({ error: "rate_limited" });
+    expect(calls.map((c) => c.url)).toEqual([EVENTS_URL]);
+  });
+
+  it("a broken events file does not block the phones file", async () => {
+    const calls = stubFetch({
+      [`GET ${EVENTS_URL}`]: { body: "not json" },
+      [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))),
+    });
+    expect(errorOf(await events())).toMatchObject({ error: "invalid_data" });
+    expect((await phones()).isError).toBeFalsy();
     expect(calls.map((c) => c.url)).toEqual([EVENTS_URL, PHONES_URL]);
   });
 

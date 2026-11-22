@@ -707,8 +707,10 @@ in the city's own categories. Built.
 - **What is published:** only `events/events.json`, `events/status.json` and `phones/phones.json`, committed by
   `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
   without force; the commit is skipped when none changed (rare, since `events/status.json` records every attempt).
-  At most 10 list pages (100 events) plus robots.txt and the phones page is about 112 requests 5 s apart, about 10
-  to 12 minutes, inside the 15-minute job timeout. A failed run changes only `events/status.json` and the job ends
+  A typical run takes about 5 minutes; 10 list pages of 10 events would be about 112 requests, each followed by
+  the 5 s gap, plus response time: near the 15-minute job timeout when the site is slow (a job killed then publishes
+  nothing that night). `phones/status.json` is not published, so a failed phones step shows only as `stale` after
+  3 days. A failed run changes only `events/status.json` and the job ends
   with the collector's exit code (red in Actions). The GitHub token goes to `git` only (an HTTP header), never to the
   collector. The branch is public and holds facts and links only, from a site that publishes no licence (owner
   approval, 2026-11-22: facts and links).
@@ -718,8 +720,9 @@ in the city's own categories. Built.
   `https://raw.githubusercontent.com/Bossmann007/curitibai/data/events/events.json` or `.../phones/phones.json`:
   fixed URLs, `src/http.ts` allowlist, same host and `/Bossmann007/curitibai/data` path only on redirects, 10 s
   timeout, 2 MB / 512 KB caps, the same strict schemas as the local file (`buildEvents`, `buildPhones`; fail closed),
-  the validated result cached 1 hour, and the host gate `src/hostGate.ts` (one request per second at most, no
-  request for 60 s after a failure). HTTP 404 (before the first run) is `data_not_available`.
+  the validated result cached 1 hour, and one host gate `src/hostGate.ts` around the request (one request per second
+  at most, no request for 60 s after a host failure, or a 429's Retry-After); a 404 or a file failing validation is
+  decided outside the gate, so it never blocks the other file. HTTP 404 (before the first run) is `data_not_available`.
 - **Freshness:** both tools return the file's `checked_at` and `stale: true` after 3 days, with a note that the
   nightly collection may have stopped; `events_search` refuses a file over 7 days old. GitHub says the `schedule`
   event "can be delayed during periods of high loads" and that "some queued jobs may be dropped", and disables scheduled workflows in public repositories after 60 days

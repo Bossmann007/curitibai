@@ -26,16 +26,19 @@ cost.
   collector's code. No `data` branch yet: create it as an orphan. A `ls-remote` failure other than "no such branch"
   stops before collecting (so a network error never makes a new orphan). The collector already keeps the previous
   `events.json` / `phones.json` on any failure and always writes `status.json`.
-- **Timing:** at most 10 list pages (100 events) + robots.txt + phones ≈ 112 requests 5 s apart ≈ 10–12 minutes,
-  inside the 15-minute job timeout (owner's number); the collector's own 30-minute deadline is not changed.
+- **Timing:** typical run about 5 minutes (50 events); with 10 list pages of 10 events, about 112 requests with a
+  5 s gap after each plus response time, which approaches the 15-minute job timeout (owner's number) when the site is
+  slow. The collector's own 30-minute deadline is not changed; a job killed at the timeout publishes nothing that
+  night. Raising the timeout is the owner's call (PR body).
 - **Server** `src/sources/publishedData.ts`: `loadLocalOrPublished` reads the local file first (today's behaviour,
   every error kept); only `data_dir_not_set` or `file_not_found` fall through to the published copy, unless
   `CURITIBAI_REMOTE_DATA` is `0` or `off`. Published copy: fixed URLs
   `https://raw.githubusercontent.com/Bossmann007/curitibai/data/{events/events.json,phones/phones.json}` (new host in
   `ALLOWED_HOSTS`), `fetchText` with the existing caps (2 MB, 512 KB), 10 s timeout, `sameHostOnly`,
   `redirectPathPrefix: /Bossmann007/curitibai/data`; JSON parse then the existing `buildEvents` / `buildPhones`
-  (strict schemas, fail closed); the validated result cached 1 hour; one `createHostGate` (1 s apart, 5 s queue
-  limit, failure memory 60 s), one gate per file so a failure of one file never answers for the other. HTTP 404 → `data_not_available` "no published copy yet".
+  (strict schemas, fail closed); the validated result cached 1 hour; one `createHostGate` for the host (1 s apart,
+  5 s queue limit, failure memory 60 s or a 429's Retry-After) around the request only: a 404 and the JSON and
+  schema checks are decided outside the gate, so one file's problem never blocks the other. HTTP 404 → `data_not_available` "no published copy yet".
 - **Freshness**: `checked_at` from the file; `stale: true` after 3 days with a note that the nightly collection may
   have stopped (published copy); `events_search` keeps refusing files over 7 days old. `useful_phones` gains
   `checked_at` and `stale` (keeps `fetched_at`) and, like `events_search`, refuses a `checked_at` in the future. A too-old local file's error now says to remove it to use the
