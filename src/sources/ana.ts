@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { blockHost, CAPTCHA, fetchText, SourceUnavailableError, type FetchResult } from "../http.js";
+import { blockHost, CAPTCHA, checkNotRefused, fetchText, SourceUnavailableError, type FetchResult } from "../http.js";
 import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { dateInCuritiba } from "./detran.js";
 
@@ -355,7 +355,8 @@ function checkDocument(res: FetchResult): void {
  * is rate_limited, failures remembered 60 s to 1 hour, 401/403/CAPTCHA blocks the host 10 minutes). An answer that is
  * not ANA's XML document is a host failure (checkDocument). An XML document whose content cannot be read is a
  * StationDataError for that station only: not cached, remembered 60 s for that station, and it does not stop requests
- * for other stations. `startBy` (the caller's time budget): no request starts after it (OutOfTimeError, no request).
+ * for other stations. A host blocked after a refusal fails before the gate (no slot reserved, no wait, no request).
+ * `startBy` (the caller's time budget): no request starts after it (OutOfTimeError, no request).
  * Keyed by station code (the URL's dates change at midnight). A cached station makes no request and never waits.
  */
 export function getStationData(station: Station, startBy?: number): Promise<Cached<StationData>> {
@@ -368,8 +369,12 @@ function loadStation(station: Station, startBy: number | undefined): Promise<Cac
     const remembered = stationFailures.get(station.code);
     if (remembered !== undefined && Date.now() < remembered.until) throw remembered.error;
     const now = Date.now();
+    const url = stationDataUrl(station.code, now);
+    // A host still blocked after a refusal (10 minutes; the gate remembers it only 60 s) fails here, before a slot is
+    // reserved: no other station queues behind a request that cannot be made.
+    checkNotRefused(url);
     const res = await gate.run(async () => {
-      const r = await fetchText(stationDataUrl(station.code, now), {
+      const r = await fetchText(url, {
         timeoutMs: ANA_TIMEOUT_MS,
         maxBytes: ANA_MAX_BYTES,
         sameHostOnly: true,

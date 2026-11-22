@@ -921,8 +921,11 @@ cited, the approach the owner approved for no-licence sources).
   WAF or CAPTCHA page sent with HTTP 200) is a host failure: remembered 60 s like an HTTP error, and a page with the
   CAPTCHA or challenge markers of `src/http.ts` blocks the host for 10 minutes. An XML document whose content cannot
   be read (below) marks only that station `unavailable`, is not cached, and that station is not asked again for 60 s;
-  other stations are still read. A transfer or host failure fails the whole call, so a station that was not read is
-  never shown as `no_recent_data`.
+  other stations are still read. A transfer or host failure (v0.18.4) leaves its station and the stations after it
+  unread (the failure is remembered 60 s): the stations already read or cached are returned with `partial: true`, the
+  failed ones first in `more_matches` and a note naming the failure; `source_unavailable` only when none is
+  available. A station that was not read is never shown as `no_recent_data`. While the host is blocked after a
+  refusal, an uncached station fails before the gate (no slot, no wait, no request).
 - **Fails closed** (station `unavailable`, values null) on, inside ANA's XML document: an `Error` other than the
   exact "no data" text for the requested code, an error table next to rows, a row for another station, a row with
   nested markup or over 2,000 characters, an unparsable date or number (comma decimals included), or neither rows nor

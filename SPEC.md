@@ -79,7 +79,7 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
 - `river_levels`: a `rate_limited` from the host gate in the middle of a call no longer discards the stations read.
   When at least one station was read in the call or is cached, those are returned with `partial: true` and a note
   (the same shape as the time-budget partial, refused stations first in `more_matches`); `rate_limited` is returned
-  only when no station is available. Other host or transfer failures still fail the whole call.
+  only when no station is available. Other host or transfer failures still failed the whole call (until v0.18.4).
 - `guaira_events`: the listing (title, dates, city, link) is the complete answer; venue, age rating and price are an
   optional enrichment. `partial: true` only when listing pages are missing (`truncated`); items whose event page was
   not read yet (time budget, the 2-page cap, a refusal) are counted in `details_pending` with the note "call again for
@@ -92,9 +92,19 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   only the raw telemetry. A test asserts the note has no "month".
 - `river_levels`: a final refusal (401/403 or a CAPTCHA) on a later station no longer drops the stations already
   read: they are returned with `partial: true` and a note that the host refused; the 10-minute block stays in force.
-  `source_unavailable` only when no station is available. Other host or transfer failures still fail the whole call.
+  `source_unavailable` only when no station is available. Other host or transfer failures still failed the whole
+  call (until v0.18.4).
 - `guaira_events`: `partial` is documented as a deprecated alias of `truncated` (both kept this version); README
   example of a cold and a warm call.
+
+## v0.18.4 changes (task brief "curitibai v0.18.4 — two river_levels fixes", 2026-11-22)
+
+- `river_levels`: while the ANA host is blocked after a refusal (10 minutes), an uncached station fails before the
+  host gate (`checkNotRefused` in `src/http.ts`): no slot reserved, no wait, no request. Cached stations are still
+  returned with `partial: true`.
+- `river_levels`: a host or transfer failure (5xx, timeout, network error, a 200 answer that is not ANA's XML
+  document) on a later station returns the stations read or cached with `partial: true`, the failed stations first in
+  `more_matches` and a note naming the failure; `source_unavailable` only when no station is available.
 
 ## Out of scope
 

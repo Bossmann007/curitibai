@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assessQuality, getStationData, parseStationData, requestPeriod, STATIONS, stationDataUrl, type Reading, type Station } from "../src/sources/ana.js";
 import { OutOfTimeError } from "../src/hostGate.js";
-import { SourceUnavailableError } from "../src/http.js";
+import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
+import type { z } from "zod";
 import { riverLevelsOutput } from "../src/tools/riverLevels.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
@@ -492,12 +493,78 @@ describe("river_levels", () => {
     expect(urls).toHaveLength(5);
   });
 
-  it("fails the whole call when a later station's transfer fails: a station not read is never shown as no_recent_data", async () => {
-    const calls = stubFetch({ ...route("65009000"), ...route("65006090", { status: 503 }), ...route("65004995") });
-    const pending = call({});
-    await vi.advanceTimersByTimeAsync(10_000);
-    expect(errorOf(await pending)).toEqual({ error: "source_unavailable" });
+  it.each([
+    ["HTTP 500", { status: 500 }, "HTTP 500"],
+    ["a timeout", { timeout: true }, "timeout"],
+    ["a network error", { error: true }, "network error"],
+    ["an HTML 200 page", { html: true }, "not XML"],
+  ] as const)("returns the station read before %s on a later station (partial), never an unread one as no_recent_data", async (_label, failure, kind) => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      calls.push(url);
+      const code = new URL(url).searchParams.get("codEstacao")!;
+      if (code === "65006090") {
+        if ("error" in failure) throw new TypeError("fetch failed");
+        // What fetch throws when AbortSignal.timeout fires (its timer is not faked here).
+        if ("timeout" in failure) throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+        if ("html" in failure) return new Response("<html>maintenance</html>", { status: 200, headers: { "content-type": "text/html" } });
+        if ("status" in failure) return new Response("", { status: failure.status, headers: { "content-type": "text/html" } });
+      }
+      return new Response(noData(code), { status: 200, headers: { "content-type": XML_TYPE } });
+    }));
+    const pending = levels({});
+    await vi.advanceTimersByTimeAsync(30_000);
+    const out = await pending;
+    expect(out.data.partial).toBe(true);
+    expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([["65009000", "no_recent_data"]]);
+    expect(out.data.more_matches.slice(0, 2).map((m) => m.code)).toEqual(["65006090", "65004995"]);
+    expect(out.note).toContain(`Partial: 2 station(s) not read (partial: true). The source failed (${kind}); it is not asked again for about 1 minute.`);
+    // The failure is remembered 60 s: the third station is not asked.
     expect(calls).toHaveLength(2);
+  });
+
+  it("returns source_unavailable when a host failure leaves nothing read or cached", async () => {
+    const calls = stubFetch({ ...route("65009000", { status: 503 }), ...route("65006090"), ...route("65004995") });
+    expect(errorOf(await call({}))).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("returns a cached station at once, without waiting, when a host failure is remembered", async () => {
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090", { status: 500 }), ...route("65004995") });
+    await levels({ station: "65009000" });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(errorOf(await call({ station: "65006090" }))).toEqual({ error: "source_unavailable" });
+    let out: z.infer<typeof riverLevelsOutput> | undefined;
+    void levels({}).then((o) => (out = o));
+    await vi.advanceTimersByTimeAsync(49);
+    expect(out).toMatchObject({ data: { partial: true, stations: [expect.objectContaining({ code: "65009000" })] } });
+    expect(out!.data.more_matches.slice(0, 2).map((m) => m.code)).toEqual(["65006090", "65004995"]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("fails at once, with no request and no wait, for stations read while the host is blocked (past the 60 s failure memory)", async () => {
+    const calls = stubFetch({ ...route("65010000", { status: 403 }), ...route("65009000"), ...route("65006090"), ...route("65004995") });
+    await expect(getStationData(station("65010000"))).rejects.toBeInstanceOf(SourceRefusedError);
+    await vi.advanceTimersByTimeAsync(61_000);
+    // Three different stations in the same tick: none may queue for a slot behind a request that cannot be made.
+    const errs: unknown[] = [];
+    for (const code of ["65009000", "65006090", "65004995"]) getStationData(station(code)).catch((e: unknown) => errs.push(e));
+    await vi.advanceTimersByTimeAsync(49);
+    expect(errs).toHaveLength(3);
+    for (const e of errs) expect(e).toBeInstanceOf(SourceRefusedError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("returns source_unavailable at once, with no request, for concurrent calls while the host is blocked", async () => {
+    const calls = stubFetch({ ...Object.assign({}, ...STATIONS.map((s) => route(s.code))), ...route("65010000", { status: 403 }) });
+    expect(errorOf(await call({ station: "65010000" }))).toMatchObject({ error: "source_unavailable" });
+    await vi.advanceTimersByTimeAsync(61_000);
+    const settled: unknown[] = [];
+    for (const q of ["0254911", "0254912", "6500"]) void call({ station: q }).then((r) => settled.push(errorOf(r)));
+    await vi.advanceTimersByTimeAsync(49);
+    expect(settled).toEqual(Array(3).fill({ error: "source_unavailable", message: expect.stringMatching(/refused/) }));
+    expect(calls).toHaveLength(1);
   });
 
   it("a call joining another call's load that ran out of time reads the station under its own budget", async () => {
