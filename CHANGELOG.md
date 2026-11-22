@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.16.1 - 2026-11-22
+
+`river_levels` is honest about data quality (owner request, 2026-11-22). No new request, no new host.
+
+- Each station has `quality` (`ok`, `suspect`, `unknown`) and `quality_reasons`, computed only from the readings of
+  the 24 h ending at the latest one that were already read. Checks: `out_of_range` (negative level, flow or rain, or
+  rain over 150 mm in one reading), `level_spike` (a level jump over 100 cm in 15 minutes that comes back within an
+  hour), `level_jump_unconfirmed` (that jump in the last hour, not back yet), `level_stuck` (level identical for 6 h or more
+  while 10 mm or more of rain fell). `unknown` without readings or with under 8 readings (`too_few_readings`). Raw
+  values are never hidden or changed; `stale` stays a separate flag.
+- When a station is suspect, the note names it and says to treat its values with caution. The general note now says
+  the readings are unchecked telemetry, that `quality` cannot prove a value is right, and that official flood alerts
+  come from Defesa Civil and INMET (`weather_alerts`).
+- Docs: a "`river_levels` data quality" section in the README, the same in short in docs/sources.md, SPEC.md
+  addendum.
+
 ## 0.16.0 - 2026-11-22
 
 New tool `river_levels` over ANA's public telemetry web service (new host `telemetriaws1.ana.gov.br`, robots.txt 404

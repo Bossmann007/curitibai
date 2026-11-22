@@ -53,6 +53,21 @@ const Item = z.object({
   rain_1h_mm: z.number().nullable().describe("Sum of the rain values in the hour ending at the latest reading; null when none. A lower bound when readings are missing."),
   rain_24h_mm: z.number().nullable().describe("Sum of the rain values in the 24 hours ending at the latest reading; null when none or when that window starts before yesterday 00:00. A lower bound when readings are missing."),
   checked_at: z.string().datetime().nullable().describe("When this server read the station (cached up to 15 minutes); null when unavailable."),
+  quality: z
+    .enum(["ok", "suspect", "unknown"])
+    .describe(
+      "Checks on the readings of the 24 h ending at the latest one (values are never changed). suspect: a check fired; " +
+        "treat the values with caution. ok: no check fired, which does not prove a value is right. unknown: no reading, " +
+        "or too few to check. Separate from `stale`.",
+    ),
+  quality_reasons: z
+    .array(z.enum(["out_of_range", "level_spike", "level_jump_unconfirmed", "level_stuck", "too_few_readings"]))
+    .describe(
+      "out_of_range: negative level, flow or rain, or over 150 mm of rain in one reading. level_spike: a level jump over " +
+        "100 cm in 15 minutes that came back within an hour. level_jump_unconfirmed: such a jump in the last hour, not back yet. " +
+        "level_stuck: level identical for 6 h or more while 10 mm or more of rain fell. too_few_readings: under 8 readings " +
+        "in the 24 h (quality unknown).",
+    ),
 });
 
 export const riverLevelsOutput = z.object({
@@ -120,12 +135,16 @@ export function stationItem(s: Station, km: number, d: Read, now: number): z.inf
     rain_1h_mm: d === "unavailable" ? null : d.value.rain_1h_mm,
     rain_24h_mm: d === "unavailable" ? null : d.value.rain_24h_mm,
     checked_at: d === "unavailable" ? null : d.fetchedAt,
+    quality: d === "unavailable" ? "unknown" : d.value.quality,
+    quality_reasons: d === "unavailable" ? [] : d.value.quality_reasons,
   };
 }
 
 const NOTE =
-  "Readings are automatic and unvalidated (ANA telemetry, IAT-PR stations); a station can be down or report wrong values. " +
-  "Many stations send nothing on a given day (status no_recent_data).";
+  "Readings are automatic telemetry that nobody has checked (ANA telemetry, IAT-PR stations; ANA publishes validated data " +
+  "only months later); a station can stop or send wrong values. `quality` flags suspect readings but cannot prove a value " +
+  "is right. Official flood alerts: Defesa Civil and INMET (tool weather_alerts). Many stations send nothing on a given " +
+  "day (status no_recent_data).";
 
 export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOutput> = {
   name: "river_levels",
@@ -135,7 +154,8 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
     "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
     "municipality text); stations come nearest to `near` (default Curitiba centre) first. At most 3 stations read per " +
     "call, each cached 15 minutes; your position and text are never sent. `stale` marks readings older than 2 h; " +
-    "stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
+    "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
+    "Stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
   inputSchema: riverLevelsInput,
   outputSchema: riverLevelsOutput,
   handler: async (args) => {
@@ -160,11 +180,13 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       }
       const now = Date.now();
       const more = matches.slice(MAX_STATIONS_PER_CALL).map((m) => ({ code: m.s.code, name: m.s.name }));
+      const stations = read.map((x) => stationItem(x.s, x.km, x.d, now));
+      const suspect = stations.filter((s) => s.quality === "suspect").map((s) => s.code);
       const out: Output = {
         data: {
           total_matches: matches.length,
           more_matches: more,
-          stations: read.map((x) => stationItem(x.s, x.km, x.d, now)),
+          stations,
         },
         source: RIVER_SOURCE,
         source_url: ANA_SERVICE_URL,
@@ -172,6 +194,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
         license_note: RIVER_LICENSE_NOTE,
         note: [
           EMERGENCY_NOTE,
+          suspect.length > 0 ? `Suspect readings at ${suspect.join(", ")} (see quality_reasons): treat these values with caution.` : "",
           NOTE,
           more.length > 0 ? `${more.length} more matching station(s) not read (at most ${MAX_STATIONS_PER_CALL} per call); ask by code.` : "",
         ].filter(Boolean).join(" "),
