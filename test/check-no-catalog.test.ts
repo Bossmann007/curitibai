@@ -308,12 +308,12 @@ describe("scripts/check-no-catalog", () => {
   });
 
   describe("events output and HTML captures", () => {
-    it.each(["events/events.json", "data/events/status.json", "x/Events/anything.txt"])("fails when %j is force-added", (path) => {
+    it.each(["events/events.json", "data/events/status.json", "x/Events/anything.txt", "phones/phones.json", "data/Phones/status.json"])("fails when %j is force-added", (path) => {
       add(path, "{}\n", true);
       const res = guard();
       expect(res.status).toBe(1);
       expect(res.stdout).not.toContain("OK");
-      expect(res.stderr).toContain("git tracks a file in an events folder");
+      expect(res.stderr).toContain("git tracks a file in an events or phones folder");
       expect(res.stderr).toContain(`  ${path}\n`);
     });
 
@@ -328,7 +328,7 @@ describe("scripts/check-no-catalog", () => {
       },
     );
 
-    it.each(["test/fixtures/events_synthetic/list_page.html", "events_synthetic.json", "src/events.ts", "x/myevents/a.json", "page.html.md"])(
+    it.each(["test/fixtures/events_synthetic/list_page.html", "events_synthetic.json", "src/events.ts", "x/myevents/a.json", "page.html.md", "test/fixtures/useful_phones/telefones_uteis_trimmed.html", "src/tools/usefulPhones.ts"])(
       "passes for %j",
       (path) => {
         add(path, "x\n", true);
@@ -338,9 +338,9 @@ describe("scripts/check-no-catalog", () => {
       },
     );
 
-    it("the repo .gitignore keeps the events folder and HTML captures out of a plain git add, but not the fixtures", () => {
+    it("the repo .gitignore keeps the events and phones folders and HTML captures out of a plain git add, but not the fixtures", () => {
       writeFileSync(join(repo, ".gitignore"), readFileSync(fileURLToPath(new URL("../.gitignore", import.meta.url))));
-      for (const path of ["events/events.json", "data/events/status.json", "capture.html", "a/b.har"]) {
+      for (const path of ["events/events.json", "data/events/status.json", "phones/phones.json", "data/phones/status.json", "capture.html", "a/b.har"]) {
         mkdirSync(dirname(join(repo, path)), { recursive: true });
         writeFileSync(join(repo, path), "x\n");
         const res = spawnSync("git", ["add", "--", path], { cwd: repo, env: gitEnv(), encoding: "utf8" });

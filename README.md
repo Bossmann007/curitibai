@@ -19,7 +19,7 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 18 tools over public
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 19 tools over public
 data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, places, events, weather,
 municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
 
@@ -86,14 +86,14 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 Other MCP clients: configure a stdio server with the command `node` and the single argument
 `/absolute/path/to/curitibai/dist/server.js`. Check your client's documentation for where that setting goes.
 
-To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
+To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search`, `useful_phones` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
 (Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
 `local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
-`{"error":"data_not_available"}` (the bus tools, `city_points_search` and `events_search` too), and the other tools work as usual. [Local data files](#local-data-files) says what to put in that folder.
+`{"error":"data_not_available"}` (the bus tools, `city_points_search`, `events_search` and `useful_phones` too), and the other tools work as usual. [Local data files](#local-data-files) says what to put in that folder.
 
 ## Tools at a glance
 
-All 18 tools are read-only. "Network" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+All 19 tools are read-only. "Network" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
 the vaccination page). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` or data bundled in the code, and
 make no network call. [Tool reference](#tool-reference) has every input, output and error.
 
@@ -110,6 +110,7 @@ make no network call. [Tool reference](#tool-reference) has every input, output 
 | City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
 | City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Network (Overpass); police and fire stations bundled |
 | City | `events_search` | Events from the Instituto Municipal de Turismo calendar | Local (file from the separate collector) |
+| City | `useful_phones` | Useful public phone numbers (emergencies, city services, transport, radio taxis) | Local (file from the separate collector) |
 | Weather | `weather_forecast` | INMET's forecast for Curitiba, up to 5 days | Network (INMET) |
 | Weather | `weather_alerts` | INMET's active warnings that cover Curitiba | Network (INMET) |
 | Procurement | `procurement_search` | Procurement published by Curitiba municipal bodies in PNCP, never the supplier | Network (PNCP) |
@@ -139,6 +140,10 @@ they read URBS files you keep in `CURITIBAI_DATA_DIR/urbs/` (see below) and retu
 `data_not_available` (no folder or no file of the kind needed), `invalid_data` (not UTF-8 JSON, not a non-empty list,
 more than 5% of the rows invalid, or over 20 MB; the message says to delete that file or change its name to fall back
 to the next newest), `file_not_allowed`, and `invalid_argument`. Single invalid rows are skipped, counted in `note` and in `data.skipped_rows`.
+`useful_phones` makes no network call: it reads `CURITIBAI_DATA_DIR/phones/phones.json`, written by the same
+collector, and returns `{data, source_url, fetched_at, attribution, license_note, note}`; its errors are
+`data_not_available` (no file; the message says how to run the collector), `invalid_data` (not UTF-8 JSON, the wrong
+shape, a number in an unknown format, or over 512 KB), `file_not_allowed` and `invalid_argument`.
 `events_search` makes no network call either: it reads `CURITIBAI_DATA_DIR/events/events.json`, written by the separate
 collector `scripts/fetch-events.mjs` (see below), and returns `{data, source_url, checked_at, stale, attribution,
 license_note, note}`; its errors are `data_not_available` (no file, or `checked_at` more than 7 days ago),
@@ -168,6 +173,7 @@ wait in `note`.
 | `next_buses_near` | `near` (`{lat, lon}`, required), `radius_m` (default 400, at most 1000), optional `at` (HH:MM, default now in Curitiba), optional `day` (URBS DIA code; default from today's weekday in Curitiba), `window_min` (default 60, at most 180), optional `line_code` (case ignored), `limit` ≤ 50 (default 20) | "Next buses near me" in one call: the published departures in the window at the stops within the radius, soonest first: `time`, `day` (the code), `minutes_from_now` (from `at`), `line_code`, `line_name`, `directions` (every SENTIDO the stops file gives for that line at that stop: the timetable has no direction, and most timetable stops are served in both), `stop_number`, `stop_name` (masked as a guard), `distance_m` (straight line), `adapt`, `after_midnight`; plus `windows` searched, `stops_considered`, `stops_with_times` (URBS publishes times only at some stops), `total` and `skipped_rows`. **The day code is inferred** (Monday to Friday 1, Saturday 2, Sunday 3) and **holidays are not detected**: pass `day` on a holiday. URBS files a late-night trip under the day its service starts, so a window past 24:00 reads that day's after-midnight trips plus the next calendar day's early trips, and a window starting before 04:00 reads the previous day's after-midnight trips plus today's early ones; an explicit `day` is read as the service day (its after-midnight trips are read, the next day's early trips are not: `cut_at_midnight`). Timetable as published, not real-time. No network call; `checked_at` is the timetable's date. About 73 ms per call (median; the first call in a process about 135 ms) on the 2026-11-20 files (Apple M4); `scripts/verify` fails above 600 ms on 17,496 generated stop rows and 71,085 departures | The newest `YYYY_MM_DD_tabelaLinha.json`, `YYYY_MM_DD_pontosLinha.json` and `YYYY_MM_DD_linhas.json`, same folder (all three needed) |
 | `city_points_search` | optional `category` (one of 23 ids, e.g. `feira`, `cambio_verde`, `library`, `cmei`, `municipal_school`, `bus_terminal`, `health_unit`, `urgent_care`; [docs/sources.md](docs/sources.md) maps each to URBS's category names), optional `name` (1–100 chars; every word must appear in the name, accents, case and punctuation ignored), optional `near` (`{lat, lon}`) with `radius_m` (default 1500, at most 10000), `limit` ≤ 50 (default 20), `offset` | Points of interest **open to the public** from URBS's export: `name` and `desc` (masked as a guard), `category` (the id), `source_category` (URBS's name), `lat`/`lon` (decimal; null when empty), and `distance_m` when `near` is given (nearest first; otherwise by name); `total` and `next_offset`; with no filter, also the `categories` with counts, each split per URBS name (`source_categories`: `{name, count}`). **Only an allowlist of categories**: private schools and crèches, hotels, churches, supermarkets and markets, shopping centres, private clubs, newsstands, hospitals, laboratories, police and security (use `places_search`), urban equipment and any unknown category are dropped before searching. `cultural_space`, `special_education` and `vocational_education` are open to the public but may include private or non-profit institutions (commercial cinemas, private theatres and museums, private schools); `note` says so, naming only those among the matches. `note` warns when a whole category id has no row in the file, but **not** when only one of its URBS names is renamed: renaming BIB FAROL DO SABER would drop 45 of the 59 libraries in the 2026-11-20 file with no warning, so check `source_categories` for a 0 after downloading a new file. The file has **no days or hours** (not even for feiras). **Not for emergencies** (192 SAMU, 193). No network call; `checked_at` is the file's date | The newest `YYYY_MM_DD_pois.json`, same folder |
 | `events_search` | optional `from`/`to` (YYYY-MM-DD; default today to 7 days ahead, Curitiba time), optional `text` (2–100 chars; every word must appear in the title, place, address or category, accents and case ignored), optional `category` (as published, accents and case ignored), `limit` ≤ 50 (default 20), `offset` | Events overlapping the range, earliest first: `id`, `title`, `start_date`, `end_date`, `time`, `place`, `address`, `category` and `link` (the event page); `checked_at` (when the collector ran) and `stale: true` after 3 days. Every field is untrusted third-party text | Instituto Municipal de Turismo de Curitiba, public events calendar (`turismo.curitiba.pr.gov.br/eventos/`), via `scripts/fetch-events.mjs`; not affiliated; the site publishes no licence, so only facts and links are kept |
+| `useful_phones` | optional `query` (2–100 chars; every word must appear in the name, section or number, accents and case ignored; digits also match a number without its punctuation), `limit` ≤ 50 (default 20) | Entries in page order: `name` (organ, service or company as published; an indented line gets its parent's name in front, as in "Polícia Federal - imigração/passaporte"), `section` (the page's heading: Emergências, Serviços, Transporte, Centrais de Radiotáxi de Curitiba) and `numbers` (as published, such as "193", "(41) 3350-6456", "0800 5100116"); `total`, `source_url` (the page) and `fetched_at` (when the collector read it). Notes next to numbers ("Fax", "(demais cidades)") and addresses are not kept. **No network call.** In an emergency call 190, 192 or 193 directly | Instituto Municipal de Turismo de Curitiba, "Telefones Úteis" page (`turismo.curitiba.pr.gov.br/conteudo/telefones-uteis/92`), via `scripts/fetch-events.mjs`; not affiliated; the site publishes no licence, so only facts and the link are kept |
 | `vaccination_sites_search` | optional `text` (2–100 chars; every word must appear in the unit name, the address, which ends with the neighbourhood, or the regional; accents and case ignored), optional `vaccine` (2–100 chars; every word must appear in the same vaccine line), optional `near` (`{lat, lon}`), `limit` ≤ 50 (default 20), `offset` | Curitiba's public vaccination sites (about 100 municipal health units): `name`, `address`, `regional`, `hours` and `vaccines` **as published** (e.g. "Horário (segunda a sexta) : Das 7h às 19h", "Vacinas (12 anos ou mais)"), `lat`/`lon` (read from the page's map link, which is never returned; null when missing or outside Curitiba), and `distance_m` with `near` (nearest first, straight line; sites without coordinates are left out and counted in `note`); `total`, `next_offset`, `skipped_units`. Every text field is untrusted third-party text, cleaned and masked. The page shows **no update date**: `note` says to confirm by phone or with the 156 before going. **Not for emergencies** (192 SAMU). One page read per call at most, cached 6 hours | The Prefeitura's "Imuniza Já" page (`GET imunizaja.curitiba.pr.gov.br/locaisvacinacao/`, HTML, checked 2026-11-21); no licence found |
 | `local_csv_summary` | `file` (name inside `CURITIBAI_DATA_DIR`), optional `group_by`, `top` ≤ 50, optional `filter_column` + `filter_value` | Column names, row count, malformed-row count, and the largest groups of one column with their values (optionally filtered by `column = value`). Data rows after the first line are never returned; a text-only first line is returned as column names (see below); refuses personal-looking columns | A file you downloaded yourself; no network |
 
@@ -210,6 +216,7 @@ Compared on 2026-11-21 with public sources (the App Store listing above), not wi
 | Health information | ✓ | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
 | Education information | ✓ | Municipal and state schools and CMEIs from the URBS points export (`city_points_search`); no enrolment |
 | Events * | ✓ | `events_search` over the Instituto Municipal de Turismo calendar (through the separate collector) |
+| Useful phones * | partial | `useful_phones` returns the 60 entries of the Instituto Municipal de Turismo's "Telefones Úteis" page (emergencies such as SAMU, Defesa Civil and Guarda Municipal, services, transport, radio taxis; through the separate collector). The app's own list was not compared, and that page has no Ouvidoria entry, so this is not claimed to match it |
 | 156 * (requests and their protocols) | — | Opening and following 156 requests needs a login; out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
 | Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
 | Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
@@ -272,7 +279,10 @@ names and counts. Data rows (after the first line) are never returned. What it d
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
   ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the
-  whole value before the cut, so a phone or e-mail split by the cut is still found. This is a guard for contact data only: names of people in values are not detected.
+  whole value before the cut, so a phone or e-mail split by the cut is still found, and a contact value found after
+  the 120-character cut also makes the whole column refused, even though that part would not be returned. The check
+  reads the first 300 characters of a long value (`maskObject`), so contact data further in is not looked for; it is
+  never returned either. This is a guard for contact data only: names of people in values are not detected.
 - **Personal-looking columns are refused** (`column_not_allowed`) for both `group_by` and `filter_column`: names
   containing nome, name, cpf, cnpj, email/e-mail, telefone, fone, celular, matricula, endereco, logradouro,
   nasc (nascimento, DTNASC), servidor, beneficiario, paciente, solicitante, requerente, cidadao, contribuinte,
@@ -373,6 +383,8 @@ the 2026-11-20 file, see [docs/sources.md](docs/sources.md)): a row before 04:00
 from 20:00 or later on to before 04:00 (any other drop in its times is not a wrap) has `after_midnight: true` and runs on the calendar day after a day of its code. Other rows
 before 04:00 are read as early trips of their own code's day (not verified).
 
+<a id="events-and-useful-phones"></a>
+
 ### Events (Instituto Municipal de Turismo calendar, collected by a separate script)
 
 `events_search` reads `events/events.json` inside `CURITIBAI_DATA_DIR`. **The server never contacts the events site**
@@ -426,6 +438,25 @@ The parser was built from one list page and one detail page seen on 2026-11-21; 
 day have not been seen yet (see [docs/sources.md](docs/sources.md)), so the first real runs may stop with
 `layout_changed` until the script is updated. Ask, for example: "events in Curitiba this weekend" or "concerts next
 week".
+
+**Useful phones (same collector, since 0.14.0).** After the events pages, the same run reads one more page,
+<https://turismo.curitiba.pr.gov.br/conteudo/telefones-uteis/92> (1 GET per run, same window, robots.txt check, 5 s
+gap, deadline and User-Agent; robots.txt allows `/conteudo/`). It runs whatever the events result was, once robots.txt
+was accepted; it never changes the events files. It writes `phones/phones.json` and `phones/status.json` in
+`CURITIBAI_DATA_DIR` and prints one more fixed line, `fetch-events: phones_code=<code> phones=<n> phones_dropped=<n>`;
+the exit code is 0 only when both steps are ok.
+
+- It keeps, per entry, the section heading, the organ, service or company name and the numbers as published, plus
+  the page link and when it was read. Notes and addresses on the page are not kept.
+- It reads only the known structure: the page's one content block, its section headings, "- Name: number" lines,
+  "- Name:" parents and their indented lines. An unknown tag, a number in an unknown format, an entry before the first
+  heading, fewer than 20 entries, or a count outside 0.3x–3x of the previous file's stops with
+  `phones_code=layout_changed` and keeps the previous `phones.json`; the script never guesses.
+- Personal data: on the page read on 2026-11-22 every entry is a public body or a company (checked by hand); no
+  person's name and no personal phone was found, so nothing was dropped. As a guard, an entry with a 9-digit mobile
+  number, or whose name holds e-mail-, phone- or CPF/CNPJ-shaped text, is dropped and counted in `phones_dropped`.
+
+Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda Municipal".
 
 ## Privacy and safety
 

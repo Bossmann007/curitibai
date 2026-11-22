@@ -1,3 +1,4 @@
-# Keep shell scripts LF and the pinned fixture byte-exact on clones with core.autocrlf=true.
+# Keep shell scripts LF, and the pinned fixture and the CRLF page fixtures byte-exact, on clones with core.autocrlf=true.
 scripts/* text eol=lf
 test/fixtures/carta_servicos_synthetic/carta-servicos.json -text
+test/fixtures/useful_phones/*.html -text

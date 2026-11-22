@@ -2,22 +2,56 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
-## 0.13.3
+## 0.14.0 - 2026-11-22
+
+New tool `useful_phones`: useful public phone numbers in Curitiba (emergencies such as SAMU, Defesa Civil and Guarda
+Municipal, city services, transport, radio taxis) from the Instituto Municipal de Turismo's "Telefones Úteis" page. No
+new host: the page is on `turismo.curitiba.pr.gov.br`, already read by the events collector.
+
+- `scripts/fetch-events.mjs` reads `/conteudo/telefones-uteis/92` once per run, after the events pages, with the same
+  client (window, robots.txt check, 5 s gap, deadline, User-Agent), and writes `phones/phones.json` and
+  `phones/status.json` in `CURITIBAI_DATA_DIR`. It keeps only section, name and numbers as published; an unknown
+  layout writes `layout_changed` and keeps the previous copy. The phones step runs whatever the events result was,
+  once robots.txt was accepted, and never changes the events files; the exit code is 0 only when both steps are ok,
+  and the run prints one more fixed line (`fetch-events: phones_code=... phones=N phones_dropped=N`).
+- `useful_phones` (optional `query` of 2–100 characters, `limit` up to 50) reads only that local file, no network
+  call; words match name, section or number, accents and case ignored. A missing file returns `data_not_available`
+  with how to run the collector.
+- The page read on 2026-11-22 gives 60 entries, all public bodies or companies; no personal data was found. Entries
+  with a mobile number or contact-shaped text in the name are dropped and counted.
+- `scripts/check-no-catalog` and `.gitignore` also block a `phones/` folder (the collector's output).
+
+v0.13.3 review follow-ups:
+
+- `local_csv_summary`: long values already checked clean are cached by SHA-256 when over 1,000 characters, so a
+  repeated long value is not masked again. New timing guard in `scripts/verify`
+  (`scripts/perf-local-csv-summary.mjs`): 2,000 distinct 8,000-character values, budget 2 s per call (measured
+  median about 0.46 s with the cache, 0.73 s without, on the development Mac). README: a contact value found after the
+  120-character cut also makes the column refused; the check reads the first 300 characters of a long value.
+- `.github/dependabot.yml` ignores TypeScript major updates (typescript-eslint does not accept TypeScript 7 yet).
+- CHANGELOG: release dates on the headings from 0.12.0 on (dates of the merge commits); the 0.13.3 sentence about
+  `maskObject` now describes its real order. The URBS counts of 2026-11-20 say they were measured by hand on the
+  owner's local file.
+
+## 0.13.3 - 2026-11-21
 
 Privacy and robustness follow-ups. No new tool, source or host.
 
 - `local_csv_summary`: the contact-data check (CPF/CNPJ, e-mail, phone) on grouped values now runs on the whole
   value before it is cut at 120 characters. Before, a value was cut first, so a phone or e-mail split by the cut
   ("... (41) 3333-" | "4444") passed the check and its first part could be returned. A test pins a phone and an
-  e-mail that straddle the cut. The other places that cut text after masking (`maskObject`, `cleanField`,
-  `guardedSummary`, the header cut, which refuses headers over 60 characters first) already checked before cutting.
+  e-mail that straddle the cut. `maskObject` itself works in this order: it cuts the raw
+  text at 2,000 characters, masks that part, then, when it cut, drops the last 400 masked characters so an
+  identifier split by the 2,000 cut is never shown in part; the result is then capped at 300 characters (see
+  `src/mask.ts`). `cleanField` and `guardedSummary` mask before they cut, and the header cut refuses headers over 60
+  characters first.
 - Final refusals (HTTP 401, 403, a CAPTCHA 429) now return `source_unavailable` with the message "the source refused
   this server; it is not asked again for 10 minutes (per host)". Other source failures are unchanged.
 - `bus_departures` and `next_buses_near`: a drop in a table's times counts as the wrap past midnight only when the
   time before it is 20:00 or later and the time after it is before 04:00; any other drop no longer marks later rows
   `after_midnight`. On the 2026-11-20 file all 677 drops are of that kind, so the 993 marked rows are unchanged. The 9
   rows in that file that come after a wrap at 04:00 or later stay `after_midnight: false` (known limit, in
-  docs/sources.md).
+  docs/sources.md). These counts were measured by hand on the owner's local file of 2026-11-20.
 
 Docs and repository files:
 
@@ -38,7 +72,7 @@ Docs and repository files:
 - New: `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`, a pull request template and issue forms (bug, data
   source suggestion, removal request; blank issues off).
 
-## 0.13.2
+## 0.13.2 - 2026-11-21
 
 Legal hygiene: attribution, notices and facts only. No new tool, source or host.
 
@@ -82,11 +116,11 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
 - Carta de Serviços: new local copies must be saved by a person in an ordinary browser session.
 - README "Removal requests": open an issue; the content is removed from the next release.
 
-## 0.13.1
+## 0.13.1 - 2026-11-21
 
 - Fixed: times after midnight now follow the service day. URBS files a late-night trip under the day its service
-  starts, at the end of that day's table (on the 2026-11-20 file, 677 tables run from 23:xx on to 00:xx in file order;
-  see docs/sources.md). A row before 04:00 that comes after such a wrap in its table is an after-midnight row; the
+  starts, at the end of that day's table (on the 2026-11-20 file, 677 tables run from 23:xx on to 00:xx in file order,
+  measured by hand on the owner's local file of 2026-11-20; see docs/sources.md). A row before 04:00 that comes after such a wrap in its table is an after-midnight row; the
   other rows before 04:00 are read as early trips of their own code's day (not verified).
 - `next_buses_near`: a window past 24:00 reads the same day's after-midnight trips plus the next calendar day's early
   trips (it read the next day's code only, so Friday 23:30 missed Friday's 00:03 and showed Saturday night's trips); a
@@ -97,7 +131,7 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
 - `bus_departures`: items gain `after_midnight`; the note states the rule instead of "not verified". Order and
   filters are unchanged.
 
-## 0.13.0
+## 0.13.0 - 2026-11-21
 
 - Added `next_buses_near` ("next buses near me" in one call): the published URBS departures in the next `window_min`
   minutes (default 60, at most 180) after `at` (HH:MM, default now in Curitiba) at the stops within `radius_m` (default
@@ -114,7 +148,7 @@ Legal hygiene: attribution, notices and facts only. No new tool, source or host.
   `scripts/verify` now times the built tool on 17,496 generated stop rows and 71,085 departures and fails above
   600 ms; the smoke test calls it over stdio.
 
-## 0.12.0
+## 0.12.0 - 2026-11-21
 
 - Added `vaccination_sites_search`: Curitiba's public vaccination sites from the Prefeitura's "Imuniza Já" page
   (`https://imunizaja.curitiba.pr.gov.br/locaisvacinacao/`, about 100 municipal health units): `name`, `address`,
