@@ -1,6 +1,6 @@
 import { sharedCache } from "../cache.js";
 import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, SourceUnavailableError } from "../http.js";
-import { createHostGate, underOwnBudget, type HostGateOptions } from "../hostGate.js";
+import { createHostGate, OutOfTimeError, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { maskObject } from "../mask.js";
 
 // Re-exported: the masking moved to src/mask.ts (no imports) so scripts/fetch-events.mjs can load it too.
@@ -280,16 +280,17 @@ export const MAX_RETRY_AFTER_S = 5;
 
 /**
  * One retry at most: after a connection error (PNCP reset about half of the connections on 2026-11-19), or after an
- * HTTP 429 whose Retry-After is at most 5 s. Never after a timeout or any other HTTP error.
+ * HTTP 429 whose Retry-After is at most 5 s. Never after a timeout or any other HTTP error. `retryReset` false: no
+ * retry after a connection error (the site search retries it on the gate's next turn instead, getSearchPage).
  */
-async function fetchPncp(url: string, timeoutMs = PNCP_TIMEOUT_MS): Promise<string> {
+async function fetchPncp(url: string, timeoutMs = PNCP_TIMEOUT_MS, retryReset = true): Promise<string> {
   try {
     return (await fetchText(url, { timeoutMs })).body;
   } catch (err) {
     if (err instanceof RateLimitedError) {
       if (err.retryAfterS === null || err.retryAfterS > MAX_RETRY_AFTER_S) throw err;
       await new Promise((r) => setTimeout(r, err.retryAfterS! * 1000));
-    } else if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
+    } else if (!retryReset || !(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
     return (await fetchText(url, { timeoutMs })).body;
   }
 }
@@ -298,7 +299,8 @@ async function fetchPncp(url: string, timeoutMs = PNCP_TIMEOUT_MS): Promise<stri
  * The PNCP host gate (src/hostGate.ts, ADR 0003): 6 s between request starts, so at most 20 in 2 minutes (PNCP
  * answered 429 after about 20 requests in two minutes on 2026-11-19); a turn more than 10 s away is rate_limited;
  * after a failure no request for 60 s (a 429's Retry-After when longer, at most 1 hour; a refusal for the 10-minute
- * host block). The single retry of fetchPncp runs inside the same turn. Exported so tests can set the spacing to 0
+ * host block). The single retry of fetchPncp runs inside the same turn; the site search's retry after a connection
+ * reset takes the next turn (getSearchPage). Exported so tests can set the spacing to 0
  * (test/setup.ts); production code never changes it.
  */
 export const PNCP_MIN_INTERVAL_MS = 6_000;
@@ -310,6 +312,7 @@ export function resetPncpGate(): void {
   gate.reset();
   searchDownUntil = 0;
   searchDownReason = "";
+  searchResets = 0;
 }
 
 /** `startBy`: no request starts after it (OutOfTimeError, no request). */
@@ -341,39 +344,66 @@ export const PNCP_SEARCH_TIMEOUT_MS = 8_000;
 export const SEARCH_DOWN_MS = 10 * 60_000;
 let searchDownUntil = 0;
 let searchDownReason = "";
+/** Search requests in a row (across calls) that ended in a connection error; a search answer sets it back to 0. */
+let searchResets = 0;
 
 const searchFailure = (err: unknown) =>
   err instanceof SourceUnavailableError && !(err instanceof RateLimitedError) && !(err instanceof SourceRefusedError);
 
-/** One page of the site search, through the same PNCP gate (spacing, budget), cache and single retry as the Consulta API. */
+/**
+ * One page of the site search, through the same PNCP gate (spacing, budget) and cache as the Consulta API. PNCP resets
+ * connections at random (docs/sources.md), so a connection error is retried once on the gate's next turn (6 s later),
+ * and only when that retry would start by `startBy - PNCP_SEARCH_TIMEOUT_MS`, so its timeout still leaves the
+ * fallback scan its start; otherwise the retry is skipped. A timeout, 5xx or changed format is never retried.
+ */
 export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
   const url = searchUrl(query, modality, page);
-  /** Remembered only when the search as a whole looks down: a timeout, network error, 5xx or a changed format. */
+  /**
+   * Remembered only when the search as a whole looks down: a timeout, 5xx or a changed format at once; a connection
+   * error only when it is the second in a row.
+   */
   const down = (reason: string) => {
-    if (/^(timeout|network error|HTTP 5\d\d|layout_changed)$/.test(reason)) {
+    const reset = reason === "network error" && ++searchResets >= 2;
+    if (reset || /^(timeout|HTTP 5\d\d|layout_changed)$/.test(reason)) {
       searchDownUntil = Date.now() + SEARCH_DOWN_MS;
       searchDownReason = reason;
+      searchResets = 0;
     }
     return new SearchUnavailableError(reason);
   };
+  const attempt = (by: number | undefined) =>
+    gate.run(
+      async (): Promise<{ body: string } | { failed: string }> => {
+        try {
+          return { body: await fetchPncp(url, PNCP_SEARCH_TIMEOUT_MS, false) };
+        } catch (err) {
+          // Returned, not thrown: the gate would remember it for the whole host, Consulta included.
+          if (searchFailure(err)) return { failed: (err as SourceUnavailableError).reason };
+          throw err;
+        }
+      },
+      { startBy: by },
+    );
   return underOwnBudget(startBy, () =>
     sharedCache.getOrLoad(`GET ${url}`, async () => {
       if (Date.now() < searchDownUntil) {
         const left = Math.ceil((searchDownUntil - Date.now()) / 60_000);
         throw new SearchUnavailableError(`${searchDownReason}; not asked again for about ${left} min`);
       }
-      const got = await gate.run(
-        async (): Promise<{ body: string } | { failed: string }> => {
-          try {
-            return { body: await fetchPncp(url, PNCP_SEARCH_TIMEOUT_MS) };
-          } catch (err) {
-            if (searchFailure(err)) return { failed: (err as SourceUnavailableError).reason };
-            throw err;
-          }
-        },
-        { startBy },
-      );
+      let got = await attempt(startBy);
+      if ("failed" in got && got.failed === "network error" && searchResets === 0) {
+        searchResets = 1;
+        const retryBy = startBy === undefined ? undefined : startBy - PNCP_SEARCH_TIMEOUT_MS;
+        try {
+          got = await attempt(retryBy);
+        } catch (err) {
+          // Skipped: the retry would leave the scan no room. The next connection error is the second in a row.
+          if (err instanceof OutOfTimeError && err.startBy === retryBy) throw new SearchUnavailableError("network error");
+          throw err;
+        }
+      }
       if ("failed" in got) throw down(got.failed);
+      searchResets = 0;
 
       try {
         return parseSearch(got.body);

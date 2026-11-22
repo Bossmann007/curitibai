@@ -178,7 +178,7 @@ client-side page by page at 8–13 s per page. Findings:
 | Latency | 0.45–1.7 s per page of 50–100 (against 8–13 s for a Consulta page of 50) |
 | Record fields | Flat: `numero_controle_pncp`, `orgao_cnpj`, `orgao_nome`, `codigo_ibge`, `municipio_id`, `ano`, `numero_sequencial` (strings), `modalidade_licitacao_id`, `description` (the object), `valor_total_estimado`, `situacao_id`/`situacao_nome`, `data_publicacao_pncp`, `data_atualizacao_pncp`, `data_inicio_recebimento_propostas`, `data_fim_recebimento_propostas`, **plus** `fornecedor_*`, `usuario_nome`, `informacao_complementar`, `link_sistema_origem`. `parseSearch` copies only the first group into the Consulta shape and runs the same field-by-field builder, allow-list and modality gate |
 | Live "merenda" (2026-11-22) | `municipios=4006`, all modalities: 21 results, none from a listed Curitiba municipal body except one Fundação Cultural inexigibilidade (modality 9, object withheld, so not matched); the others are federal, state and consortium bodies with a unit in Curitiba |
-| Connection resets | As on 2026-11-19, most new connections were reset (curl error 56) and answered on a later attempt; after about 40 requests in 40 minutes every connection was reset for several minutes, and the research stopped. The server keeps its single retry after a connection error and the 6 s gate |
+| Connection resets | As on 2026-11-19, most new connections were reset (curl error 56) and answered on a later attempt; after about 40 requests in 40 minutes every connection was reset for several minutes, and the research stopped. The server keeps its single retry after a connection error and the 6 s gate (since v0.19.2 the site search retries on the gate's next turn instead of at once: on 2026-11-22, after v0.19.1, one `{query:"merenda"}` call failed the search with `network error` and fell back, while a plain curl to the same URL right after answered HTTP 200 and the next request to the home page was reset) |
 
 Decision: `procurement_search` uses the site search when `query` is set (same host, same gate, budget, page cap,
 cache and fail-closed parsing; a result is kept only when its returned object or body name contains the query, so a
@@ -189,8 +189,11 @@ same call falls back to the Consulta scan (same gate, same 20 s budget for the w
 masking) and `note` says the fast search was unavailable. The search request times out after 8 s
 (`PNCP_SEARCH_TIMEOUT_MS`; Consulta keeps 25 s), so the scan's first page can still start within the 20 s budget.
 That search failure is not remembered by the gate (the Consulta API is another service on the host); after a timeout,
-network error, 5xx or changed format the search alone is not asked again for 10 minutes in the process
-(`SEARCH_DOWN_MS`), and calls go straight to the scan meanwhile; a 4xx for one page or query is not remembered.
+5xx or changed format the search alone is not asked again for 10 minutes in the process (`SEARCH_DOWN_MS`), and calls
+go straight to the scan meanwhile; a 4xx for one page or query is not remembered. Since v0.19.2 a connection error
+(reset, empty reply, reset while the body is read) is retried once on the gate's next turn (6 s later), skipped when
+that turn would start after the 20 s budget minus the 8 s search timeout, and the search is remembered as down only
+after two connection errors in a row, across calls; a search answer resets that count.
 `next_page_source` says which pages `next_page` counts. A 429 or a refusal never falls back: the gate remembers it for the
 whole host and the call returns `rate_limited` or the refusal as before.
 

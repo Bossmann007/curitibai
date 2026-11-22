@@ -910,9 +910,10 @@ describe("procurement_search text search (PNCP site search)", () => {
   });
 
   it("the search timeout leaves the fallback scan room in the budget", () => {
-    // fetchPncp retries once after a network error, each try with its own timeout.
-    expect(2 * PNCP_SEARCH_TIMEOUT_MS).toBeLessThan(CALL_START_BUDGET_MS);
+    // A first search request that times out leaves the scan's start inside the budget; a retry after a connection
+    // reset starts by the budget minus its timeout (getSearchPage), so the scan can start after it.
     expect(PNCP_SEARCH_TIMEOUT_MS + PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS);
+    expect(PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS - PNCP_SEARCH_TIMEOUT_MS);
   });
 
   /** Fake clock: a search request takes `searchMs` and then times out; Consulta pages answer with the fixture. */
@@ -992,6 +993,84 @@ describe("procurement_search text search (PNCP site search)", () => {
     sharedCache.clear();
     await search({ query: "objeto" }); // HTTP 400 was not remembered: the search is asked again
     expect(calls.map((c) => c.url)).toEqual([1, 2, 1, 2].map((p) => searchUrl("objeto", 6, p)));
+  });
+
+  /**
+   * Search requests take the next outcome: "reset" (connection reset), "body-reset" (reset while the body is read), or
+   * a search page body after `ms` of fake time; Consulta pages answer with the fixture. Returns each request's URL and
+   * start time.
+   */
+  const flakySearch = (outcomes: ({ reset: "reset" | "body-reset"; ms?: number } | { body: string })[]) => {
+    const starts: { url: string; at: number }[] = [];
+    globalThis.fetch = (async (input: string | URL) => {
+      const url = String(input);
+      starts.push({ url, at: Date.now() });
+      if (!url.startsWith(`${PNCP_SEARCH}?`)) {
+        return new Response(fixture("pncp_contratacoes_synthetic.json"), { status: 200, headers: { "content-type": JSON_TYPE } });
+      }
+      const next = outcomes.shift();
+      if (next === undefined) throw new Error(`unexpected search request: ${url}`);
+      if ("body" in next) return new Response(next.body, { status: 200, headers: { "content-type": JSON_TYPE } });
+      if (next.ms !== undefined) vi.setSystemTime(Date.now() + next.ms);
+      if (next.reset === "reset") throw new TypeError("fetch failed", { cause: new Error("read ECONNRESET") });
+      const body = new ReadableStream<Uint8Array>({
+        start: (c) => c.error(new TypeError("terminated", { cause: new Error("read ECONNRESET") })),
+      });
+      return new Response(body, { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    return starts;
+  };
+  const MATCH = () => ({ body: searchPage(records(1, 1, 0), 1) });
+
+  it("a connection reset is retried once on the gate's next turn; a success returns the search results and nothing is remembered", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    PNCP_GATE.minIntervalMs = PNCP_MIN_INTERVAL_MS;
+    const starts = flakySearch([{ reset: "reset" }, MATCH(), { reset: "reset" }, MATCH()]);
+    const first = dataOf(await settle(search({ query: "objeto" })));
+    expect(first.items.map((i) => i.pncp_id)).toEqual(["76417005000186-1-000001/2026"]);
+    expect(first.note).not.toMatch(/fast search was unavailable/);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("objeto", 6, 1), searchUrl("objeto", 6, 1)]);
+    expect(starts[1]!.at - starts[0]!.at).toBe(PNCP_MIN_INTERVAL_MS);
+    // The success reset the count: one more reset in a later call is retried again, not remembered.
+    sharedCache.clear();
+    const second = dataOf(await settle(search({ query: "objeto" })));
+    expect(second.items).toHaveLength(1);
+    expect(starts.map((s) => s.url.startsWith(`${PNCP_SEARCH}?`))).toEqual([true, true, true, true]);
+  });
+
+  it("a reset while the body is read counts as a connection reset", async () => {
+    const starts = flakySearch([{ reset: "body-reset" }, MATCH()]);
+    const data = dataOf(await search({ query: "objeto" }));
+    expect(data.items).toHaveLength(1);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("objeto", 6, 1), searchUrl("objeto", 6, 1)]);
+  });
+
+  it("two resets in a row fall back to the scan, and only then is the search not asked for 10 minutes", async () => {
+    const starts = flakySearch([{ reset: "reset" }, { reset: "body-reset" }]);
+    const first = dataOf(await search({ query: "medicamentos" }));
+    expect(first.items.map((i) => i.modality_code)).toEqual([6]);
+    expect(first.note).toMatch(/^PNCP's fast search was unavailable \(network error\); the slower page scan was used/);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("medicamentos", 6, 1), searchUrl("medicamentos", 6, 1), pncpUrl()]);
+    sharedCache.clear();
+    const second = dataOf(await search({ query: "acao social" }));
+    expect(second.note).toMatch(/^PNCP's fast search was unavailable \(network error; not asked again for about 10 min\)/);
+    expect(starts).toHaveLength(4);
+  });
+
+  it("a reset whose retry could not leave the scan room is not retried; the next call's reset is the second in a row", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    PNCP_GATE.minIntervalMs = PNCP_MIN_INTERVAL_MS;
+    // The reset comes after 13 s: a retry then could time out after the scan's last possible start (20 s).
+    const starts = flakySearch([{ reset: "reset", ms: 13_000 }, { reset: "reset" }]);
+    const first = dataOf(await settle(search({ query: "medicamentos" })));
+    expect(first.note).toMatch(/^PNCP's fast search was unavailable \(network error\); the slower page scan was used/);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl()]);
+    sharedCache.clear();
+    await settle(search({ query: "medicamentos" }));
+    sharedCache.clear();
+    const third = dataOf(await settle(search({ query: "medicamentos" })));
+    expect(third.note).toMatch(/\(network error; not asked again for about 10 min\)/);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl(), searchUrl("medicamentos", 6, 1), pncpUrl(), pncpUrl()]);
   });
 
   it("a scan page holds 50: skip of 50 or more is refused for the scan", async () => {
