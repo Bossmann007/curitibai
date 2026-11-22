@@ -2,6 +2,20 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.2 - 2026-11-22
+
+- `procurement_search` with `query`: a single connection reset no longer switches PNCP's fast search off for 10
+  minutes. On 2026-11-22, right after 0.19.1, `{query:"merenda"}` fell back to the page scan ("PNCP's fast search was
+  unavailable (network error)"; 0 items, partial, 18.6 s) while a plain curl to the same search URL answered HTTP 200:
+  PNCP resets connections at random (docs/sources.md). A connection error on a search request (reset, empty reply,
+  reset while the body is read) is now retried once on the PNCP gate's next turn, 6 s later, instead of at once; the
+  retry is skipped when it would start after the 20 s budget minus the 8 s search timeout and 1 s of slack, so the
+  fallback scan can still start (on a later search page the call stops as `partial` with the search's `next_page`).
+  The search is remembered as down only after two connection errors in a row (across calls); a timeout, 5xx or
+  changed format still marks it at once, and a search answer resets the count.
+- All sources: a connection error or timeout while a response body is read is now `source_unavailable` (network
+  error or timeout), like one before the headers, instead of an unexpected error.
+
 ## 0.19.1 - 2026-11-22
 
 - `procurement_search` with `query` now uses the search behind the pncp.gov.br site (`GET /api/search`, filtered to

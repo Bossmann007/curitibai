@@ -131,10 +131,24 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   updates are older than `from`; local re-match keeps the "never a withheld object" rule. Choice A of the brief
   (evidence in docs/sources.md); B (in-process index of Consulta pages) not built. Fallback to the Consulta scan in the
   same call when the search fails or its format changes; never on a 429 or refusal. Query sent accent-stripped and
-  lower-cased. Search timeout 8 s; search failure remembered 10 minutes (search only); `next_page_source` /
+  lower-cased. Search timeout 8 s; search failure remembered 10 minutes (search only; since v0.19.2 a connection reset only when it
+  is the second in a row); `next_page_source` /
   `page_source` tag continuations (review round 2).
 
 Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the user's query text goes to PNCP; fallback to the page scan when the search fails or its format changes.
+
+## v0.19.2 changes (task brief "curitibai v0.19.2 — the PNCP fast search is switched off for 10 min by a single connection reset", 2026-11-22)
+
+- `getSearchPage` (`src/sources/pncp.ts`): a connection error on a search request is retried once on the PNCP gate's
+  next turn (6 s spacing), not at once inside the same turn; the retry is skipped when it would start after the call's
+  20 s budget minus the 8 s search timeout and 1 s of slack (the fallback scan must still be able to start; on a later
+  page the call stops as `partial` with the search's `next_page`). One attempt is one gate turn (a 429 with
+  Retry-After of 5 s or less is still retried inside it). When other calls hold the gate's next turns and the retry's
+  turn is more than 10 s away, the call is `rate_limited` (the fallback scan would wait for the same queue). The search is remembered as down for 10 minutes after two connection errors in a row (across
+  calls), or at once after a timeout, 5xx or changed format as before; a search answer resets the count; a 4xx neither
+  counts nor resets. The Consulta API keeps its immediate single retry.
+- `fetchText` (`src/http.ts`): a connection error or timeout while the body is read is `network error` / `timeout`,
+  like one before the headers (it escaped as an unknown error before).
 
 ## Out of scope
 

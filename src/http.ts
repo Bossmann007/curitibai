@@ -223,7 +223,16 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       if (res.status === 401 || res.status === 403) blockHost(url, res.status);
       throw new SourceUnavailableError(`HTTP ${res.status}`);
     }
-    return { url, contentType: res.headers.get("content-type") ?? "", body: await readCapped(res, maxBytes) };
+    // A connection reset or timeout while the body is read fails like one before the headers.
+    let text: string;
+    try {
+      text = await readCapped(res, maxBytes);
+    } catch (err) {
+      if (err instanceof SourceUnavailableError) throw err;
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+      throw new SourceUnavailableError(timedOut ? "timeout" : "network error");
+    }
+    return { url, contentType: res.headers.get("content-type") ?? "", body: text };
   }
   throw new SourceUnavailableError("too many redirects");
 }
