@@ -85,6 +85,17 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   not read yet (time budget, the 2-page cap, a refusal) are counted in `details_pending` with the note "call again for
   venue and price". Gate, cache and budget unchanged.
 
+## v0.18.3 changes (task brief "curitibai v0.18.3 — three Lows from the v0.18.2 review", 2026-11-22)
+
+- `river_levels`: the note and code comment no longer claim when ANA publishes validated data (the delay was not
+  verified); they say ANA also publishes validated (consistidos) series after deeper analysis and this tool reads
+  only the raw telemetry. A test asserts the note has no "month".
+- `river_levels`: a final refusal (401/403 or a CAPTCHA) on a later station no longer drops the stations already
+  read: they are returned with `partial: true` and a note that the host refused; the 10-minute block stays in force.
+  `source_unavailable` only when no station is available. Other host or transfer failures still fail the whole call.
+- `guaira_events`: `partial` is documented as a deprecated alias of `truncated` (both kept this version); README
+  example of a cold and a warm call.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);

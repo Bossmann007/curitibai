@@ -3,8 +3,8 @@ import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATION
 import { fold } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { OutOfTimeError } from "../hostGate.js";
-import { RateLimitedError } from "../http.js";
-import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
+import { RateLimitedError, SourceRefusedError } from "../http.js";
+import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, rateLimitedMessage, refusedStationsNote, type ToolDef } from "./common.js";
 
 export const RIVER_SOURCE = "ANA (Agência Nacional de Águas e Saneamento Básico) telemetry; stations operated by IAT-PR";
 export const RIVER_LICENSE_NOTE = "No licence found; facts only; ANA cited.";
@@ -81,8 +81,9 @@ export const riverLevelsOutput = z.object({
     partial: z
       .boolean()
       .describe(
-        "true when some picked stations were not read: the 20 s time budget ran out, or the source was limiting requests " +
-          "(rate_limited) after at least one station was read or found in the cache; the stations read are returned.",
+        "true when some picked stations were not read: the 20 s time budget ran out, the source was limiting requests " +
+          "(rate_limited), or the source refused this server (HTTP 401/403 or a CAPTCHA; not asked again for 10 minutes), " +
+          "after at least one station was read or found in the cache; the stations read are returned.",
       ),
     stations: z.array(Item),
   }),
@@ -151,8 +152,9 @@ export function stationItem(s: Station, km: number, d: Read, now: number): z.inf
 }
 
 const NOTE =
-  "Readings are automatic telemetry that nobody has checked (ANA telemetry, IAT-PR stations; ANA publishes validated data " +
-  "only months later); a station can stop or send wrong values. `quality` flags suspect readings but cannot prove a value " +
+  "Readings are automatic telemetry that nobody has checked (ANA telemetry, IAT-PR stations). ANA also publishes validated " +
+  "(consistidos) series after deeper analysis; this tool reads only the raw telemetry. A station can stop or send wrong " +
+  "values. `quality` flags suspect readings but cannot prove a value " +
   "is right. Official flood alerts: Defesa Civil and INMET (tool weather_alerts). Many stations send nothing on a given " +
   "day (status no_recent_data).";
 
@@ -164,7 +166,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
     "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
     "municipality text); stations come nearest to `near` (default Curitiba centre) first. At most 3 stations read per " +
     "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); when the source is limiting requests, the stations already read " +
-    "are returned with partial: true (rate_limited only when none was read); your position and text are never sent. `stale` marks readings older than 2 h; " +
+    "are returned with partial: true (rate_limited only when none was read), and likewise when the source refuses this server (source_unavailable only when none was read); your position and text are never sent. `stale` marks readings older than 2 h; " +
     "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
     "Stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
   inputSchema: riverLevelsInput,
@@ -181,13 +183,16 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       // One station after the other: the host gate spaces the requests 5 s apart. A host or transfer failure fails
       // the call (a station not read is never shown as no_recent_data); an answer that cannot be read marks only
       // that station `unavailable`.
-      // A station whose request would start after the time budget, or that the host gate refuses (rate_limited: its
-      // turn is more than 10 s away, or a 429 is remembered), is not read (listed first in more_matches); later
-      // stations are still tried, so cached ones are returned. rate_limited fails the call only when nothing was read.
+      // A station whose request would start after the time budget, that the host gate refuses (rate_limited: its
+      // turn is more than 10 s away, or a 429 is remembered), or that the host refused (401/403/CAPTCHA: the host
+      // stays blocked 10 minutes) is not read (listed first in more_matches); later stations are still tried, so
+      // cached ones are returned. A refusal or rate_limited fails the call only when nothing was read.
       const read: { s: Station; km: number; d: Read }[] = [];
       const outOfTime: Station[] = [];
       const limited: Station[] = [];
       let limitedErr: RateLimitedError | null = null;
+      const refused: Station[] = [];
+      let refusedErr: SourceRefusedError | null = null;
       for (const m of picked) {
         try {
           read.push({ ...m, d: await getStationData(m.s, startBy) });
@@ -197,12 +202,15 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
             limited.push(m.s);
             // The note names the longest wait (a remembered 429's Retry-After can outlast a queue refusal).
             if (limitedErr === null || (err.retryAfterS ?? 0) > (limitedErr.retryAfterS ?? 0)) limitedErr = err;
+          } else if (err instanceof SourceRefusedError) {
+            refused.push(m.s);
+            refusedErr ??= err;
           } else if (err instanceof StationDataError) read.push({ ...m, d: "unavailable" });
           else throw err;
         }
       }
-      if (limitedErr !== null && read.length === 0) return failFrom(limitedErr);
-      const left = [...limited, ...outOfTime];
+      if (read.length === 0 && (refusedErr ?? limitedErr) !== null) return failFrom(refusedErr ?? limitedErr);
+      const left = [...refused, ...limited, ...outOfTime];
       const now = Date.now();
       const more = [...left, ...matches.slice(MAX_STATIONS_PER_CALL).map((m) => m.s)].map((s) => ({ code: s.code, name: s.name }));
       const stations = read.map((x) => stationItem(x.s, x.km, x.d, now));
@@ -225,6 +233,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
           outOfTime.length > 0
             ? `Partial: ${outOfTime.length} station(s) not read because the ${CALL_START_BUDGET_MS / 1000} s time budget of this call ran out (partial: true); call again (stations read are cached 15 minutes).`
             : "",
+          refusedErr !== null ? refusedStationsNote(refused.length, refusedErr.status) : "",
           limitedErr !== null
             ? `Partial: ${limited.length} station(s) not read (partial: true). ${rateLimitedMessage(limitedErr.retryAfterS)}`
             : "",
