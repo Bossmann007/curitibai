@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { CNES_TYPES_URL, establishmentsUrl, isPublicAdministration, parseEstablishments } from "../src/sources/cnes.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  CNES_GATE,
+  CNES_MIN_INTERVAL_MS,
+  CNES_TYPES_URL,
+  establishmentsUrl,
+  isPublicAdministration,
+  parseEstablishments,
+} from "../src/sources/cnes.js";
 import { MAX_CNES_REQUESTS } from "../src/tools/healthUnitsSearch.js";
 import { cnesRoutes, connectClient, errorOf, fixture, stubFetch, syntheticPage, type Route } from "./helpers.js";
 
@@ -280,5 +287,48 @@ describe("health_units_search", () => {
       const res = await client.callTool({ name: "health_units_search", arguments: {} });
       expect(errorOf(res)).toEqual({ error: "source_unavailable" });
     }
+  });
+});
+
+describe("health_units_search host gate (CNES)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("spaces a no-match scan 400 ms apart, one request per page", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    CNES_GATE.minIntervalMs = CNES_MIN_INTERVAL_MS;
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    for (let p = 1; p <= 4; p++) {
+      routes[`GET ${establishmentsUrl(p, null)}`] = { body: syntheticPage("UMS", p * 100, p === 4 ? 3 : 20), contentType: JSON_TYPE };
+    }
+    const calls = stubFetch(routes);
+    const starts: number[] = [];
+    const inner = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
+      starts.push(Date.now());
+      return inner(input, init);
+    }) as typeof fetch;
+    const t0 = Date.now();
+    const client = await connectClient();
+    const pending = client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } });
+    await vi.advanceTimersByTimeAsync(5 * CNES_MIN_INTERVAL_MS);
+    expect(dataOf(await pending)).toMatchObject({ units: [], partial: false, scanned_pages: { from: 1, to: 4 } });
+    expect(calls).toHaveLength(5); // unit types + 4 pages
+    expect(starts.map((t) => t - t0)).toEqual([0, 400, 800, 1200, 1600]);
+  });
+
+  it("remembers a 429: a second call inside the wait makes no request", async () => {
+    const routes: Record<string, Route> = { ...cnesRoutes() };
+    routes[`GET ${establishmentsUrl(1, null)}`] = { body: syntheticPage("UMS", 100), contentType: JSON_TYPE };
+    routes[`GET ${establishmentsUrl(2, null)}`] = { status: 429, headers: { "retry-after": "120" } };
+    const calls = stubFetch(routes);
+    const client = await connectClient();
+    const first = dataOf(await client.callTool({ name: "health_units_search", arguments: { name: "nao bate" } }));
+    expect(first).toMatchObject({ partial: true, next_page: 2 });
+    expect(calls).toHaveLength(3);
+    const second = await client.callTool({ name: "health_units_search", arguments: { name: "nao bate", page: 2 } });
+    expect(errorOf(second)).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(3);
   });
 });

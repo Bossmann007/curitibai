@@ -9,6 +9,7 @@ import {
   loadPublished,
   NotPublishedError,
   publishedUrl,
+  NEXT_NIGHTLY_RUN,
   REMOTE_DATA_ENV,
 } from "../sources/publishedData.js";
 import { fold } from "../text.js";
@@ -245,8 +246,8 @@ const NOT_AVAILABLE =
   `${PHONES_FILE} there. Or leave ${REMOTE_DATA_ENV} unset to read the published copy (see docs/local-data.md).`;
 
 const NOT_PUBLISHED =
-  `No local ${PHONES_FILE} and no published copy yet: the nightly GitHub collection publishes it (next run about ` +
-  "02:37 UTC); try again after that. To run the collector yourself, see docs/local-data.md.";
+  `No local ${PHONES_FILE} and no published copy yet: ${NEXT_NIGHTLY_RUN}; try again after that. ` +
+  "To run the collector yourself, see docs/local-data.md.";
 
 export const usefulPhones: ToolDef<typeof usefulPhonesInput, typeof usefulPhonesOutput> = {
   name: "useful_phones",

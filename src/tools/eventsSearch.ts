@@ -9,6 +9,7 @@ import {
   loadLocalOrPublished,
   NotPublishedError,
   publishedUrl,
+  NEXT_NIGHTLY_RUN,
   REMOTE_DATA_ENV,
 } from "../sources/publishedData.js";
 import { fold } from "../text.js";
@@ -256,8 +257,8 @@ const NOT_AVAILABLE =
   `CURITIBAI_DATA_DIR, or leave ${REMOTE_DATA_ENV} unset to read the published copy (see docs/local-data.md).`;
 
 const NOT_PUBLISHED =
-  `No local ${EVENTS_FILE} and no published copy yet: the nightly GitHub collection publishes it (next run about ` +
-  "02:37 UTC); try again after that. To run the collector yourself, see docs/local-data.md.";
+  `No local ${EVENTS_FILE} and no published copy yet: ${NEXT_NIGHTLY_RUN}; try again after that. ` +
+  "To run the collector yourself, see docs/local-data.md.";
 
 export const eventsSearch: ToolDef<typeof eventsSearchInput, typeof eventsSearchOutput> = {
   name: "events_search",

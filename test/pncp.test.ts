@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isAllowedUrl } from "../src/http.js";
 import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import {
@@ -9,7 +9,10 @@ import {
   objectReturnable,
   OBJECT_WITHHELD_MODALITIES,
   parseContratacoes,
+  PNCP_GATE,
+  PNCP_MIN_INTERVAL_MS,
   PNCP_PAGE_SIZE,
+  resetPncpGate,
 } from "../src/sources/pncp.js";
 import { MAX_PNCP_REQUESTS, todayBrasilia } from "../src/tools/procurementSearch.js";
 import {
@@ -554,15 +557,16 @@ describe("procurement_search paging", () => {
     expect(n).toBe(1);
   });
 
-  it("HTTP 429 without a short Retry-After is rate_limited, with no retry", async () => {
+  it("HTTP 429 without a short Retry-After is rate_limited, with no retry; the gate remembers 60 s to 1 hour", async () => {
     const cases: [Record<string, string>, string][] = [
-      [{}, "about 1 minute"],
-      [{ "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }, "about 1 minute"],
-      [{ "retry-after": "30" }, "30 s"],
+      [{}, "60 s"],
+      [{ "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" }, "60 s"],
+      [{ "retry-after": "30" }, "60 s"],
       [{ "retry-after": "3600" }, "about 60 minutes"],
-      [{ "retry-after": "999999" }, "at least 1 hour"],
+      [{ "retry-after": "999999" }, "about 60 minutes"],
     ];
     for (const [headers, wait] of cases) {
+      resetPncpGate();
       const calls = stubFetch({ [`GET ${pncpUrl()}`]: { status: 429, headers } });
       const res = await search();
       expect(errorOf(res)).toEqual({
@@ -732,5 +736,45 @@ describe("procurement_search paging", () => {
     const res = await search({ from: "2025-01-01", to: "2026-11-18" });
     expect(errorOf(res)).toMatchObject({ error: "invalid_date_range" });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("procurement_search host gate (PNCP)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("remembers a 429 on a later page: following next_page inside the wait makes no request", async () => {
+    const calls = stubFetch({
+      [`GET ${pncpUrl(1)}`]: { body: syntheticPncpPage(100, 0, 9), contentType: JSON_TYPE },
+      [`GET ${pncpUrl(2)}`]: { body: syntheticPncpPage(200, 0, 8), contentType: JSON_TYPE },
+      [`GET ${pncpUrl(3)}`]: { status: 429, headers: { "retry-after": "120" } },
+    });
+    const first = dataOf(await search({ limit: 20 }));
+    expect(first).toMatchObject({ partial: true, next_page: 3 });
+    expect(first.note).toMatch(/wait about 2 minutes/);
+    expect(calls).toHaveLength(3);
+    const second = await search({ limit: 20, page: 3 });
+    expect(errorOf(second)).toMatchObject({ error: "rate_limited", message: expect.stringMatching(/wait (119 s|about 2 minutes)/) });
+    expect(calls).toHaveLength(3);
+  });
+
+  it("spaces requests 6 s apart, also across concurrent calls", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    PNCP_GATE.minIntervalMs = PNCP_MIN_INTERVAL_MS;
+    const starts: number[] = [];
+    globalThis.fetch = (async (input: string | URL) => {
+      starts.push(Date.now());
+      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      return new Response(syntheticPncpPage(page * 100, 0, 0), { status: 200 });
+    }) as typeof fetch;
+    const t0 = Date.now();
+    const a = search({ query: "aa" });
+    const b = search({ query: "bb", modality: 8 });
+    await vi.advanceTimersByTimeAsync(PNCP_MIN_INTERVAL_MS - 1);
+    expect(starts).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.all([a, b]);
+    expect(starts.map((t) => t - t0)).toEqual([0, PNCP_MIN_INTERVAL_MS]);
   });
 });

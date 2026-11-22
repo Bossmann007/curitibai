@@ -1,5 +1,6 @@
 import { sharedCache, type Cached } from "../cache.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
+import { fetchText, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
+import { createHostGate, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { fold } from "../text.js";
 
 export const CNES_BASE = "https://apidadosabertos.saude.gov.br";
@@ -107,8 +108,23 @@ export function parseUnitTypes(json: unknown): Map<number, string> {
   return map;
 }
 
-async function getJson(url: string): Promise<unknown> {
-  const res = await fetchText(url);
+/**
+ * The CNES host gate (src/hostGate.ts, ADR 0003): 400 ms between request starts (pages took 0.3–1.2 s on 2026-11-19,
+ * so a page scan is barely slowed), a turn more than 5 s away is rate_limited, and after a failure no request for
+ * 60 s (a 429's Retry-After when longer, at most 1 hour; a refusal for the 10-minute host block). Exported so tests
+ * can lower the spacing; nothing else changes it.
+ */
+export const CNES_MIN_INTERVAL_MS = 400;
+export const CNES_GATE: HostGateOptions = { minIntervalMs: CNES_MIN_INTERVAL_MS, maxQueueWaitMs: 5_000, refusalWaitMs: REFUSAL_BLOCK_MS };
+const gate = createHostGate(CNES_GATE);
+
+/** Tests only. */
+export function resetCnesGate(): void {
+  gate.reset();
+}
+
+async function getJson(url: string, startBy: number | undefined): Promise<unknown> {
+  const res = await gate.run(() => fetchText(url), { startBy });
   try {
     return JSON.parse(res.body) as unknown;
   } catch {
@@ -116,13 +132,18 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-export function getUnitTypes(): Promise<Cached<Map<number, string>>> {
-  return sharedCache.getOrLoad(`GET ${CNES_TYPES_URL}`, async () => parseUnitTypes(await getJson(CNES_TYPES_URL)));
+/** `startBy`: no request starts after it (OutOfTimeError, no request). */
+export function getUnitTypes(startBy?: number): Promise<Cached<Map<number, string>>> {
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${CNES_TYPES_URL}`, async () => parseUnitTypes(await getJson(CNES_TYPES_URL, startBy))),
+  );
 }
 
-export function getEstablishmentsPage(page: number, typeCode: number | null) {
+export function getEstablishmentsPage(page: number, typeCode: number | null, startBy?: number) {
   const url = establishmentsUrl(page, typeCode);
-  return sharedCache.getOrLoad(`GET ${url}`, async () => parseEstablishments(await getJson(url)));
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${url}`, async () => parseEstablishments(await getJson(url, startBy))),
+  );
 }
 
 /** Unit type codes whose label contains the text (accents and case ignored), or the code itself when numeric. */

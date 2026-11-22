@@ -204,7 +204,7 @@ describe("each tool returns the envelope, valid against its output schema", () =
       total: 0,
       partial: true,
       datasets: [],
-      note: 'No results for "ônibus"; retrying as "onibus" was not answered. The source is limiting requests; wait 30 s before trying again.',
+      note: 'No results for "ônibus"; retrying as "onibus" was not answered, so total 0 here means unknown, not none: call again later. The source is limiting requests; wait 30 s before trying again.',
     });
   });
 
@@ -223,7 +223,7 @@ describe("each tool returns the envelope, valid against its output schema", () =
       const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "ônibus" } }));
       expect(terms).toEqual(["ônibus"]);
       expect(data).toMatchObject({ total: 0, partial: true, datasets: [] });
-      expect(data.note).toBe('No results for "ônibus"; the 20 s time budget ran out before "onibus" was tried.');
+      expect(data.note).toBe('No results for "ônibus"; the 20 s time budget ran out before "onibus" was tried; total 0 here means unknown, not none: call again later.');
     } finally {
       globalThis.Date.now = real;
     }

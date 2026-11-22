@@ -10,6 +10,7 @@ import {
 } from "../sources/cnes.js";
 import { fold } from "../text.js";
 import { RateLimitedError, SourceRefusedError } from "../http.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { HEALTH_NOTE } from "./cityPointsSearch.js";
 import { CALL_START_BUDGET_MS, envelope, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
 
@@ -92,8 +93,9 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   outputSchema: healthUnitsSearchOutput,
   handler: async ({ name, unit_type, limit, page, skip }) => {
     const started = Date.now(); // the unit-type load counts toward the time budget too
+    const startBy = started + CALL_START_BUDGET_MS;
     try {
-      const types = await getUnitTypes();
+      const types = await getUnitTypes(startBy);
       let serverType: number | null = null;
       let clientTypes: Set<number> | null = null;
       if (unit_type !== undefined) {
@@ -144,8 +146,14 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
         }
         let res;
         try {
-          res = await getEstablishmentsPage(p, serverType);
+          res = await getEstablishmentsPage(p, serverType, startBy);
         } catch (err) {
+          if (err instanceof OutOfTimeError && scanned > 0) {
+            partial = true; // the host gate's next turn comes after the time budget
+            budgetReached = true;
+            nextPage = p;
+            break;
+          }
           if (scanned === 0) throw err;
           partial = true;
           if (err instanceof SourceRefusedError) {

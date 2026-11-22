@@ -71,7 +71,7 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
       if (i > 0 && outOfTime()) {
         total = 0;
         partial = true;
-        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; the ${CALL_START_BUDGET_MS / 1000} s time budget ran out before "${q}" was tried.`);
+        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; the ${CALL_START_BUDGET_MS / 1000} s time budget ran out before "${q}" was tried; total 0 here means unknown, not none: call again later.`);
         break;
       }
       try {
@@ -96,7 +96,7 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
         total = 0;
         partial = true;
         const why = err instanceof RateLimitedError ? rateLimitedMessage(err.retryAfterS) : `It failed (${err instanceof SourceUnavailableError ? err.reason : "error"}).`;
-        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; retrying as "${q}" was not answered. ${why}`);
+        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; retrying as "${q}" was not answered, so total 0 here means unknown, not none: call again later. ${why}`);
         break;
       }
     }

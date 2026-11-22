@@ -116,7 +116,8 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
 ## v0.19.0 changes (task brief "curitibai v0.19.0 — usability fixes found by calling every tool", 2026-11-22)
 
 - `health_units_search` and `procurement_search` scan pages until `limit` matches, a page cap (CNES 20, PNCP 5) or
-  the 20 s per-call budget (`CALL_START_BUDGET_MS`); `note` says which limit stopped the scan.
+  the 20 s per-call budget (`CALL_START_BUDGET_MS`); `note` says which limit stopped the scan. Both hosts go through
+  `createHostGate` (CNES 400 ms, PNCP 6 s spacing; failure memory 60 s to 1 hour).
 - `open_datasets_search` retries an empty query without accents, then with `src/sources/portalSynonyms.ts`;
   no retry or later page after 20 s.
 - `river_levels` lists stations with status `ok` first (stable, so distance order is kept in each group).

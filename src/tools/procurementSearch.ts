@@ -8,6 +8,7 @@ import {
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
 import { RateLimitedError, SourceRefusedError } from "../http.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { CALL_START_BUDGET_MS, envelope, fail, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
 
 /**
@@ -171,8 +172,14 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         }
         let res;
         try {
-          res = await getPublicationPage(f, t, modality, p);
+          res = await getPublicationPage(f, t, modality, p, started + CALL_START_BUDGET_MS);
         } catch (err) {
+          if (err instanceof OutOfTimeError && scanned > 0) {
+            partial = true; // the host gate's next turn comes after the time budget
+            budgetReached = true;
+            nextPage = p;
+            break;
+          }
           if (scanned === 0) throw err;
           partial = true;
           if (err instanceof SourceRefusedError) {

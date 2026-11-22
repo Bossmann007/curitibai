@@ -1,5 +1,6 @@
 import { sharedCache } from "../cache.js";
-import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
+import { createHostGate, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { maskObject } from "../mask.js";
 
 // Re-exported: the masking moved to src/mask.ts (no imports) so scripts/fetch-events.mjs can load it too.
@@ -221,7 +222,25 @@ async function fetchPncp(url: string): Promise<string> {
   }
 }
 
-export function getPublicationPage(from: string, to: string, modality: number, page: number) {
+/**
+ * The PNCP host gate (src/hostGate.ts, ADR 0003): 6 s between request starts, so at most 20 in 2 minutes (PNCP
+ * answered 429 after about 20 requests in two minutes on 2026-11-19); a turn more than 10 s away is rate_limited;
+ * after a failure no request for 60 s (a 429's Retry-After when longer, at most 1 hour; a refusal for the 10-minute
+ * host block). The single retry of fetchPncp runs inside the same turn. Exported so tests can lower the spacing.
+ */
+export const PNCP_MIN_INTERVAL_MS = 6_000;
+export const PNCP_GATE: HostGateOptions = { minIntervalMs: PNCP_MIN_INTERVAL_MS, maxQueueWaitMs: 10_000, refusalWaitMs: REFUSAL_BLOCK_MS };
+const gate = createHostGate(PNCP_GATE);
+
+/** Tests only. */
+export function resetPncpGate(): void {
+  gate.reset();
+}
+
+/** `startBy`: no request starts after it (OutOfTimeError, no request). */
+export function getPublicationPage(from: string, to: string, modality: number, page: number, startBy?: number) {
   const url = publicationUrl(from, to, modality, page);
-  return sharedCache.getOrLoad(`GET ${url}`, async () => parseContratacoes(await fetchPncp(url)));
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${url}`, async () => parseContratacoes(await gate.run(() => fetchPncp(url), { startBy }))),
+  );
 }

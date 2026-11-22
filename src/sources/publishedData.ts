@@ -18,6 +18,14 @@ export function publishedUrl(file: PublishedFile): string {
 
 /** `CURITIBAI_REMOTE_DATA=0` (or `off`) turns the published copy off: the tools then read only the local file. */
 export const REMOTE_DATA_ENV = "CURITIBAI_REMOTE_DATA";
+/**
+ * Scheduled time (UTC, HH:MM) of the nightly collection in .github/workflows/collect.yml. test/workflows.test.ts checks
+ * that the cron and docs/local-data.md say the same; GitHub can start a scheduled run later.
+ */
+export const NIGHTLY_RUN_UTC = "02:37";
+/** The sentence the tools use before the first published copy exists. */
+export const NEXT_NIGHTLY_RUN =
+  `the nightly GitHub collection publishes it (scheduled around ${NIGHTLY_RUN_UTC} UTC; GitHub can delay it)`;
 export const PUBLISHED_CACHE_TTL_MS = 60 * 60 * 1000;
 export const PUBLISHED_TIMEOUT_MS = 10_000;
 
