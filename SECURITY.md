@@ -39,7 +39,7 @@ Por exemplo:
 ## O que o projeto promete
 
 O servidor não grava arquivos, não guarda nem registra as consultas (só um cache em memória), não usa conta, chave nem
-telemetria, e só fala com os hosts listados no README ("Privacy and safety"). O coletor de eventos
+telemetria, e só fala com os hosts listados em [docs/privacy.md](docs/privacy.md#details). O coletor de eventos
 (`scripts/fetch-events.mjs`) roda à parte, quando você o executa ou no workflow noturno do GitHub, e grava só em
 `CURITIBAI_DATA_DIR/events/` e `CURITIBAI_DATA_DIR/phones/`; o workflow publica só esses três arquivos no branch
 público `data` (fatos e links), nunca em `main`. `CURITIBAI_REMOTE_DATA=0` desliga a leitura da cópia publicada.
