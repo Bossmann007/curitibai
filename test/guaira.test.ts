@@ -164,6 +164,8 @@ describe("parseEventPage", () => {
     expect(parseEventPage(body("<strong>Ingressos:</strong> Gratuito <em>para menores de 12 anos</em>; R$ 20,00 demais<br/>")).price).toBeNull();
     expect(parseEventPage(body("<strong>Classificação etária:</strong> Livre <b>para maiores de 16</b><br />")).age_rating).toBeNull();
     expect(parseEventPage(body("<strong>Local:</strong> Teatro <em>Guaíra</em><br />")).venue).toBeNull();
+    expect(parseEventPage(body("<strong>Ingressos:</strong> Gratuito.<strong>Ingressos:</strong> R$ 20,00<br/>")).price).toBeNull();
+    expect(parseEventPage("<div class=\"field--name-field-texto\"><ul><li><strong>Local:</strong> Teatro Guaíra</li></ul></div>").venue).toBe("Teatro Guaíra");
     expect(parseEventPage(body("<strong>Local:</strong> Sala, fone 41 99999-8888<br />")).venue).toBe("Sala, fone [masked]");
     expect(parseEventPage(body("<strong>Local:</strong> A<br /><strong>Local:</strong> B<br />")).venue).toBeNull();
     // Real variant (Festival Mia Cara page, 2026-11-22): the colon after </strong>; "Entrada gratuita, com ..." is not a whole value.

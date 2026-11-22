@@ -10,6 +10,7 @@ import {
   RobotsDisallowedError,
   type EventDetails,
   type Listing,
+  type StopReason,
 } from "../sources/guaira.js";
 import { fold } from "../text.js";
 import { page, pagingInput } from "./busCommon.js";
@@ -141,7 +142,7 @@ export function selectRows(listing: Listing, args: GuairaEventsArgs, range: { fr
   return { from, to, city, rows, otherCity };
 }
 
-const STOP_NOTES: Record<string, string> = {
+const STOP_NOTES: Record<StopReason, string> = {
   robots: "robots.txt does not allow event pages now, so venue, age rating and price were not read.",
   robots_failed: "robots.txt could not be read, so no event page was read this time.",
   failed: "An event page could not be read; no more event pages are read in this call (venue, age rating and price stay null).",
@@ -153,7 +154,7 @@ export function buildResult(
   listing: { value: Listing; fetchedAt: string },
   args: GuairaEventsArgs,
   details: Map<string, EventDetails>,
-  stopped: string | null,
+  stopped: StopReason | null,
 ): Output {
   const p = page(sel.rows, args.offset, args.limit);
   const items = p.items.map((r) => {
@@ -164,7 +165,7 @@ export function buildResult(
   const extra = [
     `Venue, age rating and price come from each event page; at most ${MAX_DETAILS_PER_CALL} new event pages are read per call (cached 6 hours).`,
     notRead > 0 ? `${notRead} item(s) on this page were not read yet (details: "not_read"); call again to fill them.` : "",
-    stopped === null ? "" : (STOP_NOTES[stopped] ?? ""),
+    stopped === null ? "" : STOP_NOTES[stopped],
     sel.otherCity > 0 ? `${sel.otherCity} event(s) in other cities were left out (city "all" keeps them).` : "",
     listing.value.truncated ? "The calendar has more pages than this server reads, so later events are missing (truncated: true)." : "",
   ].filter(Boolean);

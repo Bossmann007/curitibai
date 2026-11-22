@@ -204,12 +204,12 @@ export const NO_DETAILS = (status: DetailsStatus): EventDetails => ({ status, ve
 const BODY_FIELD = "field--name-field-texto";
 /** `<strong>Label:</strong> value` or `<strong>Label</strong>: value` (both seen on real pages, 2026-11-22). */
 const field = (label: string, max: number) =>
-  new RegExp(String.raw`<strong>${label}\s*(?::\s*<\/strong>|<\/strong>\s*:)\s*([^<]{1,${max}})(<[^>]*>|$)`, "g");
+  new RegExp(String.raw`<strong>${label}\s*(?::\s*<\/strong>|<\/strong>\s*:)\s*([^<]{1,${max}})(?=(<[^>]*>|$))`, "g");
 const VENUE = field("Local", 200);
 const AGE = field("Classificação etária", 80);
 const TICKETS = field("Ingressos", 300);
 /** A value ends cleanly at a line break, the end of a paragraph or of the body; any other tag may hide the rest. */
-const CLEAN_END = /^(?:<br\b[^>]*>|<\/p>|<\/div>|)$/i;
+const CLEAN_END = /^(?:<br\b[^>]*>|<\/(?:p|div|li|td)>|)$/i;
 const AMOUNT = String.raw`R\$\s?\d{1,5}(?:\.\d{3})*(?:,\d{2})?(?:\s*\([\p{L} -]{1,30}\))?`;
 /** After a value only the end of the text, or the end of a sentence (". " and more), may follow; else null. */
 const VALUE_END = String.raw`(?=\.?$|\.\s)`;
@@ -217,10 +217,7 @@ const PRICE_RUN = new RegExp(String.raw`^${AMOUNT}(?:\s*\|\s*${AMOUNT}){0,5}${VA
 const FREE = new RegExp(String.raw`^(gratuito|entrada gratuita|entrada franca)${VALUE_END}`, "iu");
 const AGE_VALUE = new RegExp(String.raw`^(livre|\d{1,2}\s*anos)${VALUE_END}`, "iu");
 
-/**
- * The one value after a label, or null (none or several). When the text stops at an inline tag (`<em>`, `<a>`...),
- * " \u0000" is appended: the value then counts only if it ends a sentence before that tag, never at the tag.
- */
+/** The one value after a label, or null (none or several); `clean` when it ends at a line, paragraph or cell end. */
 function single(re: RegExp, s: string): { text: string; clean: boolean } | null {
   const all = [...s.matchAll(re)];
   if (all.length !== 1) return null;
@@ -229,6 +226,10 @@ function single(re: RegExp, s: string): { text: string; clean: boolean } | null 
   return { text, clean };
 }
 
+/**
+ * The value to match: when it stops at an inline tag (`<em>`, `<a>`...), " \u0000" is appended, so it counts only if
+ * it ends a sentence before that tag, never at the tag.
+ */
 const whole = (v: { text: string; clean: boolean } | null): string | null => (v === null ? null : v.clean ? v.text : `${v.text} \u0000`);
 
 /**
@@ -311,7 +312,8 @@ async function gated<T>(task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (err) {
-    // A final refusal is remembered as long as src/http.ts blocks the host, so later calls are refused here first.
+    // A final refusal is remembered for the 10-minute block from when it is seen (it can outlast src/http.ts's own
+    // block by up to that long when the refusal came from that block: conservative on purpose).
     const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : err instanceof SourceRefusedError ? REFUSAL_BLOCK_MS / 1000 : 0;
     const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
     retryAt = Date.now() + wait * 1000;
@@ -437,6 +439,10 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
     }
     if (stopped !== null || fetched >= max) continue;
     fetched++;
+    if (rememberedFailure(Date.now()) !== null) {
+      stopped = "busy"; // a failure is remembered: nothing is asked, robots.txt included
+      continue;
+    }
     try {
       await assertAllowed(new URL(link).pathname);
     } catch (err) {
