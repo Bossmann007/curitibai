@@ -36,7 +36,8 @@ export function resetHostRefusals(): void {
   refusedHosts.clear();
 }
 
-function checkNotRefused(url: string): void {
+/** Throws the remembered SourceRefusedError while the URL's host is blocked (REFUSAL_BLOCK_MS); makes no request. */
+export function checkNotRefused(url: string): void {
   const host = new URL(url).hostname.toLowerCase();
   const r = refusedHosts.get(host);
   if (r === undefined) return;

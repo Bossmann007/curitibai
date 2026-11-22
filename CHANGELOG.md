@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.4 - 2026-11-22
+
+Two `river_levels` fixes. No new tool, no new host.
+
+- While the ANA host is blocked after a refusal (HTTP 401/403 or a CAPTCHA, 10 minutes), a station that is not cached
+  now fails at once, before the host gate: no slot is reserved, nothing waits and no request is made. Before, the gate
+  remembered the refusal only 60 s; after that, stations asked in the same moment queued for slots 5 and 10 s away
+  and then failed without a request, so a call could wait about 10 s for nothing. Cached stations are still returned
+  with `partial: true`. Tests with fake timers: a blocked host answers in under 50 ms with no request.
+- A host or transfer failure on a later station (HTTP 5xx, a timeout, a network error, or an HTTP 200 answer that is
+  not ANA's XML document) no longer drops the stations already read. They are returned with `partial: true`, the
+  failed stations first in `more_matches`, and a note naming the failure (for example "The source failed (HTTP
+  500)"); the host is not asked again for up to about 1 minute. `source_unavailable` is returned only when no station was
+  read or cached. A station that was not read is never shown as `no_recent_data`. This matches the 429 and 403 paths.
+
 ## 0.18.3 - 2026-11-22
 
 The three Low findings left by the v0.18.2 review. No new tool, no new host.
@@ -12,7 +27,8 @@ The three Low findings left by the v0.18.2 review. No new tool, no new host.
 - `river_levels`: a final refusal (HTTP 401/403 or a CAPTCHA) on a later station no longer drops the stations
   already read in the call. They are returned with `partial: true` and a note that the host refused this server; the
   10-minute block stays in force. `source_unavailable` is returned only when no station was read or cached. This
-  matches the `rate_limited` path of 0.18.2. Other host or transfer failures still fail the whole call.
+  matches the `rate_limited` path of 0.18.2. In this version other host or transfer failures still failed the
+  whole call (changed in 0.18.4).
 - `guaira_events`: `partial` is now documented as a deprecated alias of `truncated` (always equal). Both stay in this
   version; read `truncated` for missing listing pages and `details_pending` for event-page details. The README shows
   a cold and a warm call.
