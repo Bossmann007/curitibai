@@ -2,6 +2,15 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## Unreleased
+
+- Docs split: the README is now a short entry point (install, the 22 tools, how data stays updated, privacy notice).
+  The per-tool detail, the comparison with the Curitiba App, deferred tools and limits moved to `docs/tools.md`; the
+  local files and the nightly collection to `docs/local-data.md`; collection rules and privacy details to
+  `docs/privacy.md`; development to `docs/development.md`; licences to `docs/licences.md`. Text moved, not rewritten.
+  `docs/sources.md` has a table of contents. `scripts/verify` now checks that every relative Markdown link and anchor
+  resolves (`scripts/check-links.mjs`, Node built-ins only).
+
 ## 0.18.4 - 2026-11-22
 
 Two `river_levels` fixes. No new tool, no new host.

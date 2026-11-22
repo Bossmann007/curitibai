@@ -8,6 +8,9 @@ step() { printf '\n== %s\n' "$*"; }
 step "no tracked city services catalog (carta-servicos.json), URBS export (YYYY_MM_DD_*.json), collector output (events/, phones/) or HTML capture"
 scripts/check-no-catalog
 
+step "relative Markdown links and anchors resolve (README.md, CONTRIBUTING.md, SECURITY.md, CHANGELOG.md, docs/*.md)"
+node scripts/check-links.mjs
+
 step "npm ci"
 npm ci --no-audit --no-fund --prefer-offline
 

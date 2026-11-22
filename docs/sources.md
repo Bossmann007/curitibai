@@ -1,5 +1,31 @@
 # Sources
 
+## Contents
+
+- [robots.txt findings](#robotstxt-findings)
+- [Implemented](#implemented)
+  - [`open_datasets_search`: Portal de Dados Abertos de Curitiba catalogue search](#open_datasets_search-portal-de-dados-abertos-de-curitiba-catalogue-search)
+  - [`dataset_files`: a dataset's file links](#dataset_files-a-datasets-file-links)
+  - [`health_units_search`: Ministry of Health CNES open API](#health_units_search-ministry-of-health-cnes-open-api)
+  - [`procurement_search`: PNCP Consulta API (contratações of Curitiba municipal bodies)](#procurement_search-pncp-consulta-api-contratações-of-curitiba-municipal-bodies)
+  - [`weather_forecast` and `weather_alerts`: INMET forecast and warnings API](#weather_forecast-and-weather_alerts-inmet-forecast-and-warnings-api)
+  - [`places_search`: OpenStreetMap via the Overpass API](#places_search-openstreetmap-via-the-overpass-api)
+  - [`detran_pr_info`: Detran-PR licensing calendar and units (bundled data)](#detran_pr_info-detran-pr-licensing-calendar-and-units-bundled-data)
+  - [`city_services_search`: Prefeitura de Curitiba service catalog (local file, not shipped)](#city_services_search-prefeitura-de-curitiba-service-catalog-local-file-not-shipped)
+  - [`bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near`: URBS daily exports (local files, not shipped)](#bus_lines_search-bus_line_stops-bus_departures-bus_stops_near-next_buses_near-urbs-daily-exports-local-files-not-shipped)
+  - [`city_points_search`: URBS points-of-interest export (local file, not shipped)](#city_points_search-urbs-points-of-interest-export-local-file-not-shipped)
+  - [`events_search`: Instituto Municipal de Turismo events calendar (local file written by a separate collector)](#events_search-instituto-municipal-de-turismo-events-calendar-local-file-written-by-a-separate-collector)
+  - [`useful_phones`: Instituto Municipal de Turismo "Telefones Úteis" page (local file written by the same collector)](#useful_phones-instituto-municipal-de-turismo-telefones-úteis-page-local-file-written-by-the-same-collector)
+  - [Published nightly copy of the events and phones files (since 0.18.0)](#published-nightly-copy-of-the-events-and-phones-files-since-0180)
+  - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
+  - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
+  - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
+  - [`guaira_events`: Centro Cultural Teatro Guaíra calendar (live)](#guaira_events-centro-cultural-teatro-guaíra-calendar-live)
+  - [`local_csv_summary`: a file the user downloaded](#local_csv_summary-a-file-the-user-downloaded)
+- [Deferred](#deferred)
+  - [Sources evaluated, not used (2026-11-21)](#sources-evaluated-not-used-2026-11-21)
+  - [Bus alternative checked, not adopted](#bus-alternative-checked-not-adopted)
+
 Checked live on **2026-11-19** from a Brazilian IP with the server's own client: Node.js `fetch`,
 User-Agent `curitibai-mcp/0.1`, redirects followed by hand. The CNES API (v0.2) was checked the same day with curl and
 User-Agent `curitibai-mcp/0.2`. The PNCP Consulta API (v0.3) was checked the same day with curl and User-Agent
@@ -15,7 +41,7 @@ on 2026-11-22 (06:01–06:03 UTC) with curl and User-Agent `curitibai-mcp/0.7`, 
 **Rule applied:** a host is contacted only if its robots.txt allows it. Hosts with `Disallow: /` are never fetched,
 not even inside the visit hours they list. The browser User-Agent is never imitated.
 
-**Collection rules** (since v0.13.2, also in the README "Privacy and safety"):
+**Collection rules** (since v0.13.2, also in [docs/privacy.md](privacy.md#collection-rules)):
 
 - robots.txt is checked before a host is added, and a host or path it disallows is never fetched. The events
   collector reads robots.txt on every run, stops if it changed, starts requests only inside the site's `Visit-time`
@@ -735,7 +761,7 @@ in the city's own categories. Built.
   event "can be delayed during periods of high loads" and that "some queued jobs may be dropped", and disables scheduled workflows in public repositories after 60 days
   without repository activity
   (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
-  checked 2026-11-22); README "Events" says how to re-enable it.
+  checked 2026-11-22); [docs/local-data.md](local-data.md#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script) says how to re-enable it.
 
 ### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
 
@@ -1113,7 +1139,7 @@ name-based and therefore not perfect, and it fails closed on look-alikes.
 
 The first line is returned as column names. A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date,
 CEP, long text) is refused with `no_header_detected`; a first line made only of text cannot be told apart from a
-header and is returned as column names. This cannot be decided by a heuristic, so the README tells users to use files
+header and is returned as column names. This cannot be decided by a heuristic, so [docs/local-data.md](local-data.md#summarising-a-file-you-downloaded-for-example-the-156-file) tells users to use files
 with a header row.
 
 Its licence is the publisher's (portal data: CC BY 4.0 with the portal's citation rules). The automated tests use
