@@ -4,9 +4,9 @@
 #   1. fetch the previous copy from `data` (when the branch exists) into a temporary CURITIBAI_DATA_DIR, so the
 #      collector's ratio check and "a failed run keeps the previous files" work as on a local machine;
 #   2. run scripts/fetch-events.mjs once, unchanged (same robots.txt, window and 5 s rules; no retry);
-#   3. commit only events/events.json, events/status.json and phones/phones.json (facts and links only), skipping the
-#      commit when none changed, and push without force. A failed collector run writes only status.json, so only that
-#      changes (status.json records every attempt, so most runs commit).
+#   3. commit only events/events.json, events/status.json, phones/phones.json and phones/status.json (facts, links and
+#      result codes only), skipping the commit when none changed, and push without force. A failed collector run writes
+#      only the status.json files, so only those change (they record every attempt, so most runs commit).
 # Exits with the collector's exit code (after publishing), so a failed run shows red in Actions.
 # Needs GITHUB_REPOSITORY and GH_TOKEN (contents: write); the token is passed to git only, never to the collector.
 set -euo pipefail
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set}"
 : "${GH_TOKEN:?GH_TOKEN is not set}"
 BRANCH=data
-FILES=(events/events.json events/status.json phones/phones.json)
+FILES=(events/events.json events/status.json phones/phones.json phones/status.json)
 
 work="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/curitibai-collect.XXXXXX")"
 trap 'rm -rf "$work"' EXIT

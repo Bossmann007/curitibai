@@ -2,7 +2,8 @@ import { z } from "zod";
 import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATIONS, type Station, type StationData } from "../sources/ana.js";
 import { fold } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
-import { fail, failFrom, ok, type ToolDef } from "./common.js";
+import { OutOfTimeError } from "../hostGate.js";
+import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const RIVER_SOURCE = "ANA (Agência Nacional de Águas e Saneamento Básico) telemetry; stations operated by IAT-PR";
 export const RIVER_LICENSE_NOTE = "No licence found; facts only; ANA cited.";
@@ -43,7 +44,7 @@ const Item = z.object({
     .enum(["ok", "no_recent_data", "unavailable"])
     .describe(
       "no_recent_data: the station sent nothing since yesterday 00:00 (Curitiba time). unavailable: its answer could not " +
-        "be read (malformed or unexpected). In both cases the values are null.",
+        "be read (malformed XML content; that station is not asked again for 60 s). In both cases the values are null.",
     ),
   reading_time: z.string().nullable().describe("Time of the latest reading, Curitiba time (ISO 8601, -03:00)."),
   stale: z.boolean().nullable().describe("true when the latest reading is older than 2 hours; null without a reading."),
@@ -73,7 +74,10 @@ const Item = z.object({
 export const riverLevelsOutput = z.object({
   data: z.object({
     total_matches: z.number().int(),
-    more_matches: z.array(z.object({ code: z.string(), name: z.string() })).describe("Matching stations not read in this call (at most 3 per call)."),
+    more_matches: z
+      .array(z.object({ code: z.string(), name: z.string() }))
+      .describe("Matching stations not read in this call (at most 3 per call; first those the time budget left out)."),
+    partial: z.boolean().describe("true when the 20 s time budget stopped the call before every picked station was read."),
     stations: z.array(Item),
   }),
   source: z.string(),
@@ -153,7 +157,7 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
     "Latest river level (cm), flow (m³/s) and rain (mm; last reading, last 1 h and 24 h) at ANA telemetry stations " +
     "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
     "municipality text); stations come nearest to `near` (default Curitiba centre) first. At most 3 stations read per " +
-    "call, each cached 15 minutes; your position and text are never sent. `stale` marks readings older than 2 h; " +
+    "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); your position and text are never sent. `stale` marks readings older than 2 h; " +
     "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
     "Stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
   inputSchema: riverLevelsInput,
@@ -165,27 +169,32 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
       return fail("invalid_argument", "No bundled station matches `station`; try a river (\"iguacu\") or a municipality, or omit it.");
     }
     const picked = matches.slice(0, MAX_STATIONS_PER_CALL);
+    const startBy = callStartBy();
     try {
       // One station after the other: the host gate spaces the requests 5 s apart. A host or transfer failure fails
       // the call (a station not read is never shown as no_recent_data); an answer that cannot be read marks only
       // that station `unavailable`.
+      // A station whose request would start after the time budget is not read (listed first in more_matches).
       const read: { s: Station; km: number; d: Read }[] = [];
+      const outOfTime: Station[] = [];
       for (const m of picked) {
         try {
-          read.push({ ...m, d: await getStationData(m.s) });
+          read.push({ ...m, d: await getStationData(m.s, startBy) });
         } catch (err) {
-          if (!(err instanceof StationDataError)) throw err;
-          read.push({ ...m, d: "unavailable" });
+          if (err instanceof OutOfTimeError) outOfTime.push(m.s);
+          else if (err instanceof StationDataError) read.push({ ...m, d: "unavailable" });
+          else throw err;
         }
       }
       const now = Date.now();
-      const more = matches.slice(MAX_STATIONS_PER_CALL).map((m) => ({ code: m.s.code, name: m.s.name }));
+      const more = [...outOfTime, ...matches.slice(MAX_STATIONS_PER_CALL).map((m) => m.s)].map((s) => ({ code: s.code, name: s.name }));
       const stations = read.map((x) => stationItem(x.s, x.km, x.d, now));
       const suspect = stations.filter((s) => s.quality === "suspect").map((s) => s.code);
       const out: Output = {
         data: {
           total_matches: matches.length,
           more_matches: more,
+          partial: outOfTime.length > 0,
           stations,
         },
         source: RIVER_SOURCE,
@@ -196,7 +205,10 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
           EMERGENCY_NOTE,
           suspect.length > 0 ? `Suspect readings at ${suspect.join(", ")} (see quality_reasons): treat these values with caution.` : "",
           NOTE,
-          more.length > 0 ? `${more.length} more matching station(s) not read (at most ${MAX_STATIONS_PER_CALL} per call); ask by code.` : "",
+          outOfTime.length > 0
+            ? `Partial: ${outOfTime.length} station(s) not read because the ${CALL_START_BUDGET_MS / 1000} s time budget of this call ran out (partial: true); call again (stations read are cached 15 minutes).`
+            : "",
+          more.length > outOfTime.length ? `${more.length - outOfTime.length} more matching station(s) not read (at most ${MAX_STATIONS_PER_CALL} per call); ask by code.` : "",
         ].filter(Boolean).join(" "),
       };
       return ok(out);

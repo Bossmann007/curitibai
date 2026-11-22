@@ -16,8 +16,41 @@ export interface HostGateOptions {
   refusalWaitMs?: number;
 }
 
+/**
+ * The call's time budget would be exceeded: the request's slot comes after `startBy`. Thrown before the slot is
+ * reserved, never remembered as a failure of the host, and no request is made.
+ */
+export class OutOfTimeError extends Error {
+  /** @param startBy the budget that was exceeded (a caller sharing a load can tell another call's budget from its own). */
+  constructor(readonly startBy: number) {
+    super("out_of_time");
+    this.name = "OutOfTimeError";
+  }
+}
+
+/**
+ * Runs `load`, which may join a load shared with other calls (a cache's in-flight promise), until it settles for this
+ * caller: an OutOfTimeError of another call's budget is not this call's, so the load is asked again under its own.
+ * Ends: each pass either joins another call's load, which settles, or runs this call's own.
+ */
+export async function underOwnBudget<T>(startBy: number | undefined, load: () => Promise<T>): Promise<T> {
+  for (;;) {
+    try {
+      return await load();
+    } catch (err) {
+      if (err instanceof OutOfTimeError && err.startBy !== startBy) continue;
+      throw err;
+    }
+  }
+}
+
+export interface RunOptions {
+  /** No request starts after this time (ms): a later slot throws OutOfTimeError. A request in flight is never cut. */
+  startBy?: number;
+}
+
 export interface HostGate {
-  run<T>(task: () => Promise<T>): Promise<T>;
+  run<T>(task: () => Promise<T>, options?: RunOptions): Promise<T>;
   /** True while a failure is remembered (a `run` now would be refused without a request). */
   failing(): boolean;
   /** Tests only: forget the schedule and any remembered failure. */
@@ -43,11 +76,12 @@ export function createHostGate(options: HostGateOptions): HostGate {
   };
 
   return {
-    async run<T>(task: () => Promise<T>): Promise<T> {
+    async run<T>(task: () => Promise<T>, runOptions: RunOptions = {}): Promise<T> {
       const now = Date.now();
       const failed = rememberedFailure(now);
       if (failed !== null) throw failed;
       const start = Math.max(now, nextAllowedAt);
+      if (runOptions.startBy !== undefined && start > runOptions.startBy) throw new OutOfTimeError(runOptions.startBy);
       if (start - now > options.maxQueueWaitMs) throw new RateLimitedError(Math.ceil((start - now) / 1000));
       nextAllowedAt = start + options.minIntervalMs;
       if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));

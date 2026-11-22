@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { createHostGate } from "../hostGate.js";
+import { createHostGate, OutOfTimeError, underOwnBudget } from "../hostGate.js";
 import { blockHost, CAPTCHA, fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
 import { cleanField, EVENT_PLACE_MAX, EVENT_TITLE_MAX } from "../mask.js";
 import { decodeEntities } from "../text.js";
@@ -18,6 +18,8 @@ export const MAX_DETAILS_PER_CALL = 2;
 export const LISTING_CACHE_TTL_MS = 60 * 60 * 1000;
 export const ROBOTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 export const DETAILS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+/** Event pages kept in the details cache at most (the calendar had 32 events on 2026-11-22). */
+export const DETAILS_CACHE_MAX = 500;
 /** A listing page was about 72 KB and an event page about 65 KB when checked. */
 export const GUAIRA_MAX_BYTES = 1024 * 1024;
 export const ROBOTS_MAX_BYTES = 512 * 1024;
@@ -277,6 +279,23 @@ const robotsCache = new TtlCache(ROBOTS_CACHE_TTL_MS, () => Date.now());
 const detailsCache = new Map<string, { value: EventDetails; expiresAt: number }>();
 
 /**
+ * Caches an event page's details for 6 hours. Expired entries are swept first; then, at DETAILS_CACHE_MAX entries, the
+ * oldest insert is evicted (a Map keeps insertion order; a re-insert moves the link to the end).
+ */
+export function cacheDetails(link: string, value: EventDetails): void {
+  const now = Date.now();
+  for (const [k, e] of detailsCache) if (e.expiresAt <= now) detailsCache.delete(k);
+  detailsCache.delete(link);
+  while (detailsCache.size >= DETAILS_CACHE_MAX) detailsCache.delete(detailsCache.keys().next().value as string);
+  detailsCache.set(link, { value, expiresAt: now + DETAILS_CACHE_TTL_MS });
+}
+
+/** Tests only. */
+export function detailsCacheSize(): number {
+  return detailsCache.size;
+}
+
+/**
  * The shared host gate (src/hostGate.ts): request starts 5 s apart, a turn more than 10 s away refused, any failure
  * (a layout change or a 200 answer that is not a page of the site included) remembered 60 s, a 429's Retry-After
  * when longer (at most 1 hour), and a final refusal for the 10-minute host block. Never retried.
@@ -323,8 +342,9 @@ async function getHtml(url: string, pathPrefix: string): Promise<string> {
  * other failure (other 4xx included, which RFC 9309 would read as "allow"), or an answer that is not text/plain,
  * fails closed: stricter than the RFC on purpose.
  */
-function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
-  return robotsCache.getOrLoad("robots", () =>
+function getRobotsRules(startBy?: number): Promise<Cached<RobotsRule[]>> {
+  // Shared in-flight load: another call's OutOfTimeError is retried under this call's own budget (none for the listing).
+  return underOwnBudget(startBy, () => robotsCache.getOrLoad("robots", () =>
     gate.run(async () => {
       try {
         const res = await fetchText(ROBOTS_URL, { timeoutMs: GUAIRA_TIMEOUT_MS, maxBytes: ROBOTS_MAX_BYTES, sameHostOnly: true });
@@ -334,13 +354,13 @@ function getRobotsRules(): Promise<Cached<RobotsRule[]>> {
         if (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason === "HTTP 410")) return [];
         throw err;
       }
-    }),
-  );
+    }, startBy === undefined ? {} : { startBy }),
+  ));
 }
 
 /** Throws RobotsDisallowedError when robots.txt disallows `pathAndQuery` for this server. */
-async function assertAllowed(pathAndQuery: string): Promise<void> {
-  const rules = (await getRobotsRules()).value;
+async function assertAllowed(pathAndQuery: string, startBy?: number): Promise<void> {
+  const rules = (await getRobotsRules(startBy)).value;
   if (!isPathAllowed(rules, pathAndQuery)) throw new RobotsDisallowedError(pathAndQuery);
 }
 
@@ -385,7 +405,7 @@ export function getListing(): Promise<Cached<Listing>> {
   });
 }
 
-export type StopReason = "robots" | "robots_failed" | "failed" | "busy";
+export type StopReason = "robots" | "robots_failed" | "failed" | "busy" | "out_of_time";
 
 /** Cached details for an event link, or null when not cached (or expired). Never makes a request. */
 export function cachedDetails(link: string): EventDetails | null {
@@ -399,10 +419,14 @@ export function cachedDetails(link: string): EventDetails | null {
 /**
  * Reads up to `max` uncached event pages for `links` (in order) through the gate and caches each 6 hours (a 404 or
  * 410 page as `unavailable`, without a host failure). Stops at the first request that fails (that link is
- * `unavailable`) or cannot be made (no slot, a failure remembered, robots.txt: it stays `not_read`); the rest stay
- * `not_read`. Never throws.
+ * `unavailable`) or cannot be made (no slot, a failure remembered, robots.txt, or its slot after `startBy`, the
+ * caller's time budget: it stays `not_read`); the rest stay `not_read`. Never throws.
  */
-export async function readDetails(links: readonly string[], max: number = MAX_DETAILS_PER_CALL): Promise<{ details: Map<string, EventDetails>; stopped: StopReason | null }> {
+export async function readDetails(
+  links: readonly string[],
+  max: number = MAX_DETAILS_PER_CALL,
+  startBy?: number,
+): Promise<{ details: Map<string, EventDetails>; stopped: StopReason | null }> {
   const details = new Map<string, EventDetails>();
   let fetched = 0;
   let stopped: StopReason | null = null;
@@ -418,11 +442,23 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
       stopped = "busy"; // a failure is remembered: nothing is asked, robots.txt included
       continue;
     }
+    if (startBy !== undefined && Date.now() > startBy) {
+      stopped = "out_of_time";
+      continue;
+    }
     try {
-      await assertAllowed(new URL(link).pathname);
+      await assertAllowed(new URL(link).pathname, startBy);
     } catch (err) {
-      // No event page was asked for: robots.txt disallows it, there was no slot, or robots.txt could not be read.
-      stopped = err instanceof RobotsDisallowedError ? "robots" : err instanceof RateLimitedError ? "busy" : "robots_failed";
+      // No event page was asked for: robots.txt disallows it, there was no slot (or none before `startBy`), or
+      // robots.txt could not be read.
+      stopped =
+        err instanceof RobotsDisallowedError
+          ? "robots"
+          : err instanceof OutOfTimeError
+            ? "out_of_time"
+            : err instanceof RateLimitedError
+              ? "busy"
+              : "robots_failed";
       continue;
     }
     let asked = false;
@@ -443,13 +479,13 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
           if (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason === "HTTP 410")) return NO_DETAILS("unavailable");
           throw err;
         }
-      });
-      detailsCache.set(link, { value, expiresAt: Date.now() + DETAILS_CACHE_TTL_MS });
+      }, startBy === undefined ? {} : { startBy });
+      cacheDetails(link, value);
       details.set(link, value);
-    } catch {
-      // Refused by the gate before a request (no slot, a failure remembered): this page stays not_read.
+    } catch (err) {
+      // Refused by the gate before a request (no slot, a failure remembered, out of time): this page stays not_read.
       if (asked) details.set(link, NO_DETAILS("unavailable"));
-      stopped = asked ? "failed" : "busy";
+      stopped = asked ? "failed" : err instanceof OutOfTimeError ? "out_of_time" : "busy";
     }
   }
   return { details, stopped };

@@ -1,6 +1,6 @@
 import { TtlCache } from "../cache.js";
 import { createHostGate } from "../hostGate.js";
-import { fetchText, ResponseTooLargeError, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, ResponseTooLargeError, SourceRefusedError, SourceUnavailableError } from "../http.js";
 import { LocalFileError } from "../localfs.js";
 
 /**
@@ -9,7 +9,7 @@ import { LocalFileError } from "../localfs.js";
  */
 export const PUBLISHED_ORIGIN = "https://raw.githubusercontent.com";
 export const PUBLISHED_PATH_PREFIX = "/Bossmann007/curitibai/data";
-export const PUBLISHED_FILES = ["events/events.json", "phones/phones.json"] as const;
+export const PUBLISHED_FILES = ["events/events.json", "phones/phones.json", "phones/status.json"] as const;
 export type PublishedFile = (typeof PUBLISHED_FILES)[number];
 
 export function publishedUrl(file: PublishedFile): string {
@@ -47,10 +47,12 @@ export class InvalidPublishedError extends Error {
 
 // Validated files only. Two failure memories, 60 s each, no request meanwhile:
 // - the host gate: requests at least 1 s apart; after a failure of the host (network error, timeout, an HTTP error
-//   other than 404, a 429 with its Retry-After) no request to it for either file;
+//   other than 404, a 429 with its Retry-After) no request to it for any file;
 // - per file: a 404, a body over the cap, a redirect, a body that is not JSON or fails the schema is about that file
-//   only, so it never blocks the other file.
+//   only, so it never blocks the other files. Every failure of an optional file (phones/status.json) is of this kind.
 export const FILE_FAILURE_WAIT_MS = 60_000;
+/** An optional file is small and only adds to an answer: a short timeout keeps a slow host from doubling the wait. */
+export const OPTIONAL_TIMEOUT_MS = 3_000;
 const newCache = () => new TtlCache(PUBLISHED_CACHE_TTL_MS, () => Date.now());
 let cache = newCache();
 const gate = createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 });
@@ -75,7 +77,13 @@ function isFileError(err: unknown): boolean {
  * Reads the published `file` (capped at `maxBytes`, same host and path only, no retry), parses it as JSON and passes
  * it to `build`, the same strict validation the local file gets: anything else throws and nothing is returned.
  */
-export async function loadPublished<T>(file: PublishedFile, maxBytes: number, build: (json: unknown) => T): Promise<T> {
+export async function loadPublished<T>(
+  file: PublishedFile,
+  maxBytes: number,
+  build: (json: unknown) => T,
+  /** An optional file (phones/status.json): any failure is about that file only, never remembered for the host. */
+  optional = false,
+): Promise<T> {
   const url = publishedUrl(file);
   const { value } = await cache.getOrLoad(url, async () => {
     const remembered = fileFailures.get(file);
@@ -85,13 +93,15 @@ export async function loadPublished<T>(file: PublishedFile, maxBytes: number, bu
       try {
         const res = await fetchText(url, {
           maxBytes,
-          timeoutMs: PUBLISHED_TIMEOUT_MS,
+          timeoutMs: optional ? OPTIONAL_TIMEOUT_MS : PUBLISHED_TIMEOUT_MS,
           sameHostOnly: true,
           redirectPathPrefix: PUBLISHED_PATH_PREFIX,
         });
         return { body: res.body };
       } catch (err) {
-        if (isFileError(err)) return { fileError: err };
+        // A 429 or a final refusal stays a host failure even for an optional file (Retry-After is kept for the host).
+        const hostRefusal = err instanceof RateLimitedError || err instanceof SourceRefusedError;
+        if ((optional && !hostRefusal) || isFileError(err)) return { fileError: err };
         throw err;
       }
     });

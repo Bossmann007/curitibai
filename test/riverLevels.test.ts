@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assessQuality, getStationData, parseStationData, requestPeriod, STATIONS, stationDataUrl, type Reading, type Station } from "../src/sources/ana.js";
+import { OutOfTimeError } from "../src/hostGate.js";
 import { SourceUnavailableError } from "../src/http.js";
 import { riverLevelsOutput } from "../src/tools/riverLevels.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
@@ -285,6 +286,7 @@ describe("river_levels", () => {
     expect(out.data.stations.map((s) => s.code)).toEqual(["65019980", "65025000", "65009000"]);
     expect(out.data.total_matches).toBe(4);
     expect(out.data.more_matches).toEqual([{ code: "65006090", name: "COMPORTA CANAL ÁGUA LIMPA" }]);
+    expect(out.data.partial).toBe(false);
     expect(out.note).toMatch(/1 more matching station\(s\) not read/);
     // Only bundled codes and dates reach the source: never the user's position or text.
     for (const c of calls) expect(c.url).not.toMatch(/iguac|25\.6|49\.4/i);
@@ -321,9 +323,34 @@ describe("river_levels", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("fails closed on a non-XML answer: the station is unavailable, with no values", async () => {
-    stubFetch(route("65010000", { contentType: "text/html; charset=utf-8", body: "<html>maintenance</html>" }));
-    expect((await levels({ station: "65010000" })).data.stations[0]).toMatchObject({ status: "unavailable", level_cm: null, reading_time: null });
+  it("fails closed on an HTML 200 answer as a host failure: 4 calls within 60 s make 1 request", async () => {
+    const calls = stubFetch({ ...route("65010000", { contentType: "text/html; charset=utf-8", body: "<html>maintenance</html>" }), ...route("65019980") });
+    for (let i = 0; i < 3; i++) expect(errorOf(await call({ station: "65010000" }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ station: "65019980" }))).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect((await call({ station: "65019980" })).isError).toBeFalsy();
+    expect(calls).toHaveLength(2);
+  });
+
+  it("treats an XML content type with a body that is not ANA's document (invalid or truncated XML) as a host failure", async () => {
+    const truncated = FAZENDINHA.slice(0, FAZENDINHA.length / 2);
+    for (const body of ["<html>not xml</html>", truncated, '<?xml version="1.0" encoding="utf-8"?><Other />']) {
+      vi.setSystemTime(Date.now() + 61_000);
+      const calls = stubFetch(route("65010000", { body }));
+      expect(errorOf(await call({ station: "65010000" }))).toEqual({ error: "source_unavailable" });
+      expect(errorOf(await call({ station: "65010000" }))).toEqual({ error: "source_unavailable" });
+      expect(calls).toHaveLength(1);
+    }
+  });
+
+  it("blocks the host for 10 minutes on a 200 CAPTCHA or challenge page", async () => {
+    const page = '<html><div class="cf-turnstile">verify you are human</div></html>';
+    const calls = stubFetch({ ...route("65010000", { contentType: "text/html", body: page }), ...route("65019980") });
+    expect(errorOf(await call({ station: "65010000" }))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    await vi.advanceTimersByTimeAsync(9 * 60_000);
+    expect(errorOf(await call({ station: "65019980" }))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    expect(calls).toHaveLength(1);
   });
 
   it("does not ask again for 60 s after a failure (any station), then asks once more", async () => {
@@ -369,10 +396,61 @@ describe("river_levels", () => {
     expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([["65009000", "no_recent_data"], ["65006090", "unavailable"], ["65004995", "no_recent_data"]]);
     expect(out.data.stations[1]).toMatchObject({ level_cm: null, rain_24h_mm: null, checked_at: null, quality: "unknown", quality_reasons: [] });
     expect(calls).toHaveLength(3);
-    // Not a host failure: the next call is not refused (and the unreadable station is asked again, not cached).
+    // Not a host failure: other stations are still asked; the unreadable one is remembered 60 s, then asked again.
     await vi.advanceTimersByTimeAsync(5_000);
     expect((await levels({ station: "65006090" })).data.stations[0]!.status).toBe("unavailable");
+    expect(calls).toHaveLength(3);
+    vi.setSystemTime(Date.now() + 15 * 60_000); // the readable stations' cache expired too
+    expect((await levels({ station: "65009000" })).data.stations[0]!.status).toBe("no_recent_data");
     expect(calls).toHaveLength(4);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await levels({ station: "65006090" })).data.stations[0]!.status).toBe("unavailable");
+    expect(calls).toHaveLength(5);
+  });
+
+  it("a station with a bad answer ahead of a healthy one does not stop it, on every call", async () => {
+    const bad = noData("65006090").replace("Sem dados", "Erro interno");
+    const calls = stubFetch({ ...route("65009000", { body: bad }), ...route("65006090"), ...route("65004995") });
+    for (let i = 0; i < 2; i++) {
+      const pending = levels({});
+      await vi.advanceTimersByTimeAsync(10_000);
+      const out = await pending;
+      expect(out.data.stations.map((s) => s.status)).toEqual(["unavailable", "no_recent_data", "no_recent_data"]);
+      await vi.advanceTimersByTimeAsync(5_000);
+    }
+    expect(calls).toHaveLength(3); // the bad station remembered, the others cached
+  });
+
+  it("starts no request after the 20 s budget: returns the stations read, partial, the rest first in more_matches", async () => {
+    // Only other requests sharing the host can push a station's slot past the budget: S1's transfer takes 9 s while
+    // three other requests take the slots at 5, 10 and 20 s, so S3's slot (25 s) is after the call's 20 s.
+    const delays: Record<string, number> = { "65009000": 9_000 };
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      urls.push(url);
+      const code = new URL(url).searchParams.get("codEstacao")!;
+      await new Promise((r) => setTimeout(r, delays[code] ?? 0));
+      return new Response(noData(code), { status: 200, headers: { "content-type": XML_TYPE } });
+    }));
+    const pending = levels({});
+    await vi.advanceTimersByTimeAsync(1_000);
+    const o1 = getStationData(station("02549127"));
+    await vi.advanceTimersByTimeAsync(5_000);
+    const o2 = getStationData(station("02549118"));
+    await vi.advanceTimersByTimeAsync(5_000);
+    const o3 = getStationData(station("02549086"));
+    await vi.advanceTimersByTimeAsync(20_000);
+    const out = await pending;
+    await Promise.all([o1, o2, o3]);
+    expect(out.data.partial).toBe(true);
+    expect(out.data.stations.map((s) => s.code)).toEqual(["65009000", "65006090"]);
+    expect(out.data.more_matches[0]).toEqual({ code: "65004995", name: expect.any(String) });
+    expect(out.data.more_matches).toHaveLength(STATIONS.length - 2);
+    expect(out.note).toMatch(/Partial: 1 station\(s\) not read because the 20 s time budget/);
+    expect(out.note).toMatch(/22 more matching station\(s\) not read/);
+    expect(urls.some((u) => u.includes("65004995"))).toBe(false);
+    expect(urls).toHaveLength(5);
   });
 
   it("fails the whole call when a later station's transfer fails: a station not read is never shown as no_recent_data", async () => {
@@ -381,6 +459,18 @@ describe("river_levels", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(errorOf(await pending)).toEqual({ error: "source_unavailable" });
     expect(calls).toHaveLength(2);
+  });
+
+  it("a call joining another call's load that ran out of time reads the station under its own budget", async () => {
+    const calls = stubFetch({ ...route("02549127"), ...route("65010000") });
+    const other = getStationData(station("02549127")); // slot 0; the next slot is 5 s away
+    const short = getStationData(station("65010000"), Date.now() + 1_000);
+    const own = getStationData(station("65010000"), Date.now() + 20_000); // joins the same load
+    await expect(short).rejects.toBeInstanceOf(OutOfTimeError);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await own).value.latest).not.toBeNull();
+    await other;
+    expect(calls.map((c) => c.url)).toEqual([urlFor("02549127"), urlFor("65010000")]);
   });
 
   it("refuses a call whose turn is more than 10 s away, without a request", async () => {

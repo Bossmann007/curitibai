@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  cacheDetails,
+  cachedDetails,
   CALENDAR_URL,
+  DETAILS_CACHE_MAX,
+  DETAILS_CACHE_TTL_MS,
+  detailsCacheSize,
+  getListing,
   isPathAllowed,
+  NO_DETAILS,
   LayoutChangedError,
   listingPageUrl,
   parseEventPage,
@@ -45,6 +52,13 @@ async function call(args: Record<string, unknown>) {
   const pending = client.callTool({ name: "guaira_events", arguments: args });
   await vi.advanceTimersByTimeAsync(30_000);
   return pending;
+}
+
+/** Loads the listing (robots.txt and 3 pages, 15 s of fake time) so a call's budget goes to event pages. */
+async function warmListing() {
+  const pending = getListing();
+  await vi.advanceTimersByTimeAsync(20_000);
+  await pending;
 }
 
 async function search(args: Record<string, unknown>) {
@@ -184,29 +198,61 @@ describe("parseEventPage", () => {
 });
 
 describe("guaira_events", () => {
-  it("reads robots.txt and the 3 listing pages 5 s apart, then 2 event pages; Curitiba only, overlapping today to 30 days", async () => {
+  it("reads robots.txt and the 3 listing pages 5 s apart, then event pages until the 20 s budget; Curitiba only, today to 30 days", async () => {
     const calls = stubFetch(routes());
     const out = await search({});
-    expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO, MIA]);
+    // Slots at 0, 5, 10, 15 and 20 s; the second event page's slot (25 s) is after the call's 20 s budget.
+    expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
     expect(calls.every((c) => c.method === "GET")).toBe(true);
-    expect(out.data).toMatchObject({ from: "2026-11-22", to: "2026-12-22", city: "Curitiba", total: 4, other_city_rows: 1, truncated: false });
+    expect(out.data).toMatchObject({ from: "2026-11-22", to: "2026-12-22", city: "Curitiba", total: 4, other_city_rows: 1, truncated: false, partial: true });
     expect(out.data.items.map((i) => i.link)).toEqual([MUITO, MIA, OSP, JON]);
     expect(out.data.items[0]).toMatchObject({ venue: "Auditório Salvador de Ferrante (Guairinha)", price: "R$20,00 (inteira) | R$10,00 (meia-entrada)", details: "read" });
-    expect(out.data.items[1]).toMatchObject({ venue: null, details: "not_recognised" });
+    expect(out.data.items[1]).toMatchObject({ venue: null, details: "not_read" });
     expect(out.data.items[2]).toMatchObject({ venue: null, details: "not_read" });
+    expect(out.note).toMatch(/20 s time budget of this call ran out/);
     expect(out).toMatchObject({ source_url: CALENDAR_URL, license_note: expect.stringMatching(/No licence found/) });
     expect(out.note).toMatch(/event\(s\) in other cities/);
+  });
+
+  it("still reads the first event page when the call's first request starts a few ms late (1 s slack)", async () => {
+    const calls = stubFetch(routes());
+    // An earlier read takes the slots at -4.99 s (robots.txt, then cached 24 h) and 0.01 s (OSP): this call's listing
+    // pages start at 5.01, 10.01 and 15.01 s, and its first event page's slot is 20.01 s after the call began.
+    vi.setSystemTime(NOW.getTime() - 4_990);
+    const early = readDetails([OSP]);
+    await vi.advanceTimersByTimeAsync(4_990);
+    const out = await search({ limit: 1 });
+    await early;
+    expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL, OSP, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2), MUITO]);
+    expect(out.data.items[0]).toMatchObject({ details: "read" });
+  });
+
+  it("a listing load that joins another call's robots.txt load which ran out of that call's budget still loads", async () => {
+    const calls = stubFetch(routes());
+    await warmListing(); // robots.txt read at 0 s, cached 24 h
+    vi.setSystemTime(NOW.getTime() + 24 * 60 * 60 * 1000 - 1_000);
+    const muito = readDetails([MUITO]); // robots.txt still cached: MUITO takes the slot now, the next one is 5 s away
+    await vi.advanceTimersByTimeAsync(2_000); // robots.txt expired; the next slot is 3 s away
+    const short = readDetails([OSP], 2, Date.now() + 1_000); // its robots.txt slot is after its 1 s budget: no request
+    const listing = getListing(); // joins that robots.txt load
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await short).stopped).toBe("out_of_time");
+    expect((await listing).value.rows.length).toBeGreaterThan(0);
+    await muito;
+    expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, ROBOTS_URL, listingPageUrl(0), listingPageUrl(1), listingPageUrl(2)]);
   });
 
   it("serves the listing from the cache for 1 hour and fills the next event pages on the next call", async () => {
     const calls = stubFetch(routes());
     await search({});
     const second = await search({});
-    expect(calls.slice(6).map((c) => c.url)).toEqual([OSP, JON]);
+    expect(calls.slice(5).map((c) => c.url)).toEqual([MIA, OSP]);
+    expect(second.data.partial).toBe(false);
+    expect(second.data.items[1]).toMatchObject({ details: "not_recognised" });
     expect(second.data.items[2]).toMatchObject({ venue: "Auditório Bento Munhoz da Rocha Neto (Guairão)", details: "read" });
     vi.setSystemTime(Date.now() + 60 * 60 * 1000);
     await search({ limit: 1 });
-    expect(calls.slice(8).map((c) => c.url)).toEqual([listingPageUrl(0), listingPageUrl(1), listingPageUrl(2)]);
+    expect(calls.slice(7).map((c) => c.url)).toEqual([listingPageUrl(0), listingPageUrl(1), listingPageUrl(2)]);
   });
 
   it("filters by city, all cities, words and dates; checks the range before any request", async () => {
@@ -282,6 +328,7 @@ describe("requests to the Teatro Guaíra host", () => {
     const calls = stubFetch(routes());
     const real = globalThis.fetch;
     vi.stubGlobal("fetch", (...a: Parameters<typeof fetch>) => (at.push(Date.now()), real(...a)));
+    await warmListing();
     await search({});
     expect(calls).toHaveLength(6);
     for (let i = 1; i < at.length; i++) expect(at[i]! - at[i - 1]!).toBeGreaterThanOrEqual(5_000);
@@ -333,6 +380,7 @@ describe("requests to the Teatro Guaíra host", () => {
   it("does not take a normal site page with a captcha form for a challenge", async () => {
     const page = '<html><script data-drupal-selector="drupal-settings-json">{}</script><form class="captcha"></form></html>';
     const calls = stubFetch(routes({ [`GET ${MUITO}`]: { body: page, contentType: HTML } }));
+    await warmListing();
     const out = await search({});
     expect(out.data.items[0]!.details).toBe("not_recognised");
     expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, MIA]);
@@ -393,6 +441,7 @@ describe("requests to the Teatro Guaíra host", () => {
 
   it("treats a removed event page (404) as that page only: no host failure, the next page is still read", async () => {
     const calls = stubFetch(routes({ [`GET ${MUITO}`]: { status: 404 } }));
+    await warmListing();
     const out = await search({});
     expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, MIA]);
     expect(out.data.items.map((i) => i.details)).toEqual(["unavailable", "not_recognised", "not_read", "not_read"]);
@@ -411,5 +460,28 @@ describe("requests to the Teatro Guaíra host", () => {
   it("does not follow a redirect to another host", async () => {
     stubFetch(routes({ [`GET ${listingPageUrl(0)}`]: { status: 302, headers: { location: "https://evil.example/x" } } }));
     expect(errorOf(await call({}))).toEqual({ error: "source_unavailable" });
+  });
+});
+
+describe("details cache", () => {
+  const link = (i: number) => `https://www.teatroguaira.pr.gov.br/Evento/x-${i}`;
+
+  it(`holds at most ${DETAILS_CACHE_MAX} event pages, evicting the oldest insert; a re-insert moves a link to the end`, () => {
+    for (let i = 0; i < DETAILS_CACHE_MAX; i++) cacheDetails(link(i), NO_DETAILS("read"));
+    expect(detailsCacheSize()).toBe(DETAILS_CACHE_MAX);
+    cacheDetails(link(0), NO_DETAILS("unavailable")); // refreshed: now the newest
+    cacheDetails(link(DETAILS_CACHE_MAX), NO_DETAILS("read"));
+    expect(detailsCacheSize()).toBe(DETAILS_CACHE_MAX);
+    expect(cachedDetails(link(1))).toBeNull();
+    expect(cachedDetails(link(0))).toMatchObject({ status: "unavailable" });
+    expect(cachedDetails(link(2))).not.toBeNull();
+    expect(cachedDetails(link(DETAILS_CACHE_MAX))).not.toBeNull();
+  });
+
+  it("sweeps expired entries on insert", () => {
+    for (let i = 0; i < 10; i++) cacheDetails(link(i), NO_DETAILS("read"));
+    vi.setSystemTime(Date.now() + DETAILS_CACHE_TTL_MS);
+    cacheDetails(link(99), NO_DETAILS("read"));
+    expect(detailsCacheSize()).toBe(1);
   });
 });

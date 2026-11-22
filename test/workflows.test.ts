@@ -45,9 +45,9 @@ describe("GitHub Actions workflows", () => {
     expect(lines.join("\n")).not.toMatch(/npm (ci|install)/);
   });
 
-  it("publish-data.sh: pushes only the three public files to the data branch, never main, never forced", () => {
+  it("publish-data.sh: pushes only the four public files to the data branch, never main, never forced", () => {
     expect(publish).toContain("BRANCH=data");
-    expect(publish).toContain("FILES=(events/events.json events/status.json phones/phones.json)");
+    expect(publish).toContain("FILES=(events/events.json events/status.json phones/phones.json phones/status.json)");
     expect(publish).toContain('push -q origin "HEAD:refs/heads/$BRANCH"');
     const pushes = code(publish).filter((l) => /\bpush\b/.test(l) && !/^\s*#/.test(l));
     expect(pushes).toEqual(['  pubgit push -q origin "HEAD:refs/heads/$BRANCH"']);

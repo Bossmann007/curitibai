@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PhonesStatus } from "../src/tools/usefulPhones.js";
 import {
   acquireLock,
   CACHE_FILE,
@@ -829,6 +830,7 @@ describe("useful phones page", () => {
     expect(doc).toMatchObject({ format: 1, source: `${ORIGIN}${PHONES_PATH}`, count: 60, dropped: 0, checked_at: expect.any(String) });
     expect(Object.keys(doc).sort()).toEqual(["checked_at", "count", "dropped", "entries", "format", "source"]);
     expect(readJson(phonesStatus())).toMatchObject({ code: "ok", success: expect.any(String) });
+    expect(PhonesStatus.safeParse(readJson(phonesStatus())).success).toBe(true); // the shape useful_phones reads
   });
 
   it("keeps the previous copy and writes layout_changed when the page no longer matches", async () => {
@@ -840,6 +842,7 @@ describe("useful phones page", () => {
     expect(res).toMatchObject({ code: "ok", exit: 1, phones: { code: "layout_changed" } });
     expect(readFileSync(phonesFile(), "utf8")).toBe(before);
     expect(readJson(phonesStatus())).toMatchObject({ code: "layout_changed", success: expect.any(String) });
+    expect(PhonesStatus.safeParse(readJson(phonesStatus())).success).toBe(true); // the shape useful_phones reads
     expect(readJson(statusFile()).code).toBe("ok"); // the events step is not affected
   });
 
@@ -865,6 +868,7 @@ describe("useful phones page", () => {
     expect(h.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
     expect(readFileSync(phonesFile(), "utf8")).toBe(before);
     expect(readJson(phonesStatus())).toMatchObject({ code: "http_error", success: expect.any(String) });
+    expect(PhonesStatus.safeParse(readJson(phonesStatus())).success).toBe(true); // the shape useful_phones reads
   });
 
   it("still reads the phones page when the events step ends with layout_changed, and not after the window closed", async () => {
