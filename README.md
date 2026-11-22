@@ -587,8 +587,8 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
   `guaira_events` reads the Teatro Guaíra robots.txt itself (cached 24 h), stops if the calendar becomes disallowed
-  and reads no event page if `/Evento/` does; a cold call makes up to 5 requests, at least 5 s apart (none starts
-  after 20 s).
+  and reads no event page if `/Evento/` does; a cold call makes up to 5 requests, at least 5 s apart (no event page
+  starts after about 20 s; the listing load is never cut).
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
   429 whose HTML page is a CAPTCHA as a final refusal (`guaira_events` also treats a 200 page that does not parse and
   looks like a CAPTCHA or challenge that way) (`source_unavailable` with the message "the source refused

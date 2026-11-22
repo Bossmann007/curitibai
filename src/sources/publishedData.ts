@@ -47,10 +47,12 @@ export class InvalidPublishedError extends Error {
 
 // Validated files only. Two failure memories, 60 s each, no request meanwhile:
 // - the host gate: requests at least 1 s apart; after a failure of the host (network error, timeout, an HTTP error
-//   other than 404, a 429 with its Retry-After) no request to it for either file;
+//   other than 404, a 429 with its Retry-After) no request to it for any file;
 // - per file: a 404, a body over the cap, a redirect, a body that is not JSON or fails the schema is about that file
-//   only, so it never blocks the other file.
+//   only, so it never blocks the other files. Every failure of an optional file (phones/status.json) is of this kind.
 export const FILE_FAILURE_WAIT_MS = 60_000;
+/** An optional file is small and only adds to an answer: a short timeout keeps a slow host from doubling the wait. */
+export const OPTIONAL_TIMEOUT_MS = 3_000;
 const newCache = () => new TtlCache(PUBLISHED_CACHE_TTL_MS, () => Date.now());
 let cache = newCache();
 const gate = createHostGate({ minIntervalMs: 1000, maxQueueWaitMs: 5000 });
@@ -91,7 +93,7 @@ export async function loadPublished<T>(
       try {
         const res = await fetchText(url, {
           maxBytes,
-          timeoutMs: PUBLISHED_TIMEOUT_MS,
+          timeoutMs: optional ? OPTIONAL_TIMEOUT_MS : PUBLISHED_TIMEOUT_MS,
           sameHostOnly: true,
           redirectPathPrefix: PUBLISHED_PATH_PREFIX,
         });
