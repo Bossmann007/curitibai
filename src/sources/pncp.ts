@@ -1,5 +1,5 @@
 import { sharedCache } from "../cache.js";
-import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, SourceUnavailableError } from "../http.js";
 import { createHostGate, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { maskObject } from "../mask.js";
 
@@ -145,14 +145,25 @@ export interface ParsedPage {
  */
 export function parseContratacoes(body: string): ParsedPage {
   if (body.trim() === "") return { items: [], received: 0, discarded: 0, lastPage: true };
-  let json: unknown;
+  const json = parseJson(body);
+  const list = (json as { data?: unknown } | null)?.data;
+  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+  const { items, discarded } = parseRecords(list);
+  const remaining = (json as { paginasRestantes?: unknown }).paginasRestantes;
+  const lastPage = typeof remaining === "number" ? remaining <= 0 : list.length < PNCP_PAGE_SIZE;
+  return { items, received: list.length, discarded, lastPage };
+}
+
+function parseJson(body: string): unknown {
   try {
-    json = JSON.parse(body);
+    return JSON.parse(body);
   } catch {
     throw new SourceUnavailableError("PNCP response is not JSON");
   }
-  const list = (json as { data?: unknown } | null)?.data;
-  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+}
+
+/** Records in the Consulta API shape; see parseContratacoes. */
+function parseRecords(list: unknown[]): { items: Procurement[]; discarded: number } {
   const items: Procurement[] = [];
   let discarded = 0;
   for (const rec of list) {
@@ -198,9 +209,70 @@ export function parseContratacoes(body: string): ParsedPage {
       link: `https://pncp.gov.br/app/editais/${cnpj}/${year}/${seq}`,
     });
   }
-  const remaining = (json as { paginasRestantes?: unknown }).paginasRestantes;
-  const lastPage = typeof remaining === "number" ? remaining <= 0 : list.length < PNCP_PAGE_SIZE;
-  return { items, received: list.length, discarded, lastPage };
+  return { items, discarded };
+}
+
+/**
+ * The search behind the pncp.gov.br site (`/api/search`, docs/sources.md): no key or login, a page of 100 in about 1 s.
+ * Not in the Consulta OpenAPI. Filtered to Curitiba (PNCP's own municipality id 4006, not the IBGE code) and one
+ * modality; results come newest update first (`ordenacao=-data` sorts by `data_atualizacao_pncp`).
+ */
+export const PNCP_SEARCH = "https://pncp.gov.br/api/search";
+export const PNCP_SEARCH_PAGE_SIZE = 100;
+export const CURITIBA_SEARCH_MUNICIPIO = "4006";
+
+export function searchUrl(query: string, modality: number, page: number): string {
+  const params = new URLSearchParams({
+    q: query,
+    tipos_documento: "edital",
+    ordenacao: "-data",
+    status: "todos",
+    municipios: CURITIBA_SEARCH_MUNICIPIO,
+    modalidades: String(modality),
+    pagina: String(page),
+    tam_pagina: String(PNCP_SEARCH_PAGE_SIZE),
+  });
+  return `${PNCP_SEARCH}?${params.toString()}`;
+}
+
+export interface SearchPage extends ParsedPage {
+  /** Date (YYYY-MM-DD) of the oldest `data_atualizacao_pncp` on the page; null when none was readable. */
+  oldestUpdate: string | null;
+}
+
+/**
+ * Copies only the fields parseRecords reads from each search record into the Consulta shape, so the search's
+ * supplier, user and free-text fields (`fornecedor_*`, `usuario_nome`, `informacao_complementar`) never reach it.
+ */
+export function parseSearch(body: string): SearchPage {
+  if (body.trim() === "") return { items: [], received: 0, discarded: 0, lastPage: true, oldestUpdate: null };
+  const json = parseJson(body) as { items?: unknown; total?: unknown } | null;
+  const list = json?.items;
+  if (!Array.isArray(list) || typeof json?.total !== "number") throw new SourceUnavailableError("unexpected PNCP response");
+  let oldestUpdate: string | null = null;
+  const records = list.map((rec: unknown) => {
+    if (typeof rec !== "object" || rec === null) return null;
+    const r = rec as Record<string, unknown>;
+    const updated = dateTime(r.data_atualizacao_pncp)?.slice(0, 10) ?? null;
+    if (updated !== null && (oldestUpdate === null || updated < oldestUpdate)) oldestUpdate = updated;
+    return {
+      numeroControlePNCP: r.numero_controle_pncp,
+      orgaoEntidade: { cnpj: r.orgao_cnpj, razaoSocial: r.orgao_nome },
+      unidadeOrgao: { codigoIbge: r.codigo_ibge },
+      anoCompra: r.ano,
+      sequencialCompra: r.numero_sequencial,
+      modalidadeId: r.modalidade_licitacao_id,
+      objetoCompra: r.description,
+      valorTotalEstimado: r.valor_total_estimado,
+      situacaoCompraId: r.situacao_id,
+      situacaoCompraNome: r.situacao_nome,
+      dataPublicacaoPncp: r.data_publicacao_pncp,
+      dataAberturaProposta: r.data_inicio_recebimento_propostas,
+      dataEncerramentoProposta: r.data_fim_recebimento_propostas,
+    };
+  });
+  const { items, discarded } = parseRecords(records);
+  return { items, received: list.length, discarded, lastPage: list.length < PNCP_SEARCH_PAGE_SIZE, oldestUpdate };
 }
 
 /** Longest Retry-After (seconds) the server waits for before its single retry; anything longer is returned as rate_limited. */
@@ -210,15 +282,15 @@ export const MAX_RETRY_AFTER_S = 5;
  * One retry at most: after a connection error (PNCP reset about half of the connections on 2026-11-19), or after an
  * HTTP 429 whose Retry-After is at most 5 s. Never after a timeout or any other HTTP error.
  */
-async function fetchPncp(url: string): Promise<string> {
+async function fetchPncp(url: string, timeoutMs = PNCP_TIMEOUT_MS): Promise<string> {
   try {
-    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+    return (await fetchText(url, { timeoutMs })).body;
   } catch (err) {
     if (err instanceof RateLimitedError) {
       if (err.retryAfterS === null || err.retryAfterS > MAX_RETRY_AFTER_S) throw err;
       await new Promise((r) => setTimeout(r, err.retryAfterS! * 1000));
     } else if (!(err instanceof SourceUnavailableError) || err.reason !== "network error") throw err;
-    return (await fetchText(url, { timeoutMs: PNCP_TIMEOUT_MS })).body;
+    return (await fetchText(url, { timeoutMs })).body;
   }
 }
 
@@ -236,6 +308,8 @@ const gate = createHostGate(PNCP_GATE);
 /** Tests only. */
 export function resetPncpGate(): void {
   gate.reset();
+  searchDownUntil = 0;
+  searchDownReason = "";
 }
 
 /** `startBy`: no request starts after it (OutOfTimeError, no request). */
@@ -243,5 +317,70 @@ export function getPublicationPage(from: string, to: string, modality: number, p
   const url = publicationUrl(from, to, modality, page);
   return underOwnBudget(startBy, () =>
     sharedCache.getOrLoad(`GET ${url}`, async () => parseContratacoes(await gate.run(() => fetchPncp(url), { startBy }))),
+  );
+}
+
+/**
+ * The site search failed (network error, timeout or HTTP error after the single retry) or its format changed
+ * (`layout_changed`): the caller falls back to the Consulta scan. The gate does not remember it, because the Consulta
+ * API is another service on the host. A 429 or a refusal is never this: those stay host failures.
+ */
+export class SearchUnavailableError extends Error {
+  constructor(readonly reason: string) {
+    super(`search_unavailable: ${reason}`);
+    this.name = "SearchUnavailableError";
+  }
+}
+
+/**
+ * The search answered in 0.45–1.7 s per page (2026-11-22); 8 s leaves the fallback scan room in the 20 s budget.
+ * A timeout is not retried (fetchPncp).
+ */
+export const PNCP_SEARCH_TIMEOUT_MS = 8_000;
+/** After a search failure, the search is not asked for 10 minutes in the process (the Consulta API still is). */
+export const SEARCH_DOWN_MS = 10 * 60_000;
+let searchDownUntil = 0;
+let searchDownReason = "";
+
+const searchFailure = (err: unknown) =>
+  err instanceof SourceUnavailableError && !(err instanceof RateLimitedError) && !(err instanceof SourceRefusedError);
+
+/** One page of the site search, through the same PNCP gate (spacing, budget), cache and single retry as the Consulta API. */
+export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
+  const url = searchUrl(query, modality, page);
+  /** Remembered only when the search as a whole looks down: a timeout, network error, 5xx or a changed format. */
+  const down = (reason: string) => {
+    if (/^(timeout|network error|HTTP 5\d\d|layout_changed)$/.test(reason)) {
+      searchDownUntil = Date.now() + SEARCH_DOWN_MS;
+      searchDownReason = reason;
+    }
+    return new SearchUnavailableError(reason);
+  };
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${url}`, async () => {
+      if (Date.now() < searchDownUntil) {
+        const left = Math.ceil((searchDownUntil - Date.now()) / 60_000);
+        throw new SearchUnavailableError(`${searchDownReason}; not asked again for about ${left} min`);
+      }
+      const got = await gate.run(
+        async (): Promise<{ body: string } | { failed: string }> => {
+          try {
+            return { body: await fetchPncp(url, PNCP_SEARCH_TIMEOUT_MS) };
+          } catch (err) {
+            if (searchFailure(err)) return { failed: (err as SourceUnavailableError).reason };
+            throw err;
+          }
+        },
+        { startBy },
+      );
+      if ("failed" in got) throw down(got.failed);
+
+      try {
+        return parseSearch(got.body);
+      } catch (err) {
+        if (searchFailure(err)) throw down("layout_changed");
+        throw err;
+      }
+    }),
   );
 }

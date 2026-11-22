@@ -1,9 +1,13 @@
 import { z } from "zod";
 import {
   getPublicationPage,
+  getSearchPage,
   MODALITIES,
   PNCP_LICENSE_NOTE,
+  PNCP_PAGE_SIZE,
   publicationUrl,
+  SearchUnavailableError,
+  searchUrl,
   type Procurement,
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
@@ -41,7 +45,11 @@ export const procurementSearchInput = {
     .min(2)
     .max(100)
     .optional()
-    .describe("Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS')."),
+    .describe(
+      "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to " +
+        "PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object " +
+        "or body name contain it are kept. The search word is sent to PNCP.",
+    ),
   from: isoDate.optional().describe(`First publication date, YYYY-MM-DD. Default: ${DEFAULT_DAYS} days before 'to'.`),
   to: isoDate.optional().describe("Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days."),
   modality: z
@@ -64,12 +72,19 @@ export const procurementSearchInput = {
     .min(1)
     .max(1000)
     .default(1)
-    .describe("Upstream page to start scanning from; pass the previous result's next_page to continue."),
+    .describe("Upstream page to start from; pass the previous result's next_page (with page_source) to continue."),
+  page_source: z
+    .enum(["search", "scan"])
+    .optional()
+    .describe(
+      "Which pages 'page' counts: pass the previous result's next_page_source. Default: 'search' with query, 'scan' " +
+        "without. 'scan' with query continues the fallback page scan; 'search' needs query.",
+    ),
   skip: z
     .number()
     .int()
     .min(0)
-    .max(50)
+    .max(100)
     .default(0)
     .describe("Matches to skip on the first scanned page; pass the previous result's next_skip to continue."),
 };
@@ -100,6 +115,9 @@ export const procurementSearchOutput = envelope(
     modality: z.number().int(),
     scanned_pages: z.object({ from: z.number().int(), to: z.number().int() }),
     next_page: z.number().int().nullable(),
+    next_page_source: z
+      .enum(["search", "scan"])
+      .describe("Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."),
     next_skip: z.number().int(),
     partial: z.boolean(),
     discarded: z.number().int().describe("Records of a listed body dropped because a required field was missing or malformed."),
@@ -128,11 +146,16 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade, " +
     "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
-    "a name. Scans upstream pages of 50 until limit items match, at most 5 pages and no new page after 20 s per call (PNCP takes " +
-    "8–13 s per page); continue with next_page and next_skip. Read-only.",
+    "a name. With query, uses the search behind the pncp.gov.br site (pages of 100, about 1 s each, newest update " +
+    "first; the search word is sent to PNCP; if that search fails, the Consulta scan is used); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
+    "call; continue with next_page, next_skip and next_page_source (passed back as page_source). Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
-  handler: async ({ query, from, to, modality, limit, page, skip }) => {
+  handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {
+    if (page_source === "search" && query === undefined) return fail("invalid_argument", "page_source 'search' needs query.");
+    if ((query === undefined || page_source === "scan") && skip >= PNCP_PAGE_SIZE) {
+      return fail("invalid_argument", `A scan page holds ${PNCP_PAGE_SIZE} records: skip must be below ${PNCP_PAGE_SIZE}.`);
+    }
     const end = to ?? todayBrasilia();
     const start = from ?? addDays(end, -DEFAULT_DAYS);
     const span = (Date.parse(end) - Date.parse(start)) / 86_400_000;
@@ -141,6 +164,20 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     const f = compact(start);
     const t = compact(end);
     const needle = query === undefined ? null : fold(query).replace(/\s+/g, " ");
+    /** Sent accent-stripped and lower-cased, so "saúde" and "saude" are one request and one cache entry. */
+    const sent = needle ?? undefined;
+    /** False once the site search failed in this call: the Consulta scan is used instead (fallback). */
+    let searching = sent !== undefined && page_source !== "scan";
+    /** Search results outside the window are dropped; once a page reaches updates older than `start`, none can follow. */
+    const loadPage = async (p: number, startBy: number) => {
+      if (!searching || sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
+      const res = await getSearchPage(sent, modality, p, startBy);
+      const day = (it: Procurement) => it.published_at?.slice(0, 10) ?? null;
+      const undated = res.value.items.filter((it) => day(it) === null).length;
+      const items = res.value.items.filter((it) => day(it) !== null && day(it)! >= start && day(it)! <= end);
+      const old = res.value.oldestUpdate !== null && res.value.oldestUpdate < start;
+      return { ...res, value: { ...res.value, items, discarded: res.value.discarded + undated, lastPage: res.value.lastPage || old } };
+    };
     const matches = (it: Procurement) =>
       needle === null || fold(it.body_name).includes(needle) || (it.object !== null && fold(it.object).includes(needle));
 
@@ -152,10 +189,14 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let partial = false;
       let discarded = 0;
       let p = page;
+      let firstPage = page;
+      let firstSkip = skip;
       let scanned = 0;
       let rateLimitNote: string | null = null;
       let refusedNote: string | null = null;
       let budgetReached = false;
+      let searchDown: string | null = null;
+      let scanNext = false;
       const started = Date.now();
       for (;;) {
         if (scanned === MAX_PNCP_REQUESTS) {
@@ -172,8 +213,32 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         }
         let res;
         try {
-          res = await getPublicationPage(f, t, modality, p, started + CALL_START_BUDGET_MS);
+          res = await loadPage(p, started + CALL_START_BUDGET_MS);
         } catch (err) {
+          if (err instanceof SearchUnavailableError) {
+            searchDown =
+              `PNCP's fast search was unavailable (${err.reason})` +
+              (scanned === 0
+                ? "; the slower page scan was used, and next_page counts its pages."
+                : "; continue with the page scan from its page 1 (page_source 'scan'); results already returned may repeat.");
+            if (scanned === 0) {
+              searching = false; // same call, same gate and 20 s budget
+              if (p !== 1 || firstSkip !== 0) {
+                // A search page number means nothing to the scan: restart it from the first page.
+                searchDown += " The scan restarted from its page 1 (the requested page counted search results).";
+                p = firstPage = 1;
+                firstSkip = 0;
+              }
+              continue;
+            }
+            partial = true;
+            nextPage = 1; // the search is not asked again for a while: continue with the scan
+            scanNext = true;
+            break;
+          }
+          if (err instanceof OutOfTimeError && scanned === 0 && searchDown !== null) {
+            return fail("source_unavailable", `${searchDown} The page scan could not start within the ${CALL_START_BUDGET_MS / 1000} s budget; try again.`);
+          }
           if (err instanceof OutOfTimeError && scanned > 0) {
             partial = true; // the host gate's next turn comes after the time budget
             budgetReached = true;
@@ -192,8 +257,8 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         }
         if (scanned === 0) fetchedAt = res.fetchedAt;
         scanned++;
-        if (!(scanned === 1 && skip > 0)) discarded += res.value.discarded;
-        const skipped = scanned === 1 ? skip : 0;
+        if (!(scanned === 1 && firstSkip > 0)) discarded += res.value.discarded;
+        const skipped = scanned === 1 ? firstSkip : 0;
         const found = res.value.items.filter(matches);
         const room = limit - items.length;
         const taken = found.slice(skipped, skipped + room);
@@ -211,26 +276,36 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         p++;
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
+      if (searching) {
+        notes.splice(
+          1,
+          0,
+          "Text searched with PNCP's site search (whole words, newest update first; a record updated between calls can " +
+            "move, so next_page may repeat or skip one); results kept only when the returned object or body name contains the query.",
+        );
+      }
       if (refusedNote !== null) notes.unshift(refusedNote);
       else if (partial) {
         const why = budgetReached ? ` (the ${CALL_START_BUDGET_MS / 1000} s time budget was reached)` : "";
         notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
       }
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);
+      if (searchDown !== null) notes.unshift(searchDown);
       return ok({
         data: {
           items,
           from: start,
           to: end,
           modality,
-          scanned_pages: { from: page, to: page + scanned - 1 },
+          scanned_pages: { from: firstPage, to: firstPage + scanned - 1 },
           next_page: nextPage,
+          next_page_source: searching && !scanNext ? "search" : "scan",
           next_skip: nextSkip,
           partial,
           discarded,
           note: notes.join(" "),
         },
-        source_url: publicationUrl(f, t, modality, page),
+        source_url: searching && sent !== undefined ? searchUrl(sent, modality, firstPage) : publicationUrl(f, t, modality, firstPage),
         fetched_at: fetchedAt,
         license_note: PNCP_LICENSE_NOTE,
       });

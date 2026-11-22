@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.1 - 2026-11-22
+
+- `procurement_search` with `query` now uses the search behind the pncp.gov.br site (`GET /api/search`, filtered to
+  Curitiba and the modality; no key or login, robots.txt allows it; docs/sources.md) instead of reading Consulta
+  pages and matching client-side. A search page of 100 takes about 1 s instead of 8–13 s for 50, so a text match is
+  found on the first call: on 2026-11-22 `{query:"merenda"}` took 25 s, read 4 pages and returned 0 items, partial.
+  The same host gate (6 s), 20 s budget, 5-page cap and cache apply. The window is applied client-side, and the scan
+  stops once results were last updated before `from` (the search sorts by update date). A result is kept only when
+  the returned object or body name contains the query (accents and case ignored), so a withheld object still never
+  matches; supplier, user and free-text fields of the search records are never read. Without `query` nothing changes.
+  `page`/`next_page` count search pages when `query` is set, and `source_url` is the search URL. Limits: the search
+  matches whole words ("merend" no longer finds "merenda"); a window far in the past reads every newer match first;
+  a record updated between calls moves to the top, so following `next_page` may repeat or skip one; a record with no
+  readable publication date is counted in `discarded`.
+- Fallback (owner decision 2026-11-22): when the search fails (network error, timeout or HTTP error after the single
+  retry) or its format changed (`layout_changed`), the same call falls back to the Consulta page scan (same gate, 20 s
+  budget for the whole call, allow-list and masking), and `note` says the fast search was unavailable. A 429 or a
+  refusal never falls back (`rate_limited` or the refusal, as before). The search request times out after 8 s (it
+  answers in 0.45–1.7 s; Consulta keeps 25 s), so the scan still fits in the budget; after a timeout, network error,
+  5xx or changed format the search is not asked for 10 minutes in the process and calls go straight to the scan (a
+  4xx for one page or query is not remembered). If the scan's first page cannot start within the budget after a
+  failed search, the answer is `source_unavailable` with that reason, not `rate_limited`. A search failure after the
+  first page returns what was found as `partial` with `next_page` 1 and `next_page_source` `scan`.
+- New output `next_page_source` (`search` or `scan`) and input `page_source`: pass them back with `next_page`.
+  `page_source: "scan"` with `query` continues the fallback scan; a search page that has to fall back restarts the
+  scan at page 1 (said in `note`); `page_source: "search"` without `query` is `invalid_argument`. `skip` now accepts
+  up to 100 for search pages (they hold 100); for the scan (pages of 50) a `skip` of 50 or more is `invalid_argument`.
+- The query is sent to the search accent-stripped and lower-cased, so "saúde" and "saude" are one request. The
+  search word is sent to PNCP (docs/privacy.md, tool description).
+
 ## 0.19.0 - 2026-11-22
 
 Usability fixes found by calling every tool as a user (Praça Tiradentes). No new tool, no new host.

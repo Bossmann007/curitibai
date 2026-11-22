@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isAllowedUrl } from "../src/http.js";
-import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
+import { isAllowedUrl, resetHostRefusals } from "../src/http.js";
+import { sharedCache } from "../src/cache.js";
+import { CALL_START_BUDGET_MS, SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import {
   CURITIBA_BODIES,
   maskObject,
@@ -12,7 +13,11 @@ import {
   PNCP_GATE,
   PNCP_MIN_INTERVAL_MS,
   PNCP_PAGE_SIZE,
+  PNCP_SEARCH,
+  PNCP_SEARCH_PAGE_SIZE,
+  PNCP_SEARCH_TIMEOUT_MS,
   resetPncpGate,
+  searchUrl,
 } from "../src/sources/pncp.js";
 import { MAX_PNCP_REQUESTS, todayBrasilia } from "../src/tools/procurementSearch.js";
 import {
@@ -22,7 +27,9 @@ import {
   PNCP_FROM,
   PNCP_TO,
   pncpRoutes,
+  pncpSearchRoutes,
   pncpUrl,
+  searchPage,
   stubFetch,
   syntheticPncpPage,
   type Route,
@@ -250,7 +257,12 @@ describe("procurement_search privacy", () => {
   });
 
   it("a query never matches a withheld object", async () => {
-    stubFetch(pncpRoutes());
+    stubFetch({
+      ...pncpSearchRoutes("fulano ficticio"),
+      ...pncpSearchRoutes("servidores"),
+      ...pncpSearchRoutes("medicamentos"),
+      ...pncpSearchRoutes("acao social"),
+    });
     expect(dataOf(await search({ query: "fulano ficticio" })).items).toEqual([]);
     expect(dataOf(await search({ query: "servidores" })).items).toEqual([]);
     expect(dataOf(await search({ query: "medicamentos" })).items.map((i) => i.modality_code)).toEqual([6]);
@@ -718,7 +730,7 @@ describe("procurement_search paging", () => {
   });
 
   it("collapses repeated spaces in the query", async () => {
-    stubFetch(pncpRoutes());
+    stubFetch(pncpSearchRoutes("medicamentos ficticios"));
     expect(dataOf(await search({ query: "medicamentos   ficticios" })).items.map((i) => i.modality_code)).toEqual([6]);
   });
 
@@ -765,16 +777,227 @@ describe("procurement_search host gate (PNCP)", () => {
     const starts: number[] = [];
     globalThis.fetch = (async (input: string | URL) => {
       starts.push(Date.now());
-      const page = Number(new URL(String(input)).searchParams.get("pagina"));
+      const url = new URL(String(input));
+      const page = Number(url.searchParams.get("pagina"));
+      if (url.pathname === "/api/search") return new Response(searchPage([]), { status: 200 });
       return new Response(syntheticPncpPage(page * 100, 0, 0), { status: 200 });
     }) as typeof fetch;
     const t0 = Date.now();
-    const a = search({ query: "aa" });
+    const a = search();
     const b = search({ query: "bb", modality: 8 });
     await vi.advanceTimersByTimeAsync(PNCP_MIN_INTERVAL_MS - 1);
     expect(starts).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1);
     await Promise.all([a, b]);
     expect(starts.map((t) => t - t0)).toEqual([0, PNCP_MIN_INTERVAL_MS]);
+  });
+});
+
+describe("procurement_search text search (PNCP site search)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const JSON_ROUTE = (body: string): Route => ({ body, contentType: JSON_TYPE });
+  /** Consulta-shape records of a synthetic page (see syntheticPncpPage). */
+  const records = (start: number, listed: number, others: number, extra: Record<string, unknown> = {}) =>
+    (JSON.parse(syntheticPncpPage(start, listed, 0, others)) as { data: Record<string, unknown>[] }).data.map((r) => ({ ...r, ...extra }));
+
+  it("finds a match on a later search page and never calls the Consulta API; a repeat call makes no request", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("ficticio 200", 6, 1)}`]: JSON_ROUTE(searchPage(records(100, 0, PNCP_SEARCH_PAGE_SIZE), 101)),
+      [`GET ${searchUrl("ficticio 200", 6, 2)}`]: JSON_ROUTE(searchPage(records(200, 1, 0), 101)),
+    });
+    const first = await search({ query: "ficticio 200" });
+    expect(dataOf(first).items.map((i) => i.pncp_id)).toEqual(["76417005000186-1-000200/2026"]);
+    expect(dataOf(first)).toMatchObject({ partial: false, next_page: null, scanned_pages: { from: 1, to: 2 } });
+    expect(dataOf(first).note).toMatch(/site search/);
+    expect((first.structuredContent as { source_url: string }).source_url).toBe(searchUrl("ficticio 200", 6, 1));
+    expect(calls.map((c) => c.url.startsWith(`${PNCP_SEARCH}?`))).toEqual([true, true]);
+    await search({ query: "ficticio 200" });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("drops results published outside the window and stops once updates are older than 'from'", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("objeto", 6, 1)}`]: JSON_ROUTE(
+        searchPage(
+          [
+            ...records(1, 1, 0),
+            ...records(3, 1, 0, { dataPublicacaoPncp: "" }),
+            ...records(2, 1, 0, { dataPublicacaoPncp: "2026-11-20T08:00:00", dataAtualizacao: "2026-11-20T08:00:00" }),
+            ...records(300, 97, 0, { dataPublicacaoPncp: "2026-09-01T08:00:00", dataAtualizacao: "2026-10-01T08:00:00" }),
+          ],
+          5000,
+        ),
+      ),
+    });
+    const data = dataOf(await search({ query: "objeto" }));
+    expect(data.items.map((i) => i.pncp_id)).toEqual(["76417005000186-1-000001/2026"]);
+    expect(data).toMatchObject({ partial: false, next_page: null, discarded: 1 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("never returns the search's supplier, user or free-text fields", async () => {
+    stubFetch(pncpSearchRoutes("ficticio"));
+    const res = await search({ query: "ficticio" });
+    expect(dataOf(res).items.length).toBeGreaterThan(0);
+    const text = JSON.stringify(res);
+    for (const p of [...PLANTED, "FORNECEDOR PESSOA FICTICIA", "USUARIO FICTICIO"]) expect({ p, leaked: text.includes(p) }).toEqual({ p, leaked: false });
+  });
+
+  it("a 429 on a later search page keeps the first page as partial; following next_page inside the wait makes no request", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("objeto", 6, 1)}`]: JSON_ROUTE(searchPage(records(1, 1, PNCP_SEARCH_PAGE_SIZE - 1), 500)),
+      [`GET ${searchUrl("objeto", 6, 2)}`]: { status: 429, headers: { "retry-after": "120" } },
+    });
+    const first = dataOf(await search({ query: "objeto" }));
+    expect(first).toMatchObject({ partial: true, next_page: 2 });
+    expect(first.items).toHaveLength(1);
+    expect(first.note).toMatch(/wait about 2 minutes/);
+    const second = await search({ query: "objeto", page: 2 });
+    expect(errorOf(second)).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("a refusal is returned once, never falls back, and the host is not asked again", async () => {
+    const calls = stubFetch({ [`GET ${searchUrl("objeto", 6, 1)}`]: { status: 403 } });
+    for (let i = 0; i < 2; i++) {
+      expect(errorOf(await search({ query: "objeto" }))).toEqual({ error: "source_unavailable", message: SOURCE_REFUSED_MESSAGE });
+    }
+    expect(calls).toHaveLength(1);
+    resetPncpGate();
+    resetHostRefusals();
+    stubFetch({ [`GET ${searchUrl("vazio", 6, 1)}`]: { status: 204 } });
+    expect(dataOf(await search({ query: "Vazio" }))).toMatchObject({ items: [], partial: false, next_page: null });
+  });
+
+  it("falls back to the Consulta scan in the same call when the search answers 500 or its format changed", async () => {
+    for (const [route, reason] of [
+      [{ status: 500 }, "HTTP 500"],
+      [JSON_ROUTE('{"items":[]}'), "layout_changed"],
+      [JSON_ROUTE('{"data":[],"total":0}'), "layout_changed"],
+      [JSON_ROUTE("<html></html>"), "layout_changed"],
+    ] as [Route, string][]) {
+      resetPncpGate();
+      sharedCache.clear();
+      const calls = stubFetch({ [`GET ${searchUrl("medicamentos", 6, 1)}`]: route, ...pncpRoutes() });
+      const res = await search({ query: "medicamentos" });
+      const data = dataOf(res);
+      expect(data.items.map((i) => i.modality_code)).toEqual([6]);
+      expect(data.note).toMatch(/^PNCP's fast search was unavailable \(.+\); the slower page scan was used/);
+      if (reason === "layout_changed") expect(data.note).toContain("(layout_changed)");
+      expect((res.structuredContent as { source_url: string }).source_url).toBe(pncpUrl());
+      expect(calls.map((c) => c.url)).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl()]);
+    }
+  });
+
+  it("a 429 from the search does not fall back: rate_limited, and no further request inside the wait", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("medicamentos", 6, 1)}`]: { status: 429, headers: { "retry-after": "120" } },
+      ...pncpRoutes(),
+    });
+    expect(errorOf(await search({ query: "medicamentos" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await search({ query: "medicamentos" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await search())).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("sends the query accent-stripped and lower-cased, so 'Saúde' and 'saude' are one request", async () => {
+    const calls = stubFetch({ [`GET ${searchUrl("saude", 6, 1)}`]: JSON_ROUTE(searchPage([])) });
+    await search({ query: "Saúde" });
+    await search({ query: "saude" });
+    expect(calls.map((c) => c.url)).toEqual([searchUrl("saude", 6, 1)]);
+  });
+
+  it("the search timeout leaves the fallback scan room in the budget", () => {
+    // fetchPncp retries once after a network error, each try with its own timeout.
+    expect(2 * PNCP_SEARCH_TIMEOUT_MS).toBeLessThan(CALL_START_BUDGET_MS);
+    expect(PNCP_SEARCH_TIMEOUT_MS + PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS);
+  });
+
+  /** Fake clock: a search request takes `searchMs` and then times out; Consulta pages answer with the fixture. */
+  const slowSearch = (searchMs: number) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    PNCP_GATE.minIntervalMs = PNCP_MIN_INTERVAL_MS;
+    const urls: string[] = [];
+    globalThis.fetch = (async (input: string | URL) => {
+      const url = String(input);
+      urls.push(url);
+      if (url.startsWith(`${PNCP_SEARCH}?`)) {
+        vi.setSystemTime(Date.now() + searchMs);
+        throw new DOMException("timed out", "TimeoutError");
+      }
+      return new Response(fixture("pncp_contratacoes_synthetic.json"), { status: 200, headers: { "content-type": JSON_TYPE } });
+    }) as typeof fetch;
+    return urls;
+  };
+  const settle = async <T>(call: Promise<T>) => {
+    await vi.advanceTimersByTimeAsync(CALL_START_BUDGET_MS + 10_000);
+    return call;
+  };
+
+  it("a search timeout falls back to the scan in the same call; inside the next 10 minutes the search is not asked", async () => {
+    const urls = slowSearch(PNCP_SEARCH_TIMEOUT_MS);
+    const first = dataOf(await settle(search({ query: "medicamentos" })));
+    expect(first.items.map((i) => i.modality_code)).toEqual([6]);
+    expect(first.note).toMatch(/^PNCP's fast search was unavailable \(timeout\); the slower page scan was used/);
+    expect(first).toMatchObject({ next_page_source: "scan", partial: false });
+    expect(urls).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl()]);
+    sharedCache.clear();
+    const second = dataOf(await settle(search({ query: "acao social" })));
+    expect(second.note).toMatch(/^PNCP's fast search was unavailable \(timeout; not asked again for about 10 min\)/);
+    expect(urls).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl(), pncpUrl()]);
+  });
+
+  it("when the failed search leaves no time for the scan, the answer is source_unavailable, never rate_limited", async () => {
+    const urls = slowSearch(CALL_START_BUDGET_MS + 1_000);
+    const res = await settle(search({ query: "medicamentos" }));
+    expect(errorOf(res)).toMatchObject({ error: "source_unavailable", message: expect.stringMatching(/could not start within the 20 s budget/) });
+    expect(urls).toEqual([searchUrl("medicamentos", 6, 1)]);
+  });
+
+  it("tags next_page with its source; page_source 'scan' continues the scan, and a search page restarts the scan at 1", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("objeto", 6, 1)}`]: JSON_ROUTE(searchPage(records(1, 15, PNCP_SEARCH_PAGE_SIZE - 15), 500)),
+    });
+    const first = dataOf(await search({ query: "objeto" }));
+    expect(first).toMatchObject({ next_page: 1, next_skip: 10, next_page_source: "search" });
+    expect(calls).toHaveLength(1);
+
+    const scanCalls = stubFetch({ [`GET ${pncpUrl(2)}`]: JSON_ROUTE(syntheticPncpPage(300, 3, 0)) });
+    const scan = dataOf(await search({ query: "objeto", page: 2, page_source: "scan" }));
+    expect(scan.items).toHaveLength(3);
+    expect(scan).toMatchObject({ next_page_source: "scan", scanned_pages: { from: 2, to: 2 } });
+    expect(scanCalls.map((c) => c.url)).toEqual([pncpUrl(2)]);
+
+    resetPncpGate();
+    const restart = stubFetch({ [`GET ${searchUrl("objeto", 6, 3)}`]: { status: 500 }, ...pncpRoutes() });
+    const r = dataOf(await search({ query: "objeto", page: 3, skip: 40 }));
+    expect(r.note).toMatch(/The scan restarted from its page 1/);
+    expect(r).toMatchObject({ next_page_source: "scan", scanned_pages: { from: 1, to: 1 } });
+    expect(restart.map((c) => c.url)).toEqual([searchUrl("objeto", 6, 3), pncpUrl(1)]);
+
+    expect(errorOf(await search({ page_source: "search" }))).toMatchObject({ error: "invalid_argument" });
+  });
+
+  it("a search failure after the first page sends the client to the scan; a 4xx is not remembered", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("objeto", 6, 1)}`]: JSON_ROUTE(searchPage(records(1, 1, PNCP_SEARCH_PAGE_SIZE - 1), 500)),
+      [`GET ${searchUrl("objeto", 6, 2)}`]: { status: 400 },
+    });
+    const first = dataOf(await search({ query: "objeto" }));
+    expect(first).toMatchObject({ partial: true, next_page: 1, next_skip: 0, next_page_source: "scan" });
+    expect(first.items).toHaveLength(1);
+    expect(first.note).toMatch(/\(HTTP 400\); continue with the page scan from its page 1/);
+    sharedCache.clear();
+    await search({ query: "objeto" }); // HTTP 400 was not remembered: the search is asked again
+    expect(calls.map((c) => c.url)).toEqual([1, 2, 1, 2].map((p) => searchUrl("objeto", 6, p)));
+  });
+
+  it("a scan page holds 50: skip of 50 or more is refused for the scan", async () => {
+    const calls = stubFetch({});
+    expect(errorOf(await search({ skip: 50 }))).toMatchObject({ error: "invalid_argument" });
+    expect(errorOf(await search({ query: "x y", skip: 60, page_source: "scan" }))).toMatchObject({ error: "invalid_argument" });
+    expect(calls).toHaveLength(0);
   });
 });
