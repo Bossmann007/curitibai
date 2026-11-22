@@ -905,7 +905,9 @@ cited, the approach the owner approved for no-licence sources).
   can push a slot that far); stations left out are listed first in `more_matches` with `partial: true` and a note.
   A station the gate refuses mid-call (`rate_limited`, v0.18.2) is handled the same way when at least one station was
   read in the call or is cached (later stations are still tried, so cached ones are returned); the call returns
-  `rate_limited` only when none is available. A
+  `rate_limited` only when none is available. Since v0.18.3 a final refusal (401/403 or a CAPTCHA) on a later station
+  is handled the same way: the stations read are returned with `partial: true` and a note that the host refused (the
+  10-minute block stays in force); `source_unavailable` only when none is available. A
   request already started is never cut, so the bound is 21 s plus the 10 s timeout. A call that joins another call's
   in-flight load of a station (or, for `guaira_events`, of robots.txt), which ran out of that other call's budget, asks
   again under its own (`underOwnBudget` in `src/hostGate.ts`). Cache 15 minutes per station; 512 KB cap (two days were about 34 KB);
@@ -974,7 +976,7 @@ cited, the approach the owner approved for no-licence sources).
   those items stay `details: "not_read"`. Since v0.18.2 the listing is the complete answer and event-page details
   are an optional enrichment: items not read yet (budget, the 2-page cap, a refusal) are counted in `details_pending`
   with a note to call again for venue and price, and `partial: true` means only that listing pages are missing
-  (`truncated`). The listing load (robots.txt and up to 3
+  (`truncated`); since v0.18.3 `partial` is documented as a deprecated alias of `truncated`. The listing load (robots.txt and up to 3
   pages, starts at 0 to 15 s) is never cut, since a partial listing would be cached 1 hour, and a request already
   started is never cut. A cold call: 5 requests 5 s apart (the first event page at 20 s, the second left for the
   next call), about 20 s plus network time; the bound is 21 s plus the 15 s timeout.

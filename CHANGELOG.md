@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.3 - 2026-11-22
+
+The three Low findings left by the v0.18.2 review. No new tool, no new host.
+
+- `river_levels`: the note no longer says ANA publishes validated data "only months later" (that delay was not
+  verified). It now says ANA also publishes validated (consistidos) series after deeper analysis and that this tool
+  reads only the raw telemetry. A test asserts the note mentions no months.
+- `river_levels`: a final refusal (HTTP 401/403 or a CAPTCHA) on a later station no longer drops the stations
+  already read in the call. They are returned with `partial: true` and a note that the host refused this server; the
+  10-minute block stays in force. `source_unavailable` is returned only when no station was read or cached. This
+  matches the `rate_limited` path of 0.18.2. Other host or transfer failures still fail the whole call.
+- `guaira_events`: `partial` is now documented as a deprecated alias of `truncated` (always equal). Both stay in this
+  version; read `truncated` for missing listing pages and `details_pending` for event-page details. The README shows
+  a cold and a warm call.
+
 ## 0.18.2 - 2026-11-22
 
 The two Low findings left by the v0.18.1 review. No new tool, no new host.

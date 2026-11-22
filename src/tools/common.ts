@@ -90,6 +90,11 @@ export function refusedPageNote(page: number, status: number): string {
   return `The source refused page ${page} (HTTP ${status}); it is not asked again. What was found before is returned and next_page is null.`;
 }
 
+/** Note for river_levels when the host refused a station after others were read: those are kept (partial). */
+export function refusedStationsNote(count: number, status: number): string {
+  return `Partial: ${count} station(s) not read (partial: true). The source refused this server (HTTP ${status}); it is not asked again for 10 minutes.`;
+}
+
 /** Uses the source's Retry-After when it sent one in seconds; otherwise asks for about a minute. */
 export function rateLimitedMessage(retryAfterS: number | null): string {
   const wait =

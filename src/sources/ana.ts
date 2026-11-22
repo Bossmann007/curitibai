@@ -169,10 +169,10 @@ function rainSum(readings: Reading[], end: number, span: number, fromMs: number)
 /*
  * Data quality checks (v0.16.1). They look only at the readings of the 24 h ending at the latest reading, already
  * read for the answer (no new request), and never change a value. "ok" means only that no check fired: telemetry is
- * not validated by anyone (ANA publishes checked "consistidos" data months later) and a wrong value can pass all of
- * them. Thresholds are judgement calls for small rivers around Curitiba, checked against the two real samples in
- * test/fixtures/ana (a normal day at Fazendinha moves about 1 cm per hour; ETE Araucária moves up to about 40 cm in
- * 15 minutes and stays "ok").
+ * not validated by anyone (ANA also publishes validated (consistidos) series after deeper analysis; this tool reads
+ * only the raw telemetry) and a wrong value can pass all of them. Thresholds are judgement calls for small rivers
+ * around Curitiba, checked against the two real samples in test/fixtures/ana (a normal day at Fazendinha moves about
+ * 1 cm per hour; ETE Araucária moves up to about 40 cm in 15 minutes and stays "ok").
  */
 export const QUALITY_WINDOW_MS = DAY_MS;
 /** Fewer readings than this in the window (2 h of 15-minute readings) give "unknown" when no check fires. */

@@ -379,6 +379,29 @@ describe("river_levels", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("returns the station read before a 403 on a later station (partial), and keeps the 10-minute block", async () => {
+    const calls = stubFetch({ ...route("65009000"), ...route("65006090", { status: 403 }), ...route("65004995") });
+    const pending = levels({});
+    await vi.advanceTimersByTimeAsync(10_000);
+    const out = await pending;
+    expect(out.data.partial).toBe(true);
+    expect(out.data.stations.map((s) => s.code)).toEqual(["65009000"]);
+    expect(out.data.more_matches.slice(0, 2).map((m) => m.code)).toEqual(["65006090", "65004995"]);
+    expect(out.note).toMatch(/Partial: 2 station\(s\) not read \(partial: true\)\. The source refused this server \(HTTP 403\); it is not asked again for 10 minutes\./);
+    expect(calls).toHaveLength(2);
+    // Inside the 10-minute block: no request, and nothing new to return (65009000 is not asked, so it is not cached for 65006090).
+    await vi.advanceTimersByTimeAsync(9 * 60_000);
+    expect(errorOf(await call({ station: "65006090" }))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("says nothing about when ANA publishes validated data (the delay is not verified)", async () => {
+    stubFetch(route("65010000"));
+    const out = await levels({ station: "65010000" });
+    expect(out.note).toContain("ANA also publishes validated (consistidos) series after deeper analysis; this tool reads only the raw telemetry.");
+    expect(out.note).not.toMatch(/month/i);
+  });
+
   it("matches the start of a code", async () => {
     stubFetch(route("65009000"));
     expect((await levels({ station: "65009" })).data.stations.map((s) => s.code)).toEqual(["65009000"]);
