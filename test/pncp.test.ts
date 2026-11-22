@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isAllowedUrl, resetHostRefusals } from "../src/http.js";
+import { sharedCache } from "../src/cache.js";
 import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import {
   CURITIBA_BODIES,
@@ -854,7 +855,7 @@ describe("procurement_search text search (PNCP site search)", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("a refusal is returned once and the host is not asked again; a changed response shape fails closed", async () => {
+  it("a refusal is returned once, never falls back, and the host is not asked again", async () => {
     const calls = stubFetch({ [`GET ${searchUrl("objeto", 6, 1)}`]: { status: 403 } });
     for (let i = 0; i < 2; i++) {
       expect(errorOf(await search({ query: "objeto" }))).toEqual({ error: "source_unavailable", message: SOURCE_REFUSED_MESSAGE });
@@ -864,9 +865,43 @@ describe("procurement_search text search (PNCP site search)", () => {
     resetHostRefusals();
     stubFetch({ [`GET ${searchUrl("vazio", 6, 1)}`]: { status: 204 } });
     expect(dataOf(await search({ query: "Vazio" }))).toMatchObject({ items: [], partial: false, next_page: null });
-    for (const body of ['{"items":[]}', '{"data":[],"total":0}', "<html></html>"]) {
-      stubFetch({ [`GET ${searchUrl("outro", 6, 1)}`]: JSON_ROUTE(body) });
-      expect(errorOf(await search({ query: "outro" }))).toEqual({ error: "source_unavailable" });
+  });
+
+  it("falls back to the Consulta scan in the same call when the search answers 500 or its format changed", async () => {
+    for (const [route, reason] of [
+      [{ status: 500 }, "HTTP 500"],
+      [JSON_ROUTE('{"items":[]}'), "layout_changed"],
+      [JSON_ROUTE('{"data":[],"total":0}'), "layout_changed"],
+      [JSON_ROUTE("<html></html>"), "layout_changed"],
+    ] as [Route, string][]) {
+      resetPncpGate();
+      sharedCache.clear();
+      const calls = stubFetch({ [`GET ${searchUrl("medicamentos", 6, 1)}`]: route, ...pncpRoutes() });
+      const res = await search({ query: "medicamentos" });
+      const data = dataOf(res);
+      expect(data.items.map((i) => i.modality_code)).toEqual([6]);
+      expect(data.note).toMatch(/^PNCP's fast search was unavailable \(.+\); the slower page scan was used/);
+      if (reason === "layout_changed") expect(data.note).toContain("(layout_changed)");
+      expect((res.structuredContent as { source_url: string }).source_url).toBe(pncpUrl());
+      expect(calls.map((c) => c.url)).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl()]);
     }
+  });
+
+  it("a 429 from the search does not fall back: rate_limited, and no further request inside the wait", async () => {
+    const calls = stubFetch({
+      [`GET ${searchUrl("medicamentos", 6, 1)}`]: { status: 429, headers: { "retry-after": "120" } },
+      ...pncpRoutes(),
+    });
+    expect(errorOf(await search({ query: "medicamentos" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await search({ query: "medicamentos" }))).toMatchObject({ error: "rate_limited" });
+    expect(errorOf(await search())).toMatchObject({ error: "rate_limited" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("sends the query accent-stripped and lower-cased, so 'Saúde' and 'saude' are one request", async () => {
+    const calls = stubFetch({ [`GET ${searchUrl("saude", 6, 1)}`]: JSON_ROUTE(searchPage([])) });
+    await search({ query: "Saúde" });
+    await search({ query: "saude" });
+    expect(calls.map((c) => c.url)).toEqual([searchUrl("saude", 6, 1)]);
   });
 });

@@ -16,6 +16,12 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   matches whole words ("merend" no longer finds "merenda"); a window far in the past reads every newer match first;
   a record updated between calls moves to the top, so following `next_page` may repeat or skip one; a record with no
   readable publication date is counted in `discarded`.
+- Fallback (owner decision 2026-11-22): when the search fails (network error, timeout or HTTP error after the single
+  retry) or its format changed (`layout_changed`), the same call falls back to the Consulta page scan (same gate, 20 s
+  budget for the whole call, allow-list and masking), and `note` says the fast search was unavailable; `next_page`
+  then counts Consulta pages. A 429 or a refusal never falls back (`rate_limited` or the refusal, as before).
+- The query is sent to the search accent-stripped and lower-cased, so "saúde" and "saude" are one request. The
+  search word is sent to PNCP (docs/privacy.md, tool description).
 
 ## 0.19.0 - 2026-11-22
 

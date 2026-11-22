@@ -5,6 +5,7 @@ import {
   MODALITIES,
   PNCP_LICENSE_NOTE,
   publicationUrl,
+  SearchUnavailableError,
   searchUrl,
   type Procurement,
 } from "../sources/pncp.js";
@@ -46,7 +47,7 @@ export const procurementSearchInput = {
     .describe(
       "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to " +
         "PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object " +
-        "or body name contain it are kept.",
+        "or body name contain it are kept. The search word is sent to PNCP.",
     ),
   from: isoDate.optional().describe(`First publication date, YYYY-MM-DD. Default: ${DEFAULT_DAYS} days before 'to'.`),
   to: isoDate.optional().describe("Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days."),
@@ -135,7 +136,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
     "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
     "a name. With query, uses the search behind the pncp.gov.br site (pages of 100, about 1 s each, newest update " +
-    "first); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
+    "first; the search word is sent to PNCP; if that search fails, the Consulta scan is used); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
     "call; continue with next_page and next_skip. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
@@ -148,10 +149,13 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     const f = compact(start);
     const t = compact(end);
     const needle = query === undefined ? null : fold(query).replace(/\s+/g, " ");
-    const sent = query?.replace(/\s+/g, " ").toLowerCase();
+    /** Sent accent-stripped and lower-cased, so "saúde" and "saude" are one request and one cache entry. */
+    const sent = needle ?? undefined;
+    /** False once the site search failed in this call: the Consulta scan is used instead (fallback). */
+    let searching = sent !== undefined;
     /** Search results outside the window are dropped; once a page reaches updates older than `start`, none can follow. */
     const loadPage = async (p: number, startBy: number) => {
-      if (sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
+      if (!searching || sent === undefined) return getPublicationPage(f, t, modality, p, startBy);
       const res = await getSearchPage(sent, modality, p, startBy);
       const day = (it: Procurement) => it.published_at?.slice(0, 10) ?? null;
       const undated = res.value.items.filter((it) => day(it) === null).length;
@@ -174,6 +178,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
       let rateLimitNote: string | null = null;
       let refusedNote: string | null = null;
       let budgetReached = false;
+      let searchDown: string | null = null;
       const started = Date.now();
       for (;;) {
         if (scanned === MAX_PNCP_REQUESTS) {
@@ -192,6 +197,18 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         try {
           res = await loadPage(p, started + CALL_START_BUDGET_MS);
         } catch (err) {
+          if (err instanceof SearchUnavailableError) {
+            searchDown =
+              `PNCP's fast search was unavailable (${err.reason})` +
+              (scanned === 0 ? "; the slower page scan was used, and next_page counts its pages." : "; continue with next_page.");
+            if (scanned === 0) {
+              searching = false; // same call, same gate and 20 s budget
+              continue;
+            }
+            partial = true;
+            nextPage = p;
+            break;
+          }
           if (err instanceof OutOfTimeError && scanned > 0) {
             partial = true; // the host gate's next turn comes after the time budget
             budgetReached = true;
@@ -229,7 +246,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         p++;
       }
       const notes = [`Modality ${modality} (${MODALITIES[modality]}), published ${start} to ${end}.`, SCOPE_NOTE];
-      if (sent !== undefined) {
+      if (searching) {
         notes.splice(
           1,
           0,
@@ -243,6 +260,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         notes.unshift(`Stopped after ${scanned} upstream page(s)${why}; continue with next_page.`);
       }
       if (rateLimitNote !== null) notes.unshift(rateLimitNote);
+      if (searchDown !== null) notes.unshift(searchDown);
       return ok({
         data: {
           items,
@@ -256,7 +274,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
           discarded,
           note: notes.join(" "),
         },
-        source_url: sent === undefined ? publicationUrl(f, t, modality, page) : searchUrl(sent, modality, page),
+        source_url: searching && sent !== undefined ? searchUrl(sent, modality, page) : publicationUrl(f, t, modality, page),
         fetched_at: fetchedAt,
         license_note: PNCP_LICENSE_NOTE,
       });

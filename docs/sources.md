@@ -182,8 +182,13 @@ client-side page by page at 8–13 s per page. Findings:
 
 Decision: `procurement_search` uses the site search when `query` is set (same host, same gate, budget, page cap,
 cache and fail-closed parsing; a result is kept only when its returned object or body name contains the query, so a
-withheld object never matches), and the Consulta API otherwise. Risk: the endpoint is undocumented and may change;
-a changed shape returns `source_unavailable` (no fallback to the slow scan, which would add load).
+withheld object never matches), and the Consulta API otherwise. The query is sent accent-stripped and lower-cased.
+Owner decision (Enzo, 2026-11-22): the endpoint is undocumented and may change, so when the search fails (network
+error, timeout or HTTP error after the single retry) or its format fails the strict check (`layout_changed`), the
+same call falls back to the Consulta scan (same gate, same 20 s budget for the whole call, same allow-list and
+masking) and `note` says the fast search was unavailable. That search failure is not remembered by the gate (the
+Consulta API is another service on the host). A 429 or a refusal never falls back: the gate remembers it for the
+whole host and the call returns `rate_limited` or the refusal as before.
 
 **Curitiba municipal bodies, read from PNCP.** Every body with a buying unit in Curitiba (`codigoIbge` 4106902) and
 `esferaId` `M` in the results published from 2026-10-01 to 2026-11-18 (modalities 1, 4, 6, 8, 9, 11 and 12 had results;

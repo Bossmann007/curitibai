@@ -129,7 +129,11 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
 - `procurement_search` with `query`: PNCP site search (`/api/search`, `municipios=4006`, `modalidades`, pages of
   100, `src/sources/pncp.ts` `getSearchPage`/`parseSearch`) through the PNCP gate; window client-side; stop when
   updates are older than `from`; local re-match keeps the "never a withheld object" rule. Choice A of the brief
-  (evidence in docs/sources.md); B (in-process index of Consulta pages) not built.
+  (evidence in docs/sources.md); B (in-process index of Consulta pages) not built. Fallback to the Consulta scan in the
+  same call when the search fails or its format changes; never on a 429 or refusal. Query sent accent-stripped and
+  lower-cased.
+
+Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the user's query text goes to PNCP; fallback to the page scan when the search fails or its format changes.
 
 ## Out of scope
 

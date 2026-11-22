@@ -1,5 +1,5 @@
 import { sharedCache } from "../cache.js";
-import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceUnavailableError } from "../http.js";
+import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, SourceUnavailableError } from "../http.js";
 import { createHostGate, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { maskObject } from "../mask.js";
 
@@ -318,10 +318,44 @@ export function getPublicationPage(from: string, to: string, modality: number, p
   );
 }
 
-/** One page of the site search, through the same PNCP gate, cache and single retry as the Consulta API. */
+/**
+ * The site search failed (network error, timeout or HTTP error after the single retry) or its format changed
+ * (`layout_changed`): the caller falls back to the Consulta scan. The gate does not remember it, because the Consulta
+ * API is another service on the host. A 429 or a refusal is never this: those stay host failures.
+ */
+export class SearchUnavailableError extends Error {
+  constructor(readonly reason: string) {
+    super(`search_unavailable: ${reason}`);
+    this.name = "SearchUnavailableError";
+  }
+}
+
+const searchFailure = (err: unknown) =>
+  err instanceof SourceUnavailableError && !(err instanceof RateLimitedError) && !(err instanceof SourceRefusedError);
+
+/** One page of the site search, through the same PNCP gate (spacing, budget), cache and single retry as the Consulta API. */
 export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
   const url = searchUrl(query, modality, page);
   return underOwnBudget(startBy, () =>
-    sharedCache.getOrLoad(`GET ${url}`, async () => parseSearch(await gate.run(() => fetchPncp(url), { startBy }))),
+    sharedCache.getOrLoad(`GET ${url}`, async () => {
+      const got = await gate.run(
+        async (): Promise<{ body: string } | { failed: string }> => {
+          try {
+            return { body: await fetchPncp(url) };
+          } catch (err) {
+            if (searchFailure(err)) return { failed: (err as SourceUnavailableError).reason };
+            throw err;
+          }
+        },
+        { startBy },
+      );
+      if ("failed" in got) throw new SearchUnavailableError(got.failed);
+      try {
+        return parseSearch(got.body);
+      } catch (err) {
+        if (searchFailure(err)) throw new SearchUnavailableError("layout_changed");
+        throw err;
+      }
+    }),
   );
 }
