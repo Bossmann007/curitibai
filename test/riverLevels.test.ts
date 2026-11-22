@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getStationData, parseStationData, requestPeriod, STATIONS, stationDataUrl, type Station } from "../src/sources/ana.js";
+import { assessQuality, getStationData, parseStationData, requestPeriod, STATIONS, stationDataUrl, type Reading, type Station } from "../src/sources/ana.js";
 import { SourceUnavailableError } from "../src/http.js";
 import { riverLevelsOutput } from "../src/tools/riverLevels.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
@@ -59,7 +59,7 @@ describe("parseStationData", () => {
   });
 
   it("reads ANA's 'no data' answer (with its schema) as no reading, only for the requested code", () => {
-    expect(parseStationData("02549127", noData("02549127"), FROM_MS, NOW)).toEqual({ code: "02549127", latest: null, rain_1h_mm: null, rain_24h_mm: null });
+    expect(parseStationData("02549127", noData("02549127"), FROM_MS, NOW)).toEqual({ code: "02549127", latest: null, rain_1h_mm: null, rain_24h_mm: null, quality: "unknown", quality_reasons: [] });
     expect(() => parseStationData("02549086", noData("02549127"), FROM_MS, NOW)).toThrow(SourceUnavailableError);
   });
 
@@ -102,6 +102,88 @@ describe("parseStationData", () => {
   });
 });
 
+describe("assessQuality (data quality checks)", () => {
+  const MIN = 60_000;
+  /** End of the SYNTHETIC series below (not a capture). */
+  const END = Date.parse("2026-11-22T05:00:00Z");
+  /**
+   * SYNTHETIC readings, not a capture: `n` rows 15 minutes apart ending at END, oldest first, level `base(i)` (rising
+   * 1 cm per hour, like the real Fazendinha day), flow 5 m³/s and rain 0 unless `f(i)` says otherwise.
+   */
+  const base = (i: number) => 200 + Math.floor(i / 4);
+  const synthetic = (n: number, f: (i: number) => Partial<Reading> = () => ({})): Reading[] =>
+    Array.from({ length: n }, (_, i) => ({ at: END - (n - 1 - i) * 15 * MIN, level_cm: base(i), flow_m3s: 5, rain_mm: 0, ...f(i) }));
+  const OK = { quality: "ok", quality_reasons: [] };
+  const suspect = (...reasons: string[]) => ({ quality: "suspect", quality_reasons: reasons });
+
+  it("keeps both real samples (a normal day at Fazendinha and ETE Araucária) ok", () => {
+    expect(parseStationData("65010000", FAZENDINHA, FROM_MS, NOW)).toMatchObject(OK);
+    expect(parseStationData("65019980", ARAUCARIA, FROM_MS, NOW)).toMatchObject(OK);
+  });
+
+  it("is unknown without readings, and with fewer than 8 readings in the 24 h when no check fires", () => {
+    expect(assessQuality([])).toEqual({ quality: "unknown", quality_reasons: [] });
+    expect(assessQuality(synthetic(7))).toEqual({ quality: "unknown", quality_reasons: ["too_few_readings"] });
+    expect(assessQuality(synthetic(8))).toEqual(OK);
+    expect(assessQuality(synthetic(5, (i) => (i === 2 ? { rain_mm: -1 } : {})))).toEqual(suspect("out_of_range"));
+    expect(parseStationData("02549127", noData("02549127"), FROM_MS, NOW)).toMatchObject({ quality: "unknown", quality_reasons: [] });
+  });
+
+  it.each([
+    ["a negative level", { level_cm: -3 }], // also a 200 cm jump that comes back: level_spike too
+    ["a negative flow", { flow_m3s: -0.5 }],
+    ["negative rain", { rain_mm: -0.2 }],
+    ["more than 150 mm of rain in one reading", { rain_mm: 150.2 }],
+  ])("flags %s anywhere in the 24 h as out_of_range", (_label, bad) => {
+    expect(assessQuality(synthetic(96, (i) => (i === 10 ? bad : {})))).toMatchObject({ quality: "suspect", quality_reasons: expect.arrayContaining(["out_of_range"]) });
+  });
+
+  it("accepts 150 mm in one reading and 0 values; ignores a bad reading older than 24 h", () => {
+    expect(assessQuality(synthetic(96, (i) => (i === 10 ? { rain_mm: 150, flow_m3s: 0 } : {})))).toEqual(OK);
+    expect(assessQuality(synthetic(120, (i) => (i === 10 ? { level_cm: -3 } : {})))).toEqual(OK);
+  });
+
+  it("flags a level jump over 100 cm in 15 minutes that comes back within an hour as level_spike", () => {
+    expect(assessQuality(synthetic(96, (i) => (i === 50 ? { level_cm: base(i) + 150 } : {})))).toEqual(suspect("level_spike"));
+    expect(assessQuality(synthetic(96, (i) => (i === 50 || i === 51 ? { level_cm: base(i) - 180 } : {})))).toEqual(suspect("level_spike"));
+  });
+
+  it("does not flag a jump of exactly 100 cm, a step that stays, or a jump across a gap in the readings", () => {
+    expect(assessQuality(synthetic(96, (i) => (i === 50 ? { level_cm: base(49) + 100 } : {})))).toEqual(OK);
+    expect(assessQuality(synthetic(96, (i) => (i >= 50 ? { level_cm: base(i) + 150 } : {})))).toEqual(OK);
+    const gap = synthetic(96, (i) => (i === 50 ? { level_cm: base(i) + 150 } : {})).filter((_, i) => i !== 49);
+    expect(assessQuality(gap)).toEqual(OK);
+  });
+
+  it("flags a jump over 100 cm on the latest reading as level_jump_unconfirmed (it cannot have come back yet)", () => {
+    expect(assessQuality(synthetic(96, (i) => (i === 95 ? { level_cm: base(i) + 101 } : {})))).toEqual(suspect("level_jump_unconfirmed"));
+  });
+
+  it("flags a level identical for 6 h or more, with at least 20 readings, while 10 mm or more of rain fell, as level_stuck", () => {
+    // The last 25 readings (6 h) are flat at 180 cm; 0.5 mm fell in each of them (12.5 mm).
+    const flatInRain = (n: number, rain: number) =>
+      synthetic(96, (i) => (i < 96 - n ? { level_cm: 150 + i } : { level_cm: 180, rain_mm: rain }));
+    expect(assessQuality(flatInRain(25, 0.5))).toEqual(suspect("level_stuck"));
+    expect(assessQuality(flatInRain(25, 0))).toEqual(OK); // dry: a flat baseflow is normal
+    expect(assessQuality(flatInRain(24, 0.5))).toEqual(OK); // 5 h 45 min
+    // 6 h span but only 13 readings (one every 30 minutes): too sparse to call it stuck.
+    expect(assessQuality(flatInRain(25, 1).filter((r, i) => i < 71 || i % 2 === 1))).toEqual(OK);
+  });
+
+  it("never changes the raw values: a suspect latest reading is returned as sent (real Fazendinha sample, latest level edited)", () => {
+    const edited = FAZENDINHA.replace("<Nivel>202.00</Nivel>", "<Nivel>350.00</Nivel>");
+    expect(parseStationData("65010000", edited, FROM_MS, NOW)).toMatchObject({
+      latest: { level_cm: 350, flow_m3s: 6.98, rain_mm: 0 },
+      ...suspect("level_jump_unconfirmed"),
+    });
+  });
+
+  it("does not trust row order", () => {
+    const series = synthetic(96, (i) => (i === 50 ? { level_cm: base(i) + 150 } : {}));
+    expect(assessQuality([...series].reverse())).toEqual(suspect("level_spike"));
+  });
+});
+
 describe("request period", () => {
   it("uses Curitiba dates, also when the UTC date is already the next day", () => {
     const at = Date.parse("2026-11-22T01:00:00Z"); // 21 Nov, 22:00 in Curitiba
@@ -141,9 +223,18 @@ describe("river_levels", () => {
         rain_24h_mm: 1,
       }),
     ]);
+    expect(out.data.stations[0]).toMatchObject({ quality: "ok", quality_reasons: [] });
     expect(out.note).toContain("Not for emergencies: Defesa Civil 199.");
+    expect(out.note).not.toMatch(/caution/);
     expect(out.license_note).toBe("No licence found; facts only; ANA cited.");
     expect(out.source_url).toBe("https://telemetriaws1.ana.gov.br/ServiceANA.asmx");
+  });
+
+  it("marks a suspect station and says so in the note, with the raw values unchanged (real sample, latest level edited)", async () => {
+    stubFetch(route("65010000", { body: FAZENDINHA.replace("<Nivel>202.00</Nivel>", "<Nivel>350.00</Nivel>") }));
+    const out = await levels({ station: "65010000" });
+    expect(out.data.stations[0]).toMatchObject({ level_cm: 350, flow_m3s: 6.98, stale: false, quality: "suspect", quality_reasons: ["level_jump_unconfirmed"] });
+    expect(out.note).toContain("Suspect readings at 65010000 (see quality_reasons): treat these values with caution.");
   });
 
   it("lists a station without readings as no_recent_data with null values; a code without leading zeros works", async () => {
@@ -159,6 +250,8 @@ describe("river_levels", () => {
       rain_mm: null,
       rain_1h_mm: null,
       rain_24h_mm: null,
+      quality: "unknown",
+      quality_reasons: [],
     });
   });
 
@@ -256,7 +349,7 @@ describe("river_levels", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     const out = await pending;
     expect(out.data.stations.map((s) => [s.code, s.status])).toEqual([["65009000", "no_recent_data"], ["65006090", "unavailable"], ["65004995", "no_recent_data"]]);
-    expect(out.data.stations[1]).toMatchObject({ level_cm: null, rain_24h_mm: null, checked_at: null });
+    expect(out.data.stations[1]).toMatchObject({ level_cm: null, rain_24h_mm: null, checked_at: null, quality: "unknown", quality_reasons: [] });
     expect(calls).toHaveLength(3);
     // Not a host failure: the next call is not refused (and the unreadable station is asked again, not cached).
     await vi.advanceTimersByTimeAsync(5_000);

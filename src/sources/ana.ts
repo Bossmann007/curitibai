@@ -109,6 +109,9 @@ export interface Reading {
   rain_mm: number | null;
 }
 
+export type Quality = "ok" | "suspect" | "unknown";
+export type QualityReason = "out_of_range" | "level_spike" | "level_jump_unconfirmed" | "level_stuck" | "too_few_readings";
+
 export interface StationData {
   code: string;
   /** null when the station sent nothing in the period (`no_recent_data`). */
@@ -116,6 +119,9 @@ export interface StationData {
   /** Sum of the rain values of the readings in the hour / 24 h ending at the latest reading; see `rainSum`. */
   rain_1h_mm: number | null;
   rain_24h_mm: number | null;
+  /** See `assessQuality`: computed from the readings already read, never changes them. */
+  quality: Quality;
+  quality_reasons: QualityReason[];
 }
 
 /** A real row is about 250 characters; the cap also bounds the regex below. */
@@ -160,6 +166,82 @@ function rainSum(readings: Reading[], end: number, span: number, fromMs: number)
   return seen ? Math.round(sum * 100) / 100 : null;
 }
 
+/*
+ * Data quality checks (v0.16.1). They look only at the readings of the 24 h ending at the latest reading, already
+ * read for the answer (no new request), and never change a value. "ok" means only that no check fired: telemetry is
+ * not validated by anyone (ANA publishes checked "consistidos" data months later) and a wrong value can pass all of
+ * them. Thresholds are judgement calls for small rivers around Curitiba, checked against the two real samples in
+ * test/fixtures/ana (a normal day at Fazendinha moves about 1 cm per hour; ETE Araucária moves up to about 40 cm in
+ * 15 minutes and stays "ok").
+ */
+export const QUALITY_WINDOW_MS = DAY_MS;
+/** Fewer readings than this in the window (2 h of 15-minute readings) give "unknown" when no check fires. */
+export const MIN_READINGS_FOR_QUALITY = 8;
+/** Rain above this in one 15-minute reading is out of range (Brazil's heaviest hourly records are near 150 mm). */
+export const MAX_RAIN_PER_READING_MM = 150;
+/** A level change above this between two consecutive readings (at most 15 minutes apart) is a jump. */
+export const SPIKE_LIMIT_CM = 100;
+export const SPIKE_MAX_GAP_MS = 15 * 60 * 1000;
+/** A jump is a spike when a reading within this long after it is back within SPIKE_RETURN_CM of the level before it. */
+export const SPIKE_RETURN_WITHIN_MS = HOUR_MS;
+export const SPIKE_RETURN_CM = SPIKE_LIMIT_CM / 2;
+/**
+ * Stuck level: the latest level and the ones before it are identical over at least 6 h and at least 20 readings (of
+ * the 25 a full 6 h has), while at least 10 mm of rain fell at the station in that time. Rain is the trigger because a
+ * flat level on a dry day is normal baseflow; flow is not used because in the samples it is computed from the level
+ * (same level, same flow), so it cannot disagree with it.
+ */
+export const STUCK_MIN_SPAN_MS = 6 * HOUR_MS;
+export const STUCK_MIN_READINGS = 20;
+export const STUCK_MIN_RAIN_MM = 10;
+
+/**
+ * Quality of a station's latest data from its readings (any order). Reasons (short codes, in this order):
+ * - `out_of_range`: a negative level, flow or rain, or rain above 150 mm in one reading, anywhere in the 24 h window
+ *   (each feeds a returned value or the rain sums).
+ * - `level_spike`: a level jump above 100 cm between readings at most 15 minutes apart that comes back within 50 cm
+ *   of the level before it within the next hour. A jump that stays is not flagged (it may be a real rise).
+ * - `level_jump_unconfirmed`: the same jump on the latest level reading, which has had no time to come back.
+ * - `level_stuck`: see STUCK_MIN_SPAN_MS.
+ * Any reason gives "suspect". Otherwise "unknown" without readings (no reason) or with fewer than 8 readings in the
+ * window (`too_few_readings`), else "ok". Level and flow are not checked against each other: flow is missing at some
+ * stations (ETE Araucária) and follows the level where present. Staleness is separate (`stale`, at answer time).
+ */
+export function assessQuality(readings: readonly Reading[]): { quality: Quality; quality_reasons: QualityReason[] } {
+  if (readings.length === 0) return { quality: "unknown", quality_reasons: [] };
+  const sorted = [...readings].sort((a, b) => a.at - b.at);
+  const end = sorted[sorted.length - 1]!.at;
+  const win = sorted.filter((r) => r.at > end - QUALITY_WINDOW_MS);
+  const reasons: QualityReason[] = [];
+  const negative = (v: number | null) => v !== null && v < 0;
+  if (win.some((r) => negative(r.level_cm) || negative(r.flow_m3s) || negative(r.rain_mm) || (r.rain_mm ?? 0) > MAX_RAIN_PER_READING_MM)) {
+    reasons.push("out_of_range");
+  }
+  const lv = win.filter((r): r is Reading & { level_cm: number } => r.level_cm !== null);
+  let spike = false;
+  let jump = false;
+  for (let i = 1; i < lv.length; i++) {
+    const a = lv[i - 1]!;
+    const b = lv[i]!;
+    if (b.at - a.at > SPIKE_MAX_GAP_MS || Math.abs(b.level_cm - a.level_cm) <= SPIKE_LIMIT_CM) continue;
+    if (i === lv.length - 1) jump = true;
+    else if (lv.slice(i + 1).some((c) => c.at - b.at <= SPIKE_RETURN_WITHIN_MS && Math.abs(c.level_cm - a.level_cm) <= SPIKE_RETURN_CM)) spike = true;
+  }
+  if (spike) reasons.push("level_spike");
+  if (jump) reasons.push("level_jump_unconfirmed");
+  if (lv.length > 0) {
+    const last = lv[lv.length - 1]!;
+    let first = lv.length - 1;
+    while (first > 0 && lv[first - 1]!.level_cm === last.level_cm) first--;
+    const start = lv[first]!.at;
+    const rain = win.reduce((sum, r) => (r.at >= start && r.rain_mm !== null && r.rain_mm > 0 ? sum + r.rain_mm : sum), 0);
+    if (last.at - start >= STUCK_MIN_SPAN_MS && lv.length - first >= STUCK_MIN_READINGS && rain >= STUCK_MIN_RAIN_MM) reasons.push("level_stuck");
+  }
+  if (reasons.length > 0) return { quality: "suspect", quality_reasons: reasons };
+  if (win.length < MIN_READINGS_FOR_QUALITY) return { quality: "unknown", quality_reasons: ["too_few_readings"] };
+  return { quality: "ok", quality_reasons: [] };
+}
+
 /** Rows more than this far after the read time are ignored (a station clock running ahead). */
 const FUTURE_TOLERANCE_MS = 15 * 60 * 1000;
 
@@ -184,7 +266,7 @@ export function parseStationData(code: string, body: string, fromMs: number, now
     if (errors.length !== 1 || rows.length > 0) fail("unexpected error table");
     const m = NO_DATA.exec(element(errors[0]![1]!, "Error") ?? "");
     if (!m || m[1] !== code) fail("source error");
-    return { code, latest: null, rain_1h_mm: null, rain_24h_mm: null };
+    return { code, latest: null, rain_1h_mm: null, rain_24h_mm: null, ...assessQuality([]) };
   }
   if (rows.length === 0) fail("no rows");
   const readings: Reading[] = rows.map(([, inner]) => {
@@ -198,7 +280,7 @@ export function parseStationData(code: string, body: string, fromMs: number, now
   const usable = readings.filter(
     (r) => r.at <= nowMs + FUTURE_TOLERANCE_MS && (r.level_cm !== null || r.flow_m3s !== null || r.rain_mm !== null),
   );
-  if (usable.length === 0) return { code, latest: null, rain_1h_mm: null, rain_24h_mm: null };
+  if (usable.length === 0) return { code, latest: null, rain_1h_mm: null, rain_24h_mm: null, ...assessQuality([]) };
   // Row order is not trusted: the latest reading is the one with the latest time.
   const latest = usable.reduce((a, b) => (b.at > a.at ? b : a));
   return {
@@ -206,6 +288,7 @@ export function parseStationData(code: string, body: string, fromMs: number, now
     latest,
     rain_1h_mm: rainSum(usable, latest.at, HOUR_MS, fromMs),
     rain_24h_mm: rainSum(usable, latest.at, DAY_MS, fromMs),
+    ...assessQuality(usable),
   };
 }
 

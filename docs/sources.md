@@ -868,6 +868,18 @@ cited, the approach the owner approved for no-licence sources).
   of the readings in (latest − 1 h, latest] / (latest − 24 h, latest] that have a rain value; null when none, or when
   the window starts before yesterday 00:00; gaps are not filled, so the sum is a lower bound); `stale` (latest reading
   older than 2 h, computed at answer time, not cached); `status` `no_recent_data` for the "Sem dados" answer.
+- **Data quality (v0.16.1, owner request 2026-11-22):** readings are automatic telemetry that nobody has checked (ANA
+  publishes validated "consistidos" data only months later); a station can stop or send wrong values (stuck sensor,
+  spikes, maintenance). `quality` (`ok` | `suspect` | `unknown`) and `quality_reasons` come only from the readings of
+  the 24 h ending at the latest one, already read (no new request); values are never changed. Checks
+  (`assessQuality` in `src/sources/ana.ts`): `out_of_range` (negative level, flow or rain, or rain over 150 mm in one
+  reading), `level_spike` (a jump over 100 cm between readings ≤ 15 minutes apart that comes back within 50 cm within
+  1 h), `level_jump_unconfirmed` (that jump on the latest reading), `level_stuck` (identical level for ≥ 6 h and ≥ 20
+  readings while ≥ 10 mm of rain fell). `unknown`: no reading, or under 8 readings in the 24 h (`too_few_readings`).
+  Level and flow are not cross-checked (flow is missing at ETE Araucária and follows the level at Fazendinha). The
+  thresholds are judgement calls; both real samples stay `ok` (ETE Araucária moves up to about 40 cm in 15 minutes).
+  `ok` does not prove a value is right. Not for emergencies (Defesa Civil 199); official flood alerts come from
+  Defesa Civil and INMET (`weather_alerts`).
 
 ### `local_csv_summary`: a file the user downloaded
 

@@ -65,6 +65,19 @@ public telemetry of ANA (Agência Nacional de Águas e Saneamento Básico), stat
   `scripts/verify` (step label).
 - README, docs/sources.md, CHANGELOG 0.16.0.
 
+## v0.16.1: data quality
+
+Owner request 2026-11-22: make `river_levels` honest about data quality. Per station, `quality` (`ok` | `suspect` |
+`unknown`) and `quality_reasons` (`out_of_range`, `level_spike`, `level_jump_unconfirmed`, `level_stuck`,
+`too_few_readings`), computed by `assessQuality` in `src/sources/ana.ts` from the readings of the 24 h ending at the
+latest one (already read; no new request; values never changed; cached with the station). Thresholds and their reasons
+are documented next to the constants and in docs/sources.md. A suspect station is named in `note` with "treat these
+values with caution". `stale` stays separate. Not done: a level/flow consistency check (flow is missing at some
+stations and follows the level where present, so it cannot disagree with it). README "`river_levels` data quality"
+section and docs/sources.md say what the flag can and cannot prove. Files: `src/sources/ana.ts`,
+`src/tools/riverLevels.ts`, `test/riverLevels.test.ts`, README, docs/sources.md, CHANGELOG, `src/server.ts` and
+`package*.json` (0.16.1).
+
 ## Out of scope
 
 Alerts or flood thresholds, history beyond 24 h, charts, other ANA operations, fuel prices (ANP), air quality.
