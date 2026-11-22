@@ -17,7 +17,12 @@ robots.txt 404 on 2026-11-21; no licence found, facts only, IPPUC cited).
 - One fixed request per layer (whole layer, fixed fields, `outSR=4326`), cached 6 hours; the user's position and
   neighbourhood are never sent. Fails closed on an ArcGIS error with HTTP 200, a cut layer or another spatial
   reference. Reuses `src/http.ts` (allowlist, https only, refusal block, size cap).
-- Privacy: text fields go through `cleanField` line by line; phones keep Curitiba landlines and service numbers only
+- Rate and failures: at most one request per 5 s to the host per server process, across layers (a call whose turn
+  is more than 10 s away gets `rate_limited` with the wait, without a request); after a failure no request for 60 s,
+  or a 429's `Retry-After` when longer, at most 1 hour. An ArcGIS `error` with code 401, 403, 498 or 499 sent with
+  HTTP 200 is a final refusal: the host is blocked for 10 minutes like an HTTP 403 (`blockHost`, now exported from
+  `src/http.ts`).
+- Privacy: text fields go through `cleanField` line by line, after masking 8 to 11 glued digits ("Tel 33334444"); phones keep Curitiba landlines and service numbers only
   (mobiles dropped), e-mails keep `curitiba.pr.gov.br` addresses only (webmail, universities, companies and other
   domains dropped); a record whose address is marked not to be shown loses its address and position.
 - Docs: README (tool tables, Curitiba App comparison, privacy, limits, licences), docs/sources.md (robots result,

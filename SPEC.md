@@ -26,10 +26,16 @@ public toilet / park / bike lane, and when is it open" from IPPUC's GeoCuritiba 
   facts only; IPPUC cited."
 - Host added to `ALLOWED_HOSTS`; `src/http.ts` reused (final refusal, 10-minute per-host block, https only, size cap).
   Cache 6 h per layer query. One upstream request per call (none when cached), never more than 2.
+- Rate and failures (review of d688df8): requests to the host are serialized with at least 5 s between them (any
+  layer); a call whose turn is more than 10 s away gets `rate_limited` with the wait, without a request. After a
+  failure, no request for 60 s, or a 429's `Retry-After` when longer, capped at 1 hour; the same error is returned.
+  An ArcGIS `error` with code 401/403/498/499 sent with HTTP 200 is a final refusal (`blockHost` from `src/http.ts`,
+  10-minute host block).
 - Implementation choice: each layer is read whole with one fixed URL (`where=1=1`, fixed `outFields`, `outSR=4326`)
   and filtered in the server, so user input never reaches the upstream URL or the cache key. All curated layers
   had under 2,000 records on 2026-11-21 (largest 838).
-- Privacy: every free-text field goes through the existing mask (`cleanField`, per line). The contact fields
+- Privacy: every free-text field goes through the existing mask (`cleanField`, per line), after masking 8 to 11
+  digits with no separator (the shared mask needs a separator below 10 digits). The contact fields
   themselves are not masked but filtered by an allowlist, since masking would hide every institutional contact:
   Curitiba landlines and three-digit service numbers are kept, mobiles and anything not understood are dropped;
   only `curitiba.pr.gov.br` e-mail addresses are kept. Fields not listed above are never requested.

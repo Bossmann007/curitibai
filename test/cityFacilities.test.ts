@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  cleanText,
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
+  getFacilityLayer,
   institutionalEmails,
   institutionalPhones,
   layerQueryUrl,
@@ -249,6 +251,86 @@ describe("city_facilities_search", () => {
   it("does not follow a redirect to another host", async () => {
     const calls = stubFetch(route("feira", "feira.json", { status: 302, headers: { location: "https://example.org/x" } }));
     expect(errorOf(await call({ type: "feira" }))).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe("glued digits in free text", () => {
+  it("masks 8 to 11 digits with no separator, also split by an invisible character; keeps short numbers", () => {
+    expect(cleanText("Tel 33334444 ou 41999998888", 160)).toBe("Tel [masked] ou [masked]");
+    expect(cleanText("Contato 3333\u200b4444", 160)).toBe("Contato [masked]");
+    expect(cleanText("Sábado, das 7h às 13h; desde 2025; nº 1700", 160)).toBe("Sábado, das 7h às 13h; desde 2025; nº 1700");
+    const body = JSON.stringify({
+      spatialReference: { wkid: 4326 },
+      features: [{ attributes: { nome: "Feira Teste 33334444", divulgar_endereco: "Sim", observacao: "Tel 33334444" }, geometry: { x: -49.27, y: -25.43 } }],
+    });
+    const [f] = parseLayer(type("feira"), body).facilities;
+    expect(f).toMatchObject({ name: "Feira Teste [masked]", hours: ["Tel [masked]"], lat: -25.43, lon: -49.27 });
+  });
+});
+
+describe("requests to the GeoCuritiba host", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const fake = () => vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+
+  it("serializes requests with at least 5 s between them, across types; a cached layer does not wait", async () => {
+    fake();
+    const calls = stubFetch({ ...route("feira", "feira.json"), ...route("parque", "parques.json") });
+    await getFacilityLayer(type("feira"));
+    const second = getFacilityLayer(type("parque"));
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(calls).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await second;
+    expect(calls.map((c) => c.url)).toEqual([url("feira"), url("parque")]);
+    await getFacilityLayer(type("feira"));
+    expect(calls).toHaveLength(2);
+  });
+
+  it("refuses a call whose turn is more than 10 s away, with the wait, and without a request", async () => {
+    fake();
+    const names = ["feira", "parque", "ciclovia", "rua da cidadania"];
+    const calls = stubFetch(Object.assign({}, ...names.map((n) => route(n, "feira.json"))));
+    const pending = names.slice(0, 3).map((n) => getFacilityLayer(type(n)).catch((e: unknown) => e));
+    expect(errorOf(await call({ type: "rua da cidadania" }))).toEqual({
+      error: "rate_limited",
+      message: "The source is limiting requests; wait 15 s before trying again.",
+    });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await Promise.all(pending);
+    expect(calls).toHaveLength(3);
+  });
+
+  it("does not ask again for 60 s after a failure (any layer), then asks once more", async () => {
+    fake();
+    const calls = stubFetch({ ...route("feira", "feira.json", { status: 500 }), ...route("parque", "parques.json") });
+    for (let i = 0; i < 5; i++) expect(errorOf(await call({ type: "feira" }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ type: "parque" }))).toEqual({ error: "source_unavailable" });
+    expect(calls).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect((await call({ type: "parque" })).isError).toBeFalsy();
+    expect(calls).toHaveLength(2);
+  });
+
+  it("honours a 429's Retry-After (capped at 1 hour) without a new request", async () => {
+    fake();
+    const calls = stubFetch(route("feira", "feira.json", { status: 429, headers: { "retry-after": "120" } }));
+    expect(errorOf(await call({ type: "feira" }))).toEqual({ error: "rate_limited", message: expect.stringMatching(/120 s|2 minutes/) });
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(errorOf(await call({ type: "feira" }))).toEqual({ error: "rate_limited", message: "The source is limiting requests; wait 30 s before trying again." });
+    expect(calls).toHaveLength(1);
+  });
+
+  it.each([401, 403, 498, 499])("treats an ArcGIS error %i sent with HTTP 200 as a refusal and blocks the host for 10 minutes", async (code) => {
+    fake();
+    const body = JSON.stringify({ error: { code, message: "Token Required" } });
+    const calls = stubFetch({ ...route("feira", "feira.json", { body }), ...route("parque", "parques.json") });
+    expect(errorOf(await call({ type: "feira" }))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    // Past the 60 s failure memory the host block still holds: no request.
+    await vi.advanceTimersByTimeAsync(9 * 60_000);
+    expect(errorOf(await call({ type: "parque" }))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
     expect(calls).toHaveLength(1);
   });
 });

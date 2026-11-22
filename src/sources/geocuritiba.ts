@@ -1,6 +1,6 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { fetchText, SourceUnavailableError } from "../http.js";
-import { cleanField } from "../mask.js";
+import { blockHost, fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { cleanField, MASK } from "../mask.js";
 import { fold } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
 
@@ -209,10 +209,20 @@ export interface FacilityLayer {
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+/**
+ * 8 to 11 digits with no separator ("Tel 33334444", "41999998888"): a phone the shared mask misses below 10 digits.
+ * Format characters are removed first so an invisible character cannot split a run; coordinates are numeric fields
+ * and never pass here.
+ */
+const GLUED_DIGITS = /(?<!\d)\d{8,11}(?!\d)/g;
+/** cleanField (control and format characters, NFC, PII mask, cap) after masking glued digit runs. */
+export function cleanText(raw: string, max: number): string {
+  return cleanField(raw.replace(/\p{Cf}/gu, "").replace(GLUED_DIGITS, MASK), max);
+}
 const clean = (v: unknown, max: number): string | null => {
   const s = str(v);
   if (s === null) return null;
-  const t = cleanField(s, max);
+  const t = cleanText(s, max);
   return t === "" ? null : t;
 };
 const code = (v: unknown, map: Record<number, string>): string | null => (typeof v === "number" ? (map[v] ?? null) : null);
@@ -268,7 +278,7 @@ function hourLines(raw: unknown): string[] {
   if (s === null) return [];
   const lines: string[] = [];
   for (const line of s.split(/\r\n|\r|\n/)) {
-    const t = cleanField(line, LINE_MAX);
+    const t = cleanText(line, LINE_MAX);
     if (t !== "") lines.push(t);
   }
   return lines.slice(0, MAX_HOUR_LINES);
@@ -384,16 +394,23 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 /**
  * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84
  * feature set: an `error` object (ArcGIS sends errors with HTTP 200), `exceededTransferLimit`, a spatial reference
- * other than 4326, no `features` array, or 2,000 records or more. Records without a name are skipped and counted.
+ * other than 4326, no `features` array, or 2,000 records or more. An `error` with code 401, 403, 498 or 499 is a final
+ * refusal: the host is blocked for 10 minutes (blockHost). Records without a name are skipped and counted.
  */
-export function parseLayer(t: FacilityType, body: string): FacilityLayer {
+export function parseLayer(t: FacilityType, body: string, url: string = t.layerUrl): FacilityLayer {
   let json: unknown;
   try {
     json = JSON.parse(body);
   } catch {
     throw new SourceUnavailableError("invalid JSON");
   }
-  if (!isObject(json) || "error" in json) throw new SourceUnavailableError("query error");
+  if (!isObject(json)) throw new SourceUnavailableError("query error");
+  if ("error" in json) {
+    // ArcGIS sends auth errors with HTTP 200: 401/403, 498 (invalid token), 499 (token required) are a final refusal.
+    const code = isObject(json.error) ? json.error.code : undefined;
+    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
+    throw new SourceUnavailableError("query error");
+  }
   if (json.exceededTransferLimit === true) throw new SourceUnavailableError("layer cut by the record limit");
   const sr = json.spatialReference;
   if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
@@ -414,15 +431,68 @@ export function parseLayer(t: FacilityType, body: string): FacilityLayer {
 
 const cache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS);
 
+/** At least this long between two requests to the GeoCuritiba host from this process (any layer). */
+export const GEOCURITIBA_MIN_INTERVAL_MS = 5_000;
+/** A call whose turn would come later than this gives up without a request (rate_limited with the wait). */
+export const GEOCURITIBA_MAX_QUEUE_WAIT_MS = 10_000;
+/** After a failure no request to the host for 60 s, or a 429's Retry-After when longer, at most 1 hour. */
+const FAILURE_WAIT_S = 60;
+const MAX_FAILURE_WAIT_S = 3600;
+
+/** Earliest time (ms) the next request may start; reserved when a request is scheduled, so calls are serialized. */
+let nextAllowedAt = 0;
+/** After a failure, no request before this time; the same error is returned instead. */
+let retryAt = 0;
+let lastError: unknown = null;
+
 /** Tests only. */
 export function clearGeoCuritibaCache(): void {
   cache.clear();
+  nextAllowedAt = 0;
+  retryAt = 0;
+  lastError = null;
 }
 
-/** One GET of the type's fixed layer URL per cache period (6 hours); same host and path only on redirects. */
+/** The remembered failure, with the remaining wait for a 429; null when no failure is remembered. */
+function rememberedFailure(now: number): unknown {
+  if (now >= retryAt) return null;
+  return lastError instanceof RateLimitedError ? new RateLimitedError(Math.ceil((retryAt - now) / 1000)) : lastError;
+}
+
+/**
+ * Runs one request to the host: refused at once while a failure is remembered; otherwise waits for its 5-second slot
+ * (or gives up with rate_limited when that slot is more than 10 s away); a failure is then remembered for at least
+ * 60 s (a 429's Retry-After when longer, at most 1 hour).
+ */
+async function gated<T>(task: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const failed = rememberedFailure(now);
+  if (failed !== null) throw failed;
+  const start = Math.max(now, nextAllowedAt);
+  if (start - now > GEOCURITIBA_MAX_QUEUE_WAIT_MS) throw new RateLimitedError(Math.ceil((start - now) / 1000));
+  nextAllowedAt = start + GEOCURITIBA_MIN_INTERVAL_MS;
+  if (start > now) await new Promise((resolve) => setTimeout(resolve, start - now));
+  // A failure of an earlier request while this one waited is not asked again.
+  const failedMeanwhile = rememberedFailure(Date.now());
+  if (failedMeanwhile !== null) throw failedMeanwhile;
+  try {
+    return await task();
+  } catch (err) {
+    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : 0;
+    const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
+    retryAt = Date.now() + wait * 1000;
+    lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
+    throw lastError;
+  }
+}
+
+/**
+ * One GET of the type's fixed layer URL per cache period (6 hours), through `gated` (5 s between requests to the host,
+ * failures remembered); same host and path only on redirects. A cached layer makes no request and never waits.
+ */
 export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>> {
   const url = layerQueryUrl(t);
-  return cache.getOrLoad(`GET ${url}`, async () => {
+  return cache.getOrLoad(`GET ${url}`, () => gated(async () => {
     const res = await fetchText(url, {
       timeoutMs: GEOCURITIBA_TIMEOUT_MS,
       maxBytes: GEOCURITIBA_MAX_BYTES,
@@ -430,6 +500,6 @@ export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>
       redirectPathPrefix: "/server/rest/services",
     });
     if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    return parseLayer(t, res.body);
-  });
+    return parseLayer(t, res.body, url);
+  }));
 }
