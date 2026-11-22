@@ -204,8 +204,29 @@ describe("each tool returns the envelope, valid against its output schema", () =
       total: 0,
       partial: true,
       datasets: [],
-      note: "The source is limiting requests; wait 30 s before trying again.",
+      note: 'No results for "ônibus"; retrying as "onibus" was not answered. The source is limiting requests; wait 30 s before trying again.',
     });
+  });
+
+  it("open_datasets_search starts no retry after the 20 s time budget", async () => {
+    const real = Date.now;
+    let t = 1_000_000;
+    globalThis.Date.now = () => t;
+    const terms = stubPortalByTerm([]);
+    const inner = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
+      t += 21_000; // the first search takes 21 s
+      return inner(input, init);
+    }) as typeof fetch;
+    try {
+      const client = await connectClient();
+      const data = datasetsData(await client.callTool({ name: "open_datasets_search", arguments: { query: "ônibus" } }));
+      expect(terms).toEqual(["ônibus"]);
+      expect(data).toMatchObject({ total: 0, partial: true, datasets: [] });
+      expect(data.note).toBe('No results for "ônibus"; the 20 s time budget ran out before "onibus" was tried.');
+    } finally {
+      globalThis.Date.now = real;
+    }
   });
 
   it("open_datasets_search has no note when nothing was refused", async () => {

@@ -117,7 +117,8 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
 
 - `health_units_search` and `procurement_search` scan pages until `limit` matches, a page cap (CNES 20, PNCP 5) or
   the 20 s per-call budget (`CALL_START_BUDGET_MS`); `note` says which limit stopped the scan.
-- `open_datasets_search` retries an empty query without accents, then with `src/sources/portalSynonyms.ts`.
+- `open_datasets_search` retries an empty query without accents, then with `src/sources/portalSynonyms.ts`;
+  no retry or later page after 20 s.
 - `river_levels` lists stations with status `ok` first (stable, so distance order is kept in each group).
 - `local_csv_summary` `file_not_found`, `events_search` and `useful_phones` `data_not_available` messages point to
   `docs/local-data.md` and the nightly run.

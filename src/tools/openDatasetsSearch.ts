@@ -3,7 +3,7 @@ import { getSearchPage, PAGE_SIZE, PORTAL_LICENSE_NOTE, PORTAL_SEARCH_URL, type 
 import { PORTAL_SYNONYMS } from "../sources/portalSynonyms.js";
 import { RateLimitedError, SourceUnavailableError } from "../http.js";
 import { fold } from "../text.js";
-import { envelope, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
+import { CALL_START_BUDGET_MS, envelope, failFrom, ok, rateLimitedMessage, type ToolDef } from "./common.js";
 
 export const openDatasetsSearchInput = {
   query: z
@@ -51,6 +51,9 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
   inputSchema: openDatasetsSearchInput,
   outputSchema: openDatasetsSearchOutput,
   handler: async ({ query, limit }) => {
+    const started = Date.now();
+    // No retry or later page starts after the per-call budget: what was found is returned.
+    const outOfTime = () => Date.now() - started > CALL_START_BUDGET_MS;
     let datasets: DatasetSummary[] = [];
     let total: number | null = null;
     let fetchedAt = "";
@@ -65,6 +68,12 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
     let matched = query;
     let hasNext = false;
     for (const [i, q] of tries.entries()) {
+      if (i > 0 && outOfTime()) {
+        total = 0;
+        partial = true;
+        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; the ${CALL_START_BUDGET_MS / 1000} s time budget ran out before "${q}" was tried.`);
+        break;
+      }
       try {
         const res = await getSearchPage(q, 1);
         if (i === 0) fetchedAt = res.fetchedAt;
@@ -83,19 +92,20 @@ export const openDatasetsSearch: ToolDef<typeof openDatasetsSearchInput, typeof 
         break;
       } catch (err) {
         if (i === 0) return failFrom(err);
-        // A retry failed: keep the first query's empty answer.
+        // A retry failed: keep the empty answer of the queries already tried.
         total = 0;
         partial = true;
-        notes.push(
-          err instanceof RateLimitedError
-            ? rateLimitedMessage(err.retryAfterS)
-            : `Retrying as "${q}" failed (${err instanceof SourceUnavailableError ? err.reason : "error"}).`,
-        );
+        const why = err instanceof RateLimitedError ? rateLimitedMessage(err.retryAfterS) : `It failed (${err instanceof SourceUnavailableError ? err.reason : "error"}).`;
+        notes.push(`No results for ${tries.slice(0, i).map((t) => `"${t}"`).join(", ")}; retrying as "${q}" was not answered. ${why}`);
         break;
       }
     }
     const maxPages = Math.ceil(limit / PAGE_SIZE);
     for (let page = 2; hasNext && page <= maxPages && datasets.length < limit; page++) {
+      if (outOfTime()) {
+        partial = true;
+        break;
+      }
       try {
         const res = await getSearchPage(matched, page);
         datasets = datasets.concat(res.value.items);

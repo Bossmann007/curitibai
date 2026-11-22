@@ -15,7 +15,7 @@ Usability fixes found by calling every tool as a user (Praça Tiradentes). No ne
 - `open_datasets_search`: when the portal finds nothing, the query is retried once without accents and then once
   with a synonym from a short list in `src/sources/portalSynonyms.ts` ("ônibus" and "busão" → "transporte
   coletivo", checked live); `note` says which query matched or lists every query tried. A failed retry keeps the
-  empty answer as `partial` with the reason in `note`.
+  empty answer as `partial` with the reason in `note`. No retry or later page starts after 20 s (the same budget).
 - `river_levels`: stations with a recent reading (`status: ok`) come first, nearest first, then the others; fields
   unchanged. Before, PONTE BR-277 (no recent data) came first near the centre.
 - `local_csv_summary` `file_not_found` now has a message: save the CSV in `CURITIBAI_DATA_DIR`, see

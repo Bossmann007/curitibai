@@ -91,6 +91,7 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   inputSchema: healthUnitsSearchInput,
   outputSchema: healthUnitsSearchOutput,
   handler: async ({ name, unit_type, limit, page, skip }) => {
+    const started = Date.now(); // the unit-type load counts toward the time budget too
     try {
       const types = await getUnitTypes();
       let serverType: number | null = null;
@@ -129,7 +130,6 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
       let rateLimitNote: string | null = null;
       let refusedNote: string | null = null;
       let budgetReached = false;
-      const started = Date.now();
       for (;;) {
         if (scanned === MAX_CNES_REQUESTS) {
           partial = true; // capped: more pages may hold matches
