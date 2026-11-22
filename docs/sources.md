@@ -874,8 +874,8 @@ cited, the approach the owner approved for no-licence sources).
   the 24 h ending at the latest one, already read (no new request); values are never changed. Checks
   (`assessQuality` in `src/sources/ana.ts`): `out_of_range` (negative level, flow or rain, or rain over 150 mm in one
   reading), `level_spike` (a jump over 100 cm between readings ≤ 15 minutes apart that comes back within 50 cm within
-  1 h), `level_jump_unconfirmed` (that jump on the latest reading), `level_stuck` (identical level for ≥ 6 h and ≥ 20
-  readings while ≥ 10 mm of rain fell). `unknown`: no reading, or under 8 readings in the 24 h (`too_few_readings`).
+  1 h), `level_jump_unconfirmed` (that jump in the last hour, not back yet), `level_stuck` (identical level for ≥ 6 h and ≥ 20
+  readings while ≥ 10 mm of rain fell). `unknown`: no reading, or under 8 readings in the 24 h (`too_few_readings`; level readings for a station that reports a level).
   Level and flow are not cross-checked (flow is missing at ETE Araucária and follows the level at Fazendinha). The
   thresholds are judgement calls; both real samples stay `ok` (ETE Araucária moves up to about 40 cm in 15 minutes).
   `ok` does not prove a value is right. Not for emergencies (Defesa Civil 199); official flood alerts come from

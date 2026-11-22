@@ -157,6 +157,24 @@ describe("assessQuality (data quality checks)", () => {
 
   it("flags a jump over 100 cm on the latest reading as level_jump_unconfirmed (it cannot have come back yet)", () => {
     expect(assessQuality(synthetic(96, (i) => (i === 95 ? { level_cm: base(i) + 101 } : {})))).toEqual(suspect("level_jump_unconfirmed"));
+    // Still high 15 and 45 minutes later: not back yet, the hour has not passed.
+    expect(assessQuality(synthetic(96, (i) => (i >= 94 ? { level_cm: base(i) + 150 } : {})))).toEqual(suspect("level_jump_unconfirmed"));
+    expect(assessQuality(synthetic(96, (i) => (i >= 92 ? { level_cm: base(i) + 150 } : {})))).toEqual(suspect("level_jump_unconfirmed"));
+  });
+
+  it("reports a spike that came back on the latest reading only as level_spike (the latest value is the normal one)", () => {
+    expect(assessQuality(synthetic(96, (i) => (i === 94 ? { level_cm: base(i) + 200 } : {})))).toEqual(suspect("level_spike"));
+  });
+
+  it("ignores two rows with the same time (not two readings 15 minutes apart)", () => {
+    const series = synthetic(96);
+    series.push({ ...series[95]!, level_cm: series[95]!.level_cm! + 150 });
+    expect(assessQuality(series)).toEqual(OK);
+  });
+
+  it("judges a station that reports a level on its level readings: 96 rain readings with 6 levels are too few", () => {
+    expect(assessQuality(synthetic(96, (i) => (i % 16 === 0 ? {} : { level_cm: null })))).toEqual({ quality: "unknown", quality_reasons: ["too_few_readings"] });
+    expect(assessQuality(synthetic(96, () => ({ level_cm: null, flow_m3s: null })))).toEqual(OK); // a rain gauge
   });
 
   it("flags a level identical for 6 h or more, with at least 20 readings, while 10 mm or more of rain fell, as level_stuck", () => {

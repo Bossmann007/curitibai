@@ -64,7 +64,7 @@ const Item = z.object({
     .array(z.enum(["out_of_range", "level_spike", "level_jump_unconfirmed", "level_stuck", "too_few_readings"]))
     .describe(
       "out_of_range: negative level, flow or rain, or over 150 mm of rain in one reading. level_spike: a level jump over " +
-        "100 cm in 15 minutes that came back within an hour. level_jump_unconfirmed: such a jump on the latest reading. " +
+        "100 cm in 15 minutes that came back within an hour. level_jump_unconfirmed: such a jump in the last hour, not back yet. " +
         "level_stuck: level identical for 6 h or more while 10 mm or more of rain fell. too_few_readings: under 8 readings " +
         "in the 24 h (quality unknown).",
     ),

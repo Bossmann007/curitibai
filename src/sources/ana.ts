@@ -201,10 +201,11 @@ export const STUCK_MIN_RAIN_MM = 10;
  *   (each feeds a returned value or the rain sums).
  * - `level_spike`: a level jump above 100 cm between readings at most 15 minutes apart that comes back within 50 cm
  *   of the level before it within the next hour. A jump that stays is not flagged (it may be a real rise).
- * - `level_jump_unconfirmed`: the same jump on the latest level reading, which has had no time to come back.
+ * - `level_jump_unconfirmed`: the same jump, not back yet, less than an hour before the latest level reading (it has
+ *   had no time to come back).
  * - `level_stuck`: see STUCK_MIN_SPAN_MS.
  * Any reason gives "suspect". Otherwise "unknown" without readings (no reason) or with fewer than 8 readings in the
- * window (`too_few_readings`), else "ok". Level and flow are not checked against each other: flow is missing at some
+ * window (`too_few_readings`; level readings when the station reports a level), else "ok". Level and flow are not checked against each other: flow is missing at some
  * stations (ETE Araucária) and follows the level where present. Staleness is separate (`stale`, at answer time).
  */
 export function assessQuality(readings: readonly Reading[]): { quality: Quality; quality_reasons: QualityReason[] } {
@@ -218,14 +219,23 @@ export function assessQuality(readings: readonly Reading[]): { quality: Quality;
     reasons.push("out_of_range");
   }
   const lv = win.filter((r): r is Reading & { level_cm: number } => r.level_cm !== null);
+  const lastLevelAt = lv.length > 0 ? lv[lv.length - 1]!.at : end;
   let spike = false;
   let jump = false;
+  // Index of the reading where a spike came back: the drop back is part of that spike, not a new jump.
+  const returns = new Set<number>();
   for (let i = 1; i < lv.length; i++) {
     const a = lv[i - 1]!;
     const b = lv[i]!;
-    if (b.at - a.at > SPIKE_MAX_GAP_MS || Math.abs(b.level_cm - a.level_cm) <= SPIKE_LIMIT_CM) continue;
-    if (i === lv.length - 1) jump = true;
-    else if (lv.slice(i + 1).some((c) => c.at - b.at <= SPIKE_RETURN_WITHIN_MS && Math.abs(c.level_cm - a.level_cm) <= SPIKE_RETURN_CM)) spike = true;
+    // Two rows with the same time are not two readings 15 minutes apart.
+    if (returns.has(i) || b.at === a.at || b.at - a.at > SPIKE_MAX_GAP_MS || Math.abs(b.level_cm - a.level_cm) <= SPIKE_LIMIT_CM) continue;
+    const back = lv.findIndex((c, k) => k > i && c.at - b.at <= SPIKE_RETURN_WITHIN_MS && Math.abs(c.level_cm - a.level_cm) <= SPIKE_RETURN_CM);
+    if (back !== -1) {
+      spike = true;
+      returns.add(back);
+    } else if (lastLevelAt - b.at < SPIKE_RETURN_WITHIN_MS) {
+      jump = true; // its hour to come back has not passed yet
+    }
   }
   if (spike) reasons.push("level_spike");
   if (jump) reasons.push("level_jump_unconfirmed");
@@ -238,7 +248,8 @@ export function assessQuality(readings: readonly Reading[]): { quality: Quality;
     if (last.at - start >= STUCK_MIN_SPAN_MS && lv.length - first >= STUCK_MIN_READINGS && rain >= STUCK_MIN_RAIN_MM) reasons.push("level_stuck");
   }
   if (reasons.length > 0) return { quality: "suspect", quality_reasons: reasons };
-  if (win.length < MIN_READINGS_FOR_QUALITY) return { quality: "unknown", quality_reasons: ["too_few_readings"] };
+  // A station that reports a level is judged on its level readings; a rain gauge on all its readings.
+  if ((lv.length > 0 ? lv.length : win.length) < MIN_READINGS_FOR_QUALITY) return { quality: "unknown", quality_reasons: ["too_few_readings"] };
   return { quality: "ok", quality_reasons: [] };
 }
 

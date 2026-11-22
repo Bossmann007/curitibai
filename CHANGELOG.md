@@ -9,7 +9,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 - Each station has `quality` (`ok`, `suspect`, `unknown`) and `quality_reasons`, computed only from the readings of
   the 24 h ending at the latest one that were already read. Checks: `out_of_range` (negative level, flow or rain, or
   rain over 150 mm in one reading), `level_spike` (a level jump over 100 cm in 15 minutes that comes back within an
-  hour), `level_jump_unconfirmed` (that jump on the latest reading), `level_stuck` (level identical for 6 h or more
+  hour), `level_jump_unconfirmed` (that jump in the last hour, not back yet), `level_stuck` (level identical for 6 h or more
   while 10 mm or more of rain fell). `unknown` without readings or with under 8 readings (`too_few_readings`). Raw
   values are never hidden or changed; `stale` stays a separate flag.
 - When a station is suspect, the note names it and says to treat its values with caution. The general note now says
