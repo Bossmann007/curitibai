@@ -143,6 +143,7 @@ export function selectRows(listing: Listing, args: GuairaEventsArgs, range: { fr
 
 const STOP_NOTES: Record<string, string> = {
   robots: "robots.txt does not allow event pages now, so venue, age rating and price were not read.",
+  robots_failed: "robots.txt could not be read, so no event page was read this time.",
   failed: "An event page could not be read; no more event pages are read in this call (venue, age rating and price stay null).",
   busy: "The source is busy or failed a moment ago; some event pages were not read this time.",
 };

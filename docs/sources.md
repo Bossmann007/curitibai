@@ -839,21 +839,24 @@ in the city's own categories. Built.
 - **Rate and failures** (`gated` in `src/sources/guaira.ts`, the GeoCuritiba pattern): request starts at least 5 s
   apart per server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any
   failure (a layout change included) no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401,
-  403, a CAPTCHA 429, or a 200 page that does not parse and matches the same CAPTCHA/challenge markers (none on the
-  real pages) blocks the host 10 minutes (`blockHost`). Never retried. A robots.txt 404/410 means no rules;
+  403, a CAPTCHA 429, or a 200 page that does not parse, is not a Drupal page of the site (no
+  `drupal-settings-json` script) and matches the same CAPTCHA/challenge markers (none on the real pages) blocks the
+  host 10 minutes (`blockHost`), and the gate then remembers that refusal for the same 10 minutes. Never retried. A robots.txt 404/410 means no rules;
   any other 4xx, a 5xx, a network error or a non-text answer fails closed (stricter than RFC 9309 on purpose). If robots.txt disallows `/calendario-eventos` the tool
   returns `source_unavailable` ("robots.txt now disallows the calendar"); if it disallows `/Evento/`, no event page
   is read.
 - **Fails closed** (`layout_changed`, nothing returned) when a listing page has no single `view-content` block, no
   card, a card without exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not real, an
   end before the start, a slug outside `[A-Za-z0-9-]`, markup inside a title, two different event links in a card, or
-  a next link that does not point to the next page. Markup after the card list's `</ul>` is not read. A page 3 that still has a next link is returned with
+  a next link that does not point to the next page, or a second `<ul>` inside the card list. Markup after the card
+  list's `</ul>` is not read. A page 3 that still has a next link is returned with
   `truncated: true`. An event page without exactly one body field is `details: "not_recognised"`; a 404/410 page is
   `unavailable` for that event only (cached 6 h, no host failure); any other failure is `unavailable`, is remembered
   by the gate and ends event-page reading for that call (later items stay `not_read`).
-- **Strict event-page values:** `venue` only when exactly one `Local:` line; `age_rating` only "Livre" or "N anos" (the whole value);
+- **Strict event-page values:** `venue` only when exactly one `Local:` line that ends at a line break or the end of the paragraph; `age_rating` only "Livre" or "N anos" (the whole value);
   `price` only a run of `R$` amounts with an optional short label in parentheses, separated by `|`, or "Gratuito",
-  "Entrada gratuita", "Entrada franca"; the value must be the whole text or end a sentence (". "), so "R$ 40,00 /
+  "Entrada gratuita", "Entrada franca"; the value must be the whole text up to a line break or the end of the
+  paragraph, or end a sentence (". ") before any inline tag, so "R$ 40,00 /
   R$ 20,00", "R$ 30,00 e R$ 15,00" or "Gratuito para menores..." give null, never a part; anything else (for
   example "Consulte a bilheteria") is null.
 - **Privacy:** returned fields are title, start, end, city, state, venue, age rating, price and link only; every text

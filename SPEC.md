@@ -46,8 +46,8 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
 - Gate (pattern of `src/sources/geocuritiba.ts`, copied, not shared: the parallel v0.16 branch builds its own):
   requests to the host start at least 5 s apart; a call whose turn is more than 10 s away gets `rate_limited` without
   a request; after a failure, no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401/403, a
-  CAPTCHA 429, or a 200 page that does not parse and matches the CAPTCHA/challenge markers blocks the host 10
-  minutes (`blockHost`). Never retried in a loop.
+  CAPTCHA 429, or a 200 page that does not parse, is not a Drupal page of the site and matches the CAPTCHA/challenge
+  markers blocks the host 10 minutes (`blockHost`; the gate remembers it as long). Never retried in a loop.
 - robots.txt read through the same gate, cached 24 h, before any listing or event page read. Matcher: the group for
   `curitibai-mcp` if present, else `*`; `Allow`/`Disallow` with `*` and `$`, longest match wins, ties allow. If
   `/calendario-eventos` becomes disallowed the tool stops (`source_unavailable`, fixed message); if `/Evento/` does,
@@ -58,15 +58,16 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
   listing pages and 2 event pages, 5 s apart, about 25 s plus network time (MCP clients commonly time out at 60 s).
 - Fail closed (`layout_changed`, new error code): no `view-content`, zero cards on the first page, a card without
   exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not a real date, end before start,
-  a slug not `[A-Za-z0-9-]`, markup inside a title, or a `rel="next"` link that does not point to the next page.
+  a slug not `[A-Za-z0-9-]`, markup inside a title, a second `<ul>` in the card list, or a `rel="next"` link that does not point to the next page.
   Nothing is returned then. An event page that does not have exactly one body field is `not_recognised` (fields
   null); an event page answering 404/410 is `unavailable` for that event only (cached, not a host failure); any
   other failure is `unavailable` (the rest of the call is kept, and no more event pages are read in that call; a
   page the gate refuses before a request stays `not_read`).
 - Event page fields are strict: `venue` the text after `Local:` up to the next tag; `age_rating` only "Livre" or
   "N anos"; `price` only a run of "R$ 20,00 (inteira) | R$ 10,00 (meia-entrada)"-shaped amounts, or "Gratuito" /
-  "Entrada gratuita" / "Entrada franca"; each value must be the whole text or end a sentence, so a known
-  prefix followed by other text is null, never a part. Never invented.
+  "Entrada gratuita" / "Entrada franca"; each value must be the whole text up to a line break or the end of the
+  paragraph, or end a sentence before any inline tag, so a known prefix followed by other text is null, never a
+  part. Never invented.
 - Privacy: only title, dates, city, venue, age rating, price and link are returned; cast, directors, programme,
   contacts and images are never read into the result. Every text field goes through `cleanField` (control and format
   characters, NFC, the existing PII mask, cap); HTML entities are decoded first.

@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { blockHost, fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { blockHost, CAPTCHA, fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, SourceUnavailableError } from "../http.js";
 import { cleanField, EVENT_PLACE_MAX, EVENT_TITLE_MAX } from "../mask.js";
 import { decodeEntities } from "../text.js";
 
@@ -169,7 +169,10 @@ export function parseListingPage(html: string, n: number): ListingPage {
   // The card list ends at its first </ul> (cards hold no list): markup after it never reaches the last card.
   const listEnd = (blocks[1] as string).indexOf("</ul>");
   if (listEnd < 0) throw new LayoutChangedError("card list");
-  const cards = (blocks[1] as string).slice(0, listEnd).split('<li class="card').slice(1);
+  const listHtml = (blocks[1] as string).slice(0, listEnd);
+  // Exactly the card list's own <ul>: a list inside a card would end the cut early and drop cards silently.
+  if (listHtml.split(/<ul\b/).length !== 2) throw new LayoutChangedError("card list");
+  const cards = listHtml.split('<li class="card').slice(1);
   if (cards.length === 0) throw new LayoutChangedError("no cards");
   const rows = cards.map(card);
   const next = [...html.matchAll(/<a\b[^>]*\brel="next"[^>]*>/g)];
@@ -200,11 +203,13 @@ export const NO_DETAILS = (status: DetailsStatus): EventDetails => ({ status, ve
 
 const BODY_FIELD = "field--name-field-texto";
 /** `<strong>Label:</strong> value` or `<strong>Label</strong>: value` (both seen on real pages, 2026-11-22). */
-const field = (label: string, max: number, tail = "<") =>
-  new RegExp(String.raw`<strong>${label}\s*(?::\s*<\/strong>|<\/strong>\s*:)\s*([^<]{1,${max}})${tail}`, "g");
+const field = (label: string, max: number) =>
+  new RegExp(String.raw`<strong>${label}\s*(?::\s*<\/strong>|<\/strong>\s*:)\s*([^<]{1,${max}})(<[^>]*>|$)`, "g");
 const VENUE = field("Local", 200);
 const AGE = field("Classificação etária", 80);
-const TICKETS = field("Ingressos", 300, "");
+const TICKETS = field("Ingressos", 300);
+/** A value ends cleanly at a line break, the end of a paragraph or of the body; any other tag may hide the rest. */
+const CLEAN_END = /^(?:<br\b[^>]*>|<\/p>|<\/div>|)$/i;
 const AMOUNT = String.raw`R\$\s?\d{1,5}(?:\.\d{3})*(?:,\d{2})?(?:\s*\([\p{L} -]{1,30}\))?`;
 /** After a value only the end of the text, or the end of a sentence (". " and more), may follow; else null. */
 const VALUE_END = String.raw`(?=\.?$|\.\s)`;
@@ -212,10 +217,19 @@ const PRICE_RUN = new RegExp(String.raw`^${AMOUNT}(?:\s*\|\s*${AMOUNT}){0,5}${VA
 const FREE = new RegExp(String.raw`^(gratuito|entrada gratuita|entrada franca)${VALUE_END}`, "iu");
 const AGE_VALUE = new RegExp(String.raw`^(livre|\d{1,2}\s*anos)${VALUE_END}`, "iu");
 
-function single(re: RegExp, s: string): string | null {
+/**
+ * The one value after a label, or null (none or several). When the text stops at an inline tag (`<em>`, `<a>`...),
+ * " \u0000" is appended: the value then counts only if it ends a sentence before that tag, never at the tag.
+ */
+function single(re: RegExp, s: string): { text: string; clean: boolean } | null {
   const all = [...s.matchAll(re)];
-  return all.length === 1 ? decodeEntities(all[0]![1] as string).replace(/\s+/g, " ").trim() : null;
+  if (all.length !== 1) return null;
+  const text = decodeEntities(all[0]![1] as string).replace(/\s+/g, " ").trim();
+  const clean = CLEAN_END.test(all[0]![2] ?? "");
+  return { text, clean };
 }
+
+const whole = (v: { text: string; clean: boolean } | null): string | null => (v === null ? null : v.clean ? v.text : `${v.text} \u0000`);
 
 /**
  * Reads venue, age rating and price from an event page's body field, strictly: anything not in the expected shape is
@@ -230,10 +244,11 @@ export function parseEventPage(html: string): EventDetails {
   if (close < 0) return NO_DETAILS("not_recognised");
   const body = rest.slice(0, close);
   const venueRaw = single(VENUE, body);
-  const venue = venueRaw === null ? null : cleanField(venueRaw, EVENT_PLACE_MAX) || null;
-  const ageRaw = single(AGE, body);
+  // A venue cut by an inline tag ("Teatro <em>X</em>") would be a part of it: null.
+  const venue = venueRaw === null || !venueRaw.clean ? null : cleanField(venueRaw.text, EVENT_PLACE_MAX) || null;
+  const ageRaw = whole(single(AGE, body));
   const age = ageRaw === null ? null : AGE_VALUE.exec(ageRaw)?.[1] ?? null;
-  const ticketsRaw = single(TICKETS, body);
+  const ticketsRaw = whole(single(TICKETS, body));
   const price = ticketsRaw === null ? null : (PRICE_RUN.exec(ticketsRaw)?.[0] ?? FREE.exec(ticketsRaw)?.[1] ?? null);
   return {
     status: "read",
@@ -296,7 +311,8 @@ async function gated<T>(task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (err) {
-    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : 0;
+    // A final refusal is remembered as long as src/http.ts blocks the host, so later calls are refused here first.
+    const asked = err instanceof RateLimitedError ? (err.retryAfterS ?? 0) : err instanceof SourceRefusedError ? REFUSAL_BLOCK_MS / 1000 : 0;
     const wait = Math.min(Math.max(FAILURE_WAIT_S, asked), MAX_FAILURE_WAIT_S);
     retryAt = Date.now() + wait * 1000;
     lastError = err instanceof RateLimitedError ? new RateLimitedError(wait) : err;
@@ -304,12 +320,16 @@ async function gated<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Same markers as the 429 sniff in src/http.ts; none appeared on the real pages (2026-11-22). */
-const CAPTCHA = /captcha|cf-challenge|challenge-platform|cf-turnstile/i;
+/** Every normal page of the site carries Drupal's settings script; a challenge page served instead does not. */
+const DRUPAL_PAGE = 'data-drupal-selector="drupal-settings-json"';
 
-/** A page that did not parse and looks like a CAPTCHA or challenge is a final refusal: host blocked 10 minutes. */
+/**
+ * A page that did not parse, is not a Drupal page of the site and has the CAPTCHA/challenge markers of src/http.ts
+ * (none on the real pages, 2026-11-22) is a final refusal: host blocked 10 minutes, recorded as a CAPTCHA 429 as in
+ * src/http.ts. A normal page with a captcha form or an injected challenge script is not.
+ */
 function refuseIfChallenge(url: string, html: string): void {
-  if (CAPTCHA.test(html)) blockHost(url, 200);
+  if (!html.includes(DRUPAL_PAGE) && CAPTCHA.test(html)) blockHost(url, 429);
 }
 
 async function getHtml(url: string, pathPrefix: string): Promise<string> {
@@ -388,6 +408,8 @@ export function getListing(): Promise<Cached<Listing>> {
   });
 }
 
+export type StopReason = "robots" | "robots_failed" | "failed" | "busy";
+
 /** Cached details for an event link, or null when not cached (or expired). Never makes a request. */
 export function cachedDetails(link: string): EventDetails | null {
   const hit = detailsCache.get(link);
@@ -403,10 +425,10 @@ export function cachedDetails(link: string): EventDetails | null {
  * `unavailable`) or cannot be made (no slot, a failure remembered, robots.txt: it stays `not_read`); the rest stay
  * `not_read`. Never throws.
  */
-export async function readDetails(links: readonly string[], max: number = MAX_DETAILS_PER_CALL): Promise<{ details: Map<string, EventDetails>; stopped: "robots" | "failed" | "busy" | null }> {
+export async function readDetails(links: readonly string[], max: number = MAX_DETAILS_PER_CALL): Promise<{ details: Map<string, EventDetails>; stopped: StopReason | null }> {
   const details = new Map<string, EventDetails>();
   let fetched = 0;
-  let stopped: "robots" | "failed" | "busy" | null = null;
+  let stopped: StopReason | null = null;
   for (const link of links) {
     const hit = cachedDetails(link);
     if (hit !== null) {
@@ -418,8 +440,8 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
     try {
       await assertAllowed(new URL(link).pathname);
     } catch (err) {
-      // robots.txt could not be read (no slot, a failure remembered): no event page was asked for.
-      stopped = err instanceof RobotsDisallowedError ? "robots" : "busy";
+      // No event page was asked for: robots.txt disallows it, there was no slot, or robots.txt could not be read.
+      stopped = err instanceof RobotsDisallowedError ? "robots" : err instanceof RateLimitedError ? "busy" : "robots_failed";
       continue;
     }
     let asked = false;

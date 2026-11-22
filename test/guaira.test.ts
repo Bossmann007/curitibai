@@ -113,6 +113,7 @@ describe("parseListingPage", () => {
     ["an odd event link", (h) => h.replaceAll("/Evento/O-Vazio", "/Evento/O_Vazio?x=1").replaceAll("/Evento/Muito-Barulho-por-Nada-Teatro-de-Comedia-do-Parana", "/node/1")],
     ["a city without a state", (h) => h.replace(/Curitiba-\s+PR/, "Curitiba")],
     ["a next link to another page", (h) => h.replace("page=1\"", "page=5\"")],
+    ["a list inside a card", (h) => h.replace("<div class=\"content-card\">", "<div class=\"content-card\"><ul class=\"tags\"><li>Dança</li></ul>")],
   ];
   it("ignores markup after the card list, even an event link", () => {
     const html = list(0).replace("  </ul>", '  </ul><div class="destaques"><a href="/Evento/Outro">x</a><p><strong>Local:</strong> Curitiba- PR</p></div>');
@@ -159,6 +160,10 @@ describe("parseEventPage", () => {
       expect(parseEventPage(body(`<strong>Ingressos: </strong>${tickets}<br />`)).price).toBeNull();
     }
     expect(parseEventPage(body("<strong>Classificação etária:</strong> Livre para maiores de 16 anos<br />")).age_rating).toBeNull();
+    // The rest of a value hidden behind an inline tag: null too.
+    expect(parseEventPage(body("<strong>Ingressos:</strong> Gratuito <em>para menores de 12 anos</em>; R$ 20,00 demais<br/>")).price).toBeNull();
+    expect(parseEventPage(body("<strong>Classificação etária:</strong> Livre <b>para maiores de 16</b><br />")).age_rating).toBeNull();
+    expect(parseEventPage(body("<strong>Local:</strong> Teatro <em>Guaíra</em><br />")).venue).toBeNull();
     expect(parseEventPage(body("<strong>Local:</strong> Sala, fone 41 99999-8888<br />")).venue).toBe("Sala, fone [masked]");
     expect(parseEventPage(body("<strong>Local:</strong> A<br /><strong>Local:</strong> B<br />")).venue).toBeNull();
     // Real variant (Festival Mia Cara page, 2026-11-22): the colon after </strong>; "Entrada gratuita, com ..." is not a whole value.
@@ -317,6 +322,33 @@ describe("requests to the Teatro Guaíra host", () => {
     vi.setSystemTime(Date.now() + 5 * 60 * 1000);
     expect(errorOf(await call({}))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
     expect(calls).toHaveLength(2);
+  });
+
+  it("does not take a normal site page with a captcha form for a challenge", async () => {
+    const page = '<html><script data-drupal-selector="drupal-settings-json">{}</script><form class="captcha"></form></html>';
+    const calls = stubFetch(routes({ [`GET ${MUITO}`]: { body: page, contentType: HTML } }));
+    const out = await search({});
+    expect(out.data.items[0]!.details).toBe("not_recognised");
+    expect(calls.slice(4).map((c) => c.url)).toEqual([MUITO, MIA]);
+  });
+
+  it("leaves event pages not_read while the host is refused, also after the first 60 s", async () => {
+    const calls = stubFetch(routes({ [`GET ${MUITO}`]: { status: 403 } }));
+    expect((await search({})).data.items[0]!.details).toBe("unavailable");
+    vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+    const out = await search({});
+    expect(out.data.items.map((i) => i.details)).toEqual(["not_read", "not_read", "not_read", "not_read"]);
+    expect(calls).toHaveLength(5);
+  });
+
+  it("reports robots_failed, not a page failure, when robots.txt cannot be re-read for event pages", async () => {
+    stubFetch(routes());
+    await search({ limit: 1 });
+    vi.setSystemTime(Date.now() + 25 * 60 * 60 * 1000);
+    const calls = stubFetch(routes({ [`GET ${ROBOTS_URL}`]: { status: 500 } }));
+    const res = await readDetails([OSP]);
+    expect(res).toEqual({ details: new Map(), stopped: "robots_failed" });
+    expect(calls.map((c) => c.url)).toEqual([ROBOTS_URL]);
   });
 
   it("keeps the listing when an event page fails, and reads no more event pages in that call", async () => {

@@ -55,7 +55,8 @@ export function blockHost(url: string, status: number): never {
 
 /** Bytes of a 429 HTML body read to look for a CAPTCHA; the rest is discarded. */
 const CAPTCHA_SNIFF_BYTES = 16 * 1024;
-const CAPTCHA = /captcha|cf-challenge|challenge-platform|cf-turnstile/i;
+/** Markers of a CAPTCHA or challenge page (also used by src/sources/guaira.ts on pages that do not parse). */
+export const CAPTCHA = /captcha|cf-challenge|challenge-platform|cf-turnstile/i;
 
 /** True when a 429 answer is an HTML page with a CAPTCHA (read at most CAPTCHA_SNIFF_BYTES); the body is released. */
 async function isCaptchaPage(res: Response): Promise<boolean> {
