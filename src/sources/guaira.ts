@@ -1,5 +1,5 @@
 import { TtlCache, type Cached } from "../cache.js";
-import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
+import { blockHost, fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
 import { cleanField, EVENT_PLACE_MAX, EVENT_TITLE_MAX } from "../mask.js";
 import { decodeEntities } from "../text.js";
 
@@ -199,9 +199,12 @@ export interface EventDetails {
 export const NO_DETAILS = (status: DetailsStatus): EventDetails => ({ status, venue: null, age_rating: null, price: null });
 
 const BODY_FIELD = "field--name-field-texto";
-const VENUE = /<strong>Local:\s*<\/strong>\s*([^<]{1,200})</g;
-const AGE = /<strong>Classificação etária:\s*<\/strong>\s*([^<]{1,80})</g;
-const TICKETS = /<strong>Ingressos:\s*<\/strong>\s*([^<]{1,300})/g;
+/** `<strong>Label:</strong> value` or `<strong>Label</strong>: value` (both seen on real pages, 2026-11-22). */
+const field = (label: string, max: number, tail = "<") =>
+  new RegExp(String.raw`<strong>${label}\s*(?::\s*<\/strong>|<\/strong>\s*:)\s*([^<]{1,${max}})${tail}`, "g");
+const VENUE = field("Local", 200);
+const AGE = field("Classificação etária", 80);
+const TICKETS = field("Ingressos", 300, "");
 const AMOUNT = String.raw`R\$\s?\d{1,5}(?:\.\d{3})*(?:,\d{2})?(?:\s*\([\p{L} -]{1,30}\))?`;
 /** After a value only the end of the text, or the end of a sentence (". " and more), may follow; else null. */
 const VALUE_END = String.raw`(?=\.?$|\.\s)`;
@@ -301,6 +304,14 @@ async function gated<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Same markers as the 429 sniff in src/http.ts; none appeared on the real pages (2026-11-22). */
+const CAPTCHA = /captcha|cf-challenge|challenge-platform|cf-turnstile/i;
+
+/** A page that did not parse and looks like a CAPTCHA or challenge is a final refusal: host blocked 10 minutes. */
+function refuseIfChallenge(url: string, html: string): void {
+  if (CAPTCHA.test(html)) blockHost(url, 200);
+}
+
 async function getHtml(url: string, pathPrefix: string): Promise<string> {
   const res = await fetchText(url, {
     timeoutMs: GUAIRA_TIMEOUT_MS,
@@ -357,7 +368,15 @@ export function getListing(): Promise<Cached<Listing>> {
       const url = listingPageUrl(n);
       const u = new URL(url);
       await assertAllowed(`${u.pathname}${u.search}`);
-      const pageRes = await gated(async () => parseListingPage(await getHtml(url, CALENDAR_PATH), n));
+      const pageRes = await gated(async () => {
+        const html = await getHtml(url, CALENDAR_PATH);
+        try {
+          return parseListingPage(html, n);
+        } catch (err) {
+          refuseIfChallenge(url, html);
+          throw err;
+        }
+      });
       for (const r of pageRes.rows) {
         if (seen.has(r.link)) continue;
         seen.add(r.link);
@@ -408,7 +427,10 @@ export async function readDetails(links: readonly string[], max: number = MAX_DE
       const value = await gated(async () => {
         asked = true;
         try {
-          return parseEventPage(await getHtml(link, EVENT_PATH_PREFIX));
+          const html = await getHtml(link, EVENT_PATH_PREFIX);
+          const parsed = parseEventPage(html);
+          if (parsed.status === "not_recognised") refuseIfChallenge(link, html);
+          return parsed;
         } catch (err) {
           // A removed event (404/410) is a fact about that page, not a host failure: cached, not remembered.
           if (err instanceof SourceUnavailableError && (err.reason === "HTTP 404" || err.reason === "HTTP 410")) return NO_DETAILS("unavailable");

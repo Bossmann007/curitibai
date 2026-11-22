@@ -825,7 +825,7 @@ in the city's own categories. Built.
   **city**, not the venue. The card image is never read. Titles carry HTML entities (`&quot;`), decoded before
   cleaning.
 - **Event page fields read** (`/Evento/<slug>`, about 65 KB): only three lines of the body field
-  (`field--name-field-texto`): `Local:` (the venue, e.g. "Auditório Salvador de Ferrante (Guairinha)", "Auditório
+  (`field--name-field-texto`): `Local:` (written `<strong>Local:</strong>` or `<strong>Local</strong>:`; the same for the other two) (the venue, e.g. "Auditório Salvador de Ferrante (Guairinha)", "Auditório
   Bento Munhoz da Rocha Neto (Guairão)"), `Classificação etária:` (e.g. "14 anos") and `Ingressos:` (e.g.
   "R$20,00 (inteira) | R$10,00 (meia-entrada)"). The same body lists cast, directors, guest soloists and the
   programme; they are never read. The page also has `<time datetime>` start and end in UTC, the address of the
@@ -839,7 +839,8 @@ in the city's own categories. Built.
 - **Rate and failures** (`gated` in `src/sources/guaira.ts`, the GeoCuritiba pattern): request starts at least 5 s
   apart per server process; a request whose turn is more than 10 s away is not made (`rate_limited`); after any
   failure (a layout change included) no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401,
-  403 or a CAPTCHA 429 blocks the host 10 minutes (`blockHost`). Never retried. A robots.txt 404/410 means no rules;
+  403, a CAPTCHA 429, or a 200 page that does not parse and matches the same CAPTCHA/challenge markers (none on the
+  real pages) blocks the host 10 minutes (`blockHost`). Never retried. A robots.txt 404/410 means no rules;
   any other 4xx, a 5xx, a network error or a non-text answer fails closed (stricter than RFC 9309 on purpose). If robots.txt disallows `/calendario-eventos` the tool
   returns `source_unavailable` ("robots.txt now disallows the calendar"); if it disallows `/Evento/`, no event page
   is read.
@@ -928,7 +929,11 @@ in the city's own categories. Built.
 - **Requests to the host on 2026-11-22:** robots.txt, the three listing pages and two event pages, once each, at least
   5 s apart (curl, GET); then one cold call of the built tool (robots.txt, 3 listing pages, 2 event pages; 25.5 s):
   22 Curitiba events from 2026-11-22 to 2026-12-22, 1 Cascavel row left out, venue, age rating and price read for the
-  first two.
+  first two. After the review fixes, a second cold call (`offset: 2`, `limit: 2`, 25.4 s) read two other event
+  pages: the concert page gave venue, "7 anos" and "R$20,00 (inteira) | R$10,00"; the Festival Mia Cara page gave
+  the venue only, because it writes `Classificação etária</strong>: Livre` (colon after the tag, now accepted) and
+  `Entrada gratuita, com distribuição...` (not a whole value, so `price` stays null). That page was fetched once more
+  by hand to see why.
 - **Fixtures:** `test/fixtures/guaira/list_page0.html` (4 real cards: one running since 12/11, one with `&quot;` in the
   title, one on the check day, the Cascavel card; next link to page 1), `list_page1.html` (2 cards, next link to page
   2), `list_page2.html` (the real last page: 2 cards, no next link), `event_muito_barulho.html` and
@@ -970,7 +975,7 @@ delimiter, 12 columns (the last is empty because the header ends with `;`), 0 ma
 | `city156_categories`, `city156_stats` | File hosts disallow automated access (robots.txt) and the 156 CSV is 137 MB. Measured: 136,902,324 bytes (2026-11-18 file), ~1 MB/s from the mirror (~140 s) and ~0.4 MB/s from `mid` (>300 s). The 156 API (`api-156.curitiba.pr.gov.br`) is not public. Owner decision (2026-11-19): no permission request will be sent; a person downloads the file and uses `local_csv_summary` |
 | Bus lines, timetables, stops fetched by the server; real-time positions, fares | `www.urbs.curitiba.pr.gov.br` is out of scope (403 to non-browser clients). The URBS WebService redirects to a login page. The export mirror is treated as disallowed. Since v0.8 the bus tools read the exports from local files instead (above) |
 | `schools_search`, `markets_fairs_list` | Covered since v0.9 by `city_points_search` (URBS `pois` export: feiras, Câmbio Verde, CMEIs, municipal and state schools and more), with no days or hours for feiras. The other sources are stale (below). Health units moved to the CNES API in v0.2 |
-| `culture_agenda` | Covered since v0.10 by `events_search` (Instituto Municipal de Turismo calendar, local file written by the separate collector). The portal's "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
+| `culture_agenda` | Covered since v0.10 by `events_search` (Instituto Municipal de Turismo calendar, local file written by the separate collector), and since v0.17 by `guaira_events` for the Teatro Guaíra (live). The portal's "Eventos PMC" stops in 2022 and the mirror's AgendaPMC in 2024 (below) |
 | Private and non-profit health units | CNES names of non-public units can be people's names (see above) |
 | `garbage_collection_by_street` | No published dataset or API (portal searches for "lixo", "coleta", "residuos"). Only an undocumented form exists, `coletalixo.curitiba.pr.gov.br` (owner's finding, 2026-11-21); not used |
 | Detran-PR fees by vehicle, debts, fines and IPVA by plate | Behind login and CAPTCHA on Detran-PR; per-owner data. Not accessed |

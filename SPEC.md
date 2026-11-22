@@ -45,8 +45,9 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
   block on 401/403 or a CAPTCHA 429, size cap); same host only on redirects, below the requested path.
 - Gate (pattern of `src/sources/geocuritiba.ts`, copied, not shared: the parallel v0.16 branch builds its own):
   requests to the host start at least 5 s apart; a call whose turn is more than 10 s away gets `rate_limited` without
-  a request; after a failure, no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401/403 or a
-  CAPTCHA blocks the host 10 minutes (`blockHost`). Never retried in a loop.
+  a request; after a failure, no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour; 401/403, a
+  CAPTCHA 429, or a 200 page that does not parse and matches the CAPTCHA/challenge markers blocks the host 10
+  minutes (`blockHost`). Never retried in a loop.
 - robots.txt read through the same gate, cached 24 h, before any listing or event page read. Matcher: the group for
   `curitibai-mcp` if present, else `*`; `Allow`/`Disallow` with `*` and `$`, longest match wins, ties allow. If
   `/calendario-eventos` becomes disallowed the tool stops (`source_unavailable`, fixed message); if `/Evento/` does,

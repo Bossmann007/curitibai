@@ -239,7 +239,7 @@ Compared on 2026-11-21 with public sources (the App Store listing above), not wi
 | `city156_categories`, `city156_stats` | Same reason. Download the 156 file by hand and use `local_csv_summary` (see below) |
 | Bus lines, timetables and stops **fetched by the server** | The URBS website is out of scope (it refuses non-browser clients), its WebService needs a login, and the export mirror is treated as disallowed. The bus tools read files you download instead (see below); for a GTFS route, see "Alternatives" |
 | Real-time bus positions and fares | Not in the daily exports the bus tools read |
-| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
+| `schools_search`, `markets_fairs_list`, `culture_agenda` | Covered since v0.9 by `city_points_search` (feiras, schools) and since v0.10 by `events_search` (the Instituto Municipal de Turismo calendar, through the separate collector), plus since v0.17 `guaira_events` (the Teatro Guaíra calendar, live); the portal's own files for them are stale and only on hosts whose robots.txt disallows automated access |
 | Private and non-profit health units | CNES names of private units can be people's names; `health_units_search` returns public-administration units only |
 | `garbage_collection_by_street` | Only an undocumented form (`coletalixo.curitiba.pr.gov.br`), no published dataset or API; not used |
 | Suppliers, contracts and price-registration minutes (PNCP `/v1/contratos`, `/v1/atas`) | Suppliers can be natural persons (CPF); `procurement_search` returns the procurement notice only |
@@ -474,7 +474,8 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
 ### Privacy notice
 
 - No user accounts; the server does not store or log queries. Search terms go only to the source they query, and
-  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers).
+  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers;
+  1 hour for the Teatro Guaíra calendar, 6 hours for its event pages).
   `guaira_events` sends no search term at all: it reads the whole calendar and filters it in the server.
   `city_facilities_search` never sends the user's position or neighbourhood: it reads a whole layer and filters it in
   the server.
@@ -489,8 +490,11 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   host or path it disallows is never fetched. The events collector (the only collector) reads robots.txt on every run,
   stops if it changed, starts requests only inside the site's `Visit-time` and makes at most 1 request per 5 s
   (`Request-rate: 1/5`). The server makes one request per tool call and page, cached in memory (above).
+  `guaira_events` reads the Teatro Guaíra robots.txt itself (cached 24 h), stops if the calendar becomes disallowed
+  and reads no event page if `/Evento/` does; a cold call makes up to 6 requests, at least 5 s apart.
 - A 403, a CAPTCHA, a login or any other block is never bypassed. In code: `src/http.ts` treats HTTP 401, 403 and a
-  429 whose HTML page is a CAPTCHA as a final refusal (`source_unavailable` with the message "the source refused
+  429 whose HTML page is a CAPTCHA as a final refusal (`guaira_events` also treats a 200 page that does not parse and
+  looks like a CAPTCHA or challenge that way) (`source_unavailable` with the message "the source refused
   this server; it is not asked again for 10 minutes (per host)"; no retry, no other headers, no browser
   fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
   with `next_page: null`). The block is per host, not per path: a 403 on one portal path pauses every tool that uses
@@ -507,7 +511,8 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
 - No telemetry, no secrets, no `.env`. The server writes no files; only the separate events collector
   (`scripts/fetch-events.mjs`, run by you) writes, and only inside `CURITIBAI_DATA_DIR/events/` (`events.json`,
   `status.json`, its detail cache `details.json` and its lock `.lock`). The cache is in
-  memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, parsed result only) and is keyed by the request sent to
+  memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, parsed result only; 1 hour
+  for the Teatro Guaíra calendar, 6 hours for its event pages and 24 hours for its robots.txt, parsed result only) and is keyed by the request sent to
   the source.
 - The server contacts exactly eight hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
@@ -523,8 +528,8 @@ Ask, for example: "Defesa Civil phone number in Curitiba" or "telefone da Guarda
   `https://turismo.curitiba.pr.gov.br`, from its own allowlist, and only paths of the list and event pages plus
   robots.txt.
 - Requests use the User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)` (the repository as contact), a 10 s timeout per request (25 s for PNCP, which is slow;
-  15 s for INMET and the vaccination page; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
-  response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass). A body over the cap is `source_unavailable`
+  15 s for INMET, the vaccination page, GeoCuritiba and the Teatro Guaíra pages; 30 s for Overpass, whose queries carry a 25 s server timeout) and an 8 MB
+  response cap (1 MB for the INMET forecast and the vaccination page, 6 MB for the INMET warnings list, 3 MB for Overpass, 2 MB for GeoCuritiba, 1 MB for the Teatro Guaíra pages and 512 KB for its robots.txt). A body over the cap is `source_unavailable`
   with a message naming the cap.
 - `vaccination_sites_search` reads the page by its known element ids only (region headers, unit name, address,
   schedule spans, map link), never its whole text. Each text field has control and format characters (bidi, zero

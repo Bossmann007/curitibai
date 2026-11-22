@@ -161,6 +161,13 @@ describe("parseEventPage", () => {
     expect(parseEventPage(body("<strong>Classificação etária:</strong> Livre para maiores de 16 anos<br />")).age_rating).toBeNull();
     expect(parseEventPage(body("<strong>Local:</strong> Sala, fone 41 99999-8888<br />")).venue).toBe("Sala, fone [masked]");
     expect(parseEventPage(body("<strong>Local:</strong> A<br /><strong>Local:</strong> B<br />")).venue).toBeNull();
+    // Real variant (Festival Mia Cara page, 2026-11-22): the colon after </strong>; "Entrada gratuita, com ..." is not a whole value.
+    expect(parseEventPage(body("<strong>Local:</strong> Teatro José Maria Santos<br /><strong>Classificação etária</strong>: Livre<br /></p><p><strong>Entrada gratuita, </strong>com distribuição de ingressos"))).toEqual({
+      status: "read",
+      venue: "Teatro José Maria Santos",
+      age_rating: "Livre",
+      price: null,
+    });
     expect(parseEventPage("<p>nothing</p>").status).toBe("not_recognised");
   });
 });
@@ -300,6 +307,14 @@ describe("requests to the Teatro Guaíra host", () => {
 
   it("blocks the host on a CAPTCHA page", async () => {
     const calls = stubFetch(routes({ [`GET ${listingPageUrl(0)}`]: { status: 429, body: "<html>cf-turnstile captcha</html>", contentType: HTML } }));
+    expect(errorOf(await call({}))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("blocks the host when a 200 page that does not parse is a challenge page", async () => {
+    const calls = stubFetch(routes({ [`GET ${listingPageUrl(0)}`]: { body: "<html><div class=\"cf-turnstile\"></div></html>", contentType: HTML } }));
+    expect(errorOf(await call({}))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
+    vi.setSystemTime(Date.now() + 5 * 60 * 1000);
     expect(errorOf(await call({}))).toEqual({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
     expect(calls).toHaveLength(2);
   });
