@@ -817,6 +817,7 @@ must run at the top of a checkout (exit 2 elsewhere).
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to run `scripts/verify`, the collection rules a change must keep, and the
   pull request flow.
+- [docs/adr/](docs/adr/README.md): architecture decision records (why the project works the way it does).
 - [SECURITY.md](SECURITY.md): report a vulnerability privately through
   [GitHub security advisories](https://github.com/Bossmann007/curitibai/security/advisories/new), never in a public
   issue.

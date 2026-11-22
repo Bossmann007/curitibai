@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.18.5 - 2026-11-22
+
+Docs and CI only; no tool, host or runtime behaviour changes.
+
+- New `docs/adr/` with an index and four architecture decision records, each citing where the decision is already
+  written and the owner approval: 0001 facts and links only from sources with no licence found; 0002 nightly GitHub
+  Actions collection to the orphan `data` branch; 0003 the shared per-host request gate (`src/hostGate.ts`); 0004 no
+  automated access to hosts that disallow robots or refuse non-browsers (the user downloads those files). Linked from
+  README and CONTRIBUTING.
+- New PR-size guard: `scripts/pr-size.mjs`, run by `.github/workflows/verify.yml` on pull requests only (also when
+  the body is edited), fails when a pull request changes more than 400 lines against its base, unless the body has a
+  line starting with `Large PR because:` and a reason. `test/` and lockfiles do not count; renames count only edited
+  lines. Checkout now fetches two commits. Rule in CONTRIBUTING.md, tests in `test/prSize.test.ts` and
+  `test/workflows.test.ts`.
+
 ## 0.18.4 - 2026-11-22
 
 Two `river_levels` fixes. No new tool, no new host.

@@ -2,6 +2,8 @@ name: verify
 
 on:
   pull_request:
+    # edited: adding a "Large PR because:" line to the body runs the PR-size step again.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -22,6 +24,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Two commits: on pull_request HEAD is GitHub's merge commit and HEAD^1 the base, for the PR-size step.
+          fetch-depth: 2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -30,3 +34,9 @@ jobs:
       - run: scripts/verify
         env:
           CURITIBAI_SKIP_AUDIT: "1"
+      # PR-size guard (CONTRIBUTING.md): over 400 changed lines fails unless the PR body explains it. Runs even when
+      # verify failed, so both results show. The body is passed in the environment, never inside the script text.
+      - if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        run: scripts/pr-size.mjs HEAD^1 HEAD
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}

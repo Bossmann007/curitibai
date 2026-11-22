@@ -106,6 +106,13 @@ The "git scraping" pattern (a scheduled GitHub Actions job committing collected 
   document) on a later station returns the stations read or cached with `partial: true`, the failed stations first in
   `more_matches` and a note naming the failure; `source_unavailable` only when no station is available.
 
+## v0.18.5 changes (task brief "curitibai v0.18.5 — ADRs + PR-size guard", 2026-11-22)
+
+- `docs/adr/` (index and ADRs 0001-0004); docs and CI only, no runtime change.
+- `scripts/pr-size.mjs` in `verify.yml` on `pull_request` (`opened`, `synchronize`, `reopened`, `edited`): diff
+  `HEAD^1..HEAD` (GitHub's merge commit and its base), more than 400 counted lines fails unless the body has a
+  `Large PR because:` line with a reason; `test/` and lockfiles excluded.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
