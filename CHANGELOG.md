@@ -2,7 +2,9 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
-## Unreleased
+## 0.18.5 - 2026-11-22
+
+Docs and CI only; no tool, host or runtime behaviour changes.
 
 - Docs split: the README is now a short entry point (install, the 22 tools, how data stays updated, privacy notice).
   The per-tool detail, the comparison with the Curitiba App, deferred tools and limits moved to `docs/tools.md`; the
@@ -11,7 +13,19 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `docs/sources.md` has a table of contents. `scripts/verify` now checks that every relative inline link and anchor in
   README.md, CONTRIBUTING.md, SECURITY.md, CHANGELOG.md and `docs/*.md` resolves (`scripts/check-links.mjs`, Node
   built-ins only). The README keeps the old ids of the moved sections (`#tools`, `#tool-reference`, `#limits`, ...),
-  so saved links still land on the page.
+  so saved links still land on the page. `scripts/check-links.mjs` also checks `docs/adr/*.md`. The README test badge
+  shows the `verify` workflow status instead of a fixed count; `docs/tools.md` says "Live tools" like the README; the
+  `data_not_available` messages of `city_services_search` and the bus tools point to `docs/local-data.md`.
+- New `docs/adr/` with an index and four architecture decision records, each citing where the decision is already
+  written and the owner approval: 0001 facts and links only from sources with no licence found; 0002 nightly GitHub
+  Actions collection to the orphan `data` branch; 0003 the shared per-host request gate (`src/hostGate.ts`); 0004 no
+  automated access to hosts that disallow robots or refuse non-browsers (the user downloads those files). Linked from
+  README and CONTRIBUTING.
+- New PR-size guard: `scripts/pr-size.mjs`, run by `.github/workflows/verify.yml` on pull requests only (also when
+  the body is edited), fails when a pull request changes more than 400 lines against its base, unless the body has a
+  line starting with `Large PR because:` and a reason. `test/` and lockfiles do not count; renames count only edited
+  lines; a revision starting with "-" is refused (exit 2). Checkout now fetches two commits. Rule in CONTRIBUTING.md, tests in `test/prSize.test.ts` and
+  `test/workflows.test.ts`.
 
 ## 0.18.4 - 2026-11-22
 

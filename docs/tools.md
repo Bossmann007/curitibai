@@ -14,7 +14,7 @@ limits of each source. The short list of tools is in the [README](../README.md#t
 
 ## Tool reference
 
-All tools are read-only. Seven of the eleven network tools return `{data, source_url, fetched_at, license_note}`;
+All tools are read-only. Seven of the eleven Live tools return `{data, source_url, fetched_at, license_note}`;
 `vaccination_sites_search` returns `{data, source_url, checked_at, attribution, license_note, note}`, with `checked_at`
 the time the server read the page, and `city_facilities_search`, `river_levels` and `guaira_events` return `{data, source,
 source_url, checked_at, license_note, note}`, with `checked_at` the time the server read the layer (for `river_levels`,

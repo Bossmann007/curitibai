@@ -10,7 +10,7 @@
 [![License](https://img.shields.io/badge/License-Apache--2.0%20%2B%20ODbL%20%28OSM%20extract%29-blue?style=for-the-badge)](docs/licences.md)
 [![Node](https://img.shields.io/badge/Node-%3E%3D26.13.1-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](.nvmrc)
 [![MCP](https://img.shields.io/badge/MCP-stdio-7751FF?style=for-the-badge&logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-720%20passed-2ea44f?style=for-the-badge&logo=vitest&logoColor=white)](docs/development.md)
+[![verify](https://img.shields.io/github/actions/workflow/status/Bossmann007/curitibai/verify.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=verify)](https://github.com/Bossmann007/curitibai/actions/workflows/verify.yml)
 [![Não oficial](https://img.shields.io/badge/N%C3%A3o%20oficial-no%20link%20with%20the%20Prefeitura-lightgrey?style=for-the-badge)](#curitibai)
 
 </div>
@@ -184,6 +184,7 @@ schedule, the published files, how to turn it back on and how to run the collect
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to run `scripts/verify`, the collection rules a change must keep, and the
   pull request flow.
+- [docs/adr/](docs/adr/README.md): architecture decision records (why the project works the way it does).
 - [SECURITY.md](SECURITY.md): report a vulnerability privately through
   [GitHub security advisories](https://github.com/Bossmann007/curitibai/security/advisories/new), never in a public
   issue.

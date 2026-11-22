@@ -29,6 +29,10 @@ dos arquivos Markdown (README, `docs/` e estes guias) aponta para um arquivo e u
   (`src/config.ts`) e na lista de hosts de [docs/privacy.md](docs/privacy.md#details).
 - **Só leitura.** Nenhuma ferramenta grava, faz login, paga, agenda ou abre protocolo.
 
+As decisões que dão forma ao projeto (só fatos de fontes sem licença, coleta noturna no branch `data`, o limite de
+requisições por host, nada de acesso automático a hosts que proíbem) estão em [docs/adr/](docs/adr/README.md). Uma
+mudança que contraria uma delas traz uma ADR nova no mesmo pull request.
+
 ## Fluxo do pull request
 
 1. Crie um branch a partir de `main`.
@@ -39,6 +43,20 @@ dos arquivos Markdown (README, `docs/` e estes guias) aponta para um arquivo e u
 5. Abra o pull request para `main` com o modelo preenchido e o fim da saída do `scripts/verify`. O
    `scripts/verify` local é a verificação obrigatória; o workflow `.github/workflows/verify.yml` está configurado para
    rodar o mesmo script em pull requests.
+
+## Tamanho do pull request
+
+Pull requests pequenos, até cerca de 400 linhas alteradas (adicionadas mais removidas, contra a base). O passo
+"PR-size" do workflow `verify.yml` (`scripts/pr-size.mjs`, só em pull requests) falha acima de 400, a menos que o
+corpo do pull request tenha uma linha que comece com `Large PR because:` seguida do motivo. Editar o corpo roda o
+workflow de novo.
+
+Não contam: tudo em `test/` (testes e fixtures), `package-lock.json` e arquivos `*.lock` de qualquer pasta. Um
+arquivo renomeado ou movido (por exemplo dentro de `docs/`) conta só as linhas editadas, porque o git detecta a
+renomeação; um arquivo movido de `test/` para fora conta inteiro. A linha `Large PR because:` precisa estar visível:
+dentro de um comentário HTML ou de um bloco de código ela não vale. Texto copiado
+de um arquivo para outro novo (por exemplo um trecho do README que vira um arquivo em `docs/`) não é renomeação e
+conta inteiro; explique com `Large PR because:` ou divida o pull request.
 
 Ideia de fonte nova: use o formulário
 [Sugerir uma fonte de dados](https://github.com/Bossmann007/curitibai/issues/new?template=data-source.yml) antes de
