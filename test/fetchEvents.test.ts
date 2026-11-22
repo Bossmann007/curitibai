@@ -16,7 +16,9 @@ import {
   parseDates,
   parseDetailPage,
   parseListPage,
+  parsePhonesPage,
   parseRobots,
+  PHONES_PATH,
   politeGapMs,
   RECORDED_ROBOTS,
   readCache,
@@ -34,6 +36,8 @@ import { fixture } from "./helpers.js";
 // Synthetic pages only (test/fixtures/events_synthetic): invented events that imitate the site's structure.
 const LIST = fixture("events_synthetic/list_page.html");
 const DETAIL = fixture("events_synthetic/detail_page.html");
+// Trimmed from the real page read on 2026-11-22 (public organ and company numbers only; see docs/sources.md).
+const PHONES = fixture("useful_phones/telefones_uteis_trimmed.html");
 const ORIGIN = "https://turismo.curitiba.pr.gov.br";
 
 // Same directives as the recorded group, in the live file's shape: CRLF, comments after tabs with Latin-1 bytes, no
@@ -360,6 +364,7 @@ const ids = (n: number, from = 100) => Array.from({ length: n }, (_, i) => ({ id
 function siteRoutes(pages: { id: number; slug: string }[][]): Record<string, FakeRoute> {
   const routes: Record<string, FakeRoute> = {
     [`${ORIGIN}/robots.txt`]: { body: robotsBytes(ROBOTS), contentType: "text/plain" },
+    [`${ORIGIN}${PHONES_PATH}`]: { body: PHONES },
   };
   pages.forEach((items, i) => {
     routes[`${ORIGIN}/eventos/21-11-2026/${i + 1}`] = { body: listHtml(items, pages.length) };
@@ -386,6 +391,7 @@ describe("run", () => {
       "/evento/evento-sintetico-102/102",
       "/evento/evento-sintetico-200/200",
       "/evento/evento-sintetico-201/201",
+      "/conteudo/telefones-uteis/92",
     ]);
     expect(USER_AGENT).toBe("curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)");
     for (const [i, c] of h.calls.entries()) {
@@ -400,6 +406,8 @@ describe("run", () => {
     expect(doc.events.every(validEvent)).toBe(true);
     expect(readJson(statusFile())).toMatchObject({ code: "ok", attempt: "2026-11-21T05:00:00.000Z", success: expect.any(String) });
     expect(readdirSync(join(dataDir, "events")).sort()).toEqual([CACHE_FILE, "events.json", "status.json"]); // no temp file or lock left
+    expect(readdirSync(join(dataDir, "phones")).sort()).toEqual(["phones.json", "status.json"]);
+    expect(res.phones).toEqual({ code: "ok", entries: 60, dropped: 0 });
   });
 
   it("facts only: neither events.json nor the detail cache keeps the event description (or any part of it)", async () => {
@@ -421,13 +429,14 @@ describe("run", () => {
     expect(h.lines).toEqual([
       "fetch-events: code=ok",
       "fetch-events: pages=1 listed=3 details_fetched=3 details_cached=0 events=3",
+      "fetch-events: phones_code=ok phones=60 phones_dropped=0",
       "fetch-events: exit=0",
     ]);
     const failing = harness({ ...routes, [`${ORIGIN}/eventos/21-11-2026/1`]: { body: "<html>PAGE-SENTINEL</html>" } });
     await run(failing.deps);
     expect(failing.lines.join("\n")).not.toMatch(/SENTINEL|<|html/i);
     for (const line of [...h.lines, ...failing.lines]) {
-      expect(line).toMatch(/^fetch-events: (code=[a-z_]+( http_status=\d+)?|pages=\d+ listed=\d+ details_fetched=\d+ details_cached=\d+ events=\d+|exit=\d)$/);
+      expect(line).toMatch(/^fetch-events: (code=[a-z_]+( http_status=\d+)?|pages=\d+ listed=\d+ details_fetched=\d+ details_cached=\d+ events=\d+|phones_code=[a-z_]+( phones_http_status=\d+)? phones=\d+ phones_dropped=\d+|exit=\d)$/);
     }
   });
 
@@ -587,7 +596,7 @@ describe("run", () => {
     const h = harness(routes);
     h.deps.recordedRobots = [...RECORDED_ROBOTS, "crawl-delay: 12"];
     expect((await run(h.deps)).code).toBe("ok");
-    expect(h.calls).toHaveLength(4);
+    expect(h.calls).toHaveLength(5); // robots, 1 list page, 2 details, the phones page
     for (const [i, c] of h.calls.entries()) if (i > 1) expect(c.at - h.calls[i - 1]!.at).toBeGreaterThanOrEqual(12_000 + 200);
   });
 
@@ -718,19 +727,20 @@ describe("run", () => {
     expect(h.calls).toEqual([]);
   });
 
-  it("writes only under CURITIBAI_DATA_DIR/events", async () => {
+  it("writes only under CURITIBAI_DATA_DIR/events and CURITIBAI_DATA_DIR/phones", async () => {
     writeFileSync(join(root, "outside.txt"), "x");
     mkdirSync(join(dataDir, "urbs"));
     writeFileSync(join(dataDir, "urbs", "keep.json"), "[]");
     const snapshot = () =>
       readdirSync(root, { recursive: true, encoding: "utf8" })
-        .filter((p) => !p.startsWith(join("data", "events")))
+        .filter((p) => !p.startsWith(join("data", "events")) && !p.startsWith(join("data", "phones")))
         .sort()
         .map((p) => [p, existsSync(join(root, p)) && !p.endsWith("urbs") && !p.endsWith("data") ? readFileSync(join(root, p), "utf8") : ""]);
     const before = snapshot();
     expect((await run(harness(siteRoutes([ids(3)])).deps)).code).toBe("ok");
     expect(snapshot()).toEqual(before);
     expect(readdirSync(join(dataDir, "events")).sort()).toEqual([CACHE_FILE, "events.json", "status.json"]);
+    expect(readdirSync(join(dataDir, "phones")).sort()).toEqual(["phones.json", "status.json"]);
   });
 
   it("replaces a symlinked events.json with a file instead of writing through it", async () => {
@@ -749,5 +759,123 @@ describe("run", () => {
     expect((await run(h.deps)).code).toBe("write_failed");
     expect(h.calls).toEqual([]);
     expect(readdirSync(join(root, "elsewhere"))).toEqual([]);
+  });
+});
+
+// ---------- useful phones (fixture trimmed from the real page) ----------
+
+const phonesFile = () => join(dataDir, "phones", "phones.json");
+const phonesStatus = () => join(dataDir, "phones", "status.json");
+const entry = (name: string) => parsePhonesPage(PHONES).entries.filter((e) => e.name === name);
+
+describe("useful phones page", () => {
+  it("reads 60 entries in 4 sections, numbers as published, with no person data dropped", () => {
+    const { entries, dropped } = parsePhonesPage(PHONES);
+    expect(entries).toHaveLength(60);
+    expect(dropped).toBe(0);
+    expect([...new Set(entries.map((e) => e.section))]).toEqual(["Emergências", "Serviços", "Transporte", "Centrais de Radiotáxi de Curitiba"]);
+    for (const e of entries) expect(Object.keys(e).sort()).toEqual(["name", "numbers", "section"]);
+    expect(entries[0]).toEqual({ section: "Emergências", name: "SIATE(ambulância/bombeiros)", numbers: ["193"] });
+  });
+
+  it("handles the page's hard lines exactly", () => {
+    expect(entry("Juizado de Menores")[0]!.numbers).toEqual(["(41) 3222-7561"]); // number split across tags
+    expect(entry("DETRAN")[0]!.numbers).toEqual(["(41) 3361-1212", "0800 6437373"]);
+    expect(entry("COPEL(energia elétrica)")[0]!.numbers).toEqual(["0800 5100116"]);
+    expect(entry("Associação Radiotáxi Faixa Vermelha")[0]!.numbers).toEqual(["0800-414141", "(41) 3262-6262", "3362-6262"]);
+    expect(entry("Vacinação para viagens no aeroporto")[0]!.numbers).toEqual(["(41) 3381-1281", "3381-1515"]); // note dropped
+    expect(entry("PREFEITURA MUNICIPAL (serviços) - Curitiba Turismo")[0]!.numbers).toEqual(["(41) 3250-7721", "3250-7724"]); // "Fax:"
+    expect(entry("Disque Turismo Municipal")[0]!.numbers).toEqual(["156", "(41) 3350-6456"]);
+    expect(entry("Remoções 24h - UTI Móvel / Aérea (Problemas com drogas/psiquiátricos)")[0]!.numbers).toEqual(["(41) 3257-3336"]);
+    expect(entry("Operadoras Pedágio - ECOVIA")[0]).toEqual({ section: "Transporte", name: "Operadoras Pedágio - ECOVIA", numbers: ["0800 410277"] });
+    expect(entry("Polícia Civil - Atendimento ao Turista: 12º Distrito Policial")[0]!.numbers).toEqual(["(41) 3370-1200"]);
+    expect(entry("Aeroclube Bacacheri").map((e) => e.section)).toEqual(["Serviços", "Transporte"]); // listed twice
+    // The address line (Avenida Manoel Ribas 6693) and the notes are not kept anywhere.
+    expect(JSON.stringify(parsePhonesPage(PHONES))).not.toMatch(/6693|Manoel|postos de sa|demais cidades/);
+  });
+
+  it("stops with layout_changed on a changed layout instead of guessing", () => {
+    const bad = [
+      PHONES.replace('class="listaEdital"', 'class="listaConteudo"'), // block renamed
+      PHONES.replace("Telefones Úteis</h2>", "Contatos</h2>"), // another page
+      PHONES.replace("<strong>Emerg&ecirc;ncias :</strong>", ""), // entries before any section
+      PHONES.replace("<strong>193</strong>", "<span>193</span>"), // an unknown tag
+      PHONES.replace("3304-8000", "3304.8000"), // a number in an unknown format
+      PHONES.replace("- Defesa Civil:", "- Defesa Civil 3350"), // digits left in a name
+      PHONES.replace(/<p><strong>Servi[\s\S]*<\/div>/, "</address>"), // too few entries left
+    ];
+    for (const html of bad) expect(() => parsePhonesPage(html)).toThrow(expect.objectContaining({ code: "layout_changed" }));
+  });
+
+  it("drops an entry with a mobile number or a masked name and counts it", () => {
+    const html = PHONES.replace("- Defesa Civil:&nbsp;<strong>199</strong>", "- Fulano de Tal:&nbsp;<strong>(41) 99999-8888</strong>");
+    const { entries, dropped } = parsePhonesPage(html);
+    expect(dropped).toBe(1);
+    expect(entries).toHaveLength(59);
+    expect(JSON.stringify(entries)).not.toMatch(/Fulano|99999/);
+    const mail = parsePhonesPage(PHONES.replace("- Defesa Civil:", "- fulano@exemplo.com:"));
+    expect(mail.dropped).toBe(1);
+  });
+
+  it("writes phones.json with the kept fields only, through the same polite client", async () => {
+    const h = harness(siteRoutes([ids(2)]));
+    const res = await run(h.deps);
+    expect(res.phones.code).toBe("ok");
+    const last = h.calls[h.calls.length - 1]!;
+    expect(last.url).toBe(`${ORIGIN}${PHONES_PATH}`);
+    expect(new Headers(last.init.headers).get("user-agent")).toBe(USER_AGENT);
+    expect(last.at - h.calls[h.calls.length - 2]!.at).toBeGreaterThanOrEqual(GAP_MS);
+    const doc = readJson(phonesFile());
+    expect(doc).toMatchObject({ format: 1, source: `${ORIGIN}${PHONES_PATH}`, count: 60, dropped: 0, checked_at: expect.any(String) });
+    expect(Object.keys(doc).sort()).toEqual(["checked_at", "count", "dropped", "entries", "format", "source"]);
+    expect(readJson(phonesStatus())).toMatchObject({ code: "ok", success: expect.any(String) });
+  });
+
+  it("keeps the previous copy and writes layout_changed when the page no longer matches", async () => {
+    await run(harness(siteRoutes([ids(3)])).deps);
+    const before = readFileSync(phonesFile(), "utf8");
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}${PHONES_PATH}`] = { body: PHONES.replace('class="listaEdital"', 'class="outra"') };
+    const res = await run(harness(routes, "2026-11-21T04:00:00Z").deps);
+    expect(res).toMatchObject({ code: "ok", exit: 1, phones: { code: "layout_changed" } });
+    expect(readFileSync(phonesFile(), "utf8")).toBe(before);
+    expect(readJson(phonesStatus())).toMatchObject({ code: "layout_changed", success: expect.any(String) });
+    expect(readJson(statusFile()).code).toBe("ok"); // the events step is not affected
+  });
+
+  it("reuses the window and robots checks: no phones request outside the window or after robots changed", async () => {
+    const closed = harness(siteRoutes([ids(3)]), "2026-11-21T12:00:00Z");
+    expect(await run(closed.deps)).toMatchObject({ code: "window_closed", phones: { code: "window_closed" } });
+    expect(closed.calls).toEqual([]);
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/robots.txt`] = { body: robotsBytes(ROBOTS + "\r\nDisallow: /conteudo/"), contentType: "text/plain" };
+    const changed = harness(routes);
+    expect(await run(changed.deps)).toMatchObject({ code: "robots_changed", phones: { code: "robots_changed" } });
+    expect(changed.calls.map((c) => c.url)).toEqual([`${ORIGIN}/robots.txt`]);
+    expect(robotsAllows(group(ROBOTS)!, PHONES_PATH)).toBe(true);
+  });
+
+  it("after a refusal (403) the run stops: no phones request, the phones status gets the same code", async () => {
+    await run(harness(siteRoutes([ids(3)])).deps);
+    const before = readFileSync(phonesFile(), "utf8");
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 403, body: "x" };
+    const h = harness(routes, "2026-11-21T03:30:00Z");
+    expect(await run(h.deps)).toMatchObject({ code: "http_error", exit: 1, phones: { code: "http_error", entries: 0 } });
+    expect(h.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
+    expect(readFileSync(phonesFile(), "utf8")).toBe(before);
+    expect(readJson(phonesStatus())).toMatchObject({ code: "http_error", success: expect.any(String) });
+  });
+
+  it("still reads the phones page when the events step ends with layout_changed, and not after the window closed", async () => {
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { body: "<html></html>" };
+    const res = await run(harness(routes).deps);
+    expect(res).toMatchObject({ code: "layout_changed", exit: 1, phones: { code: "ok", entries: 60 } });
+    // Started at 05:49:50: the events pages run past 05:50, so the phones request is refused by the window check.
+    const late = harness(siteRoutes([ids(3)]), "2026-11-21T05:49:50Z");
+    const out = await run(late.deps);
+    expect(out.phones.code).toBe("window_closed");
+    expect(late.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
   });
 });

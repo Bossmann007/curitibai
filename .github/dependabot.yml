@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      # 2026-11-21: typescript-eslint 8.73.0 does not accept TypeScript 7 yet (PR #2 failed npm ci with ERESOLVE).
+      # Remove this when a typescript-eslint release lists TypeScript 7 in its peer range.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

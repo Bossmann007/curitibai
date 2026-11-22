@@ -433,7 +433,8 @@ inferred.
 
 **Times after midnight.** `HORA` runs from 00:00 to 23:59, none at 24:00 or later (1,186 rows of the 2026-11-20 file
 are before 03:00 and 1,291 before 04:00, under all three codes); no field ties a time after midnight to the previous
-evening. The file order does (checked 2026-11-21 on the 2026-11-20 file, 71,085 rows): reading each table (same `COD`,
+evening. The file order does (checked 2026-11-21 on the 2026-11-20 file, 71,085 rows; every count in this paragraph
+was measured by hand on the owner's local file of 2026-11-20, which is not in this repository): reading each table (same `COD`,
 `DIA` and `TABELA`; its rows are interleaved with other tables' and move from stop to stop) in file order, times rise
 through the day, and in 677 tables the sequence drops once, every time from 23:xx to 00:xx (for example a weekday
 table going 23:51 then 00:03, at the next stop of the same trip). So URBS files a late-night trip under the day its
@@ -641,6 +642,44 @@ in the city's own categories. Built.
   page of its own id, `count` not matching), sanitizes the text fields again, and filters by date overlap (default
   today to 7 days ahead in Curitiba), words and category. `checked_at` is the collector's run time; `stale: true` after
   3 days; `data_not_available` after 7 days or when the file is missing.
+
+### `useful_phones`: Instituto Municipal de Turismo "Telefones Úteis" page (local file written by the same collector)
+
+- **Source:** <https://turismo.curitiba.pr.gov.br/conteudo/telefones-uteis/92>, a public page of the Instituto
+  Municipal de Turismo de Curitiba (same host as `events_search`). **No licence found**: no licence or terms of use
+  were found on the site, so only facts (section, organ or company name, numbers) and the page link are kept.
+  `attribution`: "Instituto Municipal de Turismo de Curitiba (not affiliated)"; `license_note`: "the site publishes no
+  licence; facts and links only".
+- **robots.txt:** the same `User-agent: *` group recorded for `events_search` (read 2026-11-21, unchanged on
+  2026-11-22): no rule disallows `/conteudo/`, the visit window is 02:00–06:00 UTC and the rate one page per 5 s.
+  The collector (`scripts/fetch-events.mjs`) reads the page once per run, after the events pages, with the same
+  client: the same window, robots check, 5 s gap, deadline and User-Agent, and only after the events step ended ok or
+  with `layout_changed`. After any non-200 status (403 included), a redirect, a timeout or a network error it makes
+  no request in that run. The server never contacts this host.
+- **Structure seen on 2026-11-22** (one page read at 02:11 UTC inside the visit window; `Content-Type: text/html;
+  charset=utf-8`, 65,449 bytes, CRLF line ends, accents as named HTML entities). The content is the one
+  `<div class="listaEdital">` under `<h2>Telefones Úteis</h2>`, made of `<address>`, `<p>` and `<div>` blocks with
+  `<br />` line breaks and `<strong>`/`<em>` inside. Section headings are lines ending in ":" with no digits
+  ("Emergências :", "Serviços :", "Transporte :", "Centrais de Radiotáxi de Curitiba:"); entries are "- Name: numbers"
+  lines; "- Operadoras Pedágio:" is a parent of indented lines; one entry ("- Remoções 24h - UTI Móvel / Aérea/")
+  continues on the next line; a number is sometimes split across tags ("(41)</strong><strong>&nbsp;3222-7561").
+  Numbers appear as 3-digit public numbers (190, 193, 156), "(41) NNNN-NNNN", bare "NNNN-NNNN" after a "/", and
+  "0800 NNNNNNN" or "0800-NNNNNN". The test fixture `test/fixtures/useful_phones/telefones_uteis_trimmed.html` is that
+  page trimmed to its content column, markup and CRLF kept; nothing else of the page is in the repository.
+- **Kept:** per entry `section`, `name` (an indented line gets its parent's name in front) and `numbers` as published;
+  per file `source`, `checked_at`, `count` and `dropped`. Notes next to numbers ("Fax", "(demais cidades)", "(postos de
+  saúde ...)"), the address line of the tourist police station and everything else on the page are not kept. The
+  2026-11-22 page gives 60 entries in 4 sections; some organs appear in two sections (Aeroclube Bacacheri, DER).
+- **Personal data:** every entry on the 2026-11-22 page is a public body or a company (police, emergency services,
+  utilities, toll road operators, radio taxi associations), checked by hand; no person's name and no personal phone
+  was found, so no entry was dropped. Guards with tests: an entry with a 9-digit mobile number, or whose name holds
+  e-mail-, phone- or CPF/CNPJ-shaped text after `cleanField`, is dropped and counted in `dropped`. Names of people
+  are not detected (a person's name with a landline number would be kept); the by-hand check above is what covers
+  them on this page.
+- **Fails closed:** an unknown tag in the block, a number in another format (digits left over), an entry before the
+  first heading, fewer than 20 or more than 500 entries, or a count outside 0.3x–3x of the previous file's: status
+  `layout_changed`, the previous `phones/phones.json` is kept.
+- **Not covered:** the page has no Ouvidoria entry, and it was not compared with the Curitiba App's own list.
 
 ### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
 

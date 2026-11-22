@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "no tracked city services catalog (carta-servicos.json), URBS export (YYYY_MM_DD_*.json), events output (events/) or HTML capture"
+step "no tracked city services catalog (carta-servicos.json), URBS export (YYYY_MM_DD_*.json), collector output (events/, phones/) or HTML capture"
 scripts/check-no-catalog
 
 step "npm ci"
@@ -23,7 +23,7 @@ npx vitest run
 step "build"
 npm run --silent build
 
-step "stdio smoke test (tools/list, city_services_search, bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic fixtures; city_facilities_search list types)"
+step "stdio smoke test (tools/list with useful_phones, city_services_search, bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic fixtures; city_facilities_search list types)"
 node scripts/smoke.mjs
 
 step "bus_stops_near timing guard (17,496 generated stop rows, budget about 100 ms, fails over 400 ms)"
@@ -31,6 +31,9 @@ node scripts/perf-bus-stops-near.mjs
 
 step "next_buses_near timing guard (17,496 generated stop rows and 71,085 departures, budget about 150 ms, fails over 600 ms)"
 node scripts/perf-next-buses-near.mjs
+
+step "local_csv_summary timing guard (2,000 distinct 8,000-character values, budget 2 s per call)"
+node scripts/perf-local-csv-summary.mjs
 
 echo
 echo "verify: OK"

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Collector for the events_search tool: reads the public events calendar of the Instituto Municipal de Turismo de
-// Curitiba (turismo.curitiba.pr.gov.br) and writes CURITIBAI_DATA_DIR/events/events.json and events/status.json, plus
-// its own detail cache (events/details.json) and run lock (events/.lock).
+// Collector for the events_search and useful_phones tools: reads the public events calendar of the Instituto Municipal
+// de Turismo de Curitiba (turismo.curitiba.pr.gov.br) and writes CURITIBAI_DATA_DIR/events/events.json and
+// events/status.json, plus its own detail cache (events/details.json) and run lock (events/.lock); then, in the same
+// run, reads the site's one "Telefones Úteis" page and writes phones/phones.json and phones/status.json.
 // Run by hand (or by a scheduler) inside the window the site's robots.txt asks for; the MCP server never contacts
 // this host (it is not in src/config.ts ALLOWED_HOSTS). Node built-ins only. See README "Events" and docs/sources.md.
 //
@@ -31,6 +32,9 @@ export const GAP_MS = 5_000;
 export const LIST_MAX_BYTES = 512 * 1024;
 export const DETAIL_MAX_BYTES = 256 * 1024;
 export const ROBOTS_MAX_BYTES = 64 * 1024;
+/** The one useful phones page (1 GET per run, after the events pages). */
+export const PHONES_PATH = "/conteudo/telefones-uteis/92";
+export const PHONES_MAX_BYTES = 256 * 1024;
 /** Hard cap on list pages per run (the site showed 5 pages of 10); a pager showing more stops the run. */
 export const MAX_LIST_PAGES = 10;
 export const TITLE_MAX = EVENT_TITLE_MAX;
@@ -292,7 +296,9 @@ export function createClient({ fetch, now, sleep, startedAt }) {
     if (!inWindow(t)) throw new StopError("window_closed");
   };
   async function get(path, maxBytes, fallbackCharset = null) {
-    if (path !== "/robots.txt" && !LIST_PATH.test(path) && !DETAIL_PATH.test(path)) throw new StopError("path_not_allowed");
+    if (path !== "/robots.txt" && path !== PHONES_PATH && !LIST_PATH.test(path) && !DETAIL_PATH.test(path)) {
+      throw new StopError("path_not_allowed");
+    }
     if (path !== "/robots.txt" && (robots === null || !robotsAllows(robots, path))) throw new StopError("robots_disallowed");
     const url = new URL(path, ORIGIN);
     if (url.protocol !== "https:" || !ALLOWED_HOSTS.includes(url.hostname) || url.pathname !== path) {
@@ -483,6 +489,12 @@ export function validEvent(e) {
 
 /** CURITIBAI_DATA_DIR/events, created when missing; it must resolve inside the data folder. */
 export function eventsDir(env) {
+  return dataSubdir(env, "events");
+}
+
+/** CURITIBAI_DATA_DIR/<name> ("events" or "phones"), created when missing; it must resolve inside the data folder. */
+export function dataSubdir(env, name) {
+  if (name !== "events" && name !== "phones") throw new StopError("write_failed");
   const raw = env.CURITIBAI_DATA_DIR;
   if (raw === undefined || raw.trim() === "") throw new StopError("data_dir_not_set");
   let base;
@@ -492,12 +504,12 @@ export function eventsDir(env) {
   } catch {
     throw new StopError("data_dir_not_set");
   }
-  const dir = join(base, "events");
+  const dir = join(base, name);
   try {
     mkdirSync(dir, { recursive: true });
     const real = realpathSync(dir);
     const rel = relative(base, real);
-    if (rel !== "events" || isAbsolute(rel) || rel.startsWith(`..${sep}`)) throw new Error("outside");
+    if (rel !== name || isAbsolute(rel) || rel.startsWith(`..${sep}`)) throw new Error("outside");
     return real;
   } catch {
     throw new StopError("write_failed");
@@ -602,6 +614,214 @@ export function needsDetail(entry, item, today, nowMs) {
   return entry.event.start_date >= today && entry.event.start_date <= addDays(today, REFRESH_SOON_DAYS);
 }
 
+// ---------- useful phones page (known structure only) ----------
+
+export const PHONES_SOURCE = `${ORIGIN}${PHONES_PATH}`;
+/** Fewer entries than this is a layout change (the 2026-11-22 page had 70). */
+export const PHONES_MIN = 20;
+export const PHONES_MAX = 500;
+export const PHONE_NAME_MAX = 120;
+export const PHONE_SECTION_MAX = 60;
+
+/**
+ * One published number: (DDD) 8 or 9 digits, 0800 with 6 or 7 digits (space or hyphen), a bare 8 or 9 digit local
+ * number, or a 3-digit public service number starting with 1 (190, 193, 156...).
+ */
+const PHONE_TOKEN =
+  /\(\d{2}\) ?\d{4,5}-\d{4}(?!\d)|(?<!\d)0800[- ]?\d{6,7}(?!\d)|(?<![\d(])\d{4,5}-\d{4}(?!\d)|(?<![\p{L}\d(-])1\d{2}(?![\p{L}\d)º-])/gu;
+/** A 9-digit mobile number (personal phones are mobiles in Brazil): the entry is dropped, never published. */
+const MOBILE = /(?:^|\) ?|\s)9\d{4}-\d{4}$/;
+const VALID_NUMBER = /^(?:\(\d{2}\) ?\d{4}-\d{4}|0800[- ]?\d{6,7}|\d{4}-\d{4}|1\d{2})$/;
+/** The only tags allowed inside the content block; any other one is a layout change. */
+const BLOCK_TAG = /<\/?(?:strong|em|br|p|div|address)(?:\s[^<>]*)?\/?>/gi;
+
+/** The inner HTML of the one `<div class="listaEdital">` (matched divs counted), or layout_changed. */
+function phonesBlock(html) {
+  const open = '<div class="listaEdital">';
+  if (html.split(open).length !== 2) throw new StopError("layout_changed");
+  if (!/<h2>\s*Telefones Úteis<\/h2>/.test(html)) throw new StopError("layout_changed");
+  const start = html.indexOf(open) + open.length;
+  const tags = /<div\b[^>]*>|<\/div>/gi;
+  tags.lastIndex = start;
+  let depth = 1;
+  for (let m = tags.exec(html); m !== null; m = tags.exec(html)) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return html.slice(start, m.index);
+  }
+  throw new StopError("layout_changed");
+}
+
+/** Text lines of the block: block tags become line breaks, inline tags vanish, entities decoded, spaces collapsed. */
+function blockLines(block) {
+  const rest = block.replace(/<!--[\s\S]*?-->/g, "").replace(BLOCK_TAG, "");
+  if (/[<>]/.test(rest.replace(/&[a-z]+;|&#\d+;/gi, ""))) throw new StopError("layout_changed"); // an unknown tag
+  const text = block
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<br\s*\/?>|<\/?(?:p|div|address)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]*>/g, "");
+  return decodeHtml(text)
+    .split(/\r\n|\r|\n/)
+    .map((l) => l.replace(/[\s\u00a0]+/g, " ").trim())
+    .filter((l) => l !== "");
+}
+
+const trimLabel = (s) => s.replace(/^[\s\-–]+/, "").replace(/[\s:\-–/]+$/, "");
+
+/**
+ * The page reduced to `{entries, dropped}`: each entry is `{section, name, numbers}` (organ or service name, the
+ * section heading it is under, and the numbers as published). Notes, addresses and everything else are not kept.
+ * Lines: a heading (no "-", ends with ":", no digits) opens a section; "- Name: numbers" is an entry; "- Name:" with no
+ * number is a parent for the indented lines that follow; "- Name" with no number continues on the next line; an
+ * indented "Name: numbers" is a child of the last parent or entry. Any line that fits none of these, a number in a
+ * format not listed above, a name holding digits like a number, or an entry before the first heading stops with
+ * layout_changed. Entries whose cleaned name holds masked data, or with a mobile number, are dropped and counted.
+ */
+export function parsePhonesPage(html) {
+  const lines = blockLines(phonesBlock(html));
+  const entries = [];
+  let dropped = 0;
+  let section = null;
+  let parent = null; // "- Name:" with no number
+  let lastTop = null; // last "- Name: numbers"
+  let pending = null; // "- Name" continued on the next line
+  for (const line of lines) {
+    const tokens = [...line.matchAll(PHONE_TOKEN)];
+    const dash = /^-/.test(line);
+    if (tokens.length === 0) {
+      // A number in an unknown format: 3+ digits in a heading or "-" line, 7+ digits in a note or address line.
+      if ((dash || line.endsWith(":")) && /\d{3}/.test(line)) throw new StopError("layout_changed");
+      if ((line.match(/\d/g) ?? []).length >= 7) throw new StopError("layout_changed");
+      if (pending !== null) throw new StopError("layout_changed");
+      if (dash && line.endsWith(":")) {
+        parent = trimLabel(line);
+        lastTop = null;
+      } else if (dash) {
+        pending = trimLabel(line);
+      } else if (line.endsWith(":") && !/\d/.test(line)) {
+        section = trimLabel(line);
+        parent = null;
+        lastTop = null;
+      } // else: an address or a note, not kept
+      continue;
+    }
+    if (section === null || section === "") throw new StopError("layout_changed");
+    const first = tokens[0].index;
+    const tail = line.slice(first).replace(PHONE_TOKEN, "");
+    if (/\d/.test(tail)) throw new StopError("layout_changed"); // a number the pattern did not read
+    let name = trimLabel(line.slice(0, first));
+    if (/\d{3}/.test(name)) throw new StopError("layout_changed");
+    if (pending !== null) {
+      name = trimLabel(`${pending} ${name}`);
+      pending = null;
+      lastTop = name;
+    } else if (dash) {
+      parent = null;
+      lastTop = name;
+    } else {
+      const head = parent ?? lastTop;
+      if (head === null) throw new StopError("layout_changed");
+      name = `${head} – ${name}`;
+    }
+    if (name === "" || name.endsWith("– ")) throw new StopError("layout_changed");
+    const numbers = tokens.map((t) => t[0]);
+    const cleanName = cleanField(name, PHONE_NAME_MAX);
+    if (numbers.some((n) => MOBILE.test(n)) || cleanName.includes("[masked]")) {
+      dropped += 1;
+      continue;
+    }
+    entries.push({ section: cleanField(section, PHONE_SECTION_MAX), name: cleanName, numbers });
+  }
+  if (pending !== null) throw new StopError("layout_changed");
+  if (entries.length < PHONES_MIN || entries.length > PHONES_MAX) throw new StopError("layout_changed");
+  if (!entries.every(validPhoneEntry)) throw new StopError("layout_changed");
+  return { entries, dropped };
+}
+
+/** True for an entry with exactly the kept fields: section, name and 1–10 numbers in the known formats. */
+export function validPhoneEntry(e) {
+  if (typeof e !== "object" || e === null || Array.isArray(e)) return false;
+  if (Object.keys(e).sort().join() !== "name,numbers,section") return false;
+  return (
+    typeof e.section === "string" &&
+    e.section !== "" &&
+    [...e.section].length <= PHONE_SECTION_MAX &&
+    typeof e.name === "string" &&
+    e.name !== "" &&
+    [...e.name].length <= PHONE_NAME_MAX &&
+    Array.isArray(e.numbers) &&
+    e.numbers.length >= 1 &&
+    e.numbers.length <= 10 &&
+    e.numbers.every((n) => typeof n === "string" && VALID_NUMBER.test(n))
+  );
+}
+
+/** The previous phones.json, or null when missing or not in the expected shape. */
+export function readPreviousPhones(dir) {
+  try {
+    const json = JSON.parse(readFileSync(join(dir, "phones.json"), "utf8"));
+    if (json?.format !== 1 || !Array.isArray(json.entries) || !json.entries.every(validPhoneEntry)) return null;
+    return json;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The phones step: one GET of PHONES_PATH with the run's client (same window, deadline, robots rules, gap and
+ * User-Agent), then phones/phones.json only when the page parsed and the count is within 0.3x–3x of the previous copy;
+ * phones/status.json always tried. `skipCode` (the events step ended with a code other than ok or layout_changed)
+ * makes no request.
+ */
+export async function runPhones({ client, now, env, attempt, skipCode }) {
+  const out = { code: "ok", httpStatus: undefined, entries: 0, dropped: 0 };
+  let dir;
+  try {
+    dir = dataSubdir(env, "phones");
+  } catch (err) {
+    out.code = err instanceof StopError ? err.code : "internal_error";
+    return out;
+  }
+  try {
+    if (skipCode !== null) throw new StopError(skipCode);
+    const parsed = parsePhonesPage(await client.get(PHONES_PATH, PHONES_MAX_BYTES));
+    const prevCount = readPreviousPhones(dir)?.entries.length ?? 0;
+    if (prevCount > 0) {
+      const ratio = parsed.entries.length / prevCount;
+      if (ratio < MIN_RATIO || ratio > MAX_RATIO) throw new StopError("layout_changed");
+    }
+    const doc = {
+      format: 1,
+      source: PHONES_SOURCE,
+      checked_at: now().toISOString(),
+      count: parsed.entries.length,
+      dropped: parsed.dropped,
+      entries: parsed.entries,
+    };
+    try {
+      writeAtomic(dir, "phones.json", `${JSON.stringify(doc, null, 1)}\n`);
+    } catch {
+      throw new StopError("write_failed");
+    }
+    out.entries = parsed.entries.length;
+    out.dropped = parsed.dropped;
+  } catch (err) {
+    out.code = err instanceof StopError ? err.code : "internal_error";
+    out.httpStatus = err instanceof StopError ? err.httpStatus : undefined;
+  }
+  const status = {
+    attempt,
+    success: out.code === "ok" ? now().toISOString() : readStatus(dir),
+    code: out.code,
+    ...(out.httpStatus === undefined ? {} : { http_status: out.httpStatus }),
+  };
+  try {
+    writeAtomic(dir, "status.json", `${JSON.stringify(status)}\n`);
+  } catch {
+    // best effort, as for events
+  }
+  return out;
+}
+
 // ---------- lock ----------
 
 export const LOCK_FILE = ".lock";
@@ -687,8 +907,10 @@ export function acquireLock(dir, now) {
 /**
  * One collector run. Returns `{code, exit, counts}`. Takes the lock first (a locked run makes no request and writes
  * nothing). Each detail read is added to the detail cache at once; events.json is written only when the whole run
- * succeeded and the result passed validation; status.json is always tried. Network, clock, sleep and the recorded
- * robots rules are injectable for tests.
+ * succeeded and the result passed validation; status.json is always tried. Then the phones step (runPhones) runs with
+ * the same client, only when the events step ended ok or with layout_changed (any other code: no request, the phones
+ * status gets that code); it never changes events files or the events code. Exit 0 only when both steps are ok. Network, clock, sleep and the recorded robots rules are injectable
+ * for tests.
  */
 export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORDED_ROBOTS }) {
   const startedAt = now();
@@ -697,16 +919,19 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
   let release = null;
   let code = "ok";
   let httpStatus;
+  let client = null;
+  let robotsAccepted = false;
   try {
     dir = eventsDir(env);
     release = acquireLock(dir, startedAt);
     if (!inWindow(startedAt)) throw new StopError("window_closed");
-    const client = createClient({ fetch, now, sleep, startedAt });
+    client = createClient({ fetch, now, sleep, startedAt });
 
     // The site serves robots.txt as text/plain with no charset and Latin-1 comments: Windows-1252 decodes any byte.
     const robots = robotsGroupFor(parseRobots(await client.get("/robots.txt", ROBOTS_MAX_BYTES, "windows-1252")));
     if (!robotsMatchesRecorded(robots, recordedRobots)) throw new StopError("robots_changed");
     client.setRobots(robots);
+    robotsAccepted = true;
 
     const date = curitibaDate(startedAt);
     const listed = new Map();
@@ -770,7 +995,6 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
     code = err instanceof StopError ? err.code : "internal_error";
     httpStatus = err instanceof StopError ? err.httpStatus : undefined;
   }
-  const exit = code === "ok" ? 0 : code === "data_dir_not_set" ? 2 : 1;
   // A locked run leaves status.json to the run holding the lock.
   if (dir !== null && code !== "locked") {
     const status = {
@@ -785,14 +1009,26 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
       // status is best effort; the exit code still reports the run
     }
   }
+  let phones = { code, httpStatus, entries: 0, dropped: 0 };
+  if (dir !== null && code !== "locked") {
+    // The phones page is asked for only after an ok or layout_changed events result: after any refusal, error status,
+    // redirect, timeout, network error, window or deadline stop, the host is not asked again in this run.
+    const phonesMayRequest = robotsAccepted && (code === "ok" || code === "layout_changed");
+    phones = await runPhones({ client, now, env, attempt: startedAt.toISOString(), skipCode: phonesMayRequest ? null : code });
+  }
   release?.();
+  const exit = code === "data_dir_not_set" ? 2 : code === "ok" && phones.code === "ok" ? 0 : 1;
   log(`fetch-events: code=${code}${httpStatus === undefined ? "" : ` http_status=${httpStatus}`}`);
   log(
     `fetch-events: pages=${counts.pages} listed=${counts.listed} details_fetched=${counts.fetched} ` +
       `details_cached=${counts.cached} events=${counts.events}`,
   );
+  log(
+    `fetch-events: phones_code=${phones.code}${phones.httpStatus === undefined ? "" : ` phones_http_status=${phones.httpStatus}`} ` +
+      `phones=${phones.entries} phones_dropped=${phones.dropped}`,
+  );
   log(`fetch-events: exit=${exit}`);
-  return { code, exit, counts };
+  return { code, exit, counts, phones: { code: phones.code, entries: phones.entries, dropped: phones.dropped } };
 }
 
 if (import.meta.main) {

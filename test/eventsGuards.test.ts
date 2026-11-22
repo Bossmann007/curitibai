@@ -41,7 +41,7 @@ describe("events collector boundaries", () => {
     expect(SCRIPT).not.toMatch(/["'](node:)?(net|dgram|http|https|http2|tls|worker_threads|cluster)["']/);
   });
 
-  it("the collector writes only through writeAtomic, mkdir of the events folder and its lock file", () => {
+  it("the collector writes only through writeAtomic, mkdir of the events or phones folder and its lock file", () => {
     const fsImport = /^import \{([^}]*)\} from "node:fs";$/m.exec(SCRIPT);
     expect(fsImport?.[1]!.split(",").map((s) => s.trim()).sort()).toEqual([
       "lstatSync",
@@ -66,11 +66,13 @@ describe("events collector boundaries", () => {
     expect(lockFn.match(/\brenameSync\([^)]*\)/g)).toEqual(["renameSync(path, aside)", "renameSync(aside, path)"]);
     expect(count(/\bunlinkSync\(/g)).toBe(2);
     expect(lockFn.match(/\bunlinkSync\([^)]*\)/g)).toEqual(["unlinkSync(path)", "unlinkSync(aside)"]);
-    expect(SCRIPT).toContain('const dir = join(base, "events");');
+    expect(SCRIPT).toContain('if (name !== "events" && name !== "phones") throw new StopError("write_failed");');
+    expect(SCRIPT).toContain("const dir = join(base, name);");
+    expect(SCRIPT).toMatch(/writeAtomic\(dir, "phones\.json",/);
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "events\.json",/);
     expect(SCRIPT).toMatch(/writeAtomic\(dir, "status\.json",/);
     expect(SCRIPT).toMatch(/writeAtomic\(dir, CACHE_FILE,/);
-    expect(count(/\bwriteAtomic\(/g)).toBe(4); // the definition and the three calls
+    expect(count(/\bwriteAtomic\(/g)).toBe(6); // the definition, three events calls and two phones calls
     expect(SCRIPT).not.toMatch(/\b(appendFile|createWriteStream|unlink\(|rmSync|rm\(|copyFile|symlink|chmod|truncate|openSync)\b/);
   });
 

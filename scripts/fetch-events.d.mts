@@ -29,10 +29,16 @@ export interface CacheEntry {
   fetched_at: string;
   event: EventRecord;
 }
+export interface PhoneEntry {
+  section: string;
+  name: string;
+  numbers: string[];
+}
 export interface RunResult {
   code: string;
   exit: number;
   counts: { pages: number; listed: number; fetched: number; cached: number; events: number };
+  phones: { code: string; entries: number; dropped: number };
 }
 
 export const HOST: string;
@@ -47,6 +53,13 @@ export const GAP_MS: number;
 export const LIST_MAX_BYTES: number;
 export const DETAIL_MAX_BYTES: number;
 export const ROBOTS_MAX_BYTES: number;
+export const PHONES_PATH: string;
+export const PHONES_MAX_BYTES: number;
+export const PHONES_SOURCE: string;
+export const PHONES_MIN: number;
+export const PHONES_MAX: number;
+export const PHONE_NAME_MAX: number;
+export const PHONE_SECTION_MAX: number;
 export const MAX_LIST_PAGES: number;
 export const TITLE_MAX: number;
 export const PLACE_MAX: number;
@@ -87,6 +100,10 @@ export function eventLink(slug: string, id: number): string;
 export function parseDetailPage(html: string, item: { id: number; slug: string }): EventRecord;
 export function validEvent(e: unknown): boolean;
 export function eventsDir(env: Record<string, string | undefined>): string;
+export function dataSubdir(env: Record<string, string | undefined>, name: "events" | "phones"): string;
+export function parsePhonesPage(html: string): { entries: PhoneEntry[]; dropped: number };
+export function validPhoneEntry(e: unknown): boolean;
+export function readPreviousPhones(dir: string): { format: 1; entries: PhoneEntry[] } | null;
 export function writeAtomic(dir: string, name: string, text: string): void;
 export function readPrevious(dir: string): { format: 1; events: EventRecord[] } | null;
 export function readCache(dir: string): Map<number, CacheEntry>;
