@@ -342,6 +342,8 @@ export class SearchUnavailableError extends Error {
 export const PNCP_SEARCH_TIMEOUT_MS = 8_000;
 /** After a search failure, the search is not asked for 10 minutes in the process (the Consulta API still is). */
 export const SEARCH_DOWN_MS = 10 * 60_000;
+/** Slack between a retry's timeout and the scan's last start (timers and scheduling run late). */
+const RETRY_MARGIN_MS = 1_000;
 let searchDownUntil = 0;
 let searchDownReason = "";
 /** Search requests in a row (across calls) that ended in a connection error; a search answer sets it back to 0. */
@@ -353,8 +355,9 @@ const searchFailure = (err: unknown) =>
 /**
  * One page of the site search, through the same PNCP gate (spacing, budget) and cache as the Consulta API. PNCP resets
  * connections at random (docs/sources.md), so a connection error is retried once on the gate's next turn (6 s later),
- * and only when that retry would start by `startBy - PNCP_SEARCH_TIMEOUT_MS`, so its timeout still leaves the
- * fallback scan its start; otherwise the retry is skipped. A timeout, 5xx or changed format is never retried.
+ * and only when that retry would start by `startBy - PNCP_SEARCH_TIMEOUT_MS - 1 s`, so its timeout still leaves the
+ * fallback scan its start; otherwise the retry is skipped (OutOfTimeError of `startBy`). A timeout, 5xx or changed
+ * format is never retried.
  */
 export function getSearchPage(query: string, modality: number, page: number, startBy?: number) {
   const url = searchUrl(query, modality, page);
@@ -393,12 +396,14 @@ export function getSearchPage(query: string, modality: number, page: number, sta
       let got = await attempt(startBy);
       if ("failed" in got && got.failed === "network error" && searchResets === 0) {
         searchResets = 1;
-        const retryBy = startBy === undefined ? undefined : startBy - PNCP_SEARCH_TIMEOUT_MS;
+        const retryBy = startBy === undefined ? undefined : startBy - PNCP_SEARCH_TIMEOUT_MS - RETRY_MARGIN_MS;
         try {
           got = await attempt(retryBy);
         } catch (err) {
-          // Skipped: the retry would leave the scan no room. The next connection error is the second in a row.
-          if (err instanceof OutOfTimeError && err.startBy === retryBy) throw new SearchUnavailableError("network error");
+          // Skipped: the retry would leave the scan no room. Reported against the call's own budget, so a caller sharing
+          // this load asks again under its budget, and procurement_search falls back (first page) or stops as partial.
+          // The next connection error is the second in a row.
+          if (err instanceof OutOfTimeError && err.startBy === retryBy) throw new OutOfTimeError(startBy!);
           throw err;
         }
       }

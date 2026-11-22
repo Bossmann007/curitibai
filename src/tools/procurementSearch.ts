@@ -214,7 +214,9 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
         let res;
         try {
           res = await loadPage(p, started + CALL_START_BUDGET_MS);
-        } catch (err) {
+        } catch (caught) {
+          // Only the search's skipped retry after a connection reset is out of time on the first page: fall back.
+          const err = caught instanceof OutOfTimeError && searching && scanned === 0 ? new SearchUnavailableError("network error") : caught;
           if (err instanceof SearchUnavailableError) {
             searchDown =
               `PNCP's fast search was unavailable (${err.reason})` +

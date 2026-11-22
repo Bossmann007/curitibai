@@ -913,7 +913,7 @@ describe("procurement_search text search (PNCP site search)", () => {
     // A first search request that times out leaves the scan's start inside the budget; a retry after a connection
     // reset starts by the budget minus its timeout (getSearchPage), so the scan can start after it.
     expect(PNCP_SEARCH_TIMEOUT_MS + PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS);
-    expect(PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS - PNCP_SEARCH_TIMEOUT_MS);
+    expect(PNCP_MIN_INTERVAL_MS).toBeLessThan(CALL_START_BUDGET_MS - PNCP_SEARCH_TIMEOUT_MS - 1_000);
   });
 
   /** Fake clock: a search request takes `searchMs` and then times out; Consulta pages answer with the fixture. */
@@ -1071,6 +1071,16 @@ describe("procurement_search text search (PNCP site search)", () => {
     const third = dataOf(await settle(search({ query: "medicamentos" })));
     expect(third.note).toMatch(/\(network error; not asked again for about 10 min\)/);
     expect(starts.map((s) => s.url)).toEqual([searchUrl("medicamentos", 6, 1), pncpUrl(), searchUrl("medicamentos", 6, 1), pncpUrl(), pncpUrl()]);
+  });
+
+  it("on a later search page a skipped retry stops the call as partial and keeps the search's next_page", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    const starts = flakySearch([{ body: searchPage(records(1, 1, PNCP_SEARCH_PAGE_SIZE - 1), 500) }, { reset: "reset", ms: 13_000 }]);
+    const data = dataOf(await settle(search({ query: "objeto" })));
+    expect(data.items).toHaveLength(1);
+    expect(data).toMatchObject({ partial: true, next_page: 2, next_page_source: "search" });
+    expect(data.note).not.toMatch(/fast search was unavailable/);
+    expect(starts.map((s) => s.url)).toEqual([searchUrl("objeto", 6, 1), searchUrl("objeto", 6, 2)]);
   });
 
   it("a scan page holds 50: skip of 50 or more is refused for the scan", async () => {

@@ -141,8 +141,10 @@ Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the u
 
 - `getSearchPage` (`src/sources/pncp.ts`): a connection error on a search request is retried once on the PNCP gate's
   next turn (6 s spacing), not at once inside the same turn; the retry is skipped when it would start after the call's
-  20 s budget minus the 8 s search timeout (the fallback scan must still be able to start). One attempt is one gate
-  turn with one request. The search is remembered as down for 10 minutes after two connection errors in a row (across
+  20 s budget minus the 8 s search timeout and 1 s of slack (the fallback scan must still be able to start; on a later
+  page the call stops as `partial` with the search's `next_page`). One attempt is one gate turn (a 429 with
+  Retry-After of 5 s or less is still retried inside it). When other calls hold the gate's next turns and the retry's
+  turn is more than 10 s away, the call is `rate_limited` (the fallback scan would wait for the same queue). The search is remembered as down for 10 minutes after two connection errors in a row (across
   calls), or at once after a timeout, 5xx or changed format as before; a search answer resets the count; a 4xx neither
   counts nor resets. The Consulta API keeps its immediate single retry.
 - `fetchText` (`src/http.ts`): a connection error or timeout while the body is read is `network error` / `timeout`,
