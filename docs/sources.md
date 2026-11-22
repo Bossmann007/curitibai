@@ -921,9 +921,10 @@ cited, the approach the owner approved for no-licence sources).
 - **Fails closed** (`layout_changed`, nothing returned) when a listing page has no single `view-content` block, no
   card, a card without exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not real, an
   end before the start, a slug outside `[A-Za-z0-9-]`, markup inside a title, two different event links in a card, or
-  a next link that does not point to the next page, or a second `<ul>` inside the card list. Markup after the card
+  a next link that does not point to the next page, a pager or "Carregar mais" without that `rel="next"` link, or a
+  second `<ul>` inside the card list. Markup after the card
   list's `</ul>` is not read. A page 3 that still has a next link is returned with
-  `truncated: true`. An event page without exactly one body field is `details: "not_recognised"`; a 404/410 page is
+  `truncated: true`. An event page without exactly one body field, or with a nested `<div>` inside it, is `details: "not_recognised"`; a 404/410 page is
   `unavailable` for that event only (cached 6 h, no host failure); any other failure is `unavailable`, is remembered
   by the gate and ends event-page reading for that call (later items stay `not_read`).
 - **Strict event-page values:** `venue` only when exactly one `Local:` line that ends at a line break or the end of the paragraph, list item or cell; `age_rating` only "Livre" or "N anos" (the whole value);

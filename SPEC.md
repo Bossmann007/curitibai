@@ -59,7 +59,7 @@ with `details: "not_read"`; calling again fills the next ones from the cache plu
   listing pages and 2 event pages, 5 s apart, about 25 s plus network time (MCP clients commonly time out at 60 s).
 - Fail closed (`layout_changed`, new error code): no `view-content`, zero cards on the first page, a card without
   exactly one title link, start, end and city, a date not `dd/mm/yyyy - HH:MM` or not a real date, end before start,
-  a slug not `[A-Za-z0-9-]`, markup inside a title, a second `<ul>` in the card list, or a `rel="next"` link that does not point to the next page.
+  a slug not `[A-Za-z0-9-]`, markup inside a title, a second `<ul>` in the card list, a pager without its `rel="next"` link, or a `rel="next"` link that does not point to the next page.
   Nothing is returned then. An event page that does not have exactly one body field is `not_recognised` (fields
   null); an event page answering 404/410 is `unavailable` for that event only (cached, not a host failure); any
   other failure is `unavailable` (the rest of the call is kept, and no more event pages are read in that call; a

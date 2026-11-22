@@ -114,6 +114,7 @@ describe("parseListingPage", () => {
     ["an odd event link", (h) => h.replaceAll("/Evento/O-Vazio", "/Evento/O_Vazio?x=1").replaceAll("/Evento/Muito-Barulho-por-Nada-Teatro-de-Comedia-do-Parana", "/node/1")],
     ["a city without a state", (h) => h.replace(/Curitiba-\s+PR/, "Curitiba")],
     ["a next link to another page", (h) => h.replace("page=1\"", "page=5\"")],
+    ["a pager without the rel=\"next\" link", (h) => h.replace(' rel="next"', "")],
     ["a list inside a card", (h) => h.replace("<div class=\"content-card\">", "<div class=\"content-card\"><ul class=\"tags\"><li>Dança</li></ul>")],
   ];
   it("ignores markup after the card list, even an event link", () => {
@@ -177,6 +178,8 @@ describe("parseEventPage", () => {
       price: null,
     });
     expect(parseEventPage("<p>nothing</p>").status).toBe("not_recognised");
+    expect(parseEventPage('<div class="field--name-field-texto"><div>Sinopse</div><p><strong>Local:</strong> Guairão<br /></p></div>').status).toBe("not_recognised");
+    expect(parseEventPage(body("<strong>Classificação etária:</strong> 18 ANOS<br />")).age_rating).toBe("18 anos");
   });
 });
 
@@ -262,7 +265,7 @@ describe("requests to the Teatro Guaíra host", () => {
     expect(out.note).toMatch(/robots\.txt does not allow event pages/);
   });
 
-  it("treats a robots.txt 404 as no rules and a 500 as a failure", async () => {
+  it("treats a robots.txt 404 as no rules", async () => {
     stubFetch(routes({ [`GET ${ROBOTS_URL}`]: { status: 404 } }));
     expect((await search({})).data.total).toBe(4);
   });

@@ -178,6 +178,8 @@ export function parseListingPage(html: string, n: number): ListingPage {
   const rows = cards.map(card);
   const next = [...html.matchAll(/<a\b[^>]*\brel="next"[^>]*>/g)];
   if (next.length > 1) throw new LayoutChangedError("pager");
+  // A pager or "Carregar mais" without the rel="next" link read here: later pages would be skipped silently.
+  if (next.length === 0 && /js-pager__items|Carregar mais/i.test(html)) throw new LayoutChangedError("pager");
   if (next.length === 1) {
     const href = /\bhref="([^"]*)"/.exec(next[0]![0])?.[1];
     if (href === undefined) throw new LayoutChangedError("pager");
@@ -245,6 +247,8 @@ export function parseEventPage(html: string): EventDetails {
   const close = rest.indexOf("</div>");
   if (close < 0) return NO_DETAILS("not_recognised");
   const body = rest.slice(0, close);
+  // A nested div would have ended the cut early and hidden the labels after it.
+  if (body.includes("<div")) return NO_DETAILS("not_recognised");
   const venueRaw = single(VENUE, body);
   // A venue cut by an inline tag ("Teatro <em>X</em>") would be a part of it: null.
   const venue = venueRaw === null || !venueRaw.clean ? null : cleanField(venueRaw.text, EVENT_PLACE_MAX) || null;
@@ -255,7 +259,7 @@ export function parseEventPage(html: string): EventDetails {
   return {
     status: "read",
     venue,
-    age_rating: age === null ? null : /^livre$/i.test(age) ? "Livre" : age.replace(/\s+/g, " "),
+    age_rating: age === null ? null : /^livre$/i.test(age) ? "Livre" : `${Number(/\d+/.exec(age)![0])} anos`,
     price: price === null ? null : cleanField(price, 120),
   };
 }
@@ -349,7 +353,7 @@ export interface Listing {
 /**
  * The whole calendar: listing pages 0, 1, 2 (fixed URLs) until one has no "Carregar mais" link, each checked against
  * robots.txt and read through the gate; cached 1 hour as one entry. Any failure fails the whole load (nothing
- * partial is cached). Rows are de-duplicated by link.
+ * partial is cached). Rows are de-duplicated by link, start and end.
  */
 export function getListing(): Promise<Cached<Listing>> {
   return listingCache.getOrLoad("listing", async () => {
@@ -369,8 +373,10 @@ export function getListing(): Promise<Cached<Listing>> {
         }
       });
       for (const r of pageRes.rows) {
-        if (seen.has(r.link)) continue;
-        seen.add(r.link);
+        // Same card seen twice (the listing moved between pages); a run with other dates is kept.
+        const key = `${r.link} ${r.start} ${r.end}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         rows.push(r);
       }
       if (!pageRes.hasNext) return { rows, truncated: false };
