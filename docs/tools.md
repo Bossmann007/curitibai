@@ -161,10 +161,10 @@ Three tools find places; each kind of place has one preferred tool (the "Prefer 
 
 | Question | Tool | Why |
 |---|---|---|
-| Feiras, Ruas da Cidadania, libraries, parks, museums, Câmbio Verde, popular restaurants, cemeteries, any kind with a type in `list types`, or days, hours and a phone | `city_facilities_search` | Live from IPPUC, with hours and an institutional phone |
+| Feiras, Ruas da Cidadania, libraries, parks, museums, municipal markets, Câmbio Verde, popular restaurants, cemeteries, any kind with a type in `list types`, or days, hours and a phone | `city_facilities_search` | Live from IPPUC, with hours and an institutional phone |
 | CMEIs, municipal and state schools, bus terminals, regional offices, or every kind of city point near a position | `city_points_search` | Local URBS file, all categories in one call, no hours |
 | Public health units (unidades de saúde, UPAs) | `health_units_search` | CNES, the Ministry of Health register |
-| Police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or nothing found by the other two | `places_search` | OpenStreetMap community data |
+| Police and fire stations, or nothing found by the other two | `places_search` | OpenStreetMap community data; its other categories overlap the kinds above |
 
 ## Notes moved out of the tool descriptions
 
@@ -199,6 +199,25 @@ listed here because the description no longer says them, and the table above doe
 - `places_search`: police and fire stations come from a list bundled once from OSM; police is as tagged in OSM and
   includes Guarda Municipal, identification institutes and some non-police offices (said in every police result's
   `note`). © OpenStreetMap contributors (ODbL 1.0), in `attribution` and `license_note`.
+- `river_levels`: no request starts after about 20 s (then `partial: true`); when the source limits, refuses or fails,
+  the stations already read are returned with `partial: true` (`rate_limited` or `source_unavailable` only when none
+  was read); readings are cached 15 minutes; `stale` marks readings older than 2 h; `quality` `ok` does not prove a
+  value (unvalidated telemetry); stations without readings are listed as `no_recent_data`.
+- `guaira_events`: event pages are read at most 2 per call, at most one request per 5 s to the site, cached 1 hour, and
+  no event page is asked for after about 20 s. `truncated: true` when listing pages are missing (`partial` is a
+  deprecated alias of it).
+- `procurement_search`: with `query` it uses the search behind the pncp.gov.br site (pages of 100, about 1 s each,
+  newest update first; if that search fails, the Consulta scan is used); without, the Consulta API (pages of 50,
+  8–13 s each). At most 5 pages and no new page after 20 s per call.
+- `health_units_search`: at most 20 upstream pages of 20 per call.
+- `vaccination_sites_search` and `city_facilities_search`: one page or layer read per call at most, cached 6 hours.
+- `place_at_point`: up to 4 requests 5 s apart; `service_areas_at_point`: 2 requests 5 s apart, 3 when no health area
+  contains the point, and `inside_curitiba` false when neither a health unit area nor a Curitiba neighbourhood
+  contains it. For both, the point must be inside Curitiba, and the rounded point is cached 6 hours and never logged or
+  written ([privacy](privacy.md)).
+- `next_buses_near`: `directions` is a list because the timetable has no direction field: it gives every SENTIDO the
+  stops file lists for that line at that stop (most timetable stops are served in both directions). `window_min` is at
+  most 180 and `radius_m` at most 1000.
 - `tax_reform_curitiba`: Curitiba is IBGE 4106902 (PR); the rates come with the Receita app and base versions, and
   cClassTrib results with their reduction percentages.
 

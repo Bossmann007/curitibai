@@ -58,6 +58,8 @@ const size = (value: unknown) => (value === undefined ? 0 : JSON.stringify(value
 // (raw string), and all of them, measured as JSON like the baseline, at most MAX_DESCRIPTIONS_SUM.
 const MAX_DESCRIPTION = 400;
 const MAX_DESCRIPTIONS_SUM = 9_600;
+/** The same 5 numbers at v0.24.1, before descriptions were shortened (SPEC.md). */
+const BASELINE_V0_24_1 = { tools: 25, descriptions: 15_561, inputSchemas: 19_636, outputSchemas: 63_226, total: 107_011 };
 
 describe("tool contracts", () => {
   it("tool names, inputSchemas and outputSchemas match test/fixtures/tool-contracts.json", async () => {
@@ -94,7 +96,8 @@ describe("tool contracts", () => {
       outputSchemas: sum((t) => t.outputSchema),
       total: size({ tools }),
     };
-    process.stdout.write(`tools/list size (characters): ${JSON.stringify(measured)}\n`);
+    process.stdout.write(`tools/list size (characters), v0.24.1: ${JSON.stringify(BASELINE_V0_24_1)}\n`);
+    process.stdout.write(`tools/list size (characters), now:     ${JSON.stringify(measured)}\n`);
     // The measure itself works: names, titles and annotations make the total more than the three parts.
     expect(measured.total).toBeGreaterThan(measured.descriptions + measured.inputSchemas + measured.outputSchemas);
     expect(measured.descriptions).toBeGreaterThan(0);

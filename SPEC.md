@@ -10,7 +10,7 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 ## Goal
 
 Every `tools/list` costs the client's context window. At v0.24.1 the 25 descriptions take 15,561 characters and the
-longest is 1,657. Make each description say what the tool does, when to use it and its main input, in at most 400
+longest is 1,651 (raw length). Make each description say what the tool does, when to use it and its main input, in at most 400
 characters, keep only what the model needs before calling (privacy, safety, preconditions), and add a guard so the
 text cannot grow back unnoticed.
 
@@ -20,8 +20,9 @@ text cannot grow back unnoticed.
    string). Kept in the description: what is sent where before the call (the rounded point sent to IPPUC, the search
    word sent to PNCP, "your position is never sent"), that `local_csv_summary` never returns data rows and refuses
    personal-looking columns, "not for emergencies" with the number, "not real-time", "not tax advice", the
-   untrusted-text warning (short form), the local file a tool needs, and the cold-call latency of the slow live tools.
-   Moved out: licence and source credits (already in `license_note` / `source` of every response), paging and timing
+   untrusted-text warning (short form), the local file a tool needs, and the cold-call time of `place_at_point`,
+   `service_areas_at_point` and `guaira_events`. Moved out: the OSM licence credit of `places_search` (in its
+   `attribution` and `license_note`), paging and timing
    details, and edge-case rules. Each moved clause is either already in `docs/tools.md` or added there under
    "Notes moved out of the tool descriptions". Response text (`note`, `license_note`) is not changed.
 2. **Place tools** (`places_search`, `city_points_search`, `city_facilities_search`): one "Prefer this when…" sentence
@@ -30,8 +31,9 @@ text cannot grow back unnoticed.
      Câmbio Verde, popular restaurants, cemeteries...), or when days, hours or a phone are needed. Live (IPPUC).
    - `city_points_search`: CMEIs, schools, bus terminals, regional offices, or every kind of city point near a
      position at once. Local URBS file, no hours.
-   - `places_search`: police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or when
-     the other two find nothing.
+   - `places_search`: police and fire stations, or when the other two find nothing (its other OSM categories,
+     parks, libraries, schools, community centres, town halls, bus stations and marketplaces, overlap kinds the other
+     two own).
    Public health units go to `health_units_search` (named in `places_search`). Names are a contract: no tool is merged or renamed.
 3. **Input-field descriptions**: only redundant text is cut (a clause repeated in the field and in the tool
    description, or OSM tag names repeated per category). No type, name, required flag, enum or default changes.
@@ -50,14 +52,15 @@ text cannot grow back unnoticed.
 
 | Part | v0.24.1 | v0.25.0 |
 |---|---|---|
-| descriptions | 15,561 | 8,712 (−44%) |
+| tools | 25 | 25 |
+| descriptions | 15,561 | 8,694 (−44%) |
 | inputSchemas | 19,636 | 19,532 |
 | outputSchemas | 63,226 | 63,226 (unchanged) |
-| total (`tools/list` result) | 107,011 | 100,058 |
+| total (`tools/list` result) | 107,011 | 100,040 |
 
-Ceiling on the descriptions sum: 9,600 (8,712 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
+Ceiling on the descriptions sum: 9,600 (8,694 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
 that the per-tool limit alone would allow, so a new tool or a longer description needs a deliberate change to it.
-Longest description: 400 characters or fewer for all 25 (v0.24.1: 1,657).
+Longest description (raw `description.length`): 400 or fewer for all 25 (v0.24.1: 1,651).
 
 ## outputSchemas in the client's context
 
