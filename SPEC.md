@@ -202,6 +202,9 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   (59 Espaço para Espetáculos ao Ar Livre), `gibiteca` (62 Gibiteca), each with plural or full-name aliases only. Same
   HTTP client (`fetchText`), 6-hour cache, 15 s timeout, 2 MB cap, host gate (5 s, 10 s queue), User-Agent, fixed
   `outFields`, fail-closed rules and contact allowlist as the current point layers. No new dependency.
+- `museu`, `teatro`, `centro cultural`, `espaco expositivo` and `cinema` carry `mixedOwnership`: their layers also
+  list private or non-profit venues (commercial cinemas, a bank's cultural centre), so `note` says so and to confirm
+  with the venue, not the 156 (as `city_points_search` does for `cultural_space`; from the v0.20.0 review).
 - An empty layer (`features: []`, WGS84) returns an empty list with `total` 0, not `source_unavailable` (the current
   `parseLayer` rule). A record with no name is skipped and counted; with no `observacao`, `hours` is `[]`; with no
   `divulgar_endereco`, address and position are null.

@@ -8,6 +8,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `centro cultural` (24 records on 2026-11-23), `espaco expositivo` (Espaço Expositivo de Artes, 16), `memorial` (11),
   `cinema` (19, commercial cinemas included), `espetaculos ao ar livre` (Espaço para Espetáculos ao Ar Livre, 4) and
   `gibiteca` (1). Same request path, limits, cache and contact allowlist as the other point layers; no new tool.
+- `city_facilities_search` with `museu`, `teatro`, `centro cultural`, `espaco expositivo` or `cinema`: `note` now says
+  the layer may include private or non-profit venues and to confirm days and hours with the venue, not the 156.
 - docs/tools.md "Compared with the Curitiba App": cultural spaces and attractions are partial (GeoCuritiba has no
   tourist-attraction layer); new "—" rows with the reason for Defesa Civil alerts, EstaR and real-time buses.
 

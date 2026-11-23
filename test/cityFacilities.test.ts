@@ -48,6 +48,9 @@ describe("type names", () => {
     ["memoriais", "Memorial", "/MapServer/53"],
     ["cinema", "Cinema", "/MapServer/56"],
     ["espetáculos ao ar livre", "Espaço para Espetáculos ao Ar Livre", "/MapServer/59"],
+    ["espetáculo ao ar livre", "Espaço para Espetáculos ao Ar Livre", "/MapServer/59"],
+    ["espaços para espetáculos ao ar livre", "Espaço para Espetáculos ao Ar Livre", "/MapServer/59"],
+    ["espaço expositivo de arte", "Espaço Expositivo de Artes", "/MapServer/51"],
     ["gibiteca", "Gibiteca", "/MapServer/62"],
   ])("%s maps to the layer %s", (input, label, path) => {
     const t = resolveType(input);
@@ -168,7 +171,7 @@ describe("parseLayer", () => {
       hours: ["Terça a domingo, das 10h às 18h", "Entrada gratuita"],
       open_periods: { morning: true, afternoon: true, night: false, all_day: false },
       phones: ["(41) 3333-0101"],
-      emails: ["ccalfa@fcc.curitiba.pr.gov.br"],
+      emails: ["ccalfa@exemplo.curitiba.pr.gov.br"],
       lat: -25.43,
       lon: -49.27,
     });
@@ -221,6 +224,12 @@ describe("city_facilities_search", () => {
     const cc = await search({ type: "centros culturais" });
     expect(cc.data).toMatchObject({ type: "centro cultural", label: "Centro Cultural", total: 2, skipped_records: 1 });
     expect(cc.source_url.endsWith("/MapServer/50")).toBe(true);
+    expect(cc.note).toMatch(/may include private or non-profit venues .*confirm days and hours with the venue, not the 156/);
+  });
+
+  it("warns about mixed ownership only on the layers that hold private venues", () => {
+    const mixed = FACILITY_TYPES.filter((t) => t.mixedOwnership).map((t) => t.id);
+    expect(mixed).toEqual(["museu", "teatro", "centro cultural", "espaco expositivo", "cinema"]);
   });
 
   it("returns an empty layer as total 0 with no error", async () => {
