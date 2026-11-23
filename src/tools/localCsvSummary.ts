@@ -248,10 +248,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
   name: "local_csv_summary",
   title: "Summarise a CSV downloaded by hand",
   description:
-    "Count rows of a CSV file the user put in CURITIBAI_DATA_DIR (e.g. the 156 file): column names, row count, " +
+    "Count rows of a CSV the user put in CURITIBAI_DATA_DIR (e.g. the 156 file): column names, row count, " +
     "and either the top groups of one column or the rows where a column equals a value. Data rows are never " +
-    "returned; columns whose names look personal (nome, CPF, e-mail, telefone, endereço...) are refused; counts " +
-    "under 5 show as \"<5\". Needs a header row. No network. Read-only.",
+    "returned; personal-looking columns (nome, CPF...) are refused by column name only, so other columns may hold " +
+    "personal data; counts under 5 show as \"<5\". Needs a header row. No network. Read-only.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
   annotations: { openWorldHint: false },

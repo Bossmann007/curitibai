@@ -2,6 +2,18 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.25.1 - 2026-11-23
+
+Only text changed: no tool behaviour, name, title, type, schema or output changed.
+
+- "Health unit near me" routing: `health_units_search` takes no position, and its description now says so and points
+  to `city_points_search` with `near` (health units) or `vaccination_sites_search` (vaccines);
+  `city_points_search` names health units near a position among its uses
+  ([docs/tools.md](docs/tools.md#which-place-tool)).
+- `local_csv_summary`: the description says again that personal columns are refused by column name only, so other
+  columns may still hold personal data (the full rules stay in docs/tools.md and ADR 0008).
+- Descriptions sum 8,705 → 8,697 characters; every description still at most 400.
+
 ## 0.25.0 - 2026-11-23
 
 Only text changed: no tool behaviour, name, title, type, required field, enum, output or `outputSchema` changed.
