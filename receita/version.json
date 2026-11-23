@@ -1,0 +1,19 @@
+{
+  "versaoApp": "1.7.2-0d9b30c1",
+  "versaoDb": "V0073",
+  "dataVersaoDb": "2026-11-09",
+  "descricaoVersaoDb": "Nova tabela de Classificações Tributárias (IT 2025.002 v.1.71), publicada em 30/10/2026.",
+  "releases": {
+    "calculadora-rtc-regime-regular": {
+      "tag": "1.7.2",
+      "url": "https://github.com/ReceitaFederal/calculadora-rtc-regime-regular/releases/tag/1.7.2",
+      "published_at": "2026-11-19T23:05:50Z"
+    },
+    "calculadora-rtc-simples-nacional": {
+      "tag": "1.0.2",
+      "url": "https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional/releases/tag/1.0.2",
+      "published_at": "2026-11-20T00:46:54Z"
+    }
+  },
+  "recorded_at": "2026-11-23T18:01:08.351Z"
+}
