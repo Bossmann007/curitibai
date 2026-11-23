@@ -84,7 +84,7 @@ describe("tool contracts", () => {
     ).toEqual(["removed: a", "changed: b (inputSchema, outputSchema)", "added: d"]);
   });
 
-  it("every description is at most 400 characters and their sum is under the ceiling (SPEC.md)", async () => {
+  it(`every description is at most ${MAX_DESCRIPTION} characters and their sum at most ${MAX_DESCRIPTIONS_SUM} (SPEC.md)`, async () => {
     const tools = await listTools();
     const sum = (pick: (t: (typeof tools)[number]) => unknown) => tools.reduce((n, t) => n + size(pick(t)), 0);
     const measured = {
@@ -95,6 +95,9 @@ describe("tool contracts", () => {
       total: size({ tools }),
     };
     process.stdout.write(`tools/list size (characters): ${JSON.stringify(measured)}\n`);
+    // The measure itself works: names, titles and annotations make the total more than the three parts.
+    expect(measured.total).toBeGreaterThan(measured.descriptions + measured.inputSchemas + measured.outputSchemas);
+    expect(measured.descriptions).toBeGreaterThan(0);
     const tooLong = tools
       .filter((t) => (t.description ?? "").length > MAX_DESCRIPTION)
       .map((t) => `${t.name} (${(t.description ?? "").length})`);

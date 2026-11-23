@@ -163,6 +163,7 @@ Three tools find places; each kind of place has one preferred tool (the "Prefer 
 |---|---|---|
 | Feiras, Ruas da Cidadania, libraries, parks, museums, Câmbio Verde, popular restaurants, cemeteries, any kind with a type in `list types`, or days, hours and a phone | `city_facilities_search` | Live from IPPUC, with hours and an institutional phone |
 | CMEIs, municipal and state schools, bus terminals, regional offices, or every kind of city point near a position | `city_points_search` | Local URBS file, all categories in one call, no hours |
+| Public health units (unidades de saúde, UPAs) | `health_units_search` | CNES, the Ministry of Health register |
 | Police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or nothing found by the other two | `places_search` | OpenStreetMap community data |
 
 ## Notes moved out of the tool descriptions

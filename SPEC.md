@@ -32,7 +32,7 @@ text cannot grow back unnoticed.
      position at once. Local URBS file, no hours.
    - `places_search`: police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or when
      the other two find nothing.
-   Names are a contract: no tool is merged or renamed.
+   Public health units go to `health_units_search` (named in `places_search`). Names are a contract: no tool is merged or renamed.
 3. **Input-field descriptions**: only redundant text is cut (a clause repeated in the field and in the tool
    description, or OSM tag names repeated per category). No type, name, required flag, enum or default changes.
    The contract snapshot is rewritten on purpose with `npm run contracts:update`; CHANGELOG says only text changed.
@@ -50,12 +50,12 @@ text cannot grow back unnoticed.
 
 | Part | v0.24.1 | v0.25.0 |
 |---|---|---|
-| descriptions | 15,561 | 8,725 (−44%) |
+| descriptions | 15,561 | 8,712 (−44%) |
 | inputSchemas | 19,636 | 19,532 |
 | outputSchemas | 63,226 | 63,226 (unchanged) |
-| total (`tools/list` result) | 107,011 | 100,071 |
+| total (`tools/list` result) | 107,011 | 100,058 |
 
-Ceiling on the descriptions sum: 9,600 (8,725 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
+Ceiling on the descriptions sum: 9,600 (8,712 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
 that the per-tool limit alone would allow, so a new tool or a longer description needs a deliberate change to it.
 Longest description: 400 characters or fewer for all 25 (v0.24.1: 1,657).
 
