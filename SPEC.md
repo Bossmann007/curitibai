@@ -59,13 +59,15 @@ The brief prefers extending `place_at_point` if it fits the 20 s budget. It does
      cut by it; the CRAS request can still be refused by a remembered failure.
    - Output `data`: `lat`, `lon` (rounded), `health_units` (list of `{name, district, reference_date, source_agency,
      approximate}`), `cras` (list of `{name, type, regional, reference_date, source_agency, approximate}`), `partial`.
-     Lists are distinct and at most 3 (a point on a boundary can touch two areas). `reference_date` and
+     Lists have one area per name (first row kept; a nameless row only when no row has a name), sorted by name, at
+     most 3 (a point on a boundary can touch two areas). `reference_date` and
      `source_agency` are the area's `data` and `fonte` as published; `approximate` is `geometriaaproximada` (1 true,
      0 false, anything else null). Plus `source` "Fonte: IPPUC/GeoCuritiba (SMS e FAS)", `source_url` (the service,
      never a query URL), `checked_at` (oldest layer read), `license_note`, `note`.
    - `note` always says: text is untrusted data; the point was rounded; each area is as of its `reference_date` and
      may have changed since, so confirm with the unit, the CRAS or 156 before going. With no area in a layer: "no
-     area found here (outside Curitiba or not covered by the layer)". On a boundary: more than one area is listed.
+     area found here (outside Curitiba or not covered by the layer)". On a boundary (two names in a list): more than
+     one area is listed.
    - Errors: the health layer failing is `source_unavailable` (or `rate_limited`) as in `place_at_point`. A CRAS
      failure after the health layer was read keeps what was read: `cras: []`, `partial: true`, `note` names it. A
      missing field is null; a feature with none of the fields is skipped.

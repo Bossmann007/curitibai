@@ -1092,7 +1092,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   and perimeter. Example (Centro, -25.4296, -49.2713): US MÃE CURITIBANA, district MATRIZ, "março/2022", SMS-PMC; CRAS
   MATRIZ, regional MATRIZ, "MAR-2019". At a CIC point (-25.52, -49.32): US TAIZ VIVIANE MACHADO, "fevereiro/2011";
   CRAS NOSSA SENHORA DA LUZ, "MAR-2019". A point in the box outside the city (-25.35, -49.20) matched nothing in
-  either layer. `geometriaaproximada` was null at every point tried.
+  either layer. `geometriaaproximada` (an integer field) was null at every point tried; the tool reads 1 as true and 0 as
+  false.
 - **Reference dates vary by area.** `data` is a text field per polygon, not per layer: distinct values on 2026-11-23
   included "janeiro/2019", "junho/2019", "março/2021", "julho/2021" and "março/2022" in layer 19 (and "fevereiro/2011"
   at the CIC point), and "MAR-2019", "DEZ-2023" and "JAN-2025" in layer 5. The tool returns each area's own `data` as
@@ -1104,7 +1105,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
 - **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Same
   host gate, timeout (15 s), cap (2 MB), redirect rule, refusal handling and fail-closed parser as `place_at_point`;
   each answer cached 6 hours (at most 500 entries). The health layer failing is an error; a CRAS failure after it keeps
-  what was read (`partial: true`). Each list is distinct, sorted by name, at most 3. A missing field is null; a feature
+  what was read (`partial: true`). Each list has one area per name (the first row kept; a nameless row only when no row
+  has a name), sorted by name, at most 3; the boundary note needs two names. A missing field is null; a feature
   with none of the fields read is skipped.
 - **Why not in `place_at_point`:** that tool already makes up to 4 requests 5 s apart; two more would put the sixth
   at 25 s, past the 20 s budget, so it would come back partial wherever zoning layer 41 is empty (about 39% of the

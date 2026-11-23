@@ -30,7 +30,7 @@ const HealthArea = z.object({
 const CrasArea = z.object({
   name: z.string().nullable().describe("CRAS whose territory covers the point, e.g. \"MATRIZ\"."),
   type: z.string().nullable().describe("Type as published (`tipo`), e.g. \"CRAS\"."),
-  regional: z.string().nullable(),
+  regional: z.string().nullable().describe("Regional (administrative region) as published (`regional`), e.g. \"MATRIZ\"."),
   reference_date: referenceDate,
   source_agency: sourceAgency,
   approximate,
@@ -63,18 +63,23 @@ const NOTE =
 
 const approx = (v: unknown): boolean | null => (v === 1 ? true : v === 0 ? false : null);
 
-/** Distinct rows with at least one text field, by name (nameless last), at most MAX_AREAS. */
+/**
+ * One row per name (the first kept), by name, at most MAX_AREAS. A row with no name is kept only when no row has one
+ * (two nameless rows count once when all their fields match); a row with no text field is skipped.
+ */
 function distinct<T extends { name: string | null }>(rows: T[], hasText: (r: T) => boolean): T[] {
+  const kept = rows.filter(hasText);
+  const named = kept.some((r) => r.name !== null);
   const seen = new Set<string>();
   const out: T[] = [];
-  for (const r of rows) {
-    if (!hasText(r)) continue;
-    const k = JSON.stringify(r);
+  for (const r of kept) {
+    if (named && r.name === null) continue;
+    const k = r.name ?? JSON.stringify(r);
     if (seen.has(k)) continue;
     seen.add(k);
     out.push(r);
   }
-  out.sort((a, b) => (a.name === null ? 1 : 0) - (b.name === null ? 1 : 0) || (a.name ?? "").localeCompare(b.name ?? "", "pt-BR"));
+  out.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "pt-BR"));
   return out.slice(0, MAX_AREAS);
 }
 
@@ -118,7 +123,7 @@ export async function serviceAreasAt(p: Point, startBy: number): Promise<Output>
   const extra = [
     health.length === 0 ? "No health unit area found here (outside Curitiba or not covered by the layer)." : "",
     !partial && cras.length === 0 ? "No CRAS territory found here (outside Curitiba or not covered by the layer)." : "",
-    health.length > 1 || cras.length > 1 ? "The point is on a boundary: more than one area is listed." : "",
+    health.filter((h) => h.name !== null).length > 1 || cras.filter((c) => c.name !== null).length > 1 ? "The point is on a boundary: more than one area is listed." : "",
     partial
       ? "Partial: the CRAS layer could not be read now. " +
         (failure instanceof SourceRefusedError

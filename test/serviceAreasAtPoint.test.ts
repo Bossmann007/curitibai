@@ -129,6 +129,22 @@ describe("service_areas_at_point answers", () => {
     expect(out.note).toMatch(/boundary/);
   });
 
+  it("two rows with the same name are one area (the first kept), not a boundary", async () => {
+    stubFetch(routes({
+      health_area: { body: attrs([{ nome: "US TESTE", fonte: "SMS-PMC", data: "março/2022" }, { nome: "US TESTE", fonte: null, data: "junho/2019" }]) },
+    }));
+    const out = await areas();
+    expect(out.data.health_units).toEqual([{ name: "US TESTE", district: null, reference_date: "março/2022", source_agency: "SMS-PMC", approximate: null }]);
+    expect(out.note).not.toMatch(/boundary/);
+  });
+
+  it("a nameless row next to a named one is dropped and makes no boundary", async () => {
+    stubFetch(routes({ cras_territory: { body: attrs([{ regional: "R" }, { nome: "CRAS TESTE", regional: "R" }]) } }));
+    const out = await areas();
+    expect(out.data.cras.map((c) => c.name)).toEqual(["CRAS TESTE"]);
+    expect(out.note).not.toMatch(/boundary/);
+  });
+
   it("text fields are cleaned and masked like the other GeoCuritiba fields", async () => {
     stubFetch(routes({ health_area: { body: attrs([{ nome: "US‮ 33334444" }]) } }));
     expect((await areas()).data.health_units[0]?.name).toBe("US [masked]");
