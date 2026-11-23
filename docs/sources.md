@@ -1064,7 +1064,11 @@ changes (owner request, 2026-11-23: monthly and automatic).
   bairro when no neighbourhood contains the point. Same host gate, timeout (15 s), cap (2 MB), redirect rule and
   refusal handling as `city_facilities_search`; each answer cached 6 hours (at most 500 entries). No request starts
   later than about 20 s after the call began. The bairro layer failing is an error; a zoning or street failure after it
-  keeps what was read (`partial: true`).
+  keeps what was read (`partial: true`). The gate is shared with `city_facilities_search` on purpose: after a zoning
+  failure the street layer is not asked (the failure is remembered for 60 s, a refusal blocks the host for 10 minutes,
+  and `note` says which), and two calls at once, or a busy host, can make the later layers miss the time budget
+  (`partial`; a retry reads the cached layers). The box check runs on the rounded point. A street line keeps vertices
+  outside the Curitiba box (a road can run past it); only invalid pairs are dropped.
 - **Fails closed** on an `error` object (codes 401, 403, 498 and 499 are a refusal), `exceededTransferLimit`, no
   `features` array, 2,000 records or more, invalid JSON, a non-JSON content type, and, for the street layer only (the
   others return no geometry and no spatial reference), a spatial reference other than 4326.

@@ -156,6 +156,23 @@ describe("place_at_point answers", () => {
     expect(out.note).toMatch(/boundary/);
   });
 
+  it("a row with only a regional does not hide a named bairro or make a boundary", async () => {
+    stubFetch(routes({ bairro: { body: attrs([{ nm_regional: "REGIONAL X" }, { nome: "BAIRRO TESTE", nm_regional: "REGIONAL TESTE" }]) } }));
+    expect((await place()).data).toMatchObject({ bairro: "BAIRRO TESTE", regional: "REGIONAL TESTE", boundary: false });
+  });
+
+  it("keeps a street whose line runs past the Curitiba box; drops only invalid vertices", async () => {
+    stubFetch(routes({
+      street: {
+        body: JSON.stringify({
+          spatialReference: { wkid: 4326 },
+          features: [{ attributes: { gtm_nm_logradouro: "RUA DA DIVISA" }, geometry: { paths: [[[P.lon + 0.0001, P.lat], [P.lon + 0.5, P.lat], ["x", 1], [999, 0]]] } }],
+        }),
+      },
+    }));
+    expect((await place()).data.nearest_street).toEqual({ name: "RUA DA DIVISA", distance_m: 10 });
+  });
+
   it("text fields are cleaned and masked like the other GeoCuritiba fields", async () => {
     stubFetch(routes({ bairro: { body: attrs([{ nome: "BAIRRO‮ 33334444", nm_regional: "R" }]) } }));
     expect((await place()).data.bairro).toBe("BAIRRO [masked]");
@@ -172,6 +189,14 @@ describe("place_at_point input", () => {
     const calls = stubFetch({});
     expect(errorOf(await call(args))).toEqual({ error: "invalid_argument", message: expect.stringMatching(/outside Curitiba/) });
     expect(calls).toHaveLength(0);
+  });
+
+  it("checks the rounded point: what is checked is what is sent", async () => {
+    const calls = stubFetch({});
+    expect(errorOf(await call({ lat: -25.29994, lon: -49.27 }))).toMatchObject({ error: "invalid_argument" });
+    expect(calls).toHaveLength(0);
+    stubFetch(Object.fromEntries([[`GET ${pointQueryUrl("bairro", { lat: -25.3, lon: -49.27 })}`, { body: EMPTY, contentType: JSON_TYPE }]]));
+    expect((await place({ lat: -25.29996, lon: -49.27 })).data).toMatchObject({ lat: -25.3, inside_curitiba: false });
   });
 
   it.each([[{ lat: -25.43 }], [{ lat: "x", lon: -49.27 }], [{ lat: 91, lon: -49.27 }]])("rejects %j", async (args) => {
@@ -208,6 +233,14 @@ describe("place_at_point errors", () => {
     expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", zoning: [], nearest_street: null, partial: true });
     expect(out.note).toMatch(/zoning/);
     expect(calls).toHaveLength(2);
+  });
+
+  it("a refusal on a later layer is partial and says the host is not asked for 10 minutes", async () => {
+    stubFetch(routes({ street: { body: '{"error":{"code":499,"message":"Token Required"}}' } }));
+    const out = await place();
+    expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", nearest_street: null, partial: true });
+    expect(out.note).toMatch(/refused this server; it is not asked again for 10 minutes/);
+    expect(out.note).not.toMatch(/try again in a minute/);
   });
 
   it("a street layer error 400 is partial with the rest kept", async () => {

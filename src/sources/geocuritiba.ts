@@ -577,9 +577,28 @@ export function parsePointQuery(body: string, url: string, withGeometry: boolean
   const out: PointFeature[] = [];
   for (const f of json.features as unknown[]) {
     if (!isObject(f) || !isObject(f.attributes)) continue;
-    out.push({ attributes: f.attributes, paths: withGeometry ? bikePaths(isObject(f.geometry) ? f.geometry : null) : null });
+    out.push({ attributes: f.attributes, paths: withGeometry ? streetPaths(isObject(f.geometry) ? f.geometry : null) : null });
   }
   return out;
+}
+
+/**
+ * A street line as [lon, lat] pairs. Unlike bikePaths, a vertex outside the Curitiba box is kept (a road near the
+ * point can run past the box); only a vertex that is not a valid WGS84 pair is dropped. Null when nothing is left.
+ */
+function streetPaths(g: Record<string, unknown> | null): [number, number][][] | null {
+  if (!g || !Array.isArray(g.paths)) return null;
+  const valid = (v: unknown, max: number): v is number => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= max;
+  const paths: [number, number][][] = [];
+  for (const path of g.paths as unknown[]) {
+    if (!Array.isArray(path)) continue;
+    const pts: [number, number][] = [];
+    for (const p of path as unknown[]) {
+      if (Array.isArray(p) && valid(p[0], 180) && valid(p[1], 90)) pts.push([p[0], p[1]]);
+    }
+    if (pts.length > 0) paths.push(pts);
+  }
+  return paths.length > 0 ? paths : null;
 }
 
 /** cleanText for a point-layer field; null when absent or empty. */

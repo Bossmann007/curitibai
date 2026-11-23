@@ -11,6 +11,7 @@ import {
   type PointFeature,
 } from "../sources/geocuritiba.js";
 import { distanceToPaths, FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
+import { SourceRefusedError } from "../http.js";
 import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const PLACE_SOURCE = "Fonte: IPPUC/GeoCuritiba";
@@ -63,8 +64,9 @@ function bairroOf(features: PointFeature[]): { bairro: string | null; regional: 
   const rows = features
     .map((f) => ({ bairro: cleanPointField(f.attributes.nome, 100), regional: cleanPointField(f.attributes.nm_regional, 100) }))
     .filter((r) => r.bairro !== null || r.regional !== null)
-    .sort((a, b) => (a.bairro ?? "").localeCompare(b.bairro ?? "", "pt-BR"));
-  const names = new Set(rows.map((r) => r.bairro));
+    // Named rows first, by name; a row with only a regional is used only when no row has a name.
+    .sort((a, b) => (a.bairro === null ? 1 : 0) - (b.bairro === null ? 1 : 0) || (a.bairro ?? "").localeCompare(b.bairro ?? "", "pt-BR"));
+  const names = new Set(rows.flatMap((r) => (r.bairro === null ? [] : [r.bairro])));
   return { bairro: rows[0]?.bairro ?? null, regional: rows[0]?.regional ?? null, boundary: names.size > 1 };
 }
 
@@ -109,6 +111,11 @@ export async function placeAt(p: Point, startBy: number): Promise<Output> {
   const b = bairroOf(bairroRes.value);
   const inside = b.bairro !== null || b.regional !== null;
   const missing: string[] = [];
+  let refused = false;
+  const failed = (part: string, err: unknown) => {
+    missing.push(part);
+    if (err instanceof SourceRefusedError) refused = true;
+  };
   let zoning: ZoneOut[] = [];
   let street: { name: string; distance_m: number } | null = null;
   if (inside) {
@@ -121,22 +128,27 @@ export async function placeAt(p: Point, startBy: number): Promise<Output> {
         times.push(law.fetchedAt);
         zoning = zonesOf(law.value, POINT_LAYERS.zoning_law.id);
       }
-    } catch {
-      missing.push("zoning");
+    } catch (err) {
+      failed("zoning", err);
     }
     try {
       const s = await getPointLayer("street", p, startBy);
       times.push(s.fetchedAt);
       street = nearestStreet(p, s.value);
-    } catch {
-      missing.push("street");
+    } catch (err) {
+      failed("street", err);
     }
   }
   const extra = [
     inside ? "" : "No Curitiba neighbourhood contains this point (it may be in a neighbouring city); nothing else was asked.",
     b.boundary ? "The point is on a neighbourhood boundary; `bairro` is the first by name." : "",
     zoning.length > 1 ? "The point touches more than one zone (a boundary)." : "",
-    missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now (busy or failing); try again in a minute.` : "",
+    missing.length > 0
+      ? `Partial: the ${missing.join(" and ")} layer could not be read now. ` +
+        (refused
+          ? "The source refused this server; it is not asked again for 10 minutes."
+          : "The host was busy or failing (after a failure no request is made for 60 s); try again in a minute, the layers already read are cached.")
+      : "",
   ].filter(Boolean);
   return {
     data: {
@@ -171,11 +183,13 @@ export const placeAtPoint: ToolDef<typeof placeAtPointInput, typeof placeAtPoint
   inputSchema: placeAtPointInput,
   outputSchema: placeAtPointOutput,
   handler: async (args) => {
-    if (!inCuritibaBox(args.lat, args.lon)) {
+    // Rounded first: the point checked is the point sent.
+    const p = roundPoint(args.lat, args.lon);
+    if (!inCuritibaBox(p.lat, p.lon)) {
       return fail("invalid_argument", "The point is outside Curitiba (latitude -25.7 to -25.3, longitude -49.45 to -49.15).");
     }
     try {
-      return ok(await placeAt(roundPoint(args.lat, args.lon), callStartBy()));
+      return ok(await placeAt(p, callStartBy()));
     } catch (err) {
       return failFrom(err);
     }
