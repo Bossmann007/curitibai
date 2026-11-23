@@ -220,7 +220,69 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
 - Check: `scripts/verify` exit 0 (`test/cityFacilities.test.ts`: type mapping, a synthetic culture layer, an empty
   layer, missing fields); one live call per new type through the built tool, one at a time.
 
+## v0.21.0 changes (task brief "curitibai v0.21.0 — reforma tributária (CBS/IBS) para Curitiba, só leitura", 2026-11-23)
+
+- Goal: the owner's request "a receita específica para Curitiba": the CBS and IBS reference rates that apply in
+  Curitiba on a date, and the codes (NBS, NCM, cClassTrib) needed to read them, read-only.
+- Prior art (decision of 2026-11-23, in the brief): build small. Source: the Receita Federal "calculadora de tributos
+  do consumo", open-data routes (`calculadora/dados-abertos`, `DadosAbertosController.java` of
+  <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular>, MIT), served at
+  `https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/`. robots.txt of the
+  host: 404. No terms of use for the hosted API were found. Tool shape inspired by bispado/mcp-calculadora-rtc (MIT;
+  ideas only, no code copied).
+- Decision: **one** new tool, `tax_reform_curitiba`, with a `topic` (`rates` default, `nbs`, `ncm`, `class_trib`,
+  `nfse`), not two. Why: the rates, the code lookups and the NFS-e note share the host, gate, cache, date rule,
+  disclaimer and envelope; one tool keeps the surface smaller (as `detran_pr_info` does with its `topic`). Tool count
+  22 → 23.
+- Fixed place: Curitiba, IBGE `4106902`, UF PR (code `41`). No input chooses another city or state.
+- `rates`: four GETs, `versao`, `aliquota-uniao?data=`, `aliquota-uf?codigoUf=41&data=`,
+  `aliquota-municipio?codigoMunicipio=4106902&data=`. Returns `cbs_pct`, `ibs_uf_pct`, `ibs_municipal_pct` as served
+  (percent: on 2026-11-23 the host answered 0.9, 0.1 and 0.0, the 2026 test-year rates), plus `receita_version`
+  (`versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb`, passed through as served). An HTTP 404 on one rate
+  (the host's "Alíquota não encontrada", seen for 2024-01-01 and for the municipal rate on 2027-01-01) is that rate =
+  `null` with a note; it is handled inside the gate task, so it is not remembered as a host failure. Any other failure
+  of any of the four requests fails the whole call (no partial triple).
+- `nbs`, `ncm`, `class_trib`: `versao` plus one list for the date, `nbs/lista`, `ncm/vigentes` or
+  `classificacoes-tributarias/cbs-ibs` (920, 10,516 and 170 items, 100 KB, 730 KB and 148 KB on 2026-11-23). `query`
+  (2–100 characters, required) is matched here, never sent: digits (dots, dashes and spaces dropped) match a code
+  prefix; other text matches when every word is in the description, ignoring case and accents. Sorted by code, at most
+  `limit` (1–25, default 10), with `total`. `class_trib` items add `rate_type`, `treatment`, `nomenclature` and the
+  three reduction percentages (`reduction_cbs_pct`, `reduction_ibs_uf_pct`, `reduction_ibs_municipal_pct`), side by side
+  with the rates; nothing is multiplied here. NCM leaf descriptions are often "-- Outros": a code search works better
+  than text there, and `note` says so.
+- `nfse`: no network. A fixed note: in Curitiba the NFS-e is issued on the national Emissor Nacional; schedule
+  01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; basis Decreto 1960/2025
+  and Portaria 33/2025; public lookup <https://www.nfse.gov.br/consultapublica>; source
+  <https://lp.curitiba.pr.gov.br/notanacional>, "conferido em 2026-11-23". The page is never fetched (its robots.txt
+  sets a Visit-time window).
+- Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 to 2026-12-31; default today in America/Sao_Paulo.
+  Why the bound: the Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) flags every date from
+  2027-01-01 as simulated data (header `x-warning-dados-simulados`), so later dates are refused with
+  `invalid_argument` instead of serving simulated rates unmarked; the bound also limits the cache keys. A `query` with
+  `rates` or `nfse`, or no `query` with a lookup topic, is `invalid_argument`.
+- Every success, every topic, carries `disclaimer`: "API piloto da Receita Federal; não é orientação fiscal; confirme
+  com o contador".
+- Rules (docs/sources.md, docs/privacy.md): only `fetchText` (project User-Agent, allowlist), new host in
+  `ALLOWED_HOSTS`; 15 s timeout per request; caps 64 KB (`versao`, rates) and 2 MB (lists); same host and the
+  `dados-abertos` path only on redirects; JSON content type only; one host gate, 5 s between requests, 20 s queue
+  limit (a cold `rates` call needs slots at 0, 5, 10 and 15 s), failures remembered 60 s to 1 hour; each call's
+  requests start within the 20 s call budget (`callStartBy`). Cache in memory 24 h: versions and rates (small), lists
+  at most 3 entries (`TtlCache` gains an optional entry limit). Fail closed: not JSON, a `versao` without string
+  `versaoApp`/`versaoDb`, a rate without a number `aliquotaReferencia`, a list that is not an array, or a non-empty
+  list where no item has string code and description → `source_unavailable`. An empty list → `total` 0 with a note.
+  Single bad items are skipped and counted (`skipped`). No personal data: only the date and fixed codes reach the host.
+- Out of scope: the calculation POST (`calculadora/...`), computing an effective rate, any NFS-e or other invoice
+  issuance, IS (Imposto Seletivo) data, other cities or states, dates from 2027 (simulated data), fetching the
+  Prefeitura's NFS-e page.
+- Docs: `docs/tools.md` (row, envelope, Curitiba App comparison row), `docs/sources.md` (source, MIT repos, terms not
+  found, the probe requests), README (23 tools), CHANGELOG 0.21.0, version 0.21.0.
+- Check: `scripts/verify` exit 0 (`test/taxReform.test.ts` on small synthetic fixtures: rates, 404 rate → null, empty
+  list, missing field, HTTP 5xx, host down, not JSON, query and date validation, no user text in URLs, the
+  disclaimer on every topic, cache and gate spacing); one live call per topic through the built tool, one at a time.
+
 ## Out of scope
+
+Since v0.21.0: the Receita calculation POST and any invoice (NFS-e) issuance (see "v0.21.0 changes").
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
 publishing `details.json` or `phones/status.json`; any change to the collector's behaviour; a keep-alive commit

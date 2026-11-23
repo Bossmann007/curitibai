@@ -2,6 +2,18 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.21.0 - 2026-11-23
+
+- New tool `tax_reform_curitiba` (23 tools), read-only and fixed to Curitiba (IBGE 4106902, PR), from the Receita
+  Federal pilot "calculadora de tributos do consumo" open data: `rates` gives the CBS, IBS UF and IBS municipal
+  reference rates on a 2026 date (default today) with the Receita app and base versions; `nbs`, `ncm` and
+  `class_trib` find codes by code or words (matched locally, never sent), with the cClassTrib reduction percentages;
+  `nfse` returns a fixed, dated note on NFS-e in Curitiba (Emissor Nacional, schedule, Decreto 1960/2025, Portaria
+  33/2025) with no network call. Every answer says "API piloto da Receita Federal; não é orientação fiscal; confirme
+  com o contador". Dates from 2027 are refused (simulated data in the Receita base). No calculation and no invoice.
+- New allowed host `piloto-cbs.tributos.gov.br` (robots.txt 404): one request per 5 s, 15 s timeout, 24 h cache.
+- `TtlCache` takes an optional entry limit.
+
 ## 0.20.0 - 2026-11-23
 
 - `city_facilities_search`: six new types from the Cultura group of IPPUC's GeoCuritiba urban-equipment service:

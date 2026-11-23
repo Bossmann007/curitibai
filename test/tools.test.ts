@@ -29,6 +29,7 @@ describe("tools/list", () => {
       "places_search",
       "procurement_search",
       "river_levels",
+      "tax_reform_curitiba",
       "useful_phones",
       "vaccination_sites_search",
       "weather_alerts",

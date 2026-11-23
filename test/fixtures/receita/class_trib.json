@@ -1,0 +1,4 @@
+[
+  {"codigo":"900001","descricao":"Situacao ficticia tributada integralmente","tipoAliquota":"Padrao","descricaoTratamentoTributario":"Tributacao integral ficticia","nomenclatura":"NBS ou NCM","percentualReducaoCbs":0.0,"percentualReducaoIbsUf":0.0,"percentualReducaoIbsMun":0.0,"tiposDfeClassificacao":[{"sigla":"NFS-e","tipo":91}]},
+  {"codigo":"900002","descricao":"Servico ficticio de saude com reducao","tipoAliquota":"Uniforme setorial","descricaoTratamentoTributario":"Reducao ficticia de 60%","nomenclatura":"NBS","percentualReducaoCbs":60.0,"percentualReducaoIbsUf":60.0,"percentualReducaoIbsMun":60.0}
+]

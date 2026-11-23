@@ -19,7 +19,7 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 22 tools over public
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 23 tools over public
 data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, places, events, weather, river levels and rain, Teatro Guaíra events,
 municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
 
@@ -93,8 +93,8 @@ only the local file, as before 0.18.0, and make no network call.
 
 ## Tools at a glance
 
-All 22 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
-the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` and "Bundled" tools read data bundled in the code; both
+All 23 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar; 24 hours for the Receita tax-reform data). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` and "Bundled" tools read data bundled in the code; both
 make no network call. "Nightly" tools read your local file when there is one, else the copy this project's
 nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turns it off). [Tool reference](docs/tools.md) has every input, output and error.
 
@@ -118,6 +118,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Weather | `weather_alerts` | INMET's active warnings that cover Curitiba | Live (INMET) |
 | Weather | `river_levels` | Latest river level, flow and rain (last reading, 1 h, 24 h) at ANA telemetry stations around Curitiba, with a `quality` flag for suspect readings (see [Data quality](docs/tools.md#river_levels-data-quality)); not for emergencies (Defesa Civil 199) | Live (ANA telemetry) |
 | Procurement | `procurement_search` | Procurement published by Curitiba municipal bodies in PNCP, never the supplier | Live (PNCP) |
+| Taxes | `tax_reform_curitiba` | Tax reform (CBS/IBS) reference rates in Curitiba on a 2026 date, NBS/NCM/cClassTrib codes, and a note on NFS-e in Curitiba; not tax advice | Live (Receita Federal pilot API); NFS-e note Bundled |
 | Detran | `detran_pr_info` | Detran-PR's 2026 licensing calendar and its units in and around Curitiba | Bundled (snapshot) |
 | Open data | `open_datasets_search` | Search the Portal de Dados Abertos de Curitiba catalogue | Live (portal) |
 | Open data | `dataset_files` | List one dataset's files as links (never downloads them) | Live (portal) |
