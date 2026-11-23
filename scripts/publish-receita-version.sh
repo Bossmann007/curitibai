@@ -46,18 +46,31 @@ fi
 code=0
 CURITIBAI_DATA_DIR="$data" node scripts/check-receita-version.mjs || code=$?
 
-if [[ -f "$data/$FILE" ]]; then
-  mkdir -p "$pub/$(dirname "$FILE")"
-  cp "$data/$FILE" "$pub/$FILE"
-  git -C "$pub" add -- "$FILE"
-fi
-if [[ -z "$(git -C "$pub" status --porcelain -- "$FILE")" ]]; then
-  echo "publish-receita-version: nothing changed; no commit"
-else
+# Two tries: a push rejected because another run (collect.yml) moved `data` meanwhile is redone once on the new tip;
+# the files never overlap, so only receita/version.json is copied again.
+for attempt in 1 2; do
+  if [[ -f "$data/$FILE" ]]; then
+    mkdir -p "$pub/$(dirname "$FILE")"
+    cp "$data/$FILE" "$pub/$FILE"
+    git -C "$pub" add -- "$FILE"
+  fi
+  if [[ -z "$(git -C "$pub" status --porcelain -- "$FILE")" ]]; then
+    echo "publish-receita-version: nothing changed; no commit"
+    break
+  fi
   git -C "$pub" -c user.name="github-actions[bot]" \
     -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
     commit -q -m "data: Receita calculator version $(date -u +%Y-%m-%d) (checker exit $code)" -- "$FILE"
-  pubgit push -q origin "HEAD:refs/heads/$BRANCH"
-  echo "publish-receita-version: pushed to '$BRANCH'"
-fi
+  if pubgit push -q origin "HEAD:refs/heads/$BRANCH"; then
+    echo "publish-receita-version: pushed to '$BRANCH'"
+    break
+  fi
+  if [[ $attempt == 2 ]]; then
+    echo "publish-receita-version: push rejected twice; version.json not published" >&2
+    exit 1
+  fi
+  echo "publish-receita-version: push rejected; fetching '$BRANCH' again and retrying once"
+  pubgit fetch -q --depth=1 origin "refs/heads/$BRANCH"
+  git -C "$pub" reset -q --hard FETCH_HEAD
+done
 exit "$code"

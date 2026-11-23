@@ -108,9 +108,9 @@ describe("GitHub Actions workflows", () => {
     const sh = readFileSync(new URL("../scripts/publish-receita-version.sh", import.meta.url), "utf8");
     expect(sh).toContain("BRANCH=data");
     expect(sh).toContain("FILE=receita/version.json");
-    const pushes = code(sh).filter((l) => /\bpush\b/.test(l) && !/^\s*#/.test(l));
-    expect(pushes).toEqual(['  pubgit push -q origin "HEAD:refs/heads/$BRANCH"']);
+    const pushes = code(sh).filter((l) => /\bpubgit push\b/.test(l) && !/^\s*#/.test(l));
+    expect(pushes).toEqual(['  if pubgit push -q origin "HEAD:refs/heads/$BRANCH"; then']);
     expect(code(sh).filter((l) => !/^\s*#/.test(l)).join("\n")).not.toMatch(/--force|\+HEAD|refs\/heads\/main|add -A|add \.|events\/|phones\//);
-    expect(code(sh).filter((l) => /git -C "\$pub" add /.test(l))).toEqual(['  git -C "$pub" add -- "$FILE"']);
+    expect(code(sh).filter((l) => /git -C "\$pub" add /.test(l))).toEqual(['    git -C "$pub" add -- "$FILE"']);
   });
 });

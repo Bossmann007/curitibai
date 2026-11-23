@@ -854,17 +854,18 @@ changes (owner request, 2026-11-23: monthly and automatic).
   retry, exact host allowlist. The workflow token goes to `api.github.com` only, never to the Receita host.
 - **Fails closed:** a Receita error (network, timeout, non-200, redirect, not JSON) or an answer whose `versaoApp`,
   `versaoDb` (letters, digits, `._+-`, up to 64) or `dataVersaoDb` (YYYY-MM-DD) does not match exits 1 and changes
-  nothing (red run in Actions). A failed release lookup keeps the previous tag (no false change); a repository with
-  no release (404) is recorded as `null`.
+  nothing (red run in Actions). A body over 64 KB (Content-Length or bytes read) is refused. A failed release lookup
+  keeps the previous tag (no false change); on the first run, with no previous tag, it exits 1 and writes nothing. A
+  repository with no release (404) is recorded as `null`.
 - **What is published:** only `receita/version.json` on the orphan branch `data` (never `main`; `events/` and `phones/`
-  untouched), pushed without force: `versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb` (control characters
+  untouched), pushed without force (a push rejected because `data` moved meanwhile is redone once on the new tip): `versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb` (control characters
   removed, 300 characters at most), each repository's release `tag`, `url` and `published_at`, and `recorded_at`. The
   first run records the baseline and opens no issue. Nothing changed (app, base, base date and release tags compared):
   no write, no commit, no issue.
 - **When something changed:** one issue in this repository titled
-  `Receita: calculadora mudou (app <a>, base <b>, regular <r>, simples <s> → ...)`, listing what changed, the release
-  links and a reminder to review curitibai (the Receita marks 2027+ rates as simulated). No issue when an open issue
-  already has the same title. The issue is opened before the file is written, so a failed issue (exit 1) is retried
+  `Receita: calculadora mudou (app <a>, base <b> (<date>), regular <r>, simples <s> → ...)`, listing what changed, the
+  release links and a reminder to review `tax_reform_curitiba` (the Receita marks 2027+ rates as simulated). No issue
+  when an open issue already has the same title (up to 1,000 open issues read; more fails the run). The issue is opened before the file is written, so a failed issue (exit 1) is retried
   the next run. The MCP server never reads this file.
 - **Turn it off:** see [docs/development.md](development.md#scheduled-workflows).
 

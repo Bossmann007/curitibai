@@ -21,6 +21,8 @@ export const VERSION_FILE = "receita/version.json";
 export const TIMEOUT_MS = 15_000;
 export const MAX_BYTES = 64 * 1024;
 export const DESCRIPTION_MAX = 300;
+/** Open issues read for the duplicate check: 10 pages of 100. */
+export const ISSUE_PAGES_MAX = 10;
 const TITLE_PREFIX = "Receita: calculadora mudou";
 
 const VERSION_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
@@ -31,6 +33,20 @@ class CheckError extends Error {
     super(message);
     this.code = code;
   }
+}
+
+/** The body as text, read as a stream and stopped past MAX_BYTES bytes (a larger body is an error). */
+async function readCapped(res) {
+  if (Number(res.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error("response too large");
+  if (!res.body) return "";
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of res.body) {
+    size += chunk.byteLength;
+    if (size > MAX_BYTES) throw new Error("response too large");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 /** GET or POST with the project User-Agent, a timeout, no redirect and a size cap; returns { status, data }. */
@@ -51,8 +67,7 @@ async function request(fetch, url, { token, method = "GET", body } = {}) {
     redirect: "manual",
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  const text = await res.text();
-  if (text.length > MAX_BYTES) throw new Error("response too large");
+  const text = await readCapped(res);
   if (!(res.headers.get("content-type") ?? "").includes("json")) return { status: res.status, data: undefined };
   let data;
   try {
@@ -105,9 +120,9 @@ async function latestRelease(fetch, repo, token) {
 
 const tagOf = (rec, repo) => rec.releases?.[repo]?.tag ?? "none";
 
-/** Short label used in the issue title: app, base and both release tags. */
+/** Short label used in the issue title: every compared field (app, base, base date, both release tags). */
 export function versionLabel(rec) {
-  return `app ${rec.versaoApp}, base ${rec.versaoDb}, regular ${tagOf(rec, RELEASE_REPOS[0])}, simples ${tagOf(rec, RELEASE_REPOS[1])}`;
+  return `app ${rec.versaoApp}, base ${rec.versaoDb} (${rec.dataVersaoDb}), regular ${tagOf(rec, RELEASE_REPOS[0])}, simples ${tagOf(rec, RELEASE_REPOS[1])}`;
 }
 
 export function issueTitle(before, after) {
@@ -151,9 +166,14 @@ function issueBody(before, after) {
 
 /** Open issue with the same title, or creates it. Returns "existing" or "created"; throws on failure. */
 async function openIssue(fetch, repo, token, title, body) {
-  const list = await request(fetch, `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=100`, { token });
-  if (list.status !== 200 || !Array.isArray(list.data)) throw new Error(`issue list failed (HTTP ${list.status})`);
-  if (list.data.some((i) => i && !i.pull_request && i.title === title)) return "existing";
+  for (let page = 1; page <= ISSUE_PAGES_MAX; page++) {
+    const url = `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=100&page=${page}`;
+    const list = await request(fetch, url, { token });
+    if (list.status !== 200 || !Array.isArray(list.data)) throw new Error(`issue list failed (HTTP ${list.status})`);
+    if (list.data.some((i) => i && !i.pull_request && i.title === title)) return "existing";
+    if (list.data.length < 100) break;
+    if (page === ISSUE_PAGES_MAX) throw new Error("more open issues than the duplicate check reads");
+  }
   const made = await request(fetch, `${GITHUB_API}/repos/${repo}/issues`, { token, method: "POST", body: { title, body } });
   if (made.status !== 201) throw new Error(`issue creation failed (HTTP ${made.status})`);
   return "created";
@@ -168,7 +188,12 @@ function readPrevious(path) {
     throw e;
   }
   const rec = JSON.parse(text);
-  if (!rec || typeof rec.versaoApp !== "string" || typeof rec.versaoDb !== "string") throw new Error("bad shape");
+  parseReceita(rec);
+  const releasesOk =
+    rec.releases &&
+    typeof rec.releases === "object" &&
+    RELEASE_REPOS.every((r) => rec.releases[r] === null || typeof rec.releases[r]?.tag === "string");
+  if (!releasesOk) throw new Error("bad shape");
   return rec;
 }
 
@@ -214,8 +239,13 @@ export async function run({ fetch, now, env, log }) {
     try {
       releases[name] = await latestRelease(fetch, name, token);
     } catch (e) {
+      // With no previous tag there is nothing to keep: a null here would read as "none -> tag" next month.
+      if (!previous) {
+        log(`check-receita-version: release lookup failed for ${name} (${e.message}); no baseline written`);
+        return finish("release_unavailable", 1);
+      }
       log(`check-receita-version: release lookup failed for ${name} (${e.message}); keeping the previous tag`);
-      releases[name] = previous?.releases?.[name] ?? null;
+      releases[name] = previous.releases[name];
     }
   }
   const current = { ...receita, releases, recorded_at: now().toISOString() };

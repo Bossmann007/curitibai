@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   issueTitle,
+  MAX_BYTES,
   RECEITA_URL,
   RELEASE_REPOS,
   run,
@@ -71,6 +72,7 @@ function network(over: Partial<Record<"receita" | "releases" | "issues" | "creat
       return json(RELEASES[repo]);
     }
     if (u.host === "api.github.com" && u.pathname === `/repos/${REPO}/issues` && (init.method ?? "GET") === "GET") {
+      expect(u.searchParams.get("state")).toBe("open");
       return (over.issues ?? (() => json([])))(url, init);
     }
     if (u.host === "api.github.com" && u.pathname === `/repos/${REPO}/issues` && init.method === "POST") {
@@ -148,7 +150,7 @@ describe("check-receita-version", () => {
     expect(posts()).toHaveLength(1);
     expect(post!.url).toBe(`${API}/repos/${REPO}/issues`);
     const body = JSON.parse(post!.init.body as string) as { title: string; body: string };
-    expect(body.title).toBe("Receita: calculadora mudou (app 1.7.2-0d9b30c1, base V0073, regular 1.7.2, simples 1.0.2 → app 1.8.0-aaaa1111, base V0074, regular 1.7.2, simples 1.0.2)");
+    expect(body.title).toBe("Receita: calculadora mudou (app 1.7.2-0d9b30c1, base V0073 (2026-11-09), regular 1.7.2, simples 1.0.2 → app 1.8.0-aaaa1111, base V0074 (2026-12-01), regular 1.7.2, simples 1.0.2)");
     expect(body.body).toContain("`versaoApp`: 1.7.2-0d9b30c1 → 1.8.0-aaaa1111");
     expect(body.body).toContain("`versaoDb`: V0073 → V0074");
     expect(body.body).toContain(RELEASES["calculadora-rtc-regime-regular"]!.html_url);
@@ -250,5 +252,58 @@ describe("check-receita-version", () => {
     const r = await run(deps(network()));
     expect(r.exit).toBe(1);
     expect(readFileSync(file(), "utf8")).toBe("{broken");
+  });
+
+  it("first run with a failed release lookup: exit 1, no baseline (a null tag would be a false change next month)", async () => {
+    const r = await run(deps(network({ releases: () => json({}, 503) })));
+    expect(r).toMatchObject({ code: "release_unavailable", exit: 1 });
+    expect(existsSync(file())).toBe(false);
+  });
+
+  it("only the base date changed: the title still shows the change", async () => {
+    const before = await baseline();
+    const r = await run(deps(network({ receita: () => json({ ...RECEITA_BODY, dataVersaoDb: "2026-12-02" }) })));
+    expect(r).toMatchObject({ code: "changed", exit: 0, issue: "created" });
+    const { title } = JSON.parse(posts()[0]!.init.body as string) as { title: string };
+    expect(title).toContain("(2026-11-09)");
+    expect(title).toContain("(2026-12-02)");
+    expect(versionLabel(before)).not.toBe(versionLabel(readRecord()));
+  });
+
+  it("duplicate check reads the next page of open issues", async () => {
+    const before = await baseline();
+    const title = issueTitle(before, { ...before, versaoDb: "V0074" });
+    const filler = Array.from({ length: 100 }, (_, i) => ({ number: 100 + i, title: `other ${i}` }));
+    const r = await run(
+      deps(
+        network({
+          receita: () => json({ ...RECEITA_BODY, versaoDb: "V0074" }),
+          issues: (url) => json(new URL(url).searchParams.get("page") === "1" ? filler : [{ number: 5, title }]),
+        }),
+      ),
+    );
+    expect(r).toMatchObject({ code: "changed", issue: "existing" });
+    expect(posts()).toHaveLength(0);
+  });
+
+  it("a body over the cap is refused (Content-Length or streamed size)", async () => {
+    const big = JSON.stringify({ ...RECEITA_BODY, pad: "x".repeat(MAX_BYTES) });
+    const streamed = await run(deps(network({ receita: () => new Response(big, { headers: { "content-type": "application/json" } }) })));
+    expect(streamed).toMatchObject({ code: "receita_unavailable", exit: 1 });
+    const declared = await run(
+      deps(network({ receita: () => new Response("{}", { headers: { "content-type": "application/json", "content-length": "999999" } }) })),
+    );
+    expect(declared.exit).toBe(1);
+    expect(existsSync(file())).toBe(false);
+  });
+
+  it("a previous file without dataVersaoDb is unreadable, not a change", async () => {
+    const before = await baseline();
+    const partial: Partial<VersionRecord> = { ...before };
+    delete partial.dataVersaoDb;
+    writeFileSync(file(), JSON.stringify(partial));
+    const r = await run(deps(network()));
+    expect(r).toMatchObject({ code: "previous_unreadable", exit: 1 });
+    expect(posts()).toHaveLength(0);
   });
 });
