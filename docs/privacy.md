@@ -35,7 +35,7 @@ behind it.
   memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, 15 minutes per ANA station; 1 hour
   for the Teatro Guaíra calendar, 6 hours for its event pages and 24 hours for its robots.txt; parsed result only) and is keyed by the request sent to
   the source.
-- The server contacts exactly ten hosts, `https://dadosabertos.curitiba.pr.gov.br`,
+- The server contacts exactly eleven hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
   any other host, or outside `/locaisvacinacao`, are refused) and `https://geocuritiba.ippuc.org.br` (fixed layer
@@ -47,7 +47,10 @@ behind it.
   refused) and `https://raw.githubusercontent.com` (only the three fixed files of this repository's `data` branch,
   `/Bossmann007/curitibai/data/events/events.json`, `/Bossmann007/curitibai/data/phones/phones.json` and
   `/Bossmann007/curitibai/data/phones/status.json`; redirects to
-  any other host or outside `/Bossmann007/curitibai/data` are refused; `CURITIBAI_REMOTE_DATA=0` turns it off), on the
+  any other host or outside `/Bossmann007/curitibai/data` are refused; `CURITIBAI_REMOTE_DATA=0` turns it off) and
+  `https://piloto-cbs.tributos.gov.br` (fixed `GET` routes under `/servico/calculadora-consumo/api/calculadora/dados-abertos`
+  with only a validated date and the fixed Curitiba and Paraná codes; the user's search text is matched locally and never
+  sent; redirects to any other host or outside that path are refused), on the
   default port and without credentials. Every redirect hop is checked
   against them (the redirect body is discarded first), and inputs are search terms, codes and a dataset GUID, never a URL.
   No user text ever enters an Overpass query: the query is built from the category allowlist, and name filters are

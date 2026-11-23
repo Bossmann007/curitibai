@@ -19,6 +19,8 @@ export class TtlCache {
   constructor(
     private readonly ttlMs: number = CACHE_TTL_MS,
     private readonly now: () => number = Date.now,
+    /** When set, at most this many entries are kept; the oldest stored is dropped first. */
+    private readonly maxEntries?: number,
   ) {}
 
   async getOrLoad<T>(key: string, load: () => Promise<T>): Promise<Cached<T>> {
@@ -32,7 +34,14 @@ export class TtlCache {
         const at = this.now();
         for (const [k, e] of this.entries) if (e.expiresAt <= at) this.entries.delete(k);
         const fetchedAt = new Date(at).toISOString();
+        if (this.maxEntries !== undefined) this.entries.delete(key);
         this.entries.set(key, { value, fetchedAt, expiresAt: at + this.ttlMs });
+        if (this.maxEntries !== undefined) {
+          for (const k of this.entries.keys()) {
+            if (this.entries.size <= this.maxEntries) break;
+            this.entries.delete(k);
+          }
+        }
         return { value, fetchedAt };
       } finally {
         this.inflight.delete(key);
