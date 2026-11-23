@@ -307,10 +307,15 @@ describe("local_csv_summary", () => {
         counts.push(g.other_count, ...g.top.map((t) => t.count));
       }
     }
+    let filterAnswers = 0;
     for (const filter_column of columns) {
       for (const filter_value of values) {
         const res = await call({ file: "sweep.csv", filter_column, filter_value });
-        if (res.isError) continue; // a filter leaving 1 to 4 rows out is refused
+        if (res.isError) {
+          expect(errorOf(res)).toMatchObject({ error: "column_not_allowed" }); // leaves 1 to 4 rows out
+          continue;
+        }
+        filterAnswers++;
         counts.push(localCsvSummaryOutput.parse(res.structuredContent).data.filter!.matched_rows);
       }
       for (const group_by of columns) {
@@ -319,7 +324,8 @@ describe("local_csv_summary", () => {
         });
       }
     }
-    expect(counts.length).toBeGreaterThan(20);
+    expect(filterAnswers).toBeGreaterThan(20);
+    expect(counts.length).toBeGreaterThan(30);
     expect(counts.filter((c) => typeof c === "number" && c >= 1 && c < MIN_GROUP_COUNT)).toEqual([]);
     expect(counts).toContain(BELOW_MIN);
   });

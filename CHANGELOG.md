@@ -11,7 +11,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 - **Breaking (output):** `local_csv_summary` `group_by.other_count` of 1 to 4 is `"<5"` without a filter too (0 stays
   0), so no count in an answer is 1 to 4. This is not a protection: `row_count - malformed_rows - sum(top)` gives the
   number back. `group_by.distinct_values` is always a number (it was `"<5"` only with a small filter).
-- Known limit, kept: two allowed filters on the same column can be subtracted from `row_count` (ADR 0008).
+- Known limits, kept (ADR 0008): two allowed filters on the same column can be subtracted from `row_count`; with
+  `group_by` alone, when only one group is unlisted, `row_count - malformed_rows - sum(top)` is that value's size.
 
 ## 0.21.2 - 2026-11-23
 

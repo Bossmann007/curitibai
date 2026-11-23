@@ -28,8 +28,8 @@ names and counts. Data rows (after the first line) are never returned. What it d
   rows out is refused (`column_not_allowed`, for that value only), because `row_count - malformed_rows -
   matched_rows` would give their count.
 - **What is not protected** ([ADR 0008](adr/0008-local-csv-summary-small-counts.md)): the `"<5"` on `other_count` is
-  for consistency only, since `row_count - malformed_rows - sum(top)` gives the number back (it is the sum of every
-  unlisted group, not one value); two allowed filters on the same column can be subtracted from `row_count`, which
+  for consistency only, since `row_count - malformed_rows - sum(top)` gives the number back, and when only one group is
+  unlisted (`distinct_values` one more than the groups listed) that is the size of that one value; two allowed filters on the same column can be subtracted from `row_count`, which
   can give the size of a third value; `row_count`, `malformed_rows` and `distinct_values` describe the whole file.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year

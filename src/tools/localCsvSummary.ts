@@ -82,9 +82,9 @@ export const LOCAL_NOTE =
 
 export const localCsvSummaryInput = {
   file: z.string().min(1).max(255).describe("CSV file name (or relative path) inside the folder set by CURITIBAI_DATA_DIR."),
-  group_by: z.string().min(1).max(120).optional().describe("Column to count rows by (exact name; accents and case ignored)."),
+  group_by: z.string().min(1).max(120).optional().describe("Column to count rows by (exact name; accents and case ignored). Not with filter_column."),
   top: z.number().int().min(1).max(50).default(10).describe("How many of the largest groups to return."),
-  filter_column: z.string().min(1).max(120).optional().describe("Count only rows where this column equals filter_value."),
+  filter_column: z.string().min(1).max(120).optional().describe("Count only rows where this column equals filter_value. Not with group_by."),
   filter_value: z.string().max(200).optional(),
 };
 
@@ -249,8 +249,8 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
   title: "Summarise a CSV downloaded by hand",
   description:
     "Count rows of a CSV file the user downloaded by hand into the folder set by CURITIBAI_DATA_DIR (for example the " +
-    "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count and the top groups of one " +
-    "column (the values of that column are returned), optionally filtered by column = value. Data rows (after the " +
+    "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count, and either the top groups of one " +
+    "column (the values of that column are returned) or the count of rows where one column = value. Data rows (after the " +
     "first line) are never returned. A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, " +
     "long text) is refused; a first line made only of text cannot be told apart from a header and is returned as " +
     "column names, so use files with a header row. " +

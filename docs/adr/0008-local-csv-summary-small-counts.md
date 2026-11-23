@@ -32,9 +32,11 @@ Where it is written: `src/tools/localCsvSummary.ts` (`MIN_GROUP_COUNT`, `BELOW_M
   now refused. The user can still filter the file in a spreadsheet, or ask the two questions separately.
 - **Not protections**, kept and documented:
   - `"<5"` on `other_count` is for consistency only: `row_count - malformed_rows - sum(top)` gives the number back.
-    It is the sum of every unlisted group, not the size of one value.
+    When exactly one group is unlisted (`distinct_values - top.length == 1`, with `top` large enough), that number is
+    the size of that one value. So `group_by` alone on a column with one rare value gives its count, and also the
+    count that the "leaves 1 to 4 rows out" refusal hides for a filter on that column.
   - Two allowed filters on the same column can be subtracted from `row_count` (for example a column with three
     values, two of them filtered): one query is checked at a time, so the size of the third value can come back.
   - `row_count`, `malformed_rows` and `distinct_values` describe the whole file and can be small.
-- Closing the two-filter derivation would need state across calls or refusing filters on columns with few values; not
-  decided.
+- Closing the two-filter and single-unlisted-group derivations would need state across calls, a coarser
+  `distinct_values`, or refusing columns with few values; not decided.

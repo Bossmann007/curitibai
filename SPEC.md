@@ -26,7 +26,8 @@ call, filtered and unfiltered counts could be subtracted to give a group of 1 to
 
 ## Out of scope
 
-- The two-filter derivation (two allowed filters on the same column subtracted from `row_count`): known limit, ADR 0008.
+- The two-filter derivation (two allowed filters on the same column subtracted from `row_count`) and the
+  single-unlisted-group derivation (`group_by` alone, `distinct_values - top.length == 1`): known limits, ADR 0008.
 - Creating the `v0.21.3` tag (the owner tags `main` after the merge).
 
 ## Check

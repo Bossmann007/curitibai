@@ -1270,9 +1270,10 @@ No network. The user downloads a file in a browser (for example the 156 CSV from
 folder named by `CURITIBAI_DATA_DIR`. The tool streams it and returns column names, row counts and grouped counts.
 Data rows (after the first line) are never returned.
 The values of the grouped column are returned; groups under 5 rows (3 before v0.13.2, owner decision 2026-11-21) are
-counted only in `other_count`, so a filter plus a group-by cannot reveal one record. Since v0.21.1 a filter that
-matches fewer than 5 rows (0 included) returns `"<5"` for `matched_rows`, `other_count` and `distinct_values`
-instead of the number. Since v0.13.2 a grouped column is
+counted only in `other_count` (`"<5"` when it is 1 to 4, since v0.21.3). Since v0.21.1 a filter that matches fewer
+than 5 rows (0 included) returns `"<5"` as `matched_rows`. Since v0.21.3 a filter and `group_by` in one call are
+refused (`filter_with_group_by_not_allowed`, owner decision 2026-11-23); what is still derivable is listed in
+[ADR 0008](adr/0008-local-csv-summary-small-counts.md). Since v0.13.2 a grouped column is
 refused (`column_not_allowed`) when any value that could be returned would be changed by the contact-data guard
 (`guardedSummary`: CPF/CNPJ-, e-mail- or phone-shaped text, or year ranges that look like phone numbers such as
 "2025 - 2026"). It does not detect names of people.
