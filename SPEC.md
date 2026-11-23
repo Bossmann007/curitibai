@@ -82,13 +82,15 @@ Municipal 15.744/2020 and 15.977/2022 in its description), polygon layers 1 to 8
    Same credit. Note: a conservation unit is a protected area, not always open to visits; no update date is published.
 3. **Per-type credit and note.** `FacilityType` gets optional `credit` and `note`; `source` is `credit` when set, else
    the current "IPPUC / GeoCuritiba" (existing types unchanged). Types and aliases stay unique (tested).
-4. **`service_areas_at_point.inside_curitiba`** (boolean). Read from the bairro layer (cadastral layer 2, the same
-   point query and cache as `place_at_point`), first: false when no Curitiba neighbourhood contains the point. Then
-   health area (19) and CRAS (5) as before, only when inside; outside, both lists are empty and nothing else is asked.
-   Cost: 3 requests 5 s apart (slots 0, 5 and 10 s, inside the 20 s budget; a cold call takes about 10 s, not 5 s);
-   a cached bairro answer (from either tool) makes no request. A bairro failure is the call's error (as the health
-   layer was); a health failure after the bairro read is now also an error, a CRAS failure stays `partial`. `source`
-   names IPPUC/GeoCuritiba (SMS e FAS) as before; `source_url` stays the thematic service.
+4. **`service_areas_at_point.inside_curitiba`** (boolean). The health area (19) is asked first, as before: a health
+   unit area at the point means inside (the areas are Curitiba's own units). Only when it has none is the bairro
+   layer asked (cadastral layer 2, the same point query and cache as `place_at_point`): inside when it names a
+   neighbourhood or regional, as `place_at_point` decides. Outside, the CRAS layer is not asked. Cost: 2 requests in
+   the common case, as in v0.23.0 (a first draft asked the bairro layer first, always 3 requests: the review found
+   two concurrent cold calls then pushed the CRAS slot past the 20 s budget, and a gap in the bairro layer would hide
+   a health area); 3 when no health area contains the point. The health or bairro layer failing is the call's error;
+   a CRAS failure stays `partial`. `source` and `source_url` stay the thematic service; the outside note names the
+   cadastral map.
 5. **Docs and release.** docs/tools.md, docs/sources.md (layers, decisions above), README if it lists types,
    CHANGELOG 0.24.0, version 0.24.0 in `package.json` and `package-lock.json`.
 
@@ -106,7 +108,8 @@ Municipal 15.744/2020 and 15.977/2022 in its description), polygon layers 1 to 8
     malformed e-mail (`@.curitiba.pr.gov.br`) dropped; `updated` from `dt_atualiz`; the SMELJ / SMMA credit;
   - a conservation layer: centroid, coded bairro and kind, `updated` null, the credit and the conservation note;
     existing types keep "IPPUC / GeoCuritiba";
-  - `service_areas_at_point`: bairro first, then health, then CRAS; `inside_curitiba` true inside; outside: false,
-    empty lists, one request only; bairro failure is an error; the cached bairro point makes no new request.
+  - `service_areas_at_point`: health then CRAS when a health area exists (bairro never asked); no health area: bairro
+    decides, false with no CRAS request, true then CRAS; bairro failure is an error; a 499 on either layer blocks the
+    host; the bairro answer cached by `place_at_point` makes no new request.
 - Live check once before the PR (not part of verify): `velodromo` returns one record; `estacao ecologica` two;
   `service_areas_at_point` at Centro returns `inside_curitiba` true.

@@ -15,9 +15,10 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 - Left out on purpose (docs/sources.md): the SMELJ service itself (no `divulgar_endereco` flag; the same records are
   read from the per-type layers), RPPNM (private land, often named after people, with the lot's street address:
   personal data), APA and ARIE (no bairro or kind fields), and the parks and bosques already in `parque`.
-- `service_areas_at_point` returns `inside_curitiba` (boolean, as `place_at_point`), read from the cadastral bairro
-  layer first; outside, no area is asked for. Up to 3 requests 5 s apart (a cold call takes about 10 s; the bairro
-  answer is shared with `place_at_point`'s cache). A bairro layer failure is an error.
+- `service_areas_at_point` returns `inside_curitiba` (boolean, as `place_at_point`): true when a health unit area
+  contains the point; when none does, the cadastral bairro layer decides (its answer is shared with
+  `place_at_point`'s cache), and outside the CRAS layer is not asked. Still 2 requests in the common case; 3 when no
+  health area contains the point. A bairro layer failure is an error.
 
 ## 0.23.0 - 2026-11-23
 

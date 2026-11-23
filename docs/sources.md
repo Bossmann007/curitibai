@@ -1123,10 +1123,12 @@ changes (owner request, 2026-11-23: monthly and automatic).
 - **Query:** one fixed URL per layer: `geometry=<lon>,<lat>` (the point rounded to 4 decimals, about 11 m),
   `geometryType=esriGeometryPoint`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, a fixed `outFields` list,
   `returnGeometry=false`. The rounded point is the only user input in the URL and the cache key.
-- **Requests and failures:** since 0.24.0 the bairro layer first (cadastral layer 2, the same point query and cache as
-  `place_at_point`): `inside_curitiba` is false when no neighbourhood contains the point, and then nothing else is
-  asked. Inside, health area, then CRAS territory (up to 3 requests, 5 s apart: slots 0, 5 and 10 s fit the 20 s
-  budget). The bairro layer failing is an error. Same
+- **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Since
+  0.24.0 a health area means `inside_curitiba` true; when the point has none, the bairro layer (cadastral layer 2, the
+  same point query and cache as `place_at_point`) is asked in between and decides (3 requests: slots 0, 5 and 10 s);
+  outside, the CRAS layer is not asked. The bairro layer was not put first: that made every call 3 requests, two
+  concurrent cold calls then pushed a CRAS slot past the budget, and a gap in the bairro layer would hide a health
+  area. The bairro layer failing is an error. Same
   host gate, timeout (15 s), cap (2 MB), redirect rule, refusal handling and fail-closed parser as `place_at_point`;
   each answer cached 6 hours (at most 500 entries). The health layer failing is an error; a CRAS failure after it keeps
   what was read (`partial: true`). Each list has one area per name (the first row kept; a nameless row only when no row

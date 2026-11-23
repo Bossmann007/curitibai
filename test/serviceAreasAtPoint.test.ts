@@ -85,26 +85,35 @@ describe("service_areas_at_point answers", () => {
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
     expect(out.source_url).toBe(THEMATIC_SERVICE_URL);
     expect(out.note).toMatch(/may have changed/);
-    expect(calls.map((c) => c.url)).toEqual([key("bairro"), key("health_area"), key("cras_territory")].map((k) => k.slice(4)));
+    expect(calls.map((c) => c.url)).toEqual([key("health_area"), key("cras_territory")].map((k) => k.slice(4)));
     // The full-precision position appears nowhere: not in a URL, not in the answer.
     expect(JSON.stringify(res) + JSON.stringify(calls)).not.toMatch(/4296123|2713123/);
   });
 
-  it("a point with no area in either layer is an answer with empty lists and a note", async () => {
-    stubFetch(routes({ health_area: { body: EMPTY }, cras_territory: { body: EMPTY } }));
+  it("a point with no area in either layer is an answer with empty lists and a note; the bairro layer says it is inside", async () => {
+    const calls = stubFetch(routes({ health_area: { body: EMPTY }, cras_territory: { body: EMPTY } }));
     const out = await areas();
-    expect(out.data).toMatchObject({ health_units: [], cras: [], partial: false });
+    expect(out.data).toMatchObject({ inside_curitiba: true, health_units: [], cras: [], partial: false });
+    expect(calls.map((c) => c.url)).toEqual([key("health_area"), key("bairro"), key("cras_territory")].map((k) => k.slice(4)));
     expect(out.note).toMatch(/No health unit area found here \(not covered by the layer\)/);
     expect(out.note).toMatch(/No CRAS territory found here/);
   });
 
-  it("a point in no Curitiba neighbourhood is inside_curitiba false, with empty lists and no other request", async () => {
-    const calls = stubFetch(routes({ bairro: { body: EMPTY } }));
+  it("a point in no health area and no Curitiba neighbourhood is inside_curitiba false; the CRAS layer is not asked", async () => {
+    const calls = stubFetch(routes({ health_area: { body: EMPTY }, bairro: { body: EMPTY } }));
     const out = await areas();
     expect(out.data).toMatchObject({ inside_curitiba: false, health_units: [], cras: [], partial: false });
-    expect(out.note).toMatch(/No Curitiba neighbourhood contains this point/);
+    expect(out.note).toMatch(/no Curitiba neighbourhood .*contains this point/);
     expect(out.note).not.toMatch(/No health unit area found/);
-    expect(calls.map((c) => c.url)).toEqual([key("bairro").slice(4)]);
+    expect(calls.map((c) => c.url)).toEqual([key("health_area"), key("bairro")].map((k) => k.slice(4)));
+  });
+
+  it("a health area means inside: the bairro layer is not asked, so a gap in it hides nothing", async () => {
+    const calls = stubFetch(routes({ bairro: { body: EMPTY } }));
+    const out = await areas();
+    expect(out.data).toMatchObject({ inside_curitiba: true, partial: false });
+    expect(out.data.health_units).toHaveLength(1);
+    expect(calls.map((c) => c.url)).not.toContain(key("bairro").slice(4));
   });
 
   it("one empty layer keeps the other", async () => {
@@ -189,24 +198,27 @@ describe("service_areas_at_point errors", () => {
   ])("the health layer failing with %s is an error, never data", async (_, r, expected) => {
     const calls = stubFetch(routes({ health_area: r }));
     expect(errorOf(await call(AT))).toEqual(expected);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(1);
   });
 
   it.each<[string, Route]>([
     ["HTTP 500", { status: 500 }],
     ["an ArcGIS error 400 with HTTP 200", { body: '{"error":{"code":400}}' }],
-  ])("the bairro layer failing with %s is an error and nothing else is asked", async (_, r) => {
-    const calls = stubFetch(routes({ bairro: r }));
+  ])("the bairro layer failing with %s (no health area) is an error and the CRAS layer is not asked", async (_, r) => {
+    const calls = stubFetch(routes({ health_area: { body: EMPTY }, bairro: r }));
     expect(errorOf(await call(AT))).toEqual({ error: "source_unavailable" });
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
   });
 
-  it("a 499 in an HTTP 200 body blocks the host: place_at_point is not asked either", async () => {
-    const calls = stubFetch(routes({ bairro: { body: '{"error":{"code":499,"message":"Token Required"}}' } }));
+  it.each<[string, Partial<Record<AreaLayer, Route>>, number]>([
+    ["health", { health_area: { body: '{"error":{"code":499,"message":"Token Required"}}' } }, 1],
+    ["bairro", { health_area: { body: EMPTY }, bairro: { body: '{"error":{"code":499,"message":"Token Required"}}' } }, 2],
+  ])("a 499 in an HTTP 200 body on the %s layer blocks the host: place_at_point is not asked either", async (_, over, n) => {
+    const calls = stubFetch(routes(over));
     expect(errorOf(await call(AT))).toMatchObject({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
     const client = await connectClient();
     expect(errorOf(await client.callTool({ name: "place_at_point", arguments: AT }))).toMatchObject({ error: "source_unavailable" });
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(n);
   });
 
   it.each<[string, Route]>([
@@ -234,7 +246,7 @@ describe("service_areas_at_point cache", () => {
     const calls = stubFetch(routes());
     await areas(AT);
     await areas({ lat: AT.lat + 0.00001, lon: AT.lon - 0.00001 });
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(2);
   });
 
   it("shares the bairro answer with place_at_point: the same point asks the bairro layer once", async () => {
@@ -242,7 +254,7 @@ describe("service_areas_at_point cache", () => {
       [`GET ${pointQueryUrl(layer, P)}`]: { body, contentType: JSON_TYPE },
     });
     const calls = stubFetch({
-      ...routes(),
+      ...routes({ health_area: { body: EMPTY } }),
       ...placeOnly("zoning_decree", EMPTY),
       ...placeOnly("zoning_law", EMPTY),
       ...placeOnly("street", JSON.stringify({ spatialReference: { wkid: 4326 }, features: [] })),
