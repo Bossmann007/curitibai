@@ -48,8 +48,10 @@ result in `local_csv_summary` no longer gives an exact count, and this SPEC is b
    v0.21.0), [0006](docs/adr/0006-spec-holds-the-current-version.md) (this rule and the release check),
    [0007](docs/adr/0007-data-branch-writers.md) (item 1); ADR 0002 gains the v0.19.4 owner decision "uma recusa do site
    encerra a coleta da noite". The other owner decisions of v0.18.1 to v0.21.0 were already in `docs/sources.md`
-   (PNCP search, 35-minute timeout via ADR 0002, Cultura e-mails and `mixedOwnership`, simulated Receita dates) or
-   `docs/tools.md` (partial answers). References to old SPEC line numbers in ADRs 0001 and 0002 and in
+   (PNCP search, 35-minute timeout via ADR 0002, simulated Receita dates, the bispado/mcp-calculadora-rtc credit) or
+   `docs/tools.md` (partial answers); three that were not are added to `docs/sources.md` here: the 2026-11-23
+   approval of the 20 Cultura e-mails and of the `mixedOwnership` note, the reason for the 2099-12-31 date bound, and
+   the known gap that a 404 rate is read without its headers. References to old SPEC line numbers in ADRs 0001 and 0002 and in
    `docs/sources.md` now point to `git show v0.21.0:SPEC.md`.
 7. **`docs/development.md`:** a corrupt `receita/version.json` on `data` keeps the monthly check red
    (`previous_unreadable`) until fixed or deleted by hand.

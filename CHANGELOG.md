@@ -14,7 +14,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `scripts/publish-receita-version.sh`.
 - `scripts/verify` checks that `package.json` matches the newest CHANGELOG release and, in a clone with tags, that the
   previous release (and, on `main`, the current one) has its `v` tag (`scripts/check-release.mjs`).
-- SPEC.md describes this version only; decisions that were written only there are now ADRs 0005 to 0007 in `docs/adr/`.
+- SPEC.md describes this version only; decisions that were written only there are now ADRs 0005 to 0007 in `docs/adr/` or
+  lines in `docs/sources.md` (Cultura e-mails and `mixedOwnership` approval, Receita date bound and known gap).
 - New monthly workflow `.github/workflows/receita-version.yml` (day 1, 09:23 UTC, plus manual runs): one GET to the
   Receita Federal pilot calculator's open-data `versao` endpoint and the latest release of
   `ReceitaFederal/calculadora-rtc-regime-regular` and `calculadora-rtc-simples-nacional`. It records
