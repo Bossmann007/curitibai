@@ -2,6 +2,18 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.25.2 - 2026-11-23
+
+Docs only: no tool behaviour, name, description, schema or output changed.
+
+- [Compared with the Curitiba App](docs/tools.md#compared-with-the-curitiba-app) refreshed: since March 2026 the app
+  has an AI assistant and about 1,000 services (including the former Curitiba 156 app), each fact linked to the
+  Prefeitura news page that states it (and a Bem Paraná reprint for Saúde Já). New rows: AI assistant (partial:
+  CuritibAI is an MCP server for the assistant you pick and does not answer by itself), creche and student
+  registration with Vale Creche (out of scope), school calendar (not covered yet) and IPTU payment (out of scope). The
+  Curitiba Lê row now says what Curitiba Lê Digital offers; the transport row names the app's no-login visitor access
+  and favourite routes.
+
 ## 0.25.1 - 2026-11-23
 
 Only text changed: no tool behaviour, name, title, type, schema or output changed.
