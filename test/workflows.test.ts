@@ -97,7 +97,7 @@ describe("GitHub Actions workflows", () => {
   it("receita-version: monthly plus manual runs, short timeout, write permissions on the job only, no npm install", () => {
     const wf = readFileSync(new URL("receita-version.yml", DIR), "utf8");
     const lines = code(wf).map((l) => l.trimEnd());
-    expect(lines.filter((l) => /^\s*- cron:/.test(l))).toEqual(['    - cron: "23 9 1 * *"']);
+    expect(lines.filter((l) => /^\s*- cron:/.test(l))).toEqual(['    - cron: "23 9 1 * *"', '    - cron: "23 9 2 * *"']);
     expect(lines).toContain("  workflow_dispatch:");
     expect(wf).toMatch(/^permissions:\n {2}contents: read\n/m);
     expect(wf).toMatch(/^ {4}permissions:\n {6}contents: write\n {6}issues: write\n/m);

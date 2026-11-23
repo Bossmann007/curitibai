@@ -40,7 +40,7 @@ must run at the top of a checkout (exit 2 elsewhere).
 | Workflow | When | What it does |
 |---|---|---|
 | `.github/workflows/collect.yml` | Nightly, 02:37 UTC plus four retries | Events and useful phones to the `data` branch ([docs/sources.md](sources.md#published-nightly-copy-of-the-events-and-phones-files-since-0180)) |
-| `.github/workflows/receita-version.yml` | Day 1 of each month, 09:23 UTC | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-since-0211)) |
+| `.github/workflows/receita-version.yml` | Days 1 and 2 of each month, 09:23 UTC (day 2 is a retry; no change since day 1 means no commit, no issue) | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-since-0211)) |
 
 Both also run by hand (Actions, "Run workflow", or `gh workflow run <file>`) and only on `Bossmann007/curitibai`
 `main`.

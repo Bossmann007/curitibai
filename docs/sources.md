@@ -18,6 +18,7 @@
   - [`events_search`: Instituto Municipal de Turismo events calendar (local file written by a separate collector)](#events_search-instituto-municipal-de-turismo-events-calendar-local-file-written-by-a-separate-collector)
   - [`useful_phones`: Instituto Municipal de Turismo "Telefones Úteis" page (local file written by the same collector)](#useful_phones-instituto-municipal-de-turismo-telefones-úteis-page-local-file-written-by-the-same-collector)
   - [Published nightly copy of the events and phones files (since 0.18.0)](#published-nightly-copy-of-the-events-and-phones-files-since-0180)
+  - [Credit to the Instituto Municipal de Turismo in the published files (since 0.21.2)](#credit-to-the-instituto-municipal-de-turismo-in-the-published-files-since-0212)
   - [Monthly check of the Receita Federal calculator version (since 0.21.1)](#monthly-check-of-the-receita-federal-calculator-version-since-0211)
   - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
@@ -787,7 +788,7 @@ in the city's own categories. Built.
   four retries since v0.19.3, all inside the Turismo site's robots.txt `Visit-time` 0200-0600; GitHub can delay or drop a
   scheduled run, and the first one, on 2026-11-23, started 8.5 h late) plus `workflow_dispatch`, on `ubuntu-latest` only (standard GitHub-hosted runner, free in
   public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>), timeout 35
-  minutes (above the collector's 30-minute deadline), concurrency group `collect` (a run never overlaps another; a queued one waits), job permission
+  minutes (above the collector's 30-minute deadline), concurrency group `data-branch` since 0.21.1, shared with `receita-version.yml` (a run never overlaps another; a queued one waits), job permission
   `contents: write` only (workflow default `contents: read`), actions pinned by full commit SHA, and only on
   `Bossmann007/curitibai` `main` (forks and other branches skip the job). No `npm ci`: the collector uses Node
   built-ins only.
@@ -834,13 +835,32 @@ in the city's own categories. Built.
   (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
   checked 2026-11-22); [docs/local-data.md](local-data.md#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script) says how to re-enable it.
 
+### Credit to the Instituto Municipal de Turismo in the published files (since 0.21.2)
+
+- **What the files carry:** `events/events.json` and `phones/phones.json` (local and on the `data` branch) start with
+  `"credit": "Fonte: Instituto Municipal de Turismo de Curitiba"` next to `source`, the page the facts were read from
+  (`https://turismo.curitiba.pr.gov.br/eventos/` and `.../conteudo/telefones-uteis/92`); each event also keeps its own
+  `link` to its page on the site. Written by `scripts/fetch-events.mjs` (`CREDIT`). The `data` branch gets the line at
+  the next successful nightly collection; nobody pushes to it by hand.
+- **Per file, not per row:** installed servers check each event and phone row for exact keys (`EventRow`, `PhoneRow`,
+  `.strict()`), so a new row field would make their copy invalid; the file level is not strict, so servers before
+  0.21.2 read the new files unchanged (`test/publishedData.test.ts`). The tools' answers keep their `attribution` field;
+  no tool output schema changed.
+- **Only facts:** title, dates, time, place, address, category and link for events; section, name and institutional
+  numbers for phones. Descriptions, images, ticket and rating text are never read (`parseDetailPage`) and never written.
+- **Premise (owner decision, Enzo, 2026-11-23), recorded as given:** only facts are republished, under Lei 9.610/98
+  art. 8º, incisos V and VI; no licence or terms of use were found on the site (not checked again in this change);
+  the Instituto was not contacted, by the owner's decision (see also
+  [ADR 0001](adr/0001-facts-and-links-from-unlicensed-sources.md)). The credit line and the link to the source page are kept
+  even so.
+
 ### Monthly check of the Receita Federal calculator version (since 0.21.1)
 
 Not a tool: a scheduled check so the owner hears when the Receita Federal pilot "calculadora de tributos do consumo"
 changes (owner request, 2026-11-23: monthly and automatic).
 
-- **What runs:** `.github/workflows/receita-version.yml`, cron `23 9 1 * *` (day 1 of each month, 09:23 UTC) plus
-  `workflow_dispatch`, `ubuntu-latest`, timeout 5 minutes, concurrency group `receita-version`, job permissions
+- **What runs:** `.github/workflows/receita-version.yml`, cron `23 9 1 * *` and `23 9 2 * *` (days 1 and 2 of each month, 09:23 UTC; day 2 retries a day-1 run dropped from the `data-branch` queue and changes nothing when day 1 ran) plus
+  `workflow_dispatch`, `ubuntu-latest`, timeout 5 minutes, concurrency group `data-branch` (shared with `collect.yml` since 0.21.1), job permissions
   `contents: write` (push to `data`) and `issues: write` (workflow default `contents: read`), actions pinned by full
   commit SHA, only on `Bossmann007/curitibai` `main`. No `npm ci`: Node built-ins only. The job runs
   `scripts/publish-receita-version.sh`, which runs `scripts/check-receita-version.mjs` once.
