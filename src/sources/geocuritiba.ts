@@ -484,22 +484,27 @@ export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>
   }));
 }
 
-// ---- Point queries: place_at_point (v0.22.0) ----
+// ---- Point queries: place_at_point (v0.22.0), service_areas_at_point (v0.23.0) ----
 
 /** IPPUC's cadastral map service (the GeoCuritiba/ folder: the root-level name answers 499 "Token Required"). */
 export const CADASTRAL_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer`;
 /** Streets are looked for within this distance of the point. */
 export const STREET_RADIUS_M = 100;
 
-export type PointLayer = "bairro" | "zoning_decree" | "zoning_law" | "street";
+/** IPPUC's thematic map service (health unit areas, CRAS territories), the GeoCuritiba/ folder: the root-level name answers 499. */
+export const THEMATIC_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer`;
+
+export type PointLayer = "bairro" | "zoning_decree" | "zoning_law" | "street" | "health_area" | "cras_territory";
 
 const ZONING_FIELDS = "sg_zona,nm_zona,legislacao,data_versao";
-/** Layer ids and fixed fields, read from the service on 2026-11-23 (see docs/sources.md). */
-export const POINT_LAYERS: Record<PointLayer, { id: number; fields: string }> = {
-  bairro: { id: 2, fields: "nome,nm_regional" },
-  zoning_decree: { id: 41, fields: ZONING_FIELDS },
-  zoning_law: { id: 36, fields: ZONING_FIELDS },
-  street: { id: 12, fields: "gtm_nm_logradouro" },
+/** Service, layer id and fixed fields, read from the services on 2026-11-23 (see docs/sources.md). */
+export const POINT_LAYERS: Record<PointLayer, { service: string; id: number; fields: string }> = {
+  bairro: { service: CADASTRAL_SERVICE_URL, id: 2, fields: "nome,nm_regional" },
+  zoning_decree: { service: CADASTRAL_SERVICE_URL, id: 41, fields: ZONING_FIELDS },
+  zoning_law: { service: CADASTRAL_SERVICE_URL, id: 36, fields: ZONING_FIELDS },
+  street: { service: CADASTRAL_SERVICE_URL, id: 12, fields: "gtm_nm_logradouro" },
+  health_area: { service: THEMATIC_SERVICE_URL, id: 19, fields: "nome,distrito,data,fonte,geometriaaproximada" },
+  cras_territory: { service: THEMATIC_SERVICE_URL, id: 5, fields: "nome,tipo,regional,data,fonte,geometriaaproximada" },
 };
 
 export interface Point {
@@ -541,7 +546,7 @@ export function pointQueryUrl(layer: PointLayer, p: Point): string {
     q.set("returnGeometry", "false");
   }
   q.set("f", "json");
-  return `${CADASTRAL_SERVICE_URL}/${l.id}/query?${q.toString()}`;
+  return `${l.service}/${l.id}/query?${q.toString()}`;
 }
 
 export interface PointFeature {

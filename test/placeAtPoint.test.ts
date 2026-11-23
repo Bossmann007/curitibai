@@ -21,16 +21,17 @@ const STREETS = JSON.stringify({
   ],
 });
 
-const key = (layer: PointLayer) => `GET ${pointQueryUrl(layer, P)}`;
-function routes(over: Partial<Record<PointLayer, Route>> = {}): Record<string, Route> {
-  const base: Record<PointLayer, Route> = {
+type PlaceLayer = Extract<PointLayer, "bairro" | "zoning_decree" | "zoning_law" | "street">;
+const key = (layer: PlaceLayer) => `GET ${pointQueryUrl(layer, P)}`;
+function routes(over: Partial<Record<PlaceLayer, Route>> = {}): Record<string, Route> {
+  const base: Record<PlaceLayer, Route> = {
     bairro: { body: BAIRRO },
     zoning_decree: { body: ZONE_41 },
     zoning_law: { body: ZONE_36 },
     street: { body: STREETS },
   };
   const out: Record<string, Route> = {};
-  for (const layer of Object.keys(base) as PointLayer[]) out[key(layer)] = { contentType: JSON_TYPE, ...base[layer], ...over[layer] };
+  for (const layer of Object.keys(base) as PlaceLayer[]) out[key(layer)] = { contentType: JSON_TYPE, ...base[layer], ...over[layer] };
   return out;
 }
 
@@ -61,7 +62,7 @@ describe("place_at_point query URLs", () => {
   });
 
   it("is a fixed point query per layer with the rounded point only", () => {
-    const layers: [PointLayer, number][] = [["bairro", 2], ["zoning_decree", 41], ["zoning_law", 36], ["street", 12]];
+    const layers: [PlaceLayer, number][] = [["bairro", 2], ["zoning_decree", 41], ["zoning_law", 36], ["street", 12]];
     for (const [layer, id] of layers) {
       const u = new URL(pointQueryUrl(layer, P));
       expect(u.pathname).toBe(`/server/rest/services/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer/${id}/query`);

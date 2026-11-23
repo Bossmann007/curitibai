@@ -40,6 +40,7 @@ describe("tools/list", () => {
       "places_search",
       "procurement_search",
       "river_levels",
+      "service_areas_at_point",
       "tax_reform_curitiba",
       "useful_phones",
       "vaccination_sites_search",

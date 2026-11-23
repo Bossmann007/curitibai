@@ -23,6 +23,7 @@
   - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
   - [`place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)](#place_at_point-ippuc-geocuritiba-cadastral-map-since-0220)
+  - [`service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)](#service_areas_at_point-ippuc-geocuritiba-thematic-map-health-unit-areas-and-cras-territories-since-0230)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
   - [`guaira_events`: Centro Cultural Teatro Guaíra calendar (live)](#guaira_events-centro-cultural-teatro-guaíra-calendar-live)
   - [`local_csv_summary`: a file the user downloaded](#local_csv_summary-a-file-the-user-downloaded)
@@ -81,7 +82,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, with the point rounded to 4 decimals, through the same host gate |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service, both with the point rounded to 4 decimals, through the same host gate |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
@@ -1074,6 +1075,42 @@ changes (owner request, 2026-11-23: monthly and automatic).
   others return no geometry and no spatial reference), a spatial reference other than 4326.
 - **Fields returned:** as published, through the same cleaning and masking as the other GeoCuritiba text fields. A
   missing field is null; a feature with none of the fields read is skipped.
+
+### `service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)
+
+- **Source:** IPPUC, GeoCuritiba ArcGIS REST, anonymous GET, `f=json`:
+  <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer>
+  (`currentVersion` 11.5, layers in EPSG 31982, `maxRecordCount` 2,000; checked 2026-11-23 with curl). The same name
+  at the services root answers error 499 "Token Required" with HTTP 200; the tool uses the `GeoCuritiba/` folder only
+  (pinned in a test), since a 499 blocks the host for every GeoCuritiba tool. The areas are drawn by the Secretaria
+  Municipal da Saúde (`fonte` "SMS-PMC") and the Fundação de Ação Social (`fonte` "Fundação de Ação Social - FAS"). No
+  licence or terms found: live queries only, nothing copied to this repository or the `data` branch, credit
+  "Fonte: IPPUC/GeoCuritiba (SMS e FAS)" in `source`.
+- **Layers used** (checked 2026-11-23): 19 Unidade de Saúde - Abrangência (group Saúde; `nome`, `distrito`, `data`,
+  `fonte`, `geometriaaproximada`) and 5 CRAS - Território (group Assistência Social; `nome`, `tipo`, `regional`,
+  `data`, `fonte`, `geometriaaproximada`). Not read: `us` (an internal code, e.g. "su0"), `contrato`, `codigo`, area
+  and perimeter. Example (Centro, -25.4296, -49.2713): US MÃE CURITIBANA, district MATRIZ, "março/2022", SMS-PMC; CRAS
+  MATRIZ, regional MATRIZ, "MAR-2019". At a CIC point (-25.52, -49.32): US TAIZ VIVIANE MACHADO, "fevereiro/2011";
+  CRAS NOSSA SENHORA DA LUZ, "MAR-2019". A point in the box outside the city (-25.35, -49.20) matched nothing in
+  either layer. `geometriaaproximada` (an integer field) was null at every point tried; the tool reads 1 as true and 0 as
+  false.
+- **Reference dates vary by area.** `data` is a text field per polygon, not per layer: distinct values on 2026-11-23
+  included "janeiro/2019", "junho/2019", "março/2021", "julho/2021" and "março/2022" in layer 19 (and "fevereiro/2011"
+  at the CIC point), and "MAR-2019", "DEZ-2023" and "JAN-2025" in layer 5. The tool returns each area's own `data` as
+  `reference_date`, unparsed, and its `note` always says the area may have changed since and to confirm with the
+  unit, the CRAS or 156.
+- **Query:** one fixed URL per layer: `geometry=<lon>,<lat>` (the point rounded to 4 decimals, about 11 m),
+  `geometryType=esriGeometryPoint`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, a fixed `outFields` list,
+  `returnGeometry=false`. The rounded point is the only user input in the URL and the cache key.
+- **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Same
+  host gate, timeout (15 s), cap (2 MB), redirect rule, refusal handling and fail-closed parser as `place_at_point`;
+  each answer cached 6 hours (at most 500 entries). The health layer failing is an error; a CRAS failure after it keeps
+  what was read (`partial: true`). Each list has one area per name (the first row kept; a nameless row only when no row
+  has a name), sorted by name, at most 3; the boundary note needs two names. A missing field is null; a feature
+  with none of the fields read is skipped.
+- **Why not in `place_at_point`:** that tool already makes up to 4 requests 5 s apart; two more would put the sixth
+  at 25 s, past the 20 s budget, so it would come back partial wherever zoning layer 41 is empty (about 39% of the
+  city), and every caller would wait 10 s more (SPEC v0.23.0).
 
 ### `river_levels`: ANA telemetry (stations operated by IAT-PR)
 

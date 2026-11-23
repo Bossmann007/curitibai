@@ -35,8 +35,8 @@ behind it.
   memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, 15 minutes per ANA station; 1 hour
   for the Teatro Guaíra calendar, 6 hours for its event pages and 24 hours for its robots.txt; parsed result only) and is keyed by the request sent to
   the source.
-- **User position (`place_at_point`, since 0.22.0).** This is the only tool that sends a position to a source. The
-  point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
+- **User position (`place_at_point` since 0.22.0, `service_areas_at_point` since 0.23.0).** These are the only tools
+  that send a position to a source, under the same rules. The point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
   `geocuritiba.ippuc.org.br` (in the query URL), kept as the in-memory cache key (6 hours, at most 500 points) and
   returned. The full-precision position is never sent, cached, logged or written anywhere (the server writes no
   files and logs no request). A point outside the Curitiba box is refused before any request. Every other tool that
@@ -46,7 +46,7 @@ behind it.
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
   any other host, or outside `/locaisvacinacao`, are refused) and `https://geocuritiba.ippuc.org.br` (fixed layer
-  queries under `/server/rest/services`, and `place_at_point`'s point queries; redirects to any other host or outside that path are refused) and
+  queries under `/server/rest/services`, and the point queries of `place_at_point` and `service_areas_at_point`; redirects to any other host or outside that path are refused) and
   `https://telemetriaws1.ana.gov.br` (`/ServiceANA.asmx/DadosHidrometeorologicos` for bundled station codes; ANA documents
   plain http, but https answered with a valid certificate on 2026-11-22, so https is used; redirects to any other host
   or outside `/ServiceANA.asmx` are refused) and `https://www.teatroguaira.pr.gov.br` (robots.txt, the calendar pages
