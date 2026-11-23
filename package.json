@@ -1,6 +1,6 @@
 {
   "name": "curitibai-mcp",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "description": "Unofficial read-only MCP server for public Curitiba (Brazil) city data. Not affiliated with Prefeitura de Curitiba.",
   "license": "(Apache-2.0 AND ODbL-1.0)",
   "private": true,
@@ -16,7 +16,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "contracts:update": "CURITIBAI_UPDATE_CONTRACTS=1 vitest run test/contracts.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

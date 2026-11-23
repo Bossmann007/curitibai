@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.24.1 - 2026-11-23
+
+Tests and guards only: no tool behaviour, name, description or schema changed.
+
+- Contract test (`test/contracts.test.ts`): the name, `inputSchema` and `outputSchema` of every tool, as the real
+  server sends them in `tools/list`, are kept in `test/fixtures/tool-contracts.json`. The test fails naming each tool
+  added, removed or changed; rewrite the snapshot on purpose with `npm run contracts:update` and add a CHANGELOG entry
+  for the change (docs/development.md).
+- The same test prints the size of `tools/list` in characters. Baseline at this version (25 tools): descriptions
+  15,561, inputSchemas 19,636, outputSchemas 63,226, total 107,011 (SPEC.md). No ceiling yet.
+- Unit tests on a fake clock for `src/hostGate.ts` (spacing between request starts, `maxQueueWaitMs`, failures
+  remembered 60 s or a 429's Retry-After capped at 1 hour, a waiting request refused when an earlier one failed) and
+  `src/cache.ts` (one shared load per key, failed loads not stored, expiry at the TTL, `maxEntries` eviction).
+- `guaira_events`: the deprecated `partial` field (alias of `truncated` since 0.18.3) is removed no earlier than
+  2027-03-01, in the first minor release on or after that date, with its own entry here. It is unchanged in this
+  version.
+
 ## 0.24.0 - 2026-11-23
 
 - `city_facilities_search`: nine sport and leisure types from IPPUC's "Esporte e Lazer" layers (SMELJ):
