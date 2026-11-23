@@ -54,6 +54,11 @@ function contractDiff(expected: Contract[], actual: Contract[]): string[] {
 
 const size = (value: unknown) => (value === undefined ? 0 : JSON.stringify(value).length);
 
+// Guard on what every tools/list costs the client (SPEC.md): one description at most MAX_DESCRIPTION characters
+// (raw string), and all of them, measured as JSON like the baseline, at most MAX_DESCRIPTIONS_SUM.
+const MAX_DESCRIPTION = 400;
+const MAX_DESCRIPTIONS_SUM = 9_600;
+
 describe("tool contracts", () => {
   it("tool names, inputSchemas and outputSchemas match test/fixtures/tool-contracts.json", async () => {
     const actual = contracts(await listTools());
@@ -79,7 +84,7 @@ describe("tool contracts", () => {
     ).toEqual(["removed: a", "changed: b (inputSchema, outputSchema)", "added: d"]);
   });
 
-  it("prints the tools/list size in characters (baseline in SPEC.md; no ceiling yet)", async () => {
+  it("every description is at most 400 characters and their sum is under the ceiling (SPEC.md)", async () => {
     const tools = await listTools();
     const sum = (pick: (t: (typeof tools)[number]) => unknown) => tools.reduce((n, t) => n + size(pick(t)), 0);
     const measured = {
@@ -90,6 +95,10 @@ describe("tool contracts", () => {
       total: size({ tools }),
     };
     process.stdout.write(`tools/list size (characters): ${JSON.stringify(measured)}\n`);
-    expect(measured.total).toBeGreaterThan(measured.descriptions + measured.inputSchemas + measured.outputSchemas);
+    const tooLong = tools
+      .filter((t) => (t.description ?? "").length > MAX_DESCRIPTION)
+      .map((t) => `${t.name} (${(t.description ?? "").length})`);
+    expect(tooLong, `descriptions over ${MAX_DESCRIPTION} characters`).toEqual([]);
+    expect(measured.descriptions, `descriptions sum over the ceiling of ${MAX_DESCRIPTIONS_SUM}`).toBeLessThanOrEqual(MAX_DESCRIPTIONS_SUM);
   });
 });

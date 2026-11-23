@@ -160,10 +160,9 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
   name: "tax_reform_curitiba",
   title: "Tax reform (CBS/IBS) rates and codes for Curitiba (Receita pilot API)",
   description:
-    "Tax reform (CBS/IBS) for Curitiba only (IBGE 4106902, PR), read-only, from the Receita Federal pilot calculator's " +
-    "open data: the CBS, IBS UF and IBS municipal reference rates on a date from 2026 (default today; from 2027 marked simulated: true) with the Receita app " +
-    "and base versions; a search of NBS (services), NCM (products) or cClassTrib codes by code or words, with the " +
-    "cClassTrib reduction percentages; or a fixed note on NFS-e in Curitiba. Not tax advice. No calculation, no invoice.",
+    "Tax reform (CBS/IBS) for Curitiba only, from the Receita Federal pilot calculator's open data: the reference " +
+    "rates on a date (from 2027 simulated: true), a search of NBS, NCM or cClassTrib codes by code or words, or a " +
+    "fixed note on NFS-e. Not tax advice; no calculation, no invoice. Read-only.",
   inputSchema: taxReformCuritibaInput,
   outputSchema: taxReformCuritibaOutput,
   handler: async ({ topic, query, date, limit }) => {

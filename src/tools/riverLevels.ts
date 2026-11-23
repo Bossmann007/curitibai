@@ -163,13 +163,10 @@ export const riverLevels: ToolDef<typeof riverLevelsInput, typeof riverLevelsOut
   name: "river_levels",
   title: "River levels and rain around Curitiba (ANA telemetry)",
   description:
-    "Latest river level (cm), flow (m³/s) and rain (mm; last reading, last 1 h and 24 h) at ANA telemetry stations " +
-    "operated by IAT-PR around Curitiba (25 bundled stations; not affiliated). Filter by `station` (code or name, river, " +
-    "municipality text); the stations nearest to `near` (default Curitiba centre) are read, and those with a recent reading are listed first, by distance. At most 3 stations read per " +
-    "call, each cached 15 minutes; no request starts after about 20 s (then partial: true); when the source is limiting requests, the stations already read " +
-    "are returned with partial: true (rate_limited only when none was read), and likewise when the source refuses this server or fails (source_unavailable only when none was read); your position and text are never sent. `stale` marks readings older than 2 h; " +
-    "`quality` (ok, suspect, unknown) flags readings that look wrong (unvalidated telemetry; ok does not prove a value). " +
-    "Stations without readings are listed as no_recent_data. Not for emergencies: Defesa Civil 199. Read-only.",
+    "Latest river level, flow and rain at 25 ANA telemetry stations operated by IAT-PR around Curitiba (not " +
+    "affiliated). Filter by `station` (code, name, river or municipality); the stations nearest to `near` (default " +
+    "the centre) are read, at most 3 per call; your position and text are never sent. `stale` and `quality` flag old " +
+    "or suspect readings. Not for emergencies: Defesa Civil 199. Read-only.",
   inputSchema: riverLevelsInput,
   outputSchema: riverLevelsOutput,
   handler: async (args) => {
