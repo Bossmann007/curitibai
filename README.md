@@ -118,7 +118,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Weather | `weather_alerts` | INMET's active warnings that cover Curitiba | Live (INMET) |
 | Weather | `river_levels` | Latest river level, flow and rain (last reading, 1 h, 24 h) at ANA telemetry stations around Curitiba, with a `quality` flag for suspect readings (see [Data quality](docs/tools.md#river_levels-data-quality)); not for emergencies (Defesa Civil 199) | Live (ANA telemetry) |
 | Procurement | `procurement_search` | Procurement published by Curitiba municipal bodies in PNCP, never the supplier | Live (PNCP) |
-| Taxes | `tax_reform_curitiba` | Tax reform (CBS/IBS) reference rates in Curitiba on a 2026 date, NBS/NCM/cClassTrib codes, and a note on NFS-e in Curitiba; not tax advice | Live (Receita Federal pilot API); NFS-e note Bundled |
+| Taxes | `tax_reform_curitiba` | Tax reform (CBS/IBS) reference rates in Curitiba on a date (from 2027 flagged as Receita-simulated), NBS/NCM/cClassTrib codes, and a note on NFS-e in Curitiba; not tax advice | Live (Receita Federal pilot API); NFS-e note Bundled |
 | Detran | `detran_pr_info` | Detran-PR's 2026 licensing calendar and its units in and around Curitiba | Bundled (snapshot) |
 | Open data | `open_datasets_search` | Search the Portal de Dados Abertos de Curitiba catalogue | Live (portal) |
 | Open data | `dataset_files` | List one dataset's files as links (never downloads them) | Live (portal) |

@@ -48,7 +48,9 @@ describe("tax_reform_curitiba rates", () => {
       rates: { cbs_pct: 0.9, ibs_uf_pct: 0.1, ibs_municipal_pct: 0 },
       receita_version: { app_version: "9.9.9-ficticio", db_version: "V9999", db_date: "2030-01-02", db_description: "Base ficticia de teste" },
       disclaimer: "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador",
+      simulated: false,
     });
+    expect(out.note).not.toMatch(/simulados/);
     expect(calls.map((c) => c.url)).toEqual([VERSAO_URL, ALIQUOTA_UNIAO_URL(D), ALIQUOTA_UF_URL(D), ALIQUOTA_MUNICIPIO_URL(D)]);
     expect(ALIQUOTA_UF_URL(D)).toContain("codigoUf=41&");
     expect(ALIQUOTA_MUNICIPIO_URL(D)).toContain("codigoMunicipio=4106902&");
@@ -100,18 +102,47 @@ describe("tax_reform_curitiba rates", () => {
     expect(errorOf(await call({ date: D }))).toMatchObject({ error: "source_unavailable" });
   });
 
-  it("defaults to today and says so when today is past the served dates", async () => {
+  it("a 2027 date returns the values with simulated: true and the note (year rule, no header)", async () => {
+    const d = "2027-06-01";
+    stubFetch(rateRoutes(d));
+    const out = taxReformCuritibaOutput.parse((await call({ date: d })).structuredContent);
+    expect(out.data.simulated).toBe(true);
+    expect(out.data.rates).toEqual({ cbs_pct: 0.9, ibs_uf_pct: 0.1, ibs_municipal_pct: 0 });
+    expect(out.note).toContain("valores simulados pela Receita Federal; não são alíquotas definitivas");
+  });
+
+  it("a rate answer marked by the Receita (x-warning-dados-simulados) is simulated even in 2026", async () => {
+    const marked = json({ aliquotaReferencia: 0.9 }, { headers: { "x-warning-dados-simulados": "1" } });
+    stubFetch(rateRoutes(D, { [`GET ${ALIQUOTA_UNIAO_URL(D)}`]: marked }));
+    const out = taxReformCuritibaOutput.parse((await call({ date: D })).structuredContent);
+    expect(out.data.simulated).toBe(true);
+    expect(out.note).toContain("valores simulados pela Receita Federal; não são alíquotas definitivas");
+  });
+
+  it("the default date (today) still works after 2027-01-01, as simulated", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2027-01-02T12:00:00Z"));
     try {
-      const calls = stubFetch({});
-      const err = errorOf(await call()) as { error: string; message: string };
-      expect(err.error).toBe("invalid_argument");
-      expect(err.message).toMatch(/^today \(2027-01-02\) is outside/);
-      expect(calls).toHaveLength(0);
+      stubFetch(rateRoutes("2027-01-02"));
+      const out = taxReformCuritibaOutput.parse((await call()).structuredContent);
+      expect(out.data.date).toBe("2027-01-02");
+      expect(out.data.simulated).toBe(true);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("a lookup for a 2027 date is simulated too; a 2026 lookup is not", async () => {
+    stubFetch({
+      [`GET ${VERSAO_URL}`]: file("versao.json"),
+      [`GET ${NBS_URL("2027-02-01")}`]: file("nbs_lista.json"),
+      [`GET ${NBS_URL(D)}`]: file("nbs_lista.json"),
+    });
+    const later = taxReformCuritibaOutput.parse((await call({ topic: "nbs", query: "ficticio", date: "2027-02-01" })).structuredContent);
+    expect(later.data.simulated).toBe(true);
+    expect(later.note).toContain("valores simulados pela Receita Federal");
+    const now = taxReformCuritibaOutput.parse((await call({ topic: "nbs", query: "ficticio", date: D })).structuredContent);
+    expect(now.data.simulated).toBe(false);
   });
 
   it("names every request of a rates answer in license_note", async () => {
@@ -242,7 +273,6 @@ describe("tax_reform_curitiba nfse", () => {
 
 describe("tax_reform_curitiba arguments", () => {
   it.each<[string, Record<string, unknown>]>([
-    ["a date in 2027 (simulated data)", { date: "2027-01-01" }],
     ["a date before 2026", { date: "2025-12-31" }],
     ["a date that does not exist", { date: "2026-02-30" }],
     ["a query with rates", { query: "abc" }],

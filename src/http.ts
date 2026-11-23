@@ -123,6 +123,8 @@ export interface FetchResult {
   url: string;
   contentType: string;
   body: string;
+  /** Response headers of the final hop (read-only use, e.g. a source's own data warning). */
+  headers: Headers;
 }
 
 export interface FetchOptions {
@@ -232,7 +234,7 @@ export async function fetchText(startUrl: string, options: FetchOptions = {}): P
       const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
       throw new SourceUnavailableError(timedOut ? "timeout" : "network error");
     }
-    return { url, contentType: res.headers.get("content-type") ?? "", body: text };
+    return { url, contentType: res.headers.get("content-type") ?? "", body: text, headers: res.headers };
   }
   throw new SourceUnavailableError("too many redirects");
 }

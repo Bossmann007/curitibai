@@ -258,10 +258,14 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   source <https://lp.curitiba.pr.gov.br/notanacional>, "conferido em 2026-11-23". The facts come from the owner's
   brief, which checked that page on that date. The page is never fetched (its robots.txt
   sets a Visit-time window).
-- Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 to 2026-12-31; default today in America/Sao_Paulo.
-  Why the bound: the Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) flags every date from
-  2027-01-01 as simulated data (header `x-warning-dados-simulados`), so later dates are refused with
-  `invalid_argument` instead of serving simulated rates unmarked; the bound also limits the cache keys. A `query` with
+- Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 (no upper bound); default today in America/Sao_Paulo.
+  Simulated data (owner decision, Enzo, 2026-11-23: accept dates from 2027 and flag them instead of refusing):
+  `data.simulated` is `true` when a rate answer carries the Receita's `x-warning-dados-simulados` header, or when the
+  date is on or after 2027-01-01; then `note` starts with "valores simulados pela Receita Federal; não são alíquotas
+  definitivas". Source of the year rule: `DadosAbertosService.getWarningDadosSimuladosPorData` in
+  ReceitaFederal/calculadora-rtc-regime-regular (a warning for every date not before 2027-01-01; the controller sends
+  it as that header on the rate routes). The lists carry no mark, so lookups use the year rule. 2026 dates without the
+  header are `simulated: false`; `nfse` is `null`. Cache keys stay bounded by the entry limits (500 small, 3 lists). A `query` with
   `rates` or `nfse`, or no `query` with a lookup topic, is `invalid_argument`.
 - Every success, every topic, carries `disclaimer`: "API piloto da Receita Federal; não é orientação fiscal; confirme
   com o contador"; every error of this tool ends its `message` with it.
@@ -275,14 +279,14 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   list where no item has string code and description → `source_unavailable`. An empty list → `total` 0 with a note.
   Single bad items are skipped and counted (`skipped`). No personal data: only the date and fixed codes reach the host.
 - Out of scope: the calculation POST (`calculadora/...`), computing an effective rate, any NFS-e or other invoice
-  issuance, IS (Imposto Seletivo) data, other cities or states, dates from 2027 (simulated data), fetching the
+  issuance, IS (Imposto Seletivo) data, other cities or states, fetching the
   Prefeitura's NFS-e page.
 - Docs: `docs/tools.md` (row, envelope, Curitiba App comparison row), `docs/sources.md` (source, MIT repos, terms not
   found, the probe requests), README (23 tools), CHANGELOG 0.21.0, version 0.21.0.
 - Check: `scripts/verify` exit 0 (`test/taxReform.test.ts` on small synthetic fixtures: rates, 404 rate → null, empty
   list, missing field, HTTP 5xx, host down, not JSON, query and date validation, no user text in URLs, the
   disclaimer on every topic, cache and gate spacing); one live call per topic through the built tool, one at a time.
-- Review fixes (code review of 2026-11-23): a default date past 2026 says "today (…) is outside"; a code query needs
+- Review fixes (code review of 2026-11-23): a code query needs
   at least 2 digits ("--" no longer matches every code); codes are compared digits-only; `nfse` `checked_at` is
   `2026-11-23T00:00:00-03:00`; `TtlCache` reorders a reloaded key only when it has an entry limit.
 

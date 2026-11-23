@@ -8,6 +8,7 @@ import {
   getList,
   getRate,
   getVersion,
+  isSimulatedDate,
   LIST_URL,
   NFSE_CHECKED,
   NFSE_CHECKED_AT,
@@ -15,6 +16,8 @@ import {
   NFSE_SOURCE_URL,
   RECEITA_BASE,
   receitaLicenseNote,
+  SIMULATED_FROM,
+  SIMULATED_NOTE,
   VERSAO_URL,
   type CodeItem,
 } from "../sources/receita.js";
@@ -22,9 +25,8 @@ import { fold } from "../text.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { fail as baseFail, failFrom as baseFailFrom, ok, type ErrorCode, type ToolDef } from "./common.js";
 
-/** Dates from 2027-01-01 are simulated data in the Receita base (getWarningDadosSimuladosPorData): refused. */
+/** The reform's first year; earlier dates have no rate in the Receita base. */
 const FIRST_DATE = "2026-01-01";
-const LAST_DATE = "2026-12-31";
 
 export const taxReformCuritibaInput = {
   topic: z
@@ -42,7 +44,10 @@ export const taxReformCuritibaInput = {
     .max(100)
     .optional()
     .describe("Required for nbs, ncm and class_trib: a code (digits; dots and dashes allowed) or words of the description."),
-  date: z.string().optional().describe(`YYYY-MM-DD, ${FIRST_DATE} to ${LAST_DATE}; default today in Curitiba.`),
+  date: z
+    .string()
+    .optional()
+    .describe(`YYYY-MM-DD from ${FIRST_DATE}; default today in Curitiba. From ${SIMULATED_FROM} the Receita serves simulated values (simulated: true).`),
   limit: z.number().int().min(1).max(25).default(10).describe("Lookup topics: at most this many items (1–25)."),
 };
 
@@ -93,6 +98,10 @@ export const taxReformCuritibaOutput = z.object({
       })
       .nullable(),
     disclaimer: z.literal(DISCLAIMER),
+    simulated: z
+      .boolean()
+      .nullable()
+      .describe(`true: values simulated by the Receita (its header, or a date from ${SIMULATED_FROM}); null for topic nfse.`),
   }),
   source_url: z.string().url(),
   checked_at: z.string(),
@@ -101,7 +110,7 @@ export const taxReformCuritibaOutput = z.object({
 });
 
 const BASE = { city: "Curitiba" as const, ibge_code: CURITIBA_IBGE, uf: "PR" as const, disclaimer: DISCLAIMER };
-const EMPTY = { receita_version: null, rates: null, items: null, total: null, skipped: null, nfse: null };
+const EMPTY = { receita_version: null, rates: null, items: null, total: null, skipped: null, nfse: null, simulated: null };
 
 const RATES_NOTE =
   "Reference rates in percent, as the Receita base serves them (CBS = União, IBS UF = Paraná, IBS municipal = " +
@@ -116,7 +125,7 @@ function today(): string {
 function validDate(d: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
   const t = Date.parse(`${d}T00:00:00Z`);
-  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === d && d >= FIRST_DATE && d <= LAST_DATE;
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === d && d >= FIRST_DATE;
 }
 
 /** Digits (dots, dashes, spaces dropped) match a code prefix; other text matches when every word is in the description. */
@@ -150,7 +159,7 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
   title: "Tax reform (CBS/IBS) rates and codes for Curitiba (Receita pilot API)",
   description:
     "Tax reform (CBS/IBS) for Curitiba only (IBGE 4106902, PR), read-only, from the Receita Federal pilot calculator's " +
-    "open data: the CBS, IBS UF and IBS municipal reference rates on a 2026 date (default today) with the Receita app " +
+    "open data: the CBS, IBS UF and IBS municipal reference rates on a date from 2026 (default today; from 2027 marked simulated: true) with the Receita app " +
     "and base versions; a search of NBS (services), NCM (products) or cClassTrib codes by code or words, with the " +
     "cClassTrib reduction percentages; or a fixed note on NFS-e in Curitiba. Not tax advice. No calculation, no invoice.",
   inputSchema: taxReformCuritibaInput,
@@ -170,11 +179,7 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
     }
     const day = date ?? today();
     if (!validDate(day)) {
-      const why =
-        date === undefined
-          ? `today (${day}) is outside the dates this tool serves, ${FIRST_DATE} to ${LAST_DATE}`
-          : `date must be a real date from ${FIRST_DATE} to ${LAST_DATE}`;
-      return fail("invalid_argument", `${why}; later dates are simulated data in the Receita base.`);
+      return fail("invalid_argument", `date must be a real date (YYYY-MM-DD) from ${FIRST_DATE}.`);
     }
     if (topic === "rates" && query !== undefined) return fail("invalid_argument", "query is not used with topic rates.");
     if (topic !== "rates" && query === undefined) return fail("invalid_argument", `topic ${topic} needs a query (a code or words).`);
@@ -189,7 +194,9 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
           getRate(ALIQUOTA_UF_URL(day)),
           getRate(ALIQUOTA_MUNICIPIO_URL(day)),
         ]);
-        const missing = [cbs, uf, mun].some((r) => r.value === null);
+        const missing = [cbs, uf, mun].some((r) => r.value.pct === null);
+        const simulated = isSimulatedDate(day) || [cbs, uf, mun].some((r) => r.value.marked);
+        const ratesNote = missing ? `${RATES_NOTE} A null rate: the Receita base has no reference rate for that date.` : RATES_NOTE;
         const checkedAt = [version, cbs, uf, mun].map((r) => r.fetchedAt).reduce(older);
         return ok({
           data: {
@@ -198,7 +205,8 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
             date: day,
             ...EMPTY,
             receita_version: version.value,
-            rates: { cbs_pct: cbs.value, ibs_uf_pct: uf.value, ibs_municipal_pct: mun.value },
+            rates: { cbs_pct: cbs.value.pct, ibs_uf_pct: uf.value.pct, ibs_municipal_pct: mun.value.pct },
+            simulated,
           },
           source_url: `${RECEITA_BASE}/`,
           checked_at: checkedAt,
@@ -206,14 +214,16 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
             [VERSAO_URL, ALIQUOTA_UNIAO_URL(day), ALIQUOTA_UF_URL(day), ALIQUOTA_MUNICIPIO_URL(day)].join(", "),
             checkedAt,
           ),
-          note: missing ? `${RATES_NOTE} A null rate: the Receita base has no reference rate for that date.` : RATES_NOTE,
+          note: simulated ? `${SIMULATED_NOTE}. ${ratesNote}` : ratesNote,
         });
       }
       const [version, list] = await Promise.all([getVersion(), getList(topic, day)]);
       const found = list.value.items.filter(matcher(query!));
       const url = LIST_URL[topic](day);
       const checkedAt = older(version.fetchedAt, list.fetchedAt);
+      const simulated = isSimulatedDate(day);
       const notes = [
+        simulated ? `${SIMULATED_NOTE}.` : "",
         `Matched here from the Receita list for ${day}; the query is not sent to the Receita.`,
         list.value.items.length === 0 ? "The Receita list for this date is empty." : "",
         found.length > limit ? `Showing ${limit} of ${found.length}.` : "",
@@ -231,6 +241,7 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
           items: found.slice(0, limit),
           total: found.length,
           skipped: list.value.skipped,
+          simulated,
         },
         source_url: url,
         checked_at: checkedAt,

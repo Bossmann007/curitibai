@@ -26,6 +26,19 @@ export const CLASS_TRIB_URL = (date: string) => `${RECEITA_BASE}/classificacoes-
 
 export const DISCLAIMER = "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador";
 
+/**
+ * From this date the Receita base serves simulated data: `DadosAbertosService.getWarningDadosSimuladosPorData` returns
+ * a warning for every date not before 2027-01-01, and the rate routes then send the `x-warning-dados-simulados`
+ * header. Used as the rule where an answer carries no mark (the lists).
+ */
+export const SIMULATED_FROM = "2027-01-01";
+export const SIMULATED_HEADER = "x-warning-dados-simulados";
+export const SIMULATED_NOTE = "valores simulados pela Receita Federal; não são alíquotas definitivas";
+
+export function isSimulatedDate(date: string): boolean {
+  return date >= SIMULATED_FROM;
+}
+
 /** Requests answered in 1–6 s when checked (2026-11-23). */
 export const RECEITA_TIMEOUT_MS = 15_000;
 /** `versao` and each rate were under 300 bytes. */
@@ -74,18 +87,20 @@ const num = (v: unknown): number | null => (typeof v === "number" && Number.isFi
  * failure, a body that is not JSON (an HTML maintenance page) included, is remembered for the host, as in the other
  * live sources.
  */
-async function getJson(url: string, maxBytes: number, allow404: boolean): Promise<unknown> {
+async function getJson(url: string, maxBytes: number, allow404: boolean): Promise<{ json: unknown; marked: boolean }> {
   return gate.run(async () => {
     let res;
     try {
       res = await fetchText(url, { timeoutMs: RECEITA_TIMEOUT_MS, maxBytes, sameHostOnly: true, redirectPathPrefix: PATH });
     } catch (err) {
-      if (allow404 && err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
+      if (allow404 && err instanceof SourceUnavailableError && err.reason === "HTTP 404") return { json: null, marked: false };
       throw err;
     }
     if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+    // The Receita's own mark of simulated data (any non-empty value).
+    const marked = (res.headers.get(SIMULATED_HEADER)?.trim() ?? "") !== "";
     try {
-      return JSON.parse(res.body) as unknown;
+      return { json: JSON.parse(res.body) as unknown, marked };
     } catch {
       throw new SourceUnavailableError("not JSON");
     }
@@ -107,7 +122,7 @@ export function parseVersion(json: unknown): ReceitaVersion {
 }
 
 export function getVersion(): Promise<Cached<ReceitaVersion>> {
-  return smallCache.getOrLoad(`GET ${VERSAO_URL}`, async () => parseVersion(await getJson(VERSAO_URL, SMALL_MAX_BYTES, false)));
+  return smallCache.getOrLoad(`GET ${VERSAO_URL}`, async () => parseVersion((await getJson(VERSAO_URL, SMALL_MAX_BYTES, false)).json));
 }
 
 /** The reference rate (percent, as served), or null when the base has none for the date (HTTP 404). */
@@ -121,16 +136,24 @@ export function parseRate(json: unknown): number | null {
 /** Thrown by a rate load on HTTP 404 so that the missing rate is not cached (the base may publish it later). */
 class RateNotFound extends Error {}
 
+export interface Rate {
+  /** Percent as served; null when the base has none for the date (HTTP 404). */
+  pct: number | null;
+  /** The answer carried the Receita's simulated-data header. */
+  marked: boolean;
+}
+
 /** A found rate is cached 24 h; a missing one (null) is not cached, so the next call asks again. */
-export async function getRate(url: string): Promise<Cached<number | null>> {
+export async function getRate(url: string): Promise<Cached<Rate>> {
   try {
     return await smallCache.getOrLoad(`GET ${url}`, async () => {
-      const v = parseRate(await getJson(url, SMALL_MAX_BYTES, true));
-      if (v === null) throw new RateNotFound();
-      return v;
+      const res = await getJson(url, SMALL_MAX_BYTES, true);
+      const pct = parseRate(res.json);
+      if (pct === null) throw new RateNotFound();
+      return { pct, marked: res.marked };
     });
   } catch (err) {
-    if (err instanceof RateNotFound) return { value: null, fetchedAt: new Date().toISOString() };
+    if (err instanceof RateNotFound) return { value: { pct: null, marked: false }, fetchedAt: new Date().toISOString() };
     throw err;
   }
 }
@@ -189,7 +212,7 @@ export function parseList(kind: ListKind, json: unknown): CodeList {
 
 export function getList(kind: ListKind, date: string): Promise<Cached<CodeList>> {
   const url = LIST_URL[kind](date);
-  return listCache.getOrLoad(`GET ${url}`, async () => parseList(kind, await getJson(url, LIST_MAX_BYTES, false)));
+  return listCache.getOrLoad(`GET ${url}`, async () => parseList(kind, (await getJson(url, LIST_MAX_BYTES, false)).json));
 }
 
 /** Fixed NFS-e note, read by hand on CHECKED; the page is never fetched (its robots.txt sets a Visit-time window). */
