@@ -2,6 +2,16 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## Unreleased
+
+- New monthly workflow `.github/workflows/receita-version.yml` (day 1, 09:23 UTC, plus manual runs): one GET to the
+  Receita Federal pilot calculator's open-data `versao` endpoint and the latest release of
+  `ReceitaFederal/calculadora-rtc-regime-regular` and `calculadora-rtc-simples-nacional`. It records
+  `receita/version.json` on the `data` branch and, when the app, base or a release tag changed, opens one issue
+  ("Receita: calculadora mudou (...)") with what changed and a reminder to review curitibai. Nothing changed: no
+  commit, no issue. Fails closed (`scripts/check-receita-version.mjs`, Node built-ins only). docs/development.md
+  "Scheduled workflows" says how to turn it off.
+
 ## 0.20.0 - 2026-11-23
 
 - `city_facilities_search`: six new types from the Cultura group of IPPUC's GeoCuritiba urban-equipment service:

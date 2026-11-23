@@ -34,3 +34,16 @@ also fails if git tracks anything in a folder named `events` (the collector's ou
 (`test/fixtures/events_synthetic/`: invented events in the site's markup, with a planted description, contacts, ticket
 and external link that must not be kept) and run the collector with a fake clock and a fake network. The guard
 must run at the top of a checkout (exit 2 elsewhere).
+
+## Scheduled workflows
+
+| Workflow | When | What it does |
+|---|---|---|
+| `.github/workflows/collect.yml` | Nightly, 02:37 UTC plus four retries | Events and useful phones to the `data` branch ([docs/sources.md](sources.md#published-nightly-copy-of-the-events-and-phones-files-since-0180)) |
+| `.github/workflows/receita-version.yml` | Day 1 of each month, 09:23 UTC | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-unreleased)) |
+
+Both also run by hand (Actions, "Run workflow", or `gh workflow run <file>`) and only on `Bossmann007/curitibai`
+`main`. To turn one off: Actions, select the workflow, "..." menu, "Disable workflow", or
+`gh workflow disable receita-version.yml` (`gh workflow enable` turns it back on). Removing its `schedule:` block in
+a PR turns it off for good. GitHub also disables scheduled workflows in public repositories after 60 days without
+repository activity.

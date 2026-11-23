@@ -17,6 +17,7 @@
   - [`events_search`: Instituto Municipal de Turismo events calendar (local file written by a separate collector)](#events_search-instituto-municipal-de-turismo-events-calendar-local-file-written-by-a-separate-collector)
   - [`useful_phones`: Instituto Municipal de Turismo "Telefones Úteis" page (local file written by the same collector)](#useful_phones-instituto-municipal-de-turismo-telefones-úteis-page-local-file-written-by-the-same-collector)
   - [Published nightly copy of the events and phones files (since 0.18.0)](#published-nightly-copy-of-the-events-and-phones-files-since-0180)
+  - [Monthly check of the Receita Federal calculator version (unreleased)](#monthly-check-of-the-receita-federal-calculator-version-unreleased)
   - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
@@ -805,6 +806,40 @@ in the city's own categories. Built.
   without repository activity
   (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
   checked 2026-11-22); [docs/local-data.md](local-data.md#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script) says how to re-enable it.
+
+### Monthly check of the Receita Federal calculator version (unreleased)
+
+Not a tool: a scheduled check so the owner hears when the Receita Federal pilot "calculadora de tributos do consumo"
+changes (owner request, 2026-11-23: monthly and automatic).
+
+- **What runs:** `.github/workflows/receita-version.yml`, cron `23 9 1 * *` (day 1 of each month, 09:23 UTC) plus
+  `workflow_dispatch`, `ubuntu-latest`, timeout 5 minutes, concurrency group `receita-version`, job permissions
+  `contents: write` (push to `data`) and `issues: write` (workflow default `contents: read`), actions pinned by full
+  commit SHA, only on `Bossmann007/curitibai` `main`. No `npm ci`: Node built-ins only. The job runs
+  `scripts/publish-receita-version.sh`, which runs `scripts/check-receita-version.mjs` once.
+- **Requests (3 per run):** one GET to
+  `https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/versao` (answer on
+  2026-11-23: `versaoApp` `1.7.2-0d9b30c1`, `versaoDb` `V0073`, `dataVersaoDb` `2026-11-09`; its `/robots.txt` was 404,
+  an HTML page, checked the same day with curl and User-Agent `curitibai-mcp/0.20`: no rules, RFC 9309) and one GET to
+  `https://api.github.com/repos/ReceitaFederal/<repo>/releases/latest` for `calculadora-rtc-regime-regular` (then
+  `1.7.2`) and `calculadora-rtc-simples-nacional` (then `1.0.2`). User-Agent
+  `curitibai-mcp/0.20 (+https://github.com/Bossmann007/curitibai)`, 15 s timeout, no redirect followed, 64 KB cap, no
+  retry, exact host allowlist. The workflow token goes to `api.github.com` only, never to the Receita host.
+- **Fails closed:** a Receita error (network, timeout, non-200, redirect, not JSON) or an answer whose `versaoApp`,
+  `versaoDb` (letters, digits, `._+-`, up to 64) or `dataVersaoDb` (YYYY-MM-DD) does not match exits 1 and changes
+  nothing (red run in Actions). A failed release lookup keeps the previous tag (no false change); a repository with
+  no release (404) is recorded as `null`.
+- **What is published:** only `receita/version.json` on the orphan branch `data` (never `main`; `events/` and `phones/`
+  untouched), pushed without force: `versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb` (control characters
+  removed, 300 characters at most), each repository's release `tag`, `url` and `published_at`, and `recorded_at`. The
+  first run records the baseline and opens no issue. Nothing changed (app, base, base date and release tags compared):
+  no write, no commit, no issue.
+- **When something changed:** one issue in this repository titled
+  `Receita: calculadora mudou (app <a>, base <b>, regular <r>, simples <s> → ...)`, listing what changed, the release
+  links and a reminder to review curitibai (the Receita marks 2027+ rates as simulated). No issue when an open issue
+  already has the same title. The issue is opened before the file is written, so a failed issue (exit 1) is retried
+  the next run. The MCP server never reads this file.
+- **Turn it off:** see [docs/development.md](development.md#scheduled-workflows).
 
 ### `vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page
 
