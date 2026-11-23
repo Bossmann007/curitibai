@@ -53,12 +53,12 @@ text cannot grow back unnoticed.
 | Part | v0.24.1 | v0.25.0 |
 |---|---|---|
 | tools | 25 | 25 |
-| descriptions | 15,561 | 8,694 (−44%) |
+| descriptions | 15,561 | 8,705 (−44%) |
 | inputSchemas | 19,636 | 19,532 |
 | outputSchemas | 63,226 | 63,226 (unchanged) |
-| total (`tools/list` result) | 107,011 | 100,040 |
+| total (`tools/list` result) | 107,011 | 100,051 |
 
-Ceiling on the descriptions sum: 9,600 (8,694 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
+Ceiling on the descriptions sum: 9,600 (8,705 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
 that the per-tool limit alone would allow, so a new tool or a longer description needs a deliberate change to it.
 Longest description (raw `description.length`): 400 or fewer for all 25 (v0.24.1: 1,651).
 

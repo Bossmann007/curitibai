@@ -179,7 +179,9 @@ listed here because the description no longer says them, and the table above doe
 - `procurement_search`: objects of dispensa, inexigibilidade, credenciamento and inaplicabilidade are withheld
   (`object` null, `object_withheld` set) because they may name a person; other objects are returned as published with
   CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain a name. Continue with `next_page`,
-  `next_skip` and `next_page_source` (passed back as `page_source`).
+  `next_skip` and `next_page_source` (passed back as `page_source`). With `query` it uses the search behind the
+  pncp.gov.br site (pages of 100, about 1 s each, newest update first; if that search fails, the Consulta scan is
+  used); without, the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per call.
 - `local_csv_summary`: a first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, long text) is
   refused; a first line made only of text cannot be told apart from a header and is returned as column names. The
   personal column names refused are nome, name, CPF, CNPJ, RG, e-mail, telefone, tel, celular, matrícula, endereço,
@@ -203,12 +205,9 @@ listed here because the description no longer says them, and the table above doe
   the stations already read are returned with `partial: true` (`rate_limited` or `source_unavailable` only when none
   was read); readings are cached 15 minutes; `stale` marks readings older than 2 h; `quality` `ok` does not prove a
   value (unvalidated telemetry); stations without readings are listed as `no_recent_data`.
-- `guaira_events`: event pages are read at most 2 per call, at most one request per 5 s to the site, cached 1 hour, and
-  no event page is asked for after about 20 s. `truncated: true` when listing pages are missing (`partial` is a
+- `guaira_events`: event pages are read at most 2 per call, at most one request per 5 s to the site (calendar cached
+  1 hour, event pages 6 hours), and no event page is asked for after about 20 s. `truncated: true` when listing pages are missing (`partial` is a
   deprecated alias of it).
-- `procurement_search`: with `query` it uses the search behind the pncp.gov.br site (pages of 100, about 1 s each,
-  newest update first; if that search fails, the Consulta scan is used); without, the Consulta API (pages of 50,
-  8–13 s each). At most 5 pages and no new page after 20 s per call.
 - `health_units_search`: at most 20 upstream pages of 20 per call.
 - `vaccination_sites_search` and `city_facilities_search`: one page or layer read per call at most, cached 6 hours.
 - `place_at_point`: up to 4 requests 5 s apart; `service_areas_at_point`: 2 requests 5 s apart, 3 when no health area

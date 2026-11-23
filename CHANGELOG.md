@@ -10,8 +10,8 @@ Only text changed: no tool behaviour, name, title, type, required field, enum, o
   the model needs before calling (what is sent where, "not for emergencies", "not real-time", the local file needed,
   the cold-call time of the point and Guaíra tools, the untrusted-text warning). The OSM credit stays in
   `places_search`'s `attribution` and `license_note`; paging details and edge-case rules moved to
-  [docs/tools.md](docs/tools.md#notes-moved-out-of-the-tool-descriptions). Descriptions sum 15,561 → 8,694 characters;
-  `tools/list` 107,011 → 100,040.
+  [docs/tools.md](docs/tools.md#notes-moved-out-of-the-tool-descriptions). Descriptions sum 15,561 → 8,705 characters;
+  `tools/list` 107,011 → 100,051.
 - `places_search`, `city_points_search` and `city_facilities_search` each say when to prefer them, so each kind of
   place has one tool ([docs/tools.md](docs/tools.md#which-place-tool)). No tool merged or renamed.
 - Input field descriptions: three redundant clauses removed (`open_datasets_search.query`, `places_search.category`,

@@ -143,7 +143,7 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
     "Search procurement (licitações, dispensas...) by Curitiba municipal bodies in the national PNCP portal: body, " +
     "modality, object, value, status, dates, link. One modality per call (default 6, Pregão - Eletrônico), dates up " +
     "to 365 days apart (default the last 30). With query, the search word is sent to PNCP. No suppliers; objects " +
-    "that may name a person are withheld or masked. Read-only.",
+    "are withheld or masked but may still name a person. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
   handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {
