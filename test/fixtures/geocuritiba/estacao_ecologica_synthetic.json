@@ -1,0 +1,27 @@
+{
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "centroid": { "x": -49.2013, "y": -25.5066 },
+      "attributes": {
+        "objectid": 1,
+        "nome": "Estação Ecológica Ficticia",
+        "ctba_bairro": 37,
+        "ctba_regional": 3,
+        "ctba_tipounidprotinteg_smuc": 1,
+        "areaoficial": "23,00 ha"
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Estação Ecológica Sem Centroide",
+        "ctba_bairro": null,
+        "ctba_regional": 12,
+        "ctba_tipounidprotinteg_smuc": 1,
+        "areaoficial": null
+      }
+    }
+  ]
+}

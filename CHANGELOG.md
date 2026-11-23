@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.24.0 - 2026-11-23
+
+- `city_facilities_search`: nine sport and leisure types from IPPUC's "Esporte e Lazer" layers (SMELJ):
+  `nucleo regional do esporte`, `centro de atividade fisica`, `centro da juventude`, `centro de iniciacao ao esporte`,
+  `centro de referencia em esporte`, `pista de bmx`, `centro de lutas`, `pista de patinacao`, `velodromo`; and three
+  conservation unit types from the SMMA conservation units service: `estacao ecologica`, `bosque de conservacao`
+  (`bcbu`), `refugio da vida silvestre`. Same fields, address flag and contact allowlist as the other layers; credit
+  "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)" for these types (the others keep "IPPUC / GeoCuritiba"). The conservation
+  layers publish no update date (`updated` null; `note` says so and that a protected area is not always open to visits).
+  Live queries only, no layer copied.
+- Left out on purpose (docs/sources.md): the SMELJ service itself (no `divulgar_endereco` flag; the same records are
+  read from the per-type layers), RPPNM (private land, often named after people, with the lot's street address:
+  personal data), APA and ARIE (no bairro or kind fields), and the parks and bosques already in `parque`.
+- `service_areas_at_point` returns `inside_curitiba` (boolean, as `place_at_point`), read from the cadastral bairro
+  layer first; outside, no area is asked for. Up to 3 requests 5 s apart (a cold call takes about 10 s; the bairro
+  answer is shared with `place_at_point`'s cache). A bairro layer failure is an error.
+
 ## 0.23.0 - 2026-11-23
 
 - New tool `service_areas_at_point` ("quem me atende"): for a `{lat, lon}` inside Curitiba, the health unit

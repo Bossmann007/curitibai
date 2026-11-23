@@ -971,6 +971,27 @@ changes (owner request, 2026-11-23: monthly and automatic).
   largest answer was about 250 KB (layer 0 with simplified geometry). Layers left out on purpose: health units (see
   `health_units_search`), schools, bus terminals, police, administrative offices and every other layer not in the
   list (not surveyed).
+- **Added in v0.24.0** (checked 2026-11-23, one request every 5 s at most):
+  - Sport and leisure, MapServer group 83 "Esporte e Lazer": 84 Núcleo Regional do Esporte, Lazer e Juventude (10),
+    87 Centro de Atividade Física (2), 88 Centro da Juventude (2), 89 Centro de Iniciação ao Esporte (2), 90 Centro de
+    Referência em Esporte e Atividade Física (2), 93 Pista de Ciclismo BMX (1), 94 Centro de Lutas (1), 165 Pista de
+    Patinação (1), 166 Velódromo (1); every record `divulgar_endereco` "Sim", `dt_atualiz` 2024-01-04 to 2025-11-18,
+    institutional phones and curitiba.pr.gov.br e-mails (one malformed, `@.curitiba.pr.gov.br`, dropped by the
+    allowlist). The SMELJ service the roadmap named
+    (`GeoCuritiba/Publico_GeoCuritiba_Equipamentos_Urbanos_SMELJ/MapServer`, one point layer of 372 records) holds the
+    same records by `tipo_equi` but has **no `divulgar_endereco`**, so the per-type layers above are read instead.
+  - Conservation units, <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Sistema_Municipal_de_Unidades_de_Conservacao/FeatureServer>
+    (Sistema Municipal de Unidades de Conservação, Lei Municipal 15.744/2020 and 15.977/2022; polygons, same coded
+    fields as Parques e Bosques, `returnCentroid` works with `outSR=4326`): 1 Estação Ecológica (2), 5 Bosque de
+    Conservação da Biodiversidade Urbana (8), 6 Refúgio da Vida Silvestre (1). **No update date is published** (no
+    date field, `editingInfo` null): `updated` is null and `note` says so. Left out: 2 Parque Natural Municipal (32),
+    3 Parque Linear (1), 4 Bosque Municipal (18) and 8 Específicas (2), the exact content of Parques e Bosques
+    (`parque`, 53 records); **7 RPPNM (67) as personal data**: 65 are private property (`administracao` 6
+    "Privada"), many are named after people (owners or relatives) and `ctba_localizacao` is the street address of the
+    private lot; 10 Área de Proteção Ambiental (2) and 11 Área de Relevante Interesse Ecológico (1), which lack the
+    bairro, regional and kind fields and cover areas whose centroid gives no useful distance.
+  - Credit "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)" in `source` for these types only; the other types keep
+    "IPPUC / GeoCuritiba".
 - **Query:** one fixed URL per layer: `where=1=1`, a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
   `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with
   `returnGeometry=true`; parks with `returnCentroid=true` and no geometry; bike lanes with geometry simplified
@@ -1102,7 +1123,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
 - **Query:** one fixed URL per layer: `geometry=<lon>,<lat>` (the point rounded to 4 decimals, about 11 m),
   `geometryType=esriGeometryPoint`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, a fixed `outFields` list,
   `returnGeometry=false`. The rounded point is the only user input in the URL and the cache key.
-- **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Same
+- **Requests and failures:** since 0.24.0 the bairro layer first (cadastral layer 2, the same point query and cache as
+  `place_at_point`): `inside_curitiba` is false when no neighbourhood contains the point, and then nothing else is
+  asked. Inside, health area, then CRAS territory (up to 3 requests, 5 s apart: slots 0, 5 and 10 s fit the 20 s
+  budget). The bairro layer failing is an error. Same
   host gate, timeout (15 s), cap (2 MB), redirect rule, refusal handling and fail-closed parser as `place_at_point`;
   each answer cached 6 hours (at most 500 entries). The health layer failing is an error; a CRAS failure after it keeps
   what was read (`partial: true`). Each list has one area per name (the first row kept; a nameless row only when no row

@@ -58,6 +58,36 @@ describe("type names", () => {
     expect(t?.layerUrl.endsWith(path)).toBe(true);
   });
 
+  const UC = "https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Sistema_Municipal_de_Unidades_de_Conservacao/FeatureServer";
+  const EQ = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+  it.each([
+    ["núcleos regionais do esporte", "nucleo regional do esporte", `${EQ}/84`],
+    ["Centro de Atividade Física", "centro de atividade fisica", `${EQ}/87`],
+    ["centros da juventude", "centro da juventude", `${EQ}/88`],
+    ["centro de iniciação ao esporte", "centro de iniciacao ao esporte", `${EQ}/89`],
+    ["centro de referência em esporte e atividade física", "centro de referencia em esporte", `${EQ}/90`],
+    ["BMX", "pista de bmx", `${EQ}/93`],
+    ["pista de ciclismo bmx", "pista de bmx", `${EQ}/93`],
+    ["centro de lutas", "centro de lutas", `${EQ}/94`],
+    ["patinação", "pista de patinacao", `${EQ}/165`],
+    ["velódromo", "velodromo", `${EQ}/166`],
+    ["estações ecológicas", "estacao ecologica", `${UC}/1`],
+    ["BCBU", "bosque de conservacao", `${UC}/5`],
+    ["bosque de conservação da biodiversidade urbana", "bosque de conservacao", `${UC}/5`],
+    ["refúgio da vida silvestre", "refugio da vida silvestre", `${UC}/6`],
+  ])("v0.24.0: %s maps to %s at its pinned layer", (input, id, layerUrl) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl });
+  });
+
+  it("v0.24.0: conservation types are parks; RPPNM, APA and ARIE are not types; bosque stays parque", () => {
+    for (const id of ["estacao ecologica", "bosque de conservacao", "refugio da vida silvestre"]) expect(type(id).kind).toBe("park");
+    for (const name of ["rppnm", "reserva particular do patrimonio natural municipal", "apa", "area de protecao ambiental", "arie"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+    expect(resolveType("bosque")?.id).toBe("parque");
+    expect(FACILITY_TYPES.some((t) => t.layerUrl.startsWith(UC) && /\/(2|3|4|7|8|10|11)$/.test(t.layerUrl))).toBe(false);
+  });
+
   it("does not guess an unknown type, and every type and alias is unique", () => {
     expect(resolveType("posto de gasolina")).toBeNull();
     const names = FACILITY_TYPES.flatMap((t) => [t.id, ...t.aliases]);
@@ -230,6 +260,57 @@ describe("city_facilities_search", () => {
   it("warns about mixed ownership only on the layers that hold private venues", () => {
     const mixed = FACILITY_TYPES.filter((t) => t.mixedOwnership).map((t) => t.id);
     expect(mixed).toEqual(["museu", "teatro", "centro cultural", "espaco expositivo", "cinema", "espetaculos ao ar livre"]);
+  });
+
+  it("v0.24.0: a sport layer keeps the address flag and the contact allowlist, with the SMELJ / SMMA credit", async () => {
+    stubFetch(route("velodromo", "velodromo_synthetic.json"));
+    const out = await search({ type: "velódromo" });
+    expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)");
+    expect(out.source_url).toBe("https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer/166");
+    expect(out.data).toMatchObject({ type: "velodromo", label: "Velódromo", total: 2, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Velódromo Ficticio Alfa",
+      address: "R. FICTICIA, 300 - Ao lado do Parque Inventado",
+      bairro: "Jardim Botânico",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h às 12h e das 14h às 18h", "Atividades: ciclismo e ginástica."],
+      phones: ["(41) 3333-0303"],
+      emails: ["velodromo@curitiba.pr.gov.br"],
+      updated: "2025-05-20",
+      lat: -25.44,
+      lon: -49.24,
+    });
+    // divulgar_endereco "Não": no address and no position.
+    expect(out.data.items[1]).toMatchObject({ name: "Velódromo Ficticio Beta", address: null, lat: null, lon: null, phones: ["156"] });
+    expect(out.note).toMatch(/confirm with the 156/);
+  });
+
+  it("v0.24.0: a conservation layer reads the centroid and coded fields, says no update date is published", async () => {
+    const calls = stubFetch(route("estacao ecologica", "estacao_ecologica_synthetic.json"));
+    const out = await search({ type: "estação ecológica" });
+    expect(calls).toHaveLength(1);
+    expect(new URL(calls[0]!.url).searchParams.get("returnCentroid")).toBe("true");
+    expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)");
+    expect(out.data).toMatchObject({ type: "estacao ecologica", label: "Estação Ecológica", total: 2 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Estação Ecológica Ficticia",
+      kind: "Estação Ecológica",
+      bairro: "Uberaba",
+      regional: "Cajuru",
+      area: "23,00 ha",
+      updated: null,
+      lat: -25.5066,
+      lon: -49.2013,
+    });
+    expect(out.data.items[1]).toMatchObject({ bairro: null, regional: "Tatuquara", lat: null, lon: null });
+    expect(out.note).toMatch(/protected area.*not always open to visits/);
+    expect(out.note).toMatch(/no update date/);
+  });
+
+  it("v0.24.0: existing types keep their credit", async () => {
+    stubFetch(route("parque", "parques.json"));
+    const out = await search({ type: "parque" });
+    expect(out.source).toBe("IPPUC / GeoCuritiba");
+    expect(out.note).not.toMatch(/protected area/);
   });
 
   it("returns an empty layer as total 0 with no error", async () => {

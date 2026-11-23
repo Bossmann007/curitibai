@@ -108,9 +108,9 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Health | `health_units_search` | Public-administration health units in Curitiba (CNES) | Live (Ministry of Health) |
 | Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Live (Imuniza Já page) |
 | City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |
-| City | `city_facilities_search` | Feiras, Ruas da Cidadania, ecopontos, libraries, cultural centres, cinemas, memorials, outdoor gyms, public toilets, parks, bike lanes and more, with days and hours as published | Live (IPPUC GeoCuritiba) |
+| City | `city_facilities_search` | Feiras, Ruas da Cidadania, ecopontos, libraries, cultural centres, cinemas, memorials, outdoor gyms and sport centres, public toilets, parks and conservation units, bike lanes and more, with days and hours as published | Live (IPPUC GeoCuritiba) |
 | City | `place_at_point` | Neighbourhood, regional, zoning (code, name, law or decree, version) and nearest street of a point | Live (IPPUC GeoCuritiba) |
-| City | `service_areas_at_point` | Health unit area and CRAS territory of a point, with each area's reference date | Live (IPPUC GeoCuritiba) |
+| City | `service_areas_at_point` | Health unit area and CRAS territory of a point, with each area's reference date, and whether the point is inside Curitiba | Live (IPPUC GeoCuritiba) |
 | City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
 | City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Live (Overpass); police and fire stations Bundled |
 | City | `events_search` | Events from the Instituto Municipal de Turismo calendar | Nightly (GitHub `data` branch), or your local file |
