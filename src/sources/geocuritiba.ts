@@ -9,6 +9,14 @@ import { dateInCuritiba } from "./detran.js";
 const SERVICES = "https://geocuritiba.ippuc.org.br/server/rest/services";
 export const EQUIPMENT_SERVICE_URL = `${SERVICES}/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer`;
 export const BIKE_SERVICE_URL = `${SERVICES}/GeoCuritiba/CICLOVIA_dashboard/FeatureServer`;
+/** SMMA's conservation units (Sistema Municipal de Unidades de Conservação), polygons; read on 2026-11-23. */
+export const CONSERVATION_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_Sistema_Municipal_de_Unidades_de_Conservacao/FeatureServer`;
+
+/** Credit of the types added in v0.24.0 (sport and leisure by SMELJ, conservation units by SMMA). */
+export const SPORT_CONSERVATION_CREDIT = "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)";
+const CONSERVATION_NOTE =
+  "A conservation unit is a protected area, not always open to visits: check with SMMA or the 156 before going. " +
+  "The layer publishes no update date (`updated` is null).";
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -43,7 +51,26 @@ export interface FacilityType {
   layerUrl: string;
   /** The layer also lists private or non-profit venues (commercial cinemas, private theatres); results say so. */
   mixedOwnership?: true;
+  /** The result's `source` when set (types added in v0.24.0); otherwise FACILITIES_SOURCE. */
+  credit?: string;
+  /** A sentence added to the result's note for this type. */
+  note?: string;
 }
+
+const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
+  ...equipment(id, layer, label, aliases),
+  credit: SPORT_CONSERVATION_CREDIT,
+});
+
+const conservation = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
+  id,
+  label,
+  aliases,
+  kind: "park",
+  layerUrl: `${CONSERVATION_SERVICE_URL}/${layer}`,
+  credit: SPORT_CONSERVATION_CREDIT,
+  note: CONSERVATION_NOTE,
+});
 
 const equipment = (id: string, layer: number, label: string, aliases: string[] = [], mixed = false): FacilityType => ({
   id,
@@ -91,6 +118,21 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("clube da gente", 85, "Clube da Gente"),
   equipment("centro de esporte e lazer", 86, "Centro de Esporte e Lazer"),
   equipment("pista de skate", 92, "Pista de Skate", ["skate", "pistas de skate"]),
+  // Esporte e Lazer group (83), added in v0.24.0 (ids and counts read on 2026-11-23; at most 10 records each). The
+  // SMELJ service holds the same records in one layer but without divulgar_endereco, so these layers are read instead.
+  sport("nucleo regional do esporte", 84, "Núcleo Regional do Esporte, Lazer e Juventude", [
+    "nucleos regionais do esporte", "nucleo regional do esporte lazer e juventude", "nucleos regionais do esporte lazer e juventude",
+  ]),
+  sport("centro de atividade fisica", 87, "Centro de Atividade Física", ["centros de atividade fisica"]),
+  sport("centro da juventude", 88, "Centro da Juventude", ["centros da juventude"]),
+  sport("centro de iniciacao ao esporte", 89, "Centro de Iniciação ao Esporte", ["centros de iniciacao ao esporte"]),
+  sport("centro de referencia em esporte", 90, "Centro de Referência em Esporte e Atividade Física", [
+    "centro de referencia em esporte e atividade fisica", "centros de referencia em esporte",
+  ]),
+  sport("pista de bmx", 93, "Pista de Ciclismo BMX", ["bmx", "pista de ciclismo bmx", "pistas de bmx"]),
+  sport("centro de lutas", 94, "Centro de Lutas", ["centros de lutas"]),
+  sport("pista de patinacao", 165, "Pista de Patinação", ["patinacao", "pistas de patinacao"]),
+  sport("velodromo", 166, "Velódromo", ["velodromos"]),
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
@@ -103,6 +145,13 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     kind: "park",
     layerUrl: `${BIKE_SERVICE_URL}/1`,
   },
+  // Conservation units added in v0.24.0. Layers 2, 3, 4 and 8 are already in "parque"; 7 (RPPNM, private land, often
+  // named after people) is left out as personal data; 10 and 11 (APA, ARIE) lack the bairro and kind fields.
+  conservation("estacao ecologica", 1, "Estação Ecológica", ["estacoes ecologicas"]),
+  conservation("bosque de conservacao", 5, "Bosque de Conservação da Biodiversidade Urbana", [
+    "bcbu", "bosques de conservacao", "bosque de conservacao da biodiversidade urbana",
+  ]),
+  conservation("refugio da vida silvestre", 6, "Refúgio da Vida Silvestre", ["refugio", "refugios da vida silvestre"]),
   {
     id: "ciclovia",
     label: "Estrutura Cicloviária",

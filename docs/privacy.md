@@ -46,7 +46,7 @@ behind it.
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
   any other host, or outside `/locaisvacinacao`, are refused) and `https://geocuritiba.ippuc.org.br` (fixed layer
-  queries under `/server/rest/services`, and the point queries of `place_at_point` and `service_areas_at_point`; redirects to any other host or outside that path are refused) and
+  queries under `/server/rest/services`, and the point queries of `place_at_point` and `service_areas_at_point` (since 0.24.0 the latter also asks the cadastral bairro layer when no health area contains the point); redirects to any other host or outside that path are refused) and
   `https://telemetriaws1.ana.gov.br` (`/ServiceANA.asmx/DadosHidrometeorologicos` for bundled station codes; ANA documents
   plain http, but https answered with a valid certificate on 2026-11-22, so https is used; redirects to any other host
   or outside `/ServiceANA.asmx` are refused) and `https://www.teatroguaira.pr.gov.br` (robots.txt, the calendar pages

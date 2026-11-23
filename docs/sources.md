@@ -82,7 +82,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service, both with the point rounded to 4 decimals, through the same host gate |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
@@ -971,6 +971,27 @@ changes (owner request, 2026-11-23: monthly and automatic).
   largest answer was about 250 KB (layer 0 with simplified geometry). Layers left out on purpose: health units (see
   `health_units_search`), schools, bus terminals, police, administrative offices and every other layer not in the
   list (not surveyed).
+- **Added in v0.24.0** (checked 2026-11-23, one request every 5 s at most):
+  - Sport and leisure, MapServer group 83 "Esporte e Lazer": 84 Núcleo Regional do Esporte, Lazer e Juventude (10),
+    87 Centro de Atividade Física (2), 88 Centro da Juventude (2), 89 Centro de Iniciação ao Esporte (2), 90 Centro de
+    Referência em Esporte e Atividade Física (2), 93 Pista de Ciclismo BMX (1), 94 Centro de Lutas (1), 165 Pista de
+    Patinação (1), 166 Velódromo (1); every record `divulgar_endereco` "Sim", `dt_atualiz` 2024-01-04 to 2025-11-18,
+    institutional phones and curitiba.pr.gov.br e-mails (one malformed, `@.curitiba.pr.gov.br`, dropped by the
+    allowlist). The SMELJ service the roadmap named
+    (`GeoCuritiba/Publico_GeoCuritiba_Equipamentos_Urbanos_SMELJ/MapServer`, one point layer of 372 records) holds the
+    same records by `tipo_equi` but has **no `divulgar_endereco`**, so the per-type layers above are read instead.
+  - Conservation units, <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Sistema_Municipal_de_Unidades_de_Conservacao/FeatureServer>
+    (Sistema Municipal de Unidades de Conservação, Lei Municipal 15.744/2020 and 15.977/2022; polygons, same coded
+    fields as Parques e Bosques, `returnCentroid` works with `outSR=4326`): 1 Estação Ecológica (2), 5 Bosque de
+    Conservação da Biodiversidade Urbana (8), 6 Refúgio da Vida Silvestre (1). **No update date is published** (no
+    date field, `editingInfo` null): `updated` is null and `note` says so. Left out: 2 Parque Natural Municipal (32),
+    3 Parque Linear (1), 4 Bosque Municipal (18) and 8 Específicas (2), the exact content of Parques e Bosques
+    (`parque`, 53 records); **7 RPPNM (67) as personal data**: 65 are private property (`administracao` 6
+    "Privada"), many are named after people (owners or relatives) and `ctba_localizacao` is the street address of the
+    private lot; 10 Área de Proteção Ambiental (2) and 11 Área de Relevante Interesse Ecológico (1), which lack the
+    bairro, regional and kind fields and cover areas whose centroid gives no useful distance.
+  - Credit "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)" in `source` for these types only; the other types keep
+    "IPPUC / GeoCuritiba".
 - **Query:** one fixed URL per layer: `where=1=1`, a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
   `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with
   `returnGeometry=true`; parks with `returnCentroid=true` and no geometry; bike lanes with geometry simplified
@@ -1102,7 +1123,12 @@ changes (owner request, 2026-11-23: monthly and automatic).
 - **Query:** one fixed URL per layer: `geometry=<lon>,<lat>` (the point rounded to 4 decimals, about 11 m),
   `geometryType=esriGeometryPoint`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, a fixed `outFields` list,
   `returnGeometry=false`. The rounded point is the only user input in the URL and the cache key.
-- **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Same
+- **Requests and failures:** health area, then CRAS territory (2 requests, 5 s apart: both fit the 20 s budget). Since
+  0.24.0 a health area means `inside_curitiba` true; when the point has none, the bairro layer (cadastral layer 2, the
+  same point query and cache as `place_at_point`) is asked in between and decides (3 requests: slots 0, 5 and 10 s);
+  outside, the CRAS layer is not asked. The bairro layer was not put first: that made every call 3 requests, two
+  concurrent cold calls then pushed a CRAS slot past the budget, and a gap in the bairro layer would hide a health
+  area. The bairro layer failing is an error. Same
   host gate, timeout (15 s), cap (2 MB), redirect rule, refusal handling and fail-closed parser as `place_at_point`;
   each answer cached 6 hours (at most 500 entries). The health layer failing is an error; a CRAS failure after it keeps
   what was read (`partial: true`). Each list has one area per name (the first row kept; a nameless row only when no row

@@ -23,7 +23,8 @@
   links; phone names, sections and numbers) on the separate public branch `data`, with the Instituto cited in each
   tool's `attribution` (owner approval, 2026-11-22).
 - **IPPUC / GeoCuritiba data** (`city_facilities_search`): no licence found (checked 2026-11-21); facts only, with
-  IPPUC cited as "IPPUC / GeoCuritiba" and the layer URL in every result.
+  IPPUC cited as "IPPUC / GeoCuritiba" and the layer URL in every result; the sport and conservation unit types added
+  in 0.24.0 cite "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)".
 - **ANA telemetry data** (`river_levels`): no licence found (checked 2026-11-22); facts only, with ANA cited and the
   service URL in every result.
 - **Teatro Guaíra calendar** (`guaira_events`): no licence found (checked 2026-11-22); facts and links only, with
