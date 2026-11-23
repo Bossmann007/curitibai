@@ -213,6 +213,9 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   and attractions = partial, plus rows "—" for Defesa Civil alerts, EstaR and real-time buses with the reason from
   the owner's research of 2026-11-23), `docs/sources.md` (the six layers, counts, requests made), CHANGELOG 0.20.0,
   version 0.20.0.
+- Owner decisions (Enzo, 2026-11-23): (1) the 20 new `curitiba.pr.gov.br` institutional e-mails returned by the
+  Cultura layers are approved, in addition to the 136 of the 2026-11-22 decision; (2) the `mixedOwnership` note
+  ("confirm days and hours with the venue, not the 156") stays, including its change to `museu` and `teatro`.
 - Out of scope: a tourist-attraction layer (none in the service), Defesa Civil, EstaR, real-time buses.
 - Check: `scripts/verify` exit 0 (`test/cityFacilities.test.ts`: type mapping, a synthetic culture layer, an empty
   layer, missing fields); one live call per new type through the built tool, one at a time.
