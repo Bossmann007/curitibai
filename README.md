@@ -127,7 +127,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 ## How data stays updated
 
 - **Live tools** ask the source on each call and keep the answer in memory only (10 minutes; 6 hours for the
-  vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar). When
+  vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar; 24 hours for the Receita tax-reform data). When
   a source fails, times out or changes format, the tool returns `{"error":"source_unavailable"}` and no data; some tools return what they
   already read with `partial: true`, or `rate_limited` ([Tool reference](docs/tools.md#tool-reference)).
 - **Nightly tools** (`events_search`, `useful_phones`) read a copy that a GitHub Actions workflow collects every night

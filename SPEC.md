@@ -237,10 +237,11 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
 - Fixed place: Curitiba, IBGE `4106902`, UF PR (code `41`). No input chooses another city or state.
 - `rates`: four GETs, `versao`, `aliquota-uniao?data=`, `aliquota-uf?codigoUf=41&data=`,
   `aliquota-municipio?codigoMunicipio=4106902&data=`. Returns `cbs_pct`, `ibs_uf_pct`, `ibs_municipal_pct` as served
-  (percent: on 2026-11-23 the host answered 0.9, 0.1 and 0.0, the 2026 test-year rates), plus `receita_version`
+  (percent, inferred from the values: on 2026-11-23 the host answered 0.9, 0.1 and 0.0, the 2026 test-year rates), plus `receita_version`
   (`versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb`, passed through as served). An HTTP 404 on one rate
   (the host's "Alíquota não encontrada", seen for 2024-01-01 and for the municipal rate on 2027-01-01) is that rate =
-  `null` with a note; it is not remembered as a host failure and not cached (the next call asks again). Any other
+  `null` with a note; it is handled inside the gate task, so it is not remembered as a host failure, and it is not
+  cached (the next call asks again). Any other
   failure of any of the four requests fails the whole call (no partial triple). `source_url` is the API base;
   `license_note` names the four request URLs.
 - `nbs`, `ncm`, `class_trib`: `versao` plus one list for the date, `nbs/lista`, `ncm/vigentes` or
@@ -253,8 +254,9 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   than text there, and `note` says so.
 - `nfse`: no network. A fixed note: in Curitiba the NFS-e is issued on the national Emissor Nacional; schedule
   01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; basis Decreto 1960/2025
-  and Portaria 33/2025; public lookup <https://www.nfse.gov.br/consultapublica>; source
-  <https://lp.curitiba.pr.gov.br/notanacional>, "conferido em 2026-11-23". The page is never fetched (its robots.txt
+  and Portaria 33/2025; public lookup nfse.gov.br/consultapublica (served as `https://www.nfse.gov.br/consultapublica`);
+  source <https://lp.curitiba.pr.gov.br/notanacional>, "conferido em 2026-11-23". The facts come from the owner's
+  brief, which checked that page on that date. The page is never fetched (its robots.txt
   sets a Visit-time window).
 - Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 to 2026-12-31; default today in America/Sao_Paulo.
   Why the bound: the Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) flags every date from
@@ -262,13 +264,12 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   `invalid_argument` instead of serving simulated rates unmarked; the bound also limits the cache keys. A `query` with
   `rates` or `nfse`, or no `query` with a lookup topic, is `invalid_argument`.
 - Every success, every topic, carries `disclaimer`: "API piloto da Receita Federal; não é orientação fiscal; confirme
-  com o contador".
+  com o contador"; every error of this tool ends its `message` with it.
 - Rules (docs/sources.md, docs/privacy.md): only `fetchText` (project User-Agent, allowlist), new host in
   `ALLOWED_HOSTS`; 15 s timeout per request; caps 64 KB (`versao`, rates) and 2 MB (lists); same host and the
   `dados-abertos` path only on redirects; JSON content type only; one host gate, 5 s between requests, 30 s queue
-  limit (a cold `rates` call needs slots at 0, 5, 10 and 15 s, and still fits behind a lookup's two slots), host and
-  transfer failures remembered 60 s to 1 hour; a 404 or a non-JSON body on one route fails that call only and does not
-  block the host (review fix). Cache in memory 24 h: versions and rates (small), lists
+  limit (a cold `rates` call needs slots at 0, 5, 10 and 15 s, and still fits behind a lookup's two slots), failures
+  remembered 60 s to 1 hour; an HTML or other non-JSON 200 answer is a host failure, as in the other live sources. Cache in memory 24 h: versions and rates (small), lists
   at most 3 entries (`TtlCache` gains an optional entry limit). Fail closed: not JSON, a `versao` without string
   `versaoApp`/`versaoDb`, a rate without a number `aliquotaReferencia`, a list that is not an array, or a non-empty
   list where no item has string code and description → `source_unavailable`. An empty list → `total` 0 with a note.

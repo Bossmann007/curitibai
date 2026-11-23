@@ -69,29 +69,27 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !=
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 /**
- * One GET through the gate: same host and the dados-abertos path on redirects, JSON only. A 404 is `null` when
- * `allow404`. Only host and transfer failures are thrown inside the gate task (remembered for the host); a 404 or a
- * body that is not JSON is one route's problem and is checked after it, so the other routes stay available.
+ * One GET through the gate: same host and the dados-abertos path on redirects, JSON only. With `allow404` (a rate), a
+ * 404 is `null` and is handled inside the gate task, so a date with no rate is not a failure of the host. Any other
+ * failure, a body that is not JSON (an HTML maintenance page) included, is remembered for the host, as in the other
+ * live sources.
  */
 async function getJson(url: string, maxBytes: number, allow404: boolean): Promise<unknown> {
-  const res = await gate.run(async () => {
+  return gate.run(async () => {
+    let res;
     try {
-      return await fetchText(url, { timeoutMs: RECEITA_TIMEOUT_MS, maxBytes, sameHostOnly: true, redirectPathPrefix: PATH });
+      res = await fetchText(url, { timeoutMs: RECEITA_TIMEOUT_MS, maxBytes, sameHostOnly: true, redirectPathPrefix: PATH });
     } catch (err) {
-      if (err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
+      if (allow404 && err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
       throw err;
     }
+    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+    try {
+      return JSON.parse(res.body) as unknown;
+    } catch {
+      throw new SourceUnavailableError("not JSON");
+    }
   });
-  if (res === null) {
-    if (allow404) return null;
-    throw new SourceUnavailableError("HTTP 404");
-  }
-  if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-  try {
-    return JSON.parse(res.body) as unknown;
-  } catch {
-    throw new SourceUnavailableError("not JSON");
-  }
 }
 
 export interface ReceitaVersion {

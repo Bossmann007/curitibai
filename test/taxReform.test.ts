@@ -92,12 +92,12 @@ describe("tax_reform_curitiba rates", () => {
     ["empty body", json({})],
   ])("fails closed with no partial rates on %s", async (_name, route) => {
     stubFetch(rateRoutes(D, { [`GET ${ALIQUOTA_UF_URL(D)}`]: route }));
-    expect(errorOf(await call({ date: D }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ date: D }))).toEqual({ error: "source_unavailable", message: `${DISCLAIMER}.` });
   });
 
   it("fails closed when versao has no versaoApp", async () => {
     stubFetch(rateRoutes(D, { [`GET ${VERSAO_URL}`]: json({ versaoDb: "V1" }) }));
-    expect(errorOf(await call({ date: D }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ date: D }))).toMatchObject({ error: "source_unavailable" });
   });
 
   it("defaults to today and says so when today is past the served dates", async () => {
@@ -120,17 +120,23 @@ describe("tax_reform_curitiba rates", () => {
     for (const u of [VERSAO_URL, ALIQUOTA_UNIAO_URL(D), ALIQUOTA_UF_URL(D), ALIQUOTA_MUNICIPIO_URL(D)]) expect(out.license_note).toContain(u);
   });
 
-  it("a list route answering 404 or HTML fails that call but does not block the host", async () => {
-    const calls = stubFetch({
-      [`GET ${VERSAO_URL}`]: file("versao.json"),
-      [`GET ${NBS_URL(D)}`]: { status: 404 },
-      [`GET ${NCM_URL(D)}`]: { body: "<html>manutencao</html>", contentType: "text/html" },
-      ...rateRoutes(),
-    });
-    expect(errorOf(await call({ topic: "nbs", query: "abc", date: D }))).toEqual({ error: "source_unavailable" });
-    expect(errorOf(await call({ topic: "ncm", query: "12", date: D }))).toEqual({ error: "source_unavailable" });
-    expect((await call({ date: D })).isError).toBeFalsy();
-    expect(calls).toHaveLength(6);
+  it("an HTML page on any route is a host failure: not asked again for 60 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const calls = stubFetch({
+        [`GET ${VERSAO_URL}`]: file("versao.json"),
+        [`GET ${NCM_URL(D)}`]: { body: "<html>manutencao</html>", contentType: "text/html" },
+        ...rateRoutes(),
+      });
+      expect(errorOf(await call({ topic: "ncm", query: "12", date: D }))).toMatchObject({ error: "source_unavailable" });
+      const n = calls.length;
+      expect(errorOf(await call({ date: D }))).toMatchObject({ error: "source_unavailable" });
+      expect(calls).toHaveLength(n);
+      vi.advanceTimersByTime(60_000);
+      expect((await call({ date: D })).isError).toBeFalsy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("caches the answer: a second call makes no request", async () => {
@@ -213,7 +219,7 @@ describe("tax_reform_curitiba lookups", () => {
     ["HTTP 500", { status: 500 }],
   ])("fails closed when the list is %s", async (_name, route) => {
     stubFetch({ [`GET ${VERSAO_URL}`]: file("versao.json"), [`GET ${NBS_URL(D)}`]: route });
-    expect(errorOf(await call({ topic: "nbs", query: "abc", date: D }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ topic: "nbs", query: "abc", date: D }))).toMatchObject({ error: "source_unavailable" });
   });
 });
 
@@ -244,8 +250,9 @@ describe("tax_reform_curitiba arguments", () => {
     ["a code query made only of separators", { topic: "ncm", query: "--" }],
   ])("refuses %s with invalid_argument and no request", async (_name, args) => {
     const calls = stubFetch({});
-    const err = errorOf(await call(args)) as { error: string };
+    const err = errorOf(await call(args)) as { error: string; message: string };
     expect(err.error).toBe("invalid_argument");
+    expect(err.message.endsWith(`${DISCLAIMER}.`)).toBe(true);
     expect(calls).toHaveLength(0);
   });
 });

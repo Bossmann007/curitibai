@@ -290,19 +290,21 @@ Built: about 300 lines inside this server, reusing its HTTP client, cache and en
 
 Checked live on **2026-11-23** with curl, User-Agent `curitibai-mcp/0.7`, 12 GET requests 6 s apart, before any code
 was written (`versao`; the three rates for 2026-11-23; the NBS, NCM and cClassTrib lists; one NBS, one NCM and one
-cClassTrib detail; the federal rate for 2024-01-01 and the municipal rate for 2027-01-01).
+cClassTrib detail; the federal rate for 2024-01-01 and the municipal rate for 2027-01-01). The built tool was then called live twice, once per topic each time (`rates`, `nbs`, `ncm`, `class_trib`;
+`nfse` makes no request): 7 requests per run (`versao`, three rates, three lists), 14 in all, through the 5 s gate.
+A cold `rates` call took 19.4 s and 20.6 s.
 
 | Field | Value |
 |---|---|
 | Base | `https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/`. Routes from `DadosAbertosController.java` (`@RequestMapping("calculadora/dados-abertos")`) and the README of <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT), not from third parties |
 | Routes used | `versao`; `aliquota-uniao?data=`; `aliquota-uf?codigoUf=41&data=`; `aliquota-municipio?codigoMunicipio=4106902&data=`; `nbs/lista?data=`; `ncm/vigentes?data=`; `classificacoes-tributarias/cbs-ibs?data=`. Only the date (validated) and fixed codes are in the URLs |
-| Answers on 2026-11-23 | `versao`: `versaoApp` `1.7.2-0d9b30c1`, `versaoDb` `V0073`, `dataVersaoDb` `2026-11-09`, `ambiente` `apr` (passed through as served, never hardcoded). Rates `{"aliquotaReferencia":0.9}` (CBS), `0.1` (IBS UF, PR), `0.0` (IBS municipal, Curitiba): percent, the 2026 test-year rates. Lists: NBS 920 items (100 KB), NCM 10,516 (730 KB), cClassTrib 170 (148 KB). 1–6 s per request |
+| Answers on 2026-11-23 | `versao`: `versaoApp` `1.7.2-0d9b30c1`, `versaoDb` `V0073`, `dataVersaoDb` `2026-11-09`, `ambiente` `apr` (passed through as served, never hardcoded). Rates `{"aliquotaReferencia":0.9}` (CBS), `0.1` (IBS UF, PR), `0.0` (IBS municipal, Curitiba): percent, inferred from the values (the 2026 test-year rates). Lists: NBS 920 items (100 KB), NCM 10,516 (730 KB), cClassTrib 170 (148 KB). 1–6 s per request |
 | Not found | HTTP 404, `application/problem+json`, "Alíquota não encontrada" for the federal rate on 2024-01-01 and for the municipal rate on 2027-01-01: returned as a `null` rate with a note, not as a host failure |
 | Simulated data | The Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) marks every date from 2027-01-01 as simulated (`x-warning-dados-simulados` header). The tool accepts 2026 dates only |
-| Guards | `fetchText` with the project User-Agent; 15 s timeout; caps 64 KB (versions, rates) and 2 MB (lists); redirects only to the same host and the `dados-abertos` path; JSON only; one host gate (5 s between requests, 30 s queue limit, host and transfer failures remembered 60 s to 1 hour; a 404 or non-JSON answer on one route is not); cache in memory 24 h (lists at most 3). Fail closed on anything else (see SPEC "v0.21.0 changes") |
+| Guards | `fetchText` with the project User-Agent; 15 s timeout; caps 64 KB (versions, rates) and 2 MB (lists); redirects only to the same host and the `dados-abertos` path; JSON only; one host gate (5 s between requests, 30 s queue limit, failures remembered 60 s to 1 hour, an HTML 200 answer included; a missing rate, HTTP 404, is not a failure and is not cached); cache in memory 24 h (lists at most 3). Fail closed on anything else (see SPEC "v0.21.0 changes") |
 | Terms / licence | The calculator's code repositories are MIT. **No terms of use for the hosted pilot API were found.** Values are passed on unchanged, with the source URL and fetch time in `license_note`, and every answer says "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador" |
 | Out of scope | The calculation `POST`, effective-rate arithmetic, any NFS-e or other invoice issuance, Imposto Seletivo data, other cities or states |
-| NFS-e note | Fixed text read by hand from `https://lp.curitiba.pr.gov.br/notanacional` (conferido em 2026-11-23): mandatory issuance on the Emissor Nacional; 01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; Decreto 1960/2025 and Portaria 33/2025; public lookup `https://www.nfse.gov.br/consultapublica`. Never fetched by the server |
+| NFS-e note | Fixed text from the owner's v0.21.0 brief, which checked `https://lp.curitiba.pr.gov.br/notanacional` (conferido em 2026-11-23): mandatory issuance on the Emissor Nacional; 01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; Decreto 1960/2025 and Portaria 33/2025; public lookup `https://www.nfse.gov.br/consultapublica`. Never fetched by the server |
 | Fixtures | **Synthetic**: `test/fixtures/receita/*.json`, small, invented codes and descriptions. No real response is committed |
 
 Prior art (2026-11-23, recorded in the brief): build small; tool shape inspired by bispado/mcp-calculadora-rtc (MIT),
