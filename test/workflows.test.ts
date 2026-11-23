@@ -34,10 +34,27 @@ describe("GitHub Actions workflows", () => {
 
   it("collect: nightly inside the robots Visit-time plus manual runs, 35 min (above the collector's 30-minute deadline), no overlap, write only on the job", () => {
     const lines = code(collect).map((l) => l.trimEnd());
-    expect(lines).toContain('    - cron: "37 2 * * *"');
-    // The tools' "scheduled around 02:37 UTC" and the docs come from the same constant.
+    const crons = lines.filter((l) => /^\s*- cron:/.test(l));
+    expect(crons).toEqual([
+      '    - cron: "37 2 * * *"',
+      '    - cron: "17 3 * * *"',
+      '    - cron: "59 3 * * *"',
+      '    - cron: "37 4 * * *"',
+      '    - cron: "13 5 * * *"',
+    ]);
+    const starts = crons.map((l) => {
+      const [mm, hh] = l.split('"')[1]!.split(" ").map(Number);
+      return hh! * 60 + mm!;
+    });
+    for (const [i, t] of starts.entries()) {
+      expect(t % 2, "odd minute").toBe(1);
+      expect(t).toBeGreaterThanOrEqual(2 * 60); // robots Visit-time starts 02:00 UTC
+      expect(t + 30).toBeLessThanOrEqual(5 * 60 + 50); // start plus the 30-minute deadline ends inside the collector's window
+      if (i > 0) expect(t - starts[i - 1]!, "gap above the 35-minute job timeout").toBeGreaterThan(35);
+    }
+    // The tools' "scheduled around 02:37 UTC" and the docs come from the same constant: the first entry.
     const [hh, mm] = NIGHTLY_RUN_UTC.split(":").map(Number);
-    expect(lines).toContain(`    - cron: "${mm} ${hh} * * *"`);
+    expect(crons[0]).toBe(`    - cron: "${mm} ${hh} * * *"`);
     expect(readFileSync(new URL("../docs/local-data.md", import.meta.url), "utf8")).toContain(`at ${NIGHTLY_RUN_UTC} UTC`);
     expect(lines).toContain("  workflow_dispatch:");
     expect(collect).toMatch(/^permissions:\n {2}contents: read\n/m);
@@ -67,5 +84,7 @@ describe("GitHub Actions workflows", () => {
     expect(pushes).toEqual(['  pubgit push -q origin "HEAD:refs/heads/$BRANCH"']);
     expect(publish).not.toMatch(/--force|\+HEAD|refs\/heads\/main|add -A|add \./);
     expect(publish).toContain("env -u GH_TOKEN CURITIBAI_DATA_DIR=");
+    // Later schedule entries skip once today's collection succeeded.
+    expect(code(publish).filter((l) => l.includes("CURITIBAI_COLLECT_ONCE_A_DAY=1 node scripts/fetch-events.mjs"))).toHaveLength(1);
   });
 });

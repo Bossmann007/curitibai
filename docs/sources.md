@@ -699,7 +699,9 @@ in the city's own categories. Built.
   `deadline`, `http_error`, `redirect`, `too_large`, `timeout`, `network`), or the event count is 0 or outside 0.3x–3x
   of the previous file's (`layout_changed`). A day with no events is therefore `layout_changed` too: no empty list page
   has been seen, so it cannot be told from a page the parser no longer understands. `locked` exits 1 without writing
-  `status.json`. `status.json` records `attempt`, `success` (the last successful run) and
+  `status.json`. Since v0.19.3 `window_closed` writes neither status file either, and exits 0 when both steps succeeded
+  in the last 24 hours (else 1); `already_collected` (only with `CURITIBAI_COLLECT_ONCE_A_DAY=1`) exits 0 and writes
+  nothing. `status.json` records `attempt`, `success` (the last successful run) and
   `code` (and `http_status` when one stopped the run). Output is limited to fixed status lines.
 - **Needs a live check** (decided from one sample of each page): the text of an empty list page is unknown, so a
   count of 0 always stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
@@ -751,15 +753,17 @@ in the city's own categories. Built.
 
 ### Published nightly copy of the events and phones files (since 0.18.0)
 
-- **What runs:** `.github/workflows/collect.yml`, cron `37 2 * * *` (02:37 UTC, inside the Turismo site's robots.txt
-  `Visit-time` 0200-0600) plus `workflow_dispatch`, on `ubuntu-latest` only (standard GitHub-hosted runner, free in
+- **What runs:** `.github/workflows/collect.yml`, crons `37 2`, `17 3`, `59 3`, `37 4` and `13 5 * * *` (02:37 UTC and
+  four retries since v0.19.3, all inside the Turismo site's robots.txt `Visit-time` 0200-0600; GitHub can delay or drop a
+  scheduled run, and the first one, on 2026-11-23, started 8.5 h late) plus `workflow_dispatch`, on `ubuntu-latest` only (standard GitHub-hosted runner, free in
   public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>), timeout 35
   minutes (above the collector's 30-minute deadline), concurrency group `collect` (a run never overlaps another; a queued one waits), job permission
   `contents: write` only (workflow default `contents: read`), actions pinned by full commit SHA, and only on
   `Bossmann007/curitibai` `main` (forks and other branches skip the job). No `npm ci`: the collector uses Node
   built-ins only.
-- **Same collector rules:** the job runs `scripts/publish-data.sh`, which runs `scripts/fetch-events.mjs` once,
-  unchanged (window 02:00–05:50 UTC, robots.txt group compared on every run, one request per 5 s, 15 s per request,
+- **Same collector rules:** the job runs `scripts/publish-data.sh`, which runs `scripts/fetch-events.mjs` once with
+  `CURITIBAI_COLLECT_ONCE_A_DAY=1` (a run on a UTC date when both steps already succeeded makes no request, writes
+  nothing and exits 0: `already_collected`) and otherwise the same rules (window 02:00–05:50 UTC, robots.txt group compared on every run, one request per 5 s, 15 s per request,
   no redirect, no retry, User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)`). Before the
   run it copies the previous `events/events.json`, `events/status.json` and `phones/phones.json` from the `data`
   branch into a temporary `CURITIBAI_DATA_DIR`, so the 0.3x–3x ratio check and "a failed run keeps the previous
@@ -768,7 +772,8 @@ in the city's own categories. Built.
 - **What is published:** only `events/events.json`, `events/status.json`, `phones/phones.json` and
   `phones/status.json` (v0.18.1), committed by
   `github-actions[bot]` to the orphan branch `data` (never `main`; the branch is created by the first run) and pushed
-  without force; the commit is skipped when none changed (rare, since `events/status.json` records every attempt).
+  without force; the commit and push are skipped when none changed (a skipped run, or one stopped by the window, writes
+  nothing).
   A typical run takes about 5 minutes; 10 list pages of 10 events would be about 112 requests, each followed by
   the 5 s gap, plus response time: about 10 to 15 minutes; the collector's own 30-minute deadline always comes before the
   35-minute job timeout, so a slow run still stops cleanly and publishes `status.json`. `useful_phones` reads

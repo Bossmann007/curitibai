@@ -2,6 +2,19 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.3 - 2026-11-23
+
+- Nightly collection: the first scheduled run of `collect.yml` (2026-11-23) started 8.5 h late, outside the events
+  site's robots.txt window, so nothing was collected and the `data` branch got only `status.json` files with
+  `success: null`. GitHub can delay scheduled runs under load and drop queued ones. The workflow now has five
+  schedule entries inside the window (02:37, 03:17, 03:59, 04:37 and 05:13 UTC). Once both steps (events and phones)
+  succeeded on the UTC date, the later entries exit 0 at once with `code=already_collected`: no request, no file
+  change, no push (`CURITIBAI_COLLECT_ONCE_A_DAY=1`, set by `scripts/publish-data.sh`).
+- `scripts/fetch-events.mjs`: a run stopped by the window (`window_closed`) no longer writes `events/status.json` or
+  `phones/status.json`, so a late run never replaces the record of a successful collection. It exits 0 when both
+  steps succeeded in the last 24 hours, so a late duplicate does not show as a failed run, and 1 otherwise, so a
+  night with no collection stays visible.
+
 ## 0.19.2 - 2026-11-22
 
 - `procurement_search` with `query`: a single connection reset no longer switches PNCP's fast search off for 10

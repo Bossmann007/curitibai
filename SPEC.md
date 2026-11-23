@@ -13,7 +13,8 @@ cost.
 ## Design
 
 - **Workflow** `.github/workflows/collect.yml`: `schedule` cron `37 2 * * *` (02:37 UTC, an odd minute inside the
-  Turismo site's robots.txt `Visit-time` 0200-0600) and `workflow_dispatch`. `runs-on: ubuntu-latest` only (standard
+  Turismo site's robots.txt `Visit-time` 0200-0600; since v0.19.3 also `17 3`, `59 3`, `37 4` and `13 5`, see "v0.19.3
+  changes") and `workflow_dispatch`. `runs-on: ubuntu-latest` only (standard
   runner, free in public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>;
   never a larger runner). Workflow permissions `contents: read`; the job alone `contents: write`. Actions pinned by
   full commit SHA (the same two as `verify.yml`). `timeout-minutes: 35` (above the collector's 30-minute deadline). Concurrency group `collect`,
@@ -25,7 +26,8 @@ cost.
   them as `github-actions[bot]`, skipping the commit when none changed (rare: `status.json` records every attempt); push `HEAD:refs/heads/data` without force; exit with the
   collector's code. No `data` branch yet: create it as an orphan. A `ls-remote` failure other than "no such branch"
   stops before collecting (so a network error never makes a new orphan). The collector already keeps the previous
-  `events.json` / `phones.json` on any failure and always writes `status.json`.
+  `events.json` / `phones.json` on any failure and always writes `status.json` (since v0.19.3, not on `window_closed`
+  or `already_collected`; see "v0.19.3 changes").
 - **Timing:** typical run about 5 minutes (50 events); with 10 list pages of 10 events, about 112 requests with a
   5 s gap after each plus response time, about 10–15 minutes, more when the site is slow. The job timeout is 35
   minutes (owner decision, 2026-11-22), above the collector's unchanged 30-minute deadline, so the collector always
@@ -149,6 +151,32 @@ Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the u
   counts nor resets. The Consulta API keeps its immediate single retry.
 - `fetchText` (`src/http.ts`): a connection error or timeout while the body is read is `network error` / `timeout`,
   like one before the headers (it escaped as an unknown error before).
+
+## v0.19.3 changes (task brief "curitibai v0.19.3 — the nightly collector must actually collect", 2026-11-23)
+
+The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 2 * * *`, so it stopped with
+`window_closed` and the `data` branch holds only `status.json` files with `success: null`. GitHub: the `schedule` event
+"can be delayed during periods of high loads" and queued jobs may be dropped.
+
+- `collect.yml`: five schedule entries, `37 2`, `17 3`, `59 3`, `37 4` and `13 5 * * *` UTC: odd minutes, gaps of 36
+  minutes or more (above the 35-minute job timeout), the last start plus the 30-minute deadline before 05:50 UTC.
+  `NIGHTLY_RUN_UTC` stays `02:37` (the first entry). Robots.txt checks, the deadline, `persist-credentials: false`,
+  `contents: write` on the job only and no `npm ci` are unchanged.
+- `scripts/fetch-events.mjs` `run()`: after the lock, "last collection" is the older of the `success` times in
+  `events/status.json` and `phones/status.json` (null when either is missing, unparseable or later than the start).
+  With `CURITIBAI_COLLECT_ONCE_A_DAY=1` (set by `scripts/publish-data.sh`), a last collection on the start's UTC date
+  stops the run with `already_collected`: no request, no file written, exit 0. A `window_closed` stop (at the start or
+  mid-run, events or phones step) writes neither status file, so the previous record is never replaced; the run exits
+  0 when each step ended `ok` or `window_closed` and the last collection is less than 24 h before the start, else 1.
+  Without the switch a by-hand run inside the window collects as before.
+- No change to the data files' format, the tools or any other source. This lifts "any change to the collector's
+  behaviour" in "Out of scope" below for these points only.
+- Consequence: after a 403, 429 or `robots_changed`, the next entry that night asks the site again (at most four more
+  runs, each stopping at its first refusal); before, the next attempt was the next night.
+- Check: `scripts/verify` exit 0 (new `test/fetchEvents.test.ts` "later schedule entries and late runs" and the cron
+  assertions in `test/workflows.test.ts`); `scripts/publish-data.sh` against a local bare repository outside the
+  window: success 2 h ago gives `already_collected`, exit 0; 20 h ago `window_closed`, exit 0; 30 h ago or none,
+  exit 1; no commit in any case.
 
 ## Out of scope
 

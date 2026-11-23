@@ -111,4 +111,6 @@ export function writeCache(dir: string, cache: Map<number, CacheEntry>): void;
 export function needsDetail(entry: CacheEntry | undefined, item: { id: number; slug: string }, today: string, nowMs: number): boolean;
 export function acquireLock(dir: string, now: Date): () => void;
 export function run(deps: RunDeps): Promise<RunResult>;
+export const RECENT_SUCCESS_MS: number;
+export function lastCollection(env: Record<string, string | undefined>, now: Date): Date | null;
 export function decodeHtml(s: string): string;

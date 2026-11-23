@@ -141,7 +141,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 
 **How updating works (since 0.18.0): nobody has to run anything.** A GitHub Actions workflow,
 [`.github/workflows/collect.yml`](.github/workflows/collect.yml), runs the collector `scripts/fetch-events.mjs` every
-night at 02:37 UTC (23:37 in Curitiba). `events_search` and `useful_phones` read the local file in
+night at 02:37 UTC (23:37 in Curitiba), retried at four later times inside the site's window until one run succeeds. `events_search` and `useful_phones` read the local file in
 `CURITIBAI_DATA_DIR` when it exists, otherwise the published copy (cached 1 hour). Both tools return the file's
 `checked_at`; after 3 days they say `stale: true`, with a note that the nightly collection may have stopped. The
 schedule, the published files, how to turn it back on and how to run the collector yourself are in
