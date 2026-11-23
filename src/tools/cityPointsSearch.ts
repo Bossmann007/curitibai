@@ -293,10 +293,11 @@ export const cityPointsSearch: ToolDef<typeof cityPointsSearchInput, typeof city
   name: "city_points_search",
   title: "Curitiba points of interest open to the public (URBS, local file)",
   description:
-    "Find public points in Curitiba in the URBS points file in " +
-    "CURITIBAI_DATA_DIR/urbs/ (no network): CMEIs, schools, terminals, regional offices, health units and more; " +
+    "Find public points in Curitiba in the URBS file in " +
+    "CURITIBAI_DATA_DIR/urbs/ (no network): CMEIs, schools, terminals, regional offices and more; " +
     "no hours. Filter by category, name or position; no arguments lists the categories. Prefer this for " +
-    "those kinds, or any point near a position (health units near me too). Not for emergencies. Read-only.",
+    "CMEIs, schools, terminals, regional offices, or any point near a position, health units too. Not for " +
+    "emergencies. Read-only.",
   inputSchema: cityPointsSearchInput,
   outputSchema: cityPointsSearchOutput,
   annotations: { openWorldHint: false },
