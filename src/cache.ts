@@ -34,7 +34,7 @@ export class TtlCache {
         const at = this.now();
         for (const [k, e] of this.entries) if (e.expiresAt <= at) this.entries.delete(k);
         const fetchedAt = new Date(at).toISOString();
-        this.entries.delete(key);
+        if (this.maxEntries !== undefined) this.entries.delete(key);
         this.entries.set(key, { value, fetchedAt, expiresAt: at + this.ttlMs });
         if (this.maxEntries !== undefined) {
           for (const k of this.entries.keys()) {

@@ -10,9 +10,12 @@ import {
   getVersion,
   LIST_URL,
   NFSE_CHECKED,
+  NFSE_CHECKED_AT,
   NFSE_NOTE,
   NFSE_SOURCE_URL,
+  RECEITA_BASE,
   receitaLicenseNote,
+  VERSAO_URL,
   type CodeItem,
 } from "../sources/receita.js";
 import { fold } from "../text.js";
@@ -119,7 +122,7 @@ function validDate(d: string): boolean {
 function matcher(query: string): (i: CodeItem) => boolean {
   if (/^[\d.\-\s]+$/.test(query)) {
     const digits = query.replace(/\D/g, "");
-    return (i) => i.code.startsWith(digits);
+    return (i) => i.code.replace(/\D/g, "").startsWith(digits);
   }
   const words = fold(query).split(/\s+/).filter((w) => w !== "");
   return (i) => {
@@ -146,7 +149,7 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
       return ok({
         data: { topic, ...BASE, date: null, ...EMPTY, nfse: NFSE_NOTE },
         source_url: NFSE_SOURCE_URL,
-        checked_at: NFSE_CHECKED,
+        checked_at: NFSE_CHECKED_AT,
         license_note:
           `Facts read by hand from ${NFSE_SOURCE_URL} (Prefeitura de Curitiba) on ${NFSE_CHECKED}; the page is not fetched ` +
           "by this server. Unofficial; not affiliated with Prefeitura de Curitiba.",
@@ -155,10 +158,17 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
     }
     const day = date ?? today();
     if (!validDate(day)) {
-      return fail("invalid_argument", `date must be a real date from ${FIRST_DATE} to ${LAST_DATE} (later dates are simulated data in the Receita base).`);
+      const why =
+        date === undefined
+          ? `today (${day}) is outside the dates this tool serves, ${FIRST_DATE} to ${LAST_DATE}`
+          : `date must be a real date from ${FIRST_DATE} to ${LAST_DATE}`;
+      return fail("invalid_argument", `${why}; later dates are simulated data in the Receita base.`);
     }
     if (topic === "rates" && query !== undefined) return fail("invalid_argument", "query is not used with topic rates.");
     if (topic !== "rates" && query === undefined) return fail("invalid_argument", `topic ${topic} needs a query (a code or words).`);
+    if (query !== undefined && /^[\d.\-\s]+$/.test(query) && query.replace(/\D/g, "").length < 2) {
+      return fail("invalid_argument", "a code query needs at least 2 digits.");
+    }
     try {
       if (topic === "rates") {
         const [version, cbs, uf, mun] = await Promise.all([
@@ -178,9 +188,12 @@ export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof ta
             receita_version: version.value,
             rates: { cbs_pct: cbs.value, ibs_uf_pct: uf.value, ibs_municipal_pct: mun.value },
           },
-          source_url: ALIQUOTA_MUNICIPIO_URL(day),
+          source_url: `${RECEITA_BASE}/`,
           checked_at: checkedAt,
-          license_note: receitaLicenseNote(ALIQUOTA_MUNICIPIO_URL(day), checkedAt),
+          license_note: receitaLicenseNote(
+            [VERSAO_URL, ALIQUOTA_UNIAO_URL(day), ALIQUOTA_UF_URL(day), ALIQUOTA_MUNICIPIO_URL(day)].join(", "),
+            checkedAt,
+          ),
           note: missing ? `${RATES_NOTE} A null rate: the Receita base has no reference rate for that date.` : RATES_NOTE,
         });
       }

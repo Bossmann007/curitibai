@@ -34,8 +34,11 @@ const SMALL_MAX_BYTES = 64 * 1024;
 const LIST_MAX_BYTES = 2 * 1024 * 1024;
 export const RECEITA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** 5 s between request starts; 20 s queue limit, so a cold `rates` call (slots at 0, 5, 10 and 15 s) fits. */
-export const RECEITA_GATE: HostGateOptions = { minIntervalMs: 5_000, maxQueueWaitMs: 20_000 };
+/**
+ * 5 s between request starts; 30 s queue limit, so a cold `rates` call (slots at 0, 5, 10 and 15 s) fits even behind a
+ * lookup that took the two slots before it.
+ */
+export const RECEITA_GATE: HostGateOptions = { minIntervalMs: 5_000, maxQueueWaitMs: 30_000 };
 const gate = createHostGate(RECEITA_GATE);
 /** Versions and rates (a few bytes each). */
 const smallCache = new TtlCache(RECEITA_CACHE_TTL_MS, () => Date.now(), 500);
@@ -65,24 +68,30 @@ function isObject(v: unknown): v is Record<string, unknown> {
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-/** One GET through the gate: same host and the dados-abertos path on redirects, JSON only. A 404 is `null`. */
+/**
+ * One GET through the gate: same host and the dados-abertos path on redirects, JSON only. A 404 is `null` when
+ * `allow404`. Only host and transfer failures are thrown inside the gate task (remembered for the host); a 404 or a
+ * body that is not JSON is one route's problem and is checked after it, so the other routes stay available.
+ */
 async function getJson(url: string, maxBytes: number, allow404: boolean): Promise<unknown> {
-  return gate.run(async () => {
-    let res;
+  const res = await gate.run(async () => {
     try {
-      res = await fetchText(url, { timeoutMs: RECEITA_TIMEOUT_MS, maxBytes, sameHostOnly: true, redirectPathPrefix: PATH });
+      return await fetchText(url, { timeoutMs: RECEITA_TIMEOUT_MS, maxBytes, sameHostOnly: true, redirectPathPrefix: PATH });
     } catch (err) {
-      // Handled inside the gate task: a date with no rate is not a failure of the host.
-      if (allow404 && err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
+      if (err instanceof SourceUnavailableError && err.reason === "HTTP 404") return null;
       throw err;
     }
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    try {
-      return JSON.parse(res.body) as unknown;
-    } catch {
-      throw new SourceUnavailableError("not JSON");
-    }
   });
+  if (res === null) {
+    if (allow404) return null;
+    throw new SourceUnavailableError("HTTP 404");
+  }
+  if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+  try {
+    return JSON.parse(res.body) as unknown;
+  } catch {
+    throw new SourceUnavailableError("not JSON");
+  }
 }
 
 export interface ReceitaVersion {
@@ -111,8 +120,21 @@ export function parseRate(json: unknown): number | null {
   return v;
 }
 
-export function getRate(url: string): Promise<Cached<number | null>> {
-  return smallCache.getOrLoad(`GET ${url}`, async () => parseRate(await getJson(url, SMALL_MAX_BYTES, true)));
+/** Thrown by a rate load on HTTP 404 so that the missing rate is not cached (the base may publish it later). */
+class RateNotFound extends Error {}
+
+/** A found rate is cached 24 h; a missing one (null) is not cached, so the next call asks again. */
+export async function getRate(url: string): Promise<Cached<number | null>> {
+  try {
+    return await smallCache.getOrLoad(`GET ${url}`, async () => {
+      const v = parseRate(await getJson(url, SMALL_MAX_BYTES, true));
+      if (v === null) throw new RateNotFound();
+      return v;
+    });
+  } catch (err) {
+    if (err instanceof RateNotFound) return { value: null, fetchedAt: new Date().toISOString() };
+    throw err;
+  }
 }
 
 export type ListKind = "nbs" | "ncm" | "class_trib";
@@ -174,6 +196,8 @@ export function getList(kind: ListKind, date: string): Promise<Cached<CodeList>>
 
 /** Fixed NFS-e note, read by hand on CHECKED; the page is never fetched (its robots.txt sets a Visit-time window). */
 export const NFSE_CHECKED = "2026-11-23";
+/** `checked_at` of the note, as an ISO time like the other answers (the day it was read, Curitiba time). */
+export const NFSE_CHECKED_AT = "2026-11-23T00:00:00-03:00";
 export const NFSE_SOURCE_URL = "https://lp.curitiba.pr.gov.br/notanacional";
 export const NFSE_NOTE = {
   text:

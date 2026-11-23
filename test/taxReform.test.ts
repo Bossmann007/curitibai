@@ -75,9 +75,13 @@ describe("tax_reform_curitiba rates", () => {
     const out = taxReformCuritibaOutput.parse((await call({ date: D })).structuredContent);
     expect(out.data.rates).toEqual({ cbs_pct: 0.9, ibs_uf_pct: 0.1, ibs_municipal_pct: null });
     expect(out.note).toMatch(/no reference rate/i);
-    stubFetch(rateRoutes("2026-03-11"));
+    // A missing rate is not cached: the next call asks for it again (the found ones come from the cache).
+    await call({ date: D });
+    expect(calls.map((c) => c.url)).toEqual([VERSAO_URL, ALIQUOTA_UNIAO_URL(D), ALIQUOTA_UF_URL(D), ALIQUOTA_MUNICIPIO_URL(D), ALIQUOTA_MUNICIPIO_URL(D)]);
+    // The 404 is not remembered as a host failure: another date is asked at once.
+    const more = stubFetch(rateRoutes("2026-03-11"));
     expect((await call({ date: "2026-03-11" })).isError).toBeFalsy();
-    expect(calls).toHaveLength(4);
+    expect(more).toHaveLength(3);
   });
 
   it.each<[string, Route]>([
@@ -94,6 +98,39 @@ describe("tax_reform_curitiba rates", () => {
   it("fails closed when versao has no versaoApp", async () => {
     stubFetch(rateRoutes(D, { [`GET ${VERSAO_URL}`]: json({ versaoDb: "V1" }) }));
     expect(errorOf(await call({ date: D }))).toEqual({ error: "source_unavailable" });
+  });
+
+  it("defaults to today and says so when today is past the served dates", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2027-01-02T12:00:00Z"));
+    try {
+      const calls = stubFetch({});
+      const err = errorOf(await call()) as { error: string; message: string };
+      expect(err.error).toBe("invalid_argument");
+      expect(err.message).toMatch(/^today \(2027-01-02\) is outside/);
+      expect(calls).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("names every request of a rates answer in license_note", async () => {
+    stubFetch(rateRoutes());
+    const out = taxReformCuritibaOutput.parse((await call({ date: D })).structuredContent);
+    for (const u of [VERSAO_URL, ALIQUOTA_UNIAO_URL(D), ALIQUOTA_UF_URL(D), ALIQUOTA_MUNICIPIO_URL(D)]) expect(out.license_note).toContain(u);
+  });
+
+  it("a list route answering 404 or HTML fails that call but does not block the host", async () => {
+    const calls = stubFetch({
+      [`GET ${VERSAO_URL}`]: file("versao.json"),
+      [`GET ${NBS_URL(D)}`]: { status: 404 },
+      [`GET ${NCM_URL(D)}`]: { body: "<html>manutencao</html>", contentType: "text/html" },
+      ...rateRoutes(),
+    });
+    expect(errorOf(await call({ topic: "nbs", query: "abc", date: D }))).toEqual({ error: "source_unavailable" });
+    expect(errorOf(await call({ topic: "ncm", query: "12", date: D }))).toEqual({ error: "source_unavailable" });
+    expect((await call({ date: D })).isError).toBeFalsy();
+    expect(calls).toHaveLength(6);
   });
 
   it("caches the answer: a second call makes no request", async () => {
@@ -186,7 +223,7 @@ describe("tax_reform_curitiba nfse", () => {
     const out = taxReformCuritibaOutput.parse((await call({ topic: "nfse" })).structuredContent);
     expect(calls).toHaveLength(0);
     expect(out.data.disclaimer).toBe(DISCLAIMER);
-    expect(out.checked_at).toBe("2026-11-23");
+    expect(out.checked_at).toBe("2026-11-23T00:00:00-03:00");
     const n = out.data.nfse!;
     expect(n.checked).toBe("conferido em 2026-11-23");
     expect(n.text).toMatch(/Emissor Nacional/);
@@ -204,6 +241,7 @@ describe("tax_reform_curitiba arguments", () => {
     ["a date that does not exist", { date: "2026-02-30" }],
     ["a query with rates", { query: "abc" }],
     ["a lookup with no query", { topic: "ncm" }],
+    ["a code query made only of separators", { topic: "ncm", query: "--" }],
   ])("refuses %s with invalid_argument and no request", async (_name, args) => {
     const calls = stubFetch({});
     const err = errorOf(await call(args)) as { error: string };
@@ -216,6 +254,19 @@ describe("requests to the Receita host", () => {
   afterEach(() => {
     vi.useRealTimers();
     RECEITA_GATE.minIntervalMs = 0;
+  });
+
+  it("a cold rates call still fits behind a lookup that took the two slots before it", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    RECEITA_GATE.minIntervalMs = 5_000;
+    stubFetch({ ...rateRoutes(), [`GET ${NBS_URL(D)}`]: file("nbs_lista.json") });
+    const lookup = call({ topic: "nbs", query: "ficticio", date: D });
+    await vi.advanceTimersByTimeAsync(1);
+    // The lookup took versao (cached for the rates call) and the list: the rates need 3 slots after those.
+    const rates = call({ date: D });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect((await lookup).isError).toBeFalsy();
+    expect((await rates).isError).toBeFalsy();
   });
 
   it("keeps at least 5 s between requests; a cold rates call fits in the queue limit", async () => {

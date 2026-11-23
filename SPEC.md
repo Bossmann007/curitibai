@@ -240,8 +240,9 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   (percent: on 2026-11-23 the host answered 0.9, 0.1 and 0.0, the 2026 test-year rates), plus `receita_version`
   (`versaoApp`, `versaoDb`, `dataVersaoDb`, `descricaoVersaoDb`, passed through as served). An HTTP 404 on one rate
   (the host's "Alíquota não encontrada", seen for 2024-01-01 and for the municipal rate on 2027-01-01) is that rate =
-  `null` with a note; it is handled inside the gate task, so it is not remembered as a host failure. Any other failure
-  of any of the four requests fails the whole call (no partial triple).
+  `null` with a note; it is not remembered as a host failure and not cached (the next call asks again). Any other
+  failure of any of the four requests fails the whole call (no partial triple). `source_url` is the API base;
+  `license_note` names the four request URLs.
 - `nbs`, `ncm`, `class_trib`: `versao` plus one list for the date, `nbs/lista`, `ncm/vigentes` or
   `classificacoes-tributarias/cbs-ibs` (920, 10,516 and 170 items, 100 KB, 730 KB and 148 KB on 2026-11-23). `query`
   (2–100 characters, required) is matched here, never sent: digits (dots, dashes and spaces dropped) match a code
@@ -264,9 +265,10 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   com o contador".
 - Rules (docs/sources.md, docs/privacy.md): only `fetchText` (project User-Agent, allowlist), new host in
   `ALLOWED_HOSTS`; 15 s timeout per request; caps 64 KB (`versao`, rates) and 2 MB (lists); same host and the
-  `dados-abertos` path only on redirects; JSON content type only; one host gate, 5 s between requests, 20 s queue
-  limit (a cold `rates` call needs slots at 0, 5, 10 and 15 s), failures remembered 60 s to 1 hour; each call's
-  requests start within the 20 s call budget (`callStartBy`). Cache in memory 24 h: versions and rates (small), lists
+  `dados-abertos` path only on redirects; JSON content type only; one host gate, 5 s between requests, 30 s queue
+  limit (a cold `rates` call needs slots at 0, 5, 10 and 15 s, and still fits behind a lookup's two slots), host and
+  transfer failures remembered 60 s to 1 hour; a 404 or a non-JSON body on one route fails that call only and does not
+  block the host (review fix). Cache in memory 24 h: versions and rates (small), lists
   at most 3 entries (`TtlCache` gains an optional entry limit). Fail closed: not JSON, a `versao` without string
   `versaoApp`/`versaoDb`, a rate without a number `aliquotaReferencia`, a list that is not an array, or a non-empty
   list where no item has string code and description → `source_unavailable`. An empty list → `total` 0 with a note.
@@ -279,6 +281,9 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
 - Check: `scripts/verify` exit 0 (`test/taxReform.test.ts` on small synthetic fixtures: rates, 404 rate → null, empty
   list, missing field, HTTP 5xx, host down, not JSON, query and date validation, no user text in URLs, the
   disclaimer on every topic, cache and gate spacing); one live call per topic through the built tool, one at a time.
+- Review fixes (code review of 2026-11-23): a default date past 2026 says "today (…) is outside"; a code query needs
+  at least 2 digits ("--" no longer matches every code); codes are compared digits-only; `nfse` `checked_at` is
+  `2026-11-23T00:00:00-03:00`; `TtlCache` reorders a reloaded key only when it has an entry limit.
 
 ## Out of scope
 
