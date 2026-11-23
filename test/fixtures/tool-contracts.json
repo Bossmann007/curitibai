@@ -1,0 +1,5366 @@
+[
+  {
+    "name": "bus_departures",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "line_code": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{1,10}$",
+          "description": "URBS line code as in bus_lines_search (\"203\", \"X02\"); case ignored."
+        },
+        "stop_number": {
+          "description": "URBS stop number (`stop_number` from bus_line_stops). Give it, line_code, or both.",
+          "type": "string",
+          "pattern": "^\\d{1,10}$"
+        },
+        "day": {
+          "description": "URBS day code: \"1\" weekday, \"2\" Saturday, \"3\" Sunday or holiday (this reading is inferred, see note).",
+          "type": "string",
+          "pattern": "^\\d{1,2}$"
+        },
+        "from": {
+          "description": "Earliest time, HH:MM (inclusive).",
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "to": {
+          "description": "Latest time, HH:MM (inclusive).",
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "string"
+                  },
+                  "day": {
+                    "type": "string"
+                  },
+                  "day_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "line_code": {
+                    "type": "string"
+                  },
+                  "stop_number": {
+                    "type": "string"
+                  },
+                  "stop_name": {
+                    "type": "string"
+                  },
+                  "table": {
+                    "type": "string"
+                  },
+                  "adapt": {
+                    "type": "string"
+                  },
+                  "after_midnight": {
+                    "type": "boolean",
+                    "description": "True when the row continues the previous evening's service of its day code past midnight (see note)."
+                  }
+                },
+                "required": [
+                  "time",
+                  "day",
+                  "day_type",
+                  "line_code",
+                  "stop_number",
+                  "stop_name",
+                  "table",
+                  "adapt",
+                  "after_midnight"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bus_line_stops",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "line_code": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{1,10}$",
+          "description": "URBS line code as in bus_lines_search (\"203\", \"X02\"); case ignored."
+        },
+        "itinerary_id": {
+          "description": "Only this direction (an itinerary_id from `directions`).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{1,20}$"
+        },
+        "limit": {
+          "default": 50,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Stops to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": [
+        "line_code"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "line_code": {
+              "type": "string"
+            },
+            "directions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string"
+                  },
+                  "itinerary_id": {
+                    "type": "string"
+                  },
+                  "stop_count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "direction",
+                  "itinerary_id",
+                  "stop_count"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string"
+                  },
+                  "itinerary_id": {
+                    "type": "string"
+                  },
+                  "seq": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "stop_number": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lon": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "group": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "direction",
+                  "itinerary_id",
+                  "seq",
+                  "stop_number",
+                  "name",
+                  "lat",
+                  "lon",
+                  "type",
+                  "group"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "line_code",
+            "directions",
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bus_lines_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Words to find in the line name or code; accents, case and punctuation are ignored, every word must match.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "category": {
+          "description": "Service category as in the file (e.g. \"ALIMENTADOR\", \"LIGEIRÃO\"; accents and case ignored). Call with no arguments to get the list.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "card_only": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "category",
+                  "color",
+                  "card_only"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "count"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bus_stops_near",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "near": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "description": "The position to search around, in decimal degrees."
+        },
+        "radius_m": {
+          "default": 400,
+          "description": "Search radius in metres (default 400, at most 2000).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "line_code": {
+          "description": "Only stops this line serves (code as in bus_lines_search; case ignored).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{1,10}$"
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": [
+        "near"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "stop_number": {
+                    "type": "string"
+                  },
+                  "stop_name": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lon": {
+                    "type": "number"
+                  },
+                  "distance_m": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "line_code": {
+                          "type": "string"
+                        },
+                        "line_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "direction": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "line_code",
+                        "line_name",
+                        "direction"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "stop_number",
+                  "stop_name",
+                  "lat",
+                  "lon",
+                  "distance_m",
+                  "type",
+                  "lines"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "city_facilities_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Facility type in Portuguese, accents and case ignored: e.g. \"feira\", \"rua da cidadania\", \"ecoponto\", \"biblioteca\", \"farol do saber\", \"centro cultural\", \"cinema\", \"academia ao ar livre\", \"velodromo\", \"banheiro publico\", \"parque\", \"estacao ecologica\", \"ciclovia\". \"list types\" (or \"tipos\") returns every accepted type and makes no network call."
+        },
+        "bairro": {
+          "description": "Neighbourhood name as published (e.g. \"Capão Raso\"); accents and case ignored, whole name.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "near": {
+          "description": "Keep only facilities within `radius_m` of this position (decimal degrees), nearest first.",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ]
+        },
+        "radius_m": {
+          "description": "With `near` only: search radius in metres (default 1000, at most 3000).",
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 3000
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "label": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "layer_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uri"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_records": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Records of the layer left out: no name, or a bike lane not operational."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "description": "Park or bike-lane kind as published; null for other facilities.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "bairro": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "regional": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hours": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Days, hours and notes as published (observacao), one line each."
+                  },
+                  "open_periods": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "morning": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "afternoon": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "night": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "all_day": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "morning",
+                          "afternoon",
+                          "night",
+                          "all_day"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Which periods the facility works in (func_manha, func_tarde, func_noite, func_24hr); null when not published."
+                  },
+                  "phones": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Institutional landlines and service numbers only; mobiles are dropped."
+                  },
+                  "emails": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Addresses at curitiba.pr.gov.br only; any other domain is dropped."
+                  },
+                  "updated": {
+                    "description": "When IPPUC last updated the record (dt_atualiz), YYYY-MM-DD.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "length_km": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "area": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lat": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lon": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "distance_m": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Straight-line distance from `near`, in metres; null without `near`."
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind",
+                  "address",
+                  "bairro",
+                  "regional",
+                  "hours",
+                  "open_periods",
+                  "phones",
+                  "emails",
+                  "updated",
+                  "length_km",
+                  "area",
+                  "lat",
+                  "lon",
+                  "distance_m"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "types": {
+              "description": "Only for \"list types\": every accepted type.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "aliases": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "layer_url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "type",
+                  "label",
+                  "aliases",
+                  "layer_url"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "type",
+            "label",
+            "layer_url",
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_records",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the layer (it is cached for up to 6 hours)."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "city_points_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "description": "One category id; call with no arguments to list them with counts.",
+          "type": "string",
+          "enum": [
+            "feira",
+            "cambio_verde",
+            "restaurante_popular",
+            "regional_office",
+            "rua_da_cidadania",
+            "city_office",
+            "library",
+            "cemetery",
+            "cmei",
+            "cmae",
+            "municipal_school",
+            "state_school",
+            "special_education",
+            "adult_education",
+            "vocational_education",
+            "cultural_space",
+            "bus_terminal",
+            "transit_card_office",
+            "health_unit",
+            "urgent_care",
+            "specialized_health_unit",
+            "caps",
+            "health_district"
+          ]
+        },
+        "name": {
+          "description": "Words to find in the name; accents, case and punctuation are ignored, every word must match.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "near": {
+          "description": "Only points within radius_m of this position, nearest first, with distance_m.",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ]
+        },
+        "radius_m": {
+          "description": "Search radius in metres around near (default 1500, at most 10000).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "feira",
+                      "cambio_verde",
+                      "restaurante_popular",
+                      "regional_office",
+                      "rua_da_cidadania",
+                      "city_office",
+                      "library",
+                      "cemetery",
+                      "cmei",
+                      "cmae",
+                      "municipal_school",
+                      "state_school",
+                      "special_education",
+                      "adult_education",
+                      "vocational_education",
+                      "cultural_space",
+                      "bus_terminal",
+                      "transit_card_office",
+                      "health_unit",
+                      "urgent_care",
+                      "specialized_health_unit",
+                      "caps",
+                      "health_district"
+                    ]
+                  },
+                  "source_category": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lon": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "desc": {
+                    "type": "string"
+                  },
+                  "distance_m": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "category",
+                  "source_category",
+                  "lat",
+                  "lon",
+                  "desc"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "enum": [
+                      "feira",
+                      "cambio_verde",
+                      "restaurante_popular",
+                      "regional_office",
+                      "rua_da_cidadania",
+                      "city_office",
+                      "library",
+                      "cemetery",
+                      "cmei",
+                      "cmae",
+                      "municipal_school",
+                      "state_school",
+                      "special_education",
+                      "adult_education",
+                      "vocational_education",
+                      "cultural_space",
+                      "bus_terminal",
+                      "transit_card_office",
+                      "health_unit",
+                      "urgent_care",
+                      "specialized_health_unit",
+                      "caps",
+                      "health_district"
+                    ]
+                  },
+                  "source_categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id",
+                  "source_categories",
+                  "count"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "city_services_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Words to find in the service title or summary; accents, case and punctuation are ignored, every word must match.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "category": {
+          "description": "Exact category name. Call with no arguments to get the list.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "online_only": {
+          "description": "true: only services with an online link.",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "official_url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "online_url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "category",
+                  "summary",
+                  "official_url",
+                  "online_url"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "count"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "dataset_files",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "Dataset id (GUID) from open_datasets_search."
+        },
+        "page": {
+          "default": 1,
+          "description": "Page of the file list (50 files per page, newest first).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "dataset_id"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "dataset_id": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "page": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "total_pages": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "total_files": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "format": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "dictionary_url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "updated": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "size": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "url",
+                  "format",
+                  "dictionary_url",
+                  "updated",
+                  "size"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dataset_id",
+            "title",
+            "page",
+            "total_pages",
+            "total_files",
+            "files",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "detran_pr_info",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string",
+          "enum": [
+            "licensing_calendar",
+            "units"
+          ],
+          "description": "licensing_calendar: annual licensing due dates and fee; units: Detran-PR units in Curitiba and nearby."
+        },
+        "plate_final": {
+          "description": "Last digit of the plate (0-9), only for licensing_calendar. Omit to get all ten dates.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        }
+      },
+      "required": [
+        "topic"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "const": "licensing_calendar"
+                },
+                "year": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "deadlines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "plate_final": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "due_date": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "past": {
+                        "type": "boolean"
+                      },
+                      "source_url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "checked_at": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "plate_final",
+                      "due_date",
+                      "past",
+                      "source_url",
+                      "checked_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "fee": {
+                  "type": "object",
+                  "properties": {
+                    "amount_brl": {
+                      "type": "number"
+                    },
+                    "source_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "checked_at": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "amount_brl",
+                    "source_url",
+                    "checked_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "topic",
+                "year",
+                "deadlines",
+                "fee"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "const": "units"
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "CIRETRAN",
+                          "PATRAN"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "city": {
+                        "type": "string"
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "services": {
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "checked_at": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "name",
+                      "city",
+                      "address",
+                      "phone",
+                      "services",
+                      "source_url",
+                      "checked_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "scheduling": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "source_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "checked_at": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "source_url",
+                    "checked_at"
+                  ],
+                  "additionalProperties": false
+                },
+                "hours": {
+                  "type": "object",
+                  "properties": {
+                    "conflict": {
+                      "type": "boolean"
+                    },
+                    "statements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "source_url": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "checked_at": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          }
+                        },
+                        "required": [
+                          "text",
+                          "source_url",
+                          "checked_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "conflict",
+                    "statements"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "topic",
+                "units",
+                "scheduling",
+                "hours"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "events_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "First day, YYYY-MM-DD (Curitiba). Default: today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "description": "Last day, YYYY-MM-DD. Default: 7 days after 'from'.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "text": {
+          "description": "Words to find in the title, place, address or category; accents and case are ignored, every word must match.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "category": {
+          "description": "Category as published (accents and case ignored).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "to": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "start_date": {
+                    "type": "string"
+                  },
+                  "end_date": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "string"
+                  },
+                  "place": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "start_date",
+                  "end_date",
+                  "time",
+                  "place",
+                  "address",
+                  "category",
+                  "link"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "total",
+            "offset",
+            "next_offset",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "stale",
+        "attribution",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "guaira_events",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "First day, YYYY-MM-DD (Curitiba). Default: today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "description": "Last day, YYYY-MM-DD. Default: 30 days after 'from'.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "text": {
+          "description": "Words to find in the title; accents and case ignored, every word must match. Never sent to the source.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "city": {
+          "description": "City as published, whole name, accents and case ignored (default \"Curitiba\"); \"all\" keeps every city.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "to": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "city": {
+              "description": "The city filter; null for \"all\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "other_city_rows": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Rows in the date range left out because of `city`."
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "The calendar had more pages than this server reads; later events are missing."
+            },
+            "partial": {
+              "type": "boolean",
+              "description": "Deprecated alias of `truncated` (always equal; kept for compatibility, may be removed in a later version): true only when listing pages are missing. The listing (title, dates, city, link) is the complete answer; missing event-page details are in details_pending."
+            },
+            "details_pending": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Items on this page whose event page was not read yet (details: \"not_read\") or failed in this call (a removed page is not counted): venue, age rating and price are an optional enrichment, filled by later calls."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "start": {
+                    "type": "string",
+                    "description": "YYYY-MM-DDTHH:MM, Curitiba local time, as listed."
+                  },
+                  "end": {
+                    "type": "string",
+                    "description": "YYYY-MM-DDTHH:MM, Curitiba local time, as listed."
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "venue": {
+                    "description": "From the event page (\"Local:\"); null when not read or not found.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "age_rating": {
+                    "description": "\"Livre\" or \"N anos\" from the event page; null when not read or not found.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "price": {
+                    "description": "Ticket prices as published on the event page; null when not read or not in a known shape.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "details": {
+                    "type": "string",
+                    "enum": [
+                      "read",
+                      "not_read",
+                      "not_recognised",
+                      "unavailable"
+                    ],
+                    "description": "Whether the event page was read for venue, age rating and price."
+                  },
+                  "link": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "title",
+                  "start",
+                  "end",
+                  "city",
+                  "state",
+                  "venue",
+                  "age_rating",
+                  "price",
+                  "details",
+                  "link"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "city",
+            "total",
+            "offset",
+            "next_offset",
+            "other_city_rows",
+            "truncated",
+            "partial",
+            "details_pending",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the calendar (it is cached for up to 1 hour)."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "health_units_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Text in the unit name, accents and case ignored (e.g. 'UMS', 'CAPS').",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "unit_type": {
+          "description": "CNES unit type: a numeric code or text in its label (e.g. 'unidade basica', 'pronto atendimento', '2').",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "limit": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "page": {
+          "default": 1,
+          "description": "Upstream page to start scanning from; pass the previous result's next_page to continue.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "skip": {
+          "default": 0,
+          "description": "Matches to skip on the first scanned page; pass the previous result's next_skip to continue.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cnes_code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "unit_type_code": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "neighbourhood": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cep": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "management_sphere": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "cnes_code",
+                  "name",
+                  "unit_type_code",
+                  "unit_type",
+                  "address",
+                  "neighbourhood",
+                  "cep",
+                  "phone",
+                  "management_sphere"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "scanned_pages": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "to": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            },
+            "next_page": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "next_skip": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "discarded": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Records dropped as non-public or incomplete on the pages this call scanned (a page resumed with skip is not counted again); a sudden jump can mean a format change."
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "units",
+            "scanned_pages",
+            "next_page",
+            "next_skip",
+            "partial",
+            "discarded",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "local_csv_summary",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "CSV file name (or relative path) inside the folder set by CURITIBAI_DATA_DIR."
+        },
+        "group_by": {
+          "description": "Column to count rows by (exact name; accents and case ignored). Not with filter_column.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "top": {
+          "default": 10,
+          "description": "How many of the largest groups to return.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "filter_column": {
+          "description": "Count only rows where this column equals filter_value. Not with group_by.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "filter_value": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "encoding": {
+              "type": "string",
+              "enum": [
+                "utf-8",
+                "latin1"
+              ]
+            },
+            "delimiter": {
+              "type": "string",
+              "enum": [
+                ";",
+                ","
+              ]
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "row_count": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "malformed_rows": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "filter": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "column": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "matched_rows": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "string",
+                          "const": "<5"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "column",
+                    "value",
+                    "matched_rows"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "group_by": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "column": {
+                      "type": "string"
+                    },
+                    "distinct_values": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "distinct_capped": {
+                      "type": "boolean"
+                    },
+                    "top": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "value",
+                          "count"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "other_count": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "string",
+                          "const": "<5"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "column",
+                    "distinct_values",
+                    "distinct_capped",
+                    "top",
+                    "other_count"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "file",
+            "encoding",
+            "delimiter",
+            "columns",
+            "row_count",
+            "malformed_rows",
+            "filter",
+            "group_by"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string",
+          "const": "local_file"
+        },
+        "read_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "read_at",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "next_buses_near",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "near": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "description": "The position to search around, in decimal degrees."
+        },
+        "radius_m": {
+          "default": 400,
+          "description": "Search radius in metres (default 400, at most 1000).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "at": {
+          "description": "Start of the window, HH:MM (default: now in Curitiba, America/Sao_Paulo). Before 04:00 with `day` inferred, the previous evening's after-midnight trips are read too.",
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "day": {
+          "description": "URBS day code: \"1\" weekday, \"2\" Saturday, \"3\" Sunday or holiday (inferred reading). Default: from today's weekday in Curitiba. Holidays are not detected: on one, pass the code URBS announces. When given, it is read as the service day: its own after-midnight trips are included, the next day's early trips are not.",
+          "type": "string",
+          "pattern": "^\\d{1,2}$"
+        },
+        "window_min": {
+          "default": 60,
+          "description": "Minutes after `at` to look ahead (default 60, at most 180).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 180
+        },
+        "line_code": {
+          "description": "Only this line (code as in bus_lines_search; case ignored).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{1,10}$"
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": [
+        "near"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "string"
+            },
+            "day": {
+              "type": "string"
+            },
+            "day_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "day_inferred": {
+              "type": "boolean",
+              "description": "True when `day` came from today's weekday, not from the input."
+            },
+            "windows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "day": {
+                    "type": "string"
+                  },
+                  "day_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "after_midnight": {
+                    "type": "boolean",
+                    "description": "True: this part reads only the rows that continue that code's evening past midnight; false: only the others."
+                  }
+                },
+                "required": [
+                  "day",
+                  "day_type",
+                  "from",
+                  "to",
+                  "after_midnight"
+                ],
+                "additionalProperties": false
+              },
+              "description": "The (day code, time range, after-midnight rows or not) parts searched: several around midnight."
+            },
+            "cut_at_midnight": {
+              "type": "boolean",
+              "description": "True when the window passes 24:00 but `day` was given: that day's after-midnight trips are read, the next calendar day's early-morning trips are not (see note)."
+            },
+            "stops_considered": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Stops with coordinates within radius_m (any line)."
+            },
+            "stops_with_times": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Of those, stops the timetable lists at any day and time (for line_code, when given)."
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Departures in the windows, before `limit`."
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Rows of the file left out because they did not match the expected shape (also stated in `note`)."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "string"
+                  },
+                  "day": {
+                    "type": "string"
+                  },
+                  "minutes_from_now": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "line_code": {
+                    "type": "string"
+                  },
+                  "line_name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "directions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "stop_number": {
+                    "type": "string"
+                  },
+                  "stop_name": {
+                    "type": "string"
+                  },
+                  "distance_m": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "adapt": {
+                    "type": "string"
+                  },
+                  "after_midnight": {
+                    "type": "boolean",
+                    "description": "True when the trip continues the previous evening's service of its day code past midnight (see note)."
+                  }
+                },
+                "required": [
+                  "time",
+                  "day",
+                  "minutes_from_now",
+                  "line_code",
+                  "line_name",
+                  "directions",
+                  "stop_number",
+                  "stop_name",
+                  "distance_m",
+                  "adapt",
+                  "after_midnight"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "at",
+            "day",
+            "day_type",
+            "day_inferred",
+            "windows",
+            "cut_at_midnight",
+            "stops_considered",
+            "stops_with_times",
+            "total",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "open_datasets_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Search term in Portuguese. When it finds nothing, the search is retried once without accents and then with a short list of synonyms (e.g. 'ônibus' → 'transporte coletivo'); `note` says which query matched."
+        },
+        "limit": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "note": {
+              "description": "Present when the query was retried (which query matched, or every query tried) or when a later request was refused with HTTP 429 (how long to wait).",
+              "type": "string"
+            },
+            "datasets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "publisher": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "formats": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "updated": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "publisher",
+                  "description",
+                  "formats",
+                  "updated",
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "partial",
+            "datasets"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "place_at_point",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitude in decimal degrees, inside Curitiba (-25.7 to -25.3)."
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "The point rounded to 4 decimals (about 11 m): the only precision sent to the source."
+            },
+            "lon": {
+              "type": "number"
+            },
+            "inside_curitiba": {
+              "type": "boolean",
+              "description": "False when no Curitiba neighbourhood contains the point (a neighbouring city)."
+            },
+            "bairro": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "regional": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "boundary": {
+              "type": "boolean",
+              "description": "The point touches more than one neighbourhood; `bairro` is the first by name."
+            },
+            "zoning": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "description": "Zone code as published (sg_zona), e.g. \"ZR4\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "Zone name as published (nm_zona).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "law": {
+                    "description": "Law or decree as published (legislacao).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "description": "Version date of the zoning map as published (data_versao), e.g. \"2020-08\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "layer": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "41 (zoning with Decree 297/2026 areas) or 36 (zoning, Lei 15.511/2019) when 41 has nothing here."
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "law",
+                  "version",
+                  "layer"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Zones containing the point (distinct, at most 5; two on a boundary)."
+            },
+            "nearest_street": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "distance_m": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "distance_m"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Nearest street line within 100 m, straight-line distance; null when none."
+            },
+            "partial": {
+              "type": "boolean",
+              "description": "True when the zoning or street layer could not be read; that part is empty or null."
+            }
+          },
+          "required": [
+            "lat",
+            "lon",
+            "inside_curitiba",
+            "bairro",
+            "regional",
+            "boundary",
+            "zoning",
+            "nearest_street",
+            "partial"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the oldest layer used (cached for up to 6 hours)."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "places_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "park",
+            "library",
+            "school",
+            "community_centre",
+            "townhall",
+            "bus_station",
+            "marketplace",
+            "police",
+            "fire_station"
+          ],
+          "description": "One fixed category of public place: park (OSM leisure=park), library (OSM amenity=library), school (OSM amenity=school), community_centre (OSM amenity=community_centre), townhall (OSM amenity=townhall), bus_station (OSM amenity=bus_station), marketplace (OSM amenity=marketplace), police (OSM amenity=police), fire_station (OSM amenity=fire_station). community_centre and townhall include Ruas da Cidadania where OSM tags them so. police and fire_station come from a list bundled once from OSM (no network call). Not for emergencies: call 190 or 193."
+        },
+        "name": {
+          "description": "Words that must all appear in the place name (accents and case ignored).",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "limit": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "enum": [
+                "park",
+                "library",
+                "school",
+                "community_centre",
+                "townhall",
+                "bus_station",
+                "marketplace",
+                "police",
+                "fire_station"
+              ]
+            },
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "places": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "osm_type": {
+                    "type": "string",
+                    "enum": [
+                      "node",
+                      "way",
+                      "relation"
+                    ]
+                  },
+                  "osm_id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "park",
+                      "library",
+                      "school",
+                      "community_centre",
+                      "townhall",
+                      "bus_station",
+                      "marketplace",
+                      "police",
+                      "fire_station"
+                    ]
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "street": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "housenumber": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "suburb": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "postcode": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "city": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "street",
+                      "housenumber",
+                      "suburb",
+                      "postcode",
+                      "city"
+                    ],
+                    "additionalProperties": false,
+                    "description": "OSM addr:* tags as tagged; null when not tagged."
+                  },
+                  "lat": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lon": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "opening_hours": {
+                    "description": "OSM opening_hours as tagged (OSM syntax), or null.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "website": {
+                    "description": "Only an http(s) link without credentials, else null.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "osm_url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "osm_type",
+                  "osm_id",
+                  "name",
+                  "category",
+                  "address",
+                  "lat",
+                  "lon",
+                  "opening_hours",
+                  "website",
+                  "osm_url"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "attribution": {
+              "type": "string",
+              "const": "© OpenStreetMap contributors (ODbL 1.0)"
+            },
+            "bundled": {
+              "type": "boolean",
+              "description": "True for police and fire_station: a list taken once from OSM, no network call."
+            },
+            "checked_at": {
+              "description": "Day the bundled list was taken (YYYY-MM-DD); null for live categories.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "osm_data_as_of": {
+              "description": "Overpass osm3s.timestamp_osm_base: how fresh the OSM copy is.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "category",
+            "total",
+            "next_offset",
+            "places",
+            "attribution",
+            "bundled",
+            "checked_at",
+            "osm_data_as_of",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "procurement_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object or body name contain it are kept. The search word is sent to PNCP.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "from": {
+          "description": "First publication date, YYYY-MM-DD. Default: 30 days before 'to'.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "description": "Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "modality": {
+          "default": 6,
+          "description": "PNCP modality code (PNCP needs exactly one per query): 1 Leilão - Eletrônico, 2 Diálogo Competitivo, 3 Concurso, 4 Concorrência - Eletrônica, 5 Concorrência - Presencial, 6 Pregão - Eletrônico, 7 Pregão - Presencial, 8 Dispensa, 9 Inexigibilidade, 10 Manifestação de Interesse, 11 Pré-qualificação, 12 Credenciamento, 13 Leilão - Presencial, 14 Inaplicabilidade da Licitação, 15 Chamada pública, 16 Concorrência – Eletrônica Internacional, 17 Concorrência – Presencial Internacional, 18 Pregão – Eletrônico Internacional, 19 Pregão – Presencial Internacional, 20 Diálogo Competitivo Internacional. Default 6.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "limit": {
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "page": {
+          "default": 1,
+          "description": "Upstream page to start from; pass the previous result's next_page (with page_source) to continue.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "page_source": {
+          "description": "Which pages 'page' counts: pass the previous result's next_page_source. Default: 'search' with query, 'scan' without. 'scan' with query continues the fallback page scan; 'search' needs query.",
+          "type": "string",
+          "enum": [
+            "search",
+            "scan"
+          ]
+        },
+        "skip": {
+          "default": 0,
+          "description": "Matches to skip on the first scanned page; pass the previous result's next_skip to continue.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pncp_id": {
+                    "type": "string"
+                  },
+                  "body_cnpj": {
+                    "type": "string"
+                  },
+                  "body_name": {
+                    "type": "string"
+                  },
+                  "modality_code": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "modality": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "object": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "object_withheld": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "may_name_a_person"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "object_truncated": {
+                    "type": "boolean"
+                  },
+                  "estimated_value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "status_code": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "published_at": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "proposals_open_at": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "proposals_close_at": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "link": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "pncp_id",
+                  "body_cnpj",
+                  "body_name",
+                  "modality_code",
+                  "modality",
+                  "object",
+                  "object_withheld",
+                  "object_truncated",
+                  "estimated_value",
+                  "status_code",
+                  "status",
+                  "published_at",
+                  "proposals_open_at",
+                  "proposals_close_at",
+                  "link"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "modality": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "scanned_pages": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "to": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            },
+            "next_page": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "next_page_source": {
+              "type": "string",
+              "enum": [
+                "search",
+                "scan"
+              ],
+              "description": "Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."
+            },
+            "next_skip": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "discarded": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Records of a listed body dropped because a required field was missing or malformed."
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "items",
+            "from",
+            "to",
+            "modality",
+            "scanned_pages",
+            "next_page",
+            "next_page_source",
+            "next_skip",
+            "partial",
+            "discarded",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "river_levels",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "station": {
+          "description": "A station code (e.g. \"65010000\", leading zeros optional) or text matched against the station name, river and municipality, accents and case ignored (e.g. \"iguacu\", \"fazendinha\", \"araucaria\").",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "near": {
+          "description": "Order stations by distance from this position (decimal degrees). Default: Curitiba centre.",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ]
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total_matches": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "more_matches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Matching stations not read in this call (at most 3 per call; first those a source failure, the host gate or the time budget left out)."
+            },
+            "partial": {
+              "type": "boolean",
+              "description": "true when some picked stations were not read: the 20 s time budget ran out, the source was limiting requests (rate_limited), the source refused this server (HTTP 401/403 or a CAPTCHA; not asked again for 10 minutes), or the source failed (for example HTTP 5xx, a timeout or a network error; not asked again for up to about 1 minute), after at least one station was read or found in the cache; the stations read are returned."
+            },
+            "stations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "river": {
+                    "description": "null for rain gauges.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "municipality": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lon": {
+                    "type": "number"
+                  },
+                  "distance_km": {
+                    "type": "number",
+                    "description": "Straight-line distance from `near` (or Curitiba centre), in km."
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ok",
+                      "no_recent_data",
+                      "unavailable"
+                    ],
+                    "description": "no_recent_data: the station sent nothing since yesterday 00:00 (Curitiba time). unavailable: its answer could not be read (malformed XML content; that station is not asked again for 60 s). In both cases the values are null."
+                  },
+                  "reading_time": {
+                    "description": "Time of the latest reading, Curitiba time (ISO 8601, -03:00).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "stale": {
+                    "description": "true when the latest reading is older than 2 hours; null without a reading.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "level_cm": {
+                    "description": "River level (Nivel) of the latest reading, in cm.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "flow_m3s": {
+                    "description": "Flow (Vazao) of the latest reading, in m³/s.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rain_mm": {
+                    "description": "Rain (Chuva) of the latest reading (one 15-minute interval), in mm.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rain_1h_mm": {
+                    "description": "Sum of the rain values in the hour ending at the latest reading; null when none. A lower bound when readings are missing.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rain_24h_mm": {
+                    "description": "Sum of the rain values in the 24 hours ending at the latest reading; null when none or when that window starts before yesterday 00:00. A lower bound when readings are missing.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "checked_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "When this server read the station (cached up to 15 minutes); null when unavailable."
+                  },
+                  "quality": {
+                    "type": "string",
+                    "enum": [
+                      "ok",
+                      "suspect",
+                      "unknown"
+                    ],
+                    "description": "Checks on the readings of the 24 h ending at the latest one (values are never changed). suspect: a check fired; treat the values with caution. ok: no check fired, which does not prove a value is right. unknown: no reading, or too few to check. Separate from `stale`."
+                  },
+                  "quality_reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "out_of_range",
+                        "level_spike",
+                        "level_jump_unconfirmed",
+                        "level_stuck",
+                        "too_few_readings"
+                      ]
+                    },
+                    "description": "out_of_range: negative level, flow or rain, or over 150 mm of rain in one reading. level_spike: a level jump over 100 cm in 15 minutes that came back within an hour. level_jump_unconfirmed: such a jump in the last hour, not back yet. level_stuck: level identical for 6 h or more while 10 mm or more of rain fell. too_few_readings: under 8 readings in the 24 h (quality unknown)."
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "river",
+                  "municipality",
+                  "lat",
+                  "lon",
+                  "distance_km",
+                  "status",
+                  "reading_time",
+                  "stale",
+                  "level_cm",
+                  "flow_m3s",
+                  "rain_mm",
+                  "rain_1h_mm",
+                  "rain_24h_mm",
+                  "checked_at",
+                  "quality",
+                  "quality_reasons"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total_matches",
+            "more_matches",
+            "partial",
+            "stations"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "The oldest read time among the returned stations."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "service_areas_at_point",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitude in decimal degrees, inside Curitiba (-25.7 to -25.3)."
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "The point rounded to 4 decimals (about 11 m): the only precision sent to the source."
+            },
+            "lon": {
+              "type": "number"
+            },
+            "inside_curitiba": {
+              "type": "boolean",
+              "description": "True when a health unit area or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then the CRAS layer is not asked."
+            },
+            "health_units": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Health unit (unidade de saúde) whose area covers the point, e.g. \"US MÃE CURITIBANA\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "district": {
+                    "description": "Sanitary district (distrito sanitário), e.g. \"MATRIZ\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "reference_date": {
+                    "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_agency": {
+                    "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "approximate": {
+                    "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "district",
+                  "reference_date",
+                  "source_agency",
+                  "approximate"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Health unit areas containing the point (distinct, by name, at most 3; empty when none)."
+            },
+            "cras": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "CRAS whose territory covers the point, e.g. \"MATRIZ\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "type": {
+                    "description": "Type as published (`tipo`), e.g. \"CRAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "regional": {
+                    "description": "Regional (administrative region) as published (`regional`), e.g. \"MATRIZ\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "reference_date": {
+                    "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_agency": {
+                    "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "approximate": {
+                    "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "type",
+                  "regional",
+                  "reference_date",
+                  "source_agency",
+                  "approximate"
+                ],
+                "additionalProperties": false
+              },
+              "description": "CRAS territories containing the point (distinct, by name, at most 3; empty when none)."
+            },
+            "partial": {
+              "type": "boolean",
+              "description": "True when the CRAS layer could not be read; `cras` is then empty."
+            }
+          },
+          "required": [
+            "lat",
+            "lon",
+            "inside_curitiba",
+            "health_units",
+            "cras",
+            "partial"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the oldest layer used (cached for up to 6 hours)."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "tax_reform_curitiba",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "default": "rates",
+          "description": "rates: CBS, IBS UF (PR) and IBS municipal (Curitiba) reference rates on the date. nbs / ncm / class_trib: find a service code (NBS), product code (NCM) or tax classification (cClassTrib) by code or words. nfse: fixed note on NFS-e in Curitiba (no network).",
+          "type": "string",
+          "enum": [
+            "rates",
+            "nbs",
+            "ncm",
+            "class_trib",
+            "nfse"
+          ]
+        },
+        "query": {
+          "description": "Required for nbs, ncm and class_trib: a code (digits; dots and dashes allowed) or words of the description.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "date": {
+          "description": "YYYY-MM-DD, 2026-01-01 to 2099-12-31; default today in Curitiba. From 2027-01-01 the Receita serves simulated values (simulated: true).",
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "description": "Lookup topics: at most this many items (1–25).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 25
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "enum": [
+                "rates",
+                "nbs",
+                "ncm",
+                "class_trib",
+                "nfse"
+              ]
+            },
+            "city": {
+              "type": "string",
+              "const": "Curitiba"
+            },
+            "ibge_code": {
+              "type": "string",
+              "const": "4106902"
+            },
+            "uf": {
+              "type": "string",
+              "const": "PR"
+            },
+            "date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "receita_version": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "app_version": {
+                      "type": "string"
+                    },
+                    "db_version": {
+                      "type": "string"
+                    },
+                    "db_date": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "db_description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "app_version",
+                    "db_version",
+                    "db_date",
+                    "db_description"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rates": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "cbs_pct": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "ibs_uf_pct": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "ibs_municipal_pct": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "cbs_pct",
+                    "ibs_uf_pct",
+                    "ibs_municipal_pct"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "rate_type": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "treatment": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "nomenclature": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "reduction_cbs_pct": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "reduction_ibs_uf_pct": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "reduction_ibs_municipal_pct": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "code",
+                      "description",
+                      "rate_type",
+                      "treatment",
+                      "nomenclature",
+                      "reduction_cbs_pct",
+                      "reduction_ibs_uf_pct",
+                      "reduction_ibs_municipal_pct"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "total": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "nfse": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "schedule": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "who": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "from",
+                          "who"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "legal_basis": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "public_lookup": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "source_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "checked": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "schedule",
+                    "legal_basis",
+                    "public_lookup",
+                    "source_url",
+                    "checked"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "disclaimer": {
+              "type": "string",
+              "const": "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador"
+            },
+            "simulated": {
+              "description": "true: values simulated by the Receita (its header, or a date from 2027-01-01); null for topic nfse.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "topic",
+            "city",
+            "ibge_code",
+            "uf",
+            "date",
+            "receita_version",
+            "rates",
+            "items",
+            "total",
+            "skipped",
+            "nfse",
+            "disclaimer",
+            "simulated"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "useful_phones",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Words to find in the name, section or number (e.g. 'defesa civil', 'samu'); accents and case are ignored, every word must match.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "skipped_rows": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  },
+                  "numbers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "section",
+                  "numbers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "skipped_rows",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "checked_at",
+        "stale",
+        "attribution",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "vaccination_sites_search",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "description": "Words to find in the unit name, address (which ends with the neighbourhood) or regional; accents and case are ignored, every word must match.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "vaccine": {
+          "description": "Words to find in one vaccine line as published (e.g. \"covid 12 anos\", \"zero a 11\"); accents and case are ignored, every word must match.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "near": {
+          "description": "Order by straight-line distance from this position (decimal degrees); sites without coordinates are left out.",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ]
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "default": 0,
+          "description": "Results to skip, for paging.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "next_offset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skipped_units": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Units on the page that did not fit the known structure and were left out."
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "regional": {
+                    "type": "string"
+                  },
+                  "hours": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Opening hours lines as published, e.g. \"Horário (segunda a sexta) : Das 7h às 19h\"."
+                  },
+                  "vaccines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Vaccine lines as published, e.g. \"Vacinas (12 anos ou mais)\"."
+                  },
+                  "lat": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lon": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "distance_m": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Straight-line distance from `near`, in metres; null without `near`."
+                  }
+                },
+                "required": [
+                  "name",
+                  "address",
+                  "regional",
+                  "hours",
+                  "vaccines",
+                  "lat",
+                  "lon",
+                  "distance_m"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "total",
+            "offset",
+            "next_offset",
+            "skipped_units",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the page (it is cached for up to 6 hours)."
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "checked_at",
+        "attribution",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "weather_alerts",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "when": {
+          "default": "all",
+          "description": "INMET's own lists: 'today' (hoje), 'upcoming' (futuro) or 'all' (both).",
+          "type": "string",
+          "enum": [
+            "today",
+            "upcoming",
+            "all"
+          ]
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "const": "Curitiba"
+            },
+            "ibge_code": {
+              "type": "string"
+            },
+            "when": {
+              "type": "string",
+              "enum": [
+                "today",
+                "upcoming",
+                "all"
+              ]
+            },
+            "count": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "alerts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "listed_in": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "today",
+                        "upcoming"
+                      ]
+                    },
+                    "description": "INMET's lists this warning is in; a warning can be in both."
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "severity": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "description": "As published by INMET (\"YYYY-MM-DD HH:mm\", no time zone given).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "end": {
+                    "description": "As published by INMET (\"YYYY-MM-DD HH:mm\", no time zone given).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "risks": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "instructions": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "listed_in",
+                  "description",
+                  "severity",
+                  "start",
+                  "end",
+                  "risks",
+                  "instructions"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city",
+            "ibge_code",
+            "when",
+            "count",
+            "alerts",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "weather_forecast",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "default": 3,
+          "description": "Number of forecast days (1–5), from the first day INMET publishes (today when checked).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "const": "Curitiba"
+            },
+            "ibge_code": {
+              "type": "string"
+            },
+            "days": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD (INMET serves dd/mm/yyyy)."
+                  },
+                  "weekday": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "periods": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "period": {
+                          "type": "string",
+                          "enum": [
+                            "morning",
+                            "afternoon",
+                            "night",
+                            "whole_day"
+                          ]
+                        },
+                        "summary": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "temp_min_c": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "temp_max_c": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "humidity_min_pct": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "humidity_max_pct": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "wind_direction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "wind_intensity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sunrise": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sunset": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "period",
+                        "summary",
+                        "temp_min_c",
+                        "temp_max_c",
+                        "humidity_min_pct",
+                        "humidity_max_pct",
+                        "wind_direction",
+                        "wind_intensity",
+                        "sunrise",
+                        "sunset"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "date",
+                  "weekday",
+                  "periods"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city",
+            "ibge_code",
+            "days",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "license_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "fetched_at",
+        "license_note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  }
+]

@@ -46,10 +46,10 @@ for a ceiling in part 2, and cover the two shared pieces every live source relie
 
 | Part | Characters |
 |---|---|
-| descriptions | TBD |
-| inputSchemas | TBD |
-| outputSchemas | TBD |
-| total (`tools/list` result) | TBD |
+| descriptions | 15,561 |
+| inputSchemas | 19,636 |
+| outputSchemas | 63,226 |
+| total (`tools/list` result) | 107,011 |
 
 ## Out of scope
 
