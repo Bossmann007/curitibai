@@ -29,7 +29,8 @@ export const DISCLAIMER = "API piloto da Receita Federal; não é orientação f
 /**
  * From this date the Receita base serves simulated data: `DadosAbertosService.getWarningDadosSimuladosPorData` returns
  * a warning for every date not before 2027-01-01, and the rate routes then send the `x-warning-dados-simulados`
- * header. Used as the rule where an answer carries no mark (the lists).
+ * header. The date rule applies to every topic; the header (when any answer carries it) is an extra signal. A 404
+ * (missing rate) is read without its headers, so its mark, if any, is not seen.
  */
 export const SIMULATED_FROM = "2027-01-01";
 export const SIMULATED_HEADER = "x-warning-dados-simulados";
@@ -174,6 +175,8 @@ export interface CodeItem {
 export interface CodeList {
   items: CodeItem[];
   skipped: number;
+  /** The list answer carried the Receita's simulated-data header. */
+  marked: boolean;
 }
 
 export const LIST_URL: Record<ListKind, (date: string) => string> = { nbs: NBS_URL, ncm: NCM_URL, class_trib: CLASS_TRIB_URL };
@@ -207,12 +210,15 @@ export function parseList(kind: ListKind, json: unknown): CodeList {
   }
   if (json.length > 0 && items.length === 0) throw new SourceUnavailableError("no readable item");
   items.sort((a, b) => a.code.localeCompare(b.code));
-  return { items, skipped };
+  return { items, skipped, marked: false };
 }
 
 export function getList(kind: ListKind, date: string): Promise<Cached<CodeList>> {
   const url = LIST_URL[kind](date);
-  return listCache.getOrLoad(`GET ${url}`, async () => parseList(kind, (await getJson(url, LIST_MAX_BYTES, false)).json));
+  return listCache.getOrLoad(`GET ${url}`, async () => {
+    const res = await getJson(url, LIST_MAX_BYTES, false);
+    return { ...parseList(kind, res.json), marked: res.marked };
+  });
 }
 
 /** Fixed NFS-e note, read by hand on CHECKED; the page is never fetched (its robots.txt sets a Visit-time window). */

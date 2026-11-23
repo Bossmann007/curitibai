@@ -10,9 +10,9 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `class_trib` find codes by code or words (matched locally, never sent), with the cClassTrib reduction percentages;
   `nfse` returns a fixed, dated note on NFS-e in Curitiba (Emissor Nacional, schedule, Decreto 1960/2025, Portaria
   33/2025) with no network call. Every answer says "API piloto da Receita Federal; não é orientação fiscal; confirme
-  com o contador". From 2027-01-01, or when the Receita marks an answer
-  with `x-warning-dados-simulados`, values come with `simulated: true` and the note "valores simulados pela Receita
-  Federal; não são alíquotas definitivas". No calculation and no invoice.
+  com o contador". Dates from 2027-01-01, and answers the Receita marks with `x-warning-dados-simulados`, come with
+  `simulated: true` and the note "valores simulados pela Receita Federal; não são alíquotas definitivas" (dates up
+  to 2099-12-31). No calculation and no invoice.
 - New allowed host `piloto-cbs.tributos.gov.br` (robots.txt 404): one request per 5 s, 15 s timeout, 24 h cache.
 - `TtlCache` takes an optional entry limit; `fetchText` results also carry the response headers.
 

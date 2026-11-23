@@ -145,6 +145,16 @@ describe("tax_reform_curitiba rates", () => {
     expect(now.data.simulated).toBe(false);
   });
 
+  it("a list answer marked by the Receita is simulated even in 2026", async () => {
+    stubFetch({
+      [`GET ${VERSAO_URL}`]: file("versao.json"),
+      [`GET ${CLASS_TRIB_URL(D)}`]: { ...file("class_trib.json"), headers: { "x-warning-dados-simulados": "1" } },
+    });
+    const out = taxReformCuritibaOutput.parse((await call({ topic: "class_trib", query: "saude", date: D })).structuredContent);
+    expect(out.data.simulated).toBe(true);
+    expect(out.note).toContain("valores simulados pela Receita Federal");
+  });
+
   it("names every request of a rates answer in license_note", async () => {
     stubFetch(rateRoutes());
     const out = taxReformCuritibaOutput.parse((await call({ date: D })).structuredContent);
@@ -274,6 +284,7 @@ describe("tax_reform_curitiba nfse", () => {
 describe("tax_reform_curitiba arguments", () => {
   it.each<[string, Record<string, unknown>]>([
     ["a date before 2026", { date: "2025-12-31" }],
+    ["a date after 2099 (typo guard)", { date: "3026-01-01" }],
     ["a date that does not exist", { date: "2026-02-30" }],
     ["a query with rates", { query: "abc" }],
     ["a lookup with no query", { topic: "ncm" }],

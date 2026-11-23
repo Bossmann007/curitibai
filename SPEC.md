@@ -258,13 +258,15 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   source <https://lp.curitiba.pr.gov.br/notanacional>, "conferido em 2026-11-23". The facts come from the owner's
   brief, which checked that page on that date. The page is never fetched (its robots.txt
   sets a Visit-time window).
-- Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 (no upper bound); default today in America/Sao_Paulo.
+- Date: `date` YYYY-MM-DD, a real calendar date from 2026-01-01 to 2099-12-31 (the upper bound only guards against
+  typos such as 3026, which would send uncached requests to the shared host); default today in America/Sao_Paulo.
   Simulated data (owner decision, Enzo, 2026-11-23: accept dates from 2027 and flag them instead of refusing):
-  `data.simulated` is `true` when a rate answer carries the Receita's `x-warning-dados-simulados` header, or when the
-  date is on or after 2027-01-01; then `note` starts with "valores simulados pela Receita Federal; não são alíquotas
+  `data.simulated` is `true` when any answer used carries the Receita's `x-warning-dados-simulados` header, or when
+  the date is on or after 2027-01-01 (every topic); then `note` starts with "valores simulados pela Receita Federal; não são alíquotas
   definitivas". Source of the year rule: `DadosAbertosService.getWarningDadosSimuladosPorData` in
   ReceitaFederal/calculadora-rtc-regime-regular (a warning for every date not before 2027-01-01; the controller sends
-  it as that header on the rate routes). The lists carry no mark, so lookups use the year rule. 2026 dates without the
+  it as that header on the rate routes; on 2026-11-23 the lists carried none). Known gap: a 404 (missing rate) is read
+  without its headers, so a mark on it is not seen; the year rule still applies. 2026 dates without the
   header are `simulated: false`; `nfse` is `null`. Cache keys stay bounded by the entry limits (500 small, 3 lists). A `query` with
   `rates` or `nfse`, or no `query` with a lookup topic, is `invalid_argument`.
 - Every success, every topic, carries `disclaimer`: "API piloto da Receita Federal; não é orientação fiscal; confirme
