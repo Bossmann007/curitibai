@@ -43,7 +43,20 @@ must run at the top of a checkout (exit 2 elsewhere).
 | `.github/workflows/receita-version.yml` | Day 1 of each month, 09:23 UTC | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-unreleased)) |
 
 Both also run by hand (Actions, "Run workflow", or `gh workflow run <file>`) and only on `Bossmann007/curitibai`
-`main`. To turn one off: Actions, select the workflow, "..." menu, "Disable workflow", or
+`main`.
+
+Manual run of the Receita check: `gh workflow run receita-version.yml --ref main` (or Actions, `receita-version`,
+"Run workflow" on `main`), then `gh run watch`. What to expect, in the job log of `scripts/publish-receita-version.sh`:
+
+- First run (no `receita/version.json` on `data` yet): `code=baseline exit=0`, then `pushed to 'data'`; the `data`
+  branch gets one commit with only `receita/version.json`; no issue.
+- Later run, same version: `code=unchanged exit=0` and `nothing changed; no commit`; no issue.
+- Version changed: `code=changed exit=0 ... (issue created)` (or `issue existing` when an open issue has the same
+  title), then the commit; one issue "Receita: calculadora mudou (...)".
+- Receita down or an unexpected answer: `code=receita_unavailable` or `invalid_response`, exit 1 (red run), no commit,
+  no issue.
+
+To turn one off: Actions, select the workflow, "..." menu, "Disable workflow", or
 `gh workflow disable receita-version.yml` (`gh workflow enable` turns it back on). Removing its `schedule:` block in
 a PR turns it off for good. GitHub also disables scheduled workflows in public repositories after 60 days without
 repository activity.
