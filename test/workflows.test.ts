@@ -13,7 +13,7 @@ const code = (text: string) => text.split("\n").map((l) => l.replace(/\s#.*$/, "
 
 describe("GitHub Actions workflows", () => {
   it("found the workflows", () => {
-    expect(workflows.map((w) => w.name).sort()).toEqual(["collect.yml", "verify.yml"]);
+    expect(workflows.map((w) => w.name).sort()).toEqual(["collect.yml", "receita-version.yml", "verify.yml"]);
   });
 
   it("use only the standard ubuntu-latest runner (free for public repositories), never a larger one", () => {
@@ -86,5 +86,31 @@ describe("GitHub Actions workflows", () => {
     expect(publish).toContain("env -u GH_TOKEN CURITIBAI_DATA_DIR=");
     // Later schedule entries skip once today's collection succeeded.
     expect(code(publish).filter((l) => l.includes("CURITIBAI_COLLECT_ONCE_A_DAY=1 node scripts/fetch-events.mjs"))).toHaveLength(1);
+  });
+
+  it("receita-version: monthly plus manual runs, short timeout, write permissions on the job only, no npm install", () => {
+    const wf = readFileSync(new URL("receita-version.yml", DIR), "utf8");
+    const lines = code(wf).map((l) => l.trimEnd());
+    expect(lines.filter((l) => /^\s*- cron:/.test(l))).toEqual(['    - cron: "23 9 1 * *"']);
+    expect(lines).toContain("  workflow_dispatch:");
+    expect(wf).toMatch(/^permissions:\n {2}contents: read\n/m);
+    expect(wf).toMatch(/^ {4}permissions:\n {6}contents: write\n {6}issues: write\n/m);
+    expect(lines.filter((l) => /: write$/.test(l))).toHaveLength(2);
+    expect(lines).toContain("    timeout-minutes: 5");
+    expect(wf).toMatch(/^concurrency:\n {2}group: receita-version\n {2}cancel-in-progress: false\n/m);
+    expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
+    expect(wf).toContain("persist-credentials: false");
+    expect(lines.join("\n")).not.toMatch(/npm (ci|install)/);
+    expect(lines).toContain("      - run: scripts/publish-receita-version.sh");
+  });
+
+  it("publish-receita-version.sh: pushes only receita/version.json to the data branch, never main, never forced", () => {
+    const sh = readFileSync(new URL("../scripts/publish-receita-version.sh", import.meta.url), "utf8");
+    expect(sh).toContain("BRANCH=data");
+    expect(sh).toContain("FILE=receita/version.json");
+    const pushes = code(sh).filter((l) => /\bpubgit push\b/.test(l) && !/^\s*#/.test(l));
+    expect(pushes).toEqual(['  if pubgit push -q origin "HEAD:refs/heads/$BRANCH"; then']);
+    expect(code(sh).filter((l) => !/^\s*#/.test(l)).join("\n")).not.toMatch(/--force|\+HEAD|refs\/heads\/main|add -A|add \.|events\/|phones\//);
+    expect(code(sh).filter((l) => /git -C "\$pub" add /.test(l))).toEqual(['    git -C "$pub" add -- "$FILE"']);
   });
 });

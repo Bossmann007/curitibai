@@ -1,0 +1,41 @@
+name: receita-version
+
+# Monthly check of the Receita Federal pilot calculator version (scripts/check-receita-version.mjs): one GET to the
+# Receita "versao" endpoint plus the latest release of the two ReceitaFederal calculator repositories. A change opens
+# one issue in this repository; receita/version.json on the orphan branch `data` (never main) keeps the last version
+# seen (scripts/publish-receita-version.sh). Nothing changed: no commit, no issue. docs/development.md "Scheduled
+# workflows" says how to turn it off.
+on:
+  schedule:
+    # Day 1 of each month, 09:23 UTC: away from the nightly collection (02:37-05:13 UTC) and the busy top of the hour.
+    - cron: "23 9 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: receita-version
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Forks and other branches never call the Receita host, open issues or push.
+    if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'
+    # Standard GitHub-hosted runner only (free for public repositories); never a larger runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # No npm ci: the checker uses Node built-ins only, so no dependency code runs with these permissions.
+      - run: scripts/publish-receita-version.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
