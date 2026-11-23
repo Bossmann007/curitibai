@@ -7,6 +7,7 @@ const tags = ["v0.20.0", "v0.21.0"];
 describe("scripts/check-release.mjs", () => {
   it("reads released versions newest first, skipping Unreleased", () => {
     expect(releasedVersions(CL)).toEqual(["0.21.1", "0.21.0"]);
+    expect(releasedVersions("## 0.22.0-rc.1 - 2026-12-01\n\n## 0.21.1 - 2026-11-23\n")).toEqual(["0.21.1"]);
   });
 
   it("fails when package.json is not the newest CHANGELOG release", () => {

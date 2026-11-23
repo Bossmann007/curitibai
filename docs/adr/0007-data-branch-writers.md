@@ -23,6 +23,8 @@ Where it is written: `.github/workflows/collect.yml`, `.github/workflows/receita
 ## Consequences
 
 - GitHub keeps at most one pending run per concurrency group: a run queued behind a running one is replaced by a newer
-  one. A late nightly entry could replace a queued monthly check (or the other way round); the next schedule entry or
-  a manual run covers it.
+  one. A late nightly entry could replace a queued monthly check (or the other way round). A replaced nightly run is
+  covered by the next schedule entry; a replaced monthly check shows as cancelled in Actions and waits for next month
+  unless someone runs it by hand (`gh workflow run receita-version.yml --ref main`). Accepted by the owner in the
+  v0.21.1 brief (one group for both) over separate groups.
 - The retry covers manual runs and any overlap left; with the shared group it should rarely run.

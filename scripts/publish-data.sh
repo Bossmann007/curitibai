@@ -87,7 +87,9 @@ for attempt in 1 2; do
     exit 1
   fi
   echo "publish-data: push rejected; fetching '$BRANCH' again and retrying once"
-  pubgit fetch -q --depth=1 origin "refs/heads/$BRANCH"
-  git -C "$pub" reset -q --hard FETCH_HEAD
+  if ! pubgit fetch -q --depth=1 origin "refs/heads/$BRANCH" || ! git -C "$pub" reset -q --hard FETCH_HEAD; then
+    echo "publish-data: could not fetch '$BRANCH' again; this run's files not published" >&2
+    exit 1
+  fi
 done
 exit "$code"

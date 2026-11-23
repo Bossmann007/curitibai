@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 /** Released versions in CHANGELOG order (newest first), from headings "## X.Y.Z" (an "## Unreleased" is skipped). */
 export function releasedVersions(changelog) {
-  return [...changelog.matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((m) => m[1]);
+  return [...changelog.matchAll(/^## (\d+\.\d+\.\d+)(?=\s|$)/gm)].map((m) => m[1]);
 }
 
 /**
