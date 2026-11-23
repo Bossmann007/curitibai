@@ -182,7 +182,7 @@ spaces, Defesa Civil, EstaR and real-time buses added on 2026-11-23 from the own
 | Real-time buses * | — | URBS's real-time API needs a personal access code requested by LAI and allows 1 query every 2 minutes (owner's research, 2026-11-23); not usable by a shared tool. The bus tools give published timetables only |
 | — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search |
 | — | extra (not named in the listing) | Tax reform (CBS/IBS) reference rates for Curitiba and NBS/NCM/cClassTrib lookup from the Receita Federal pilot API, plus a dated note on NFS-e in Curitiba (`tax_reform_curitiba`, since v0.21); not tax advice, no invoice issuance |
-| — | extra (not named in the listing) | City facilities from IPPUC's GeoCuritiba (`city_facilities_search`): feiras with days and hours, Ruas da Cidadania, ecopontos, outdoor gyms, public toilets, parks and bike lanes, by neighbourhood or distance |
+| — | extra (not named in the listing) | City facilities from IPPUC's GeoCuritiba (`city_facilities_search`): feiras with days and hours, Ruas da Cidadania, ecopontos, outdoor gyms, sport and youth centres (since v0.24), public toilets, parks, conservation units (since v0.24) and bike lanes, by neighbourhood or distance |
 | — | extra (not named in the listing) | River level, flow and rain from ANA's telemetry stations around Curitiba (`river_levels`); not for emergencies (Defesa Civil 199) |
 
 ## Deferred

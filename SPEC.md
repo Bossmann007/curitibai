@@ -37,7 +37,7 @@ as separate layers of the service the tool already reads (`Publico_GeoCuritiba_E
 | 165 | Pista de Patinação | 1 | 2024-01-04 |
 | 166 | Velódromo | 1 | 2025-05-20 |
 
-Already types since v0.19.0: 85 Clube da Gente, 86 Centro de Esporte e Lazer, 91 Academia ao Ar Livre, 92 Pista de
+Already types since v0.15.0: 85 Clube da Gente, 86 Centro de Esporte e Lazer, 91 Academia ao Ar Livre, 92 Pista de
 Skate (SMELJ layer 0 has 5, 25, 284 and 36 of them). The reference date is per record (`dt_atualiz`, returned as
 `updated`), as for every equipment layer. Text read: names, addresses, hours ("Atendimento: 2ª a 6ª feira ..."),
 activities, institutional phones and e-mails; no person's contact was seen.
