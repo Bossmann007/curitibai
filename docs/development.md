@@ -10,6 +10,12 @@ pull request and on pushes to `main`: one Ubuntu job, Node from `.nvmrc`, action
 advisories would only add noise to unrelated CI runs (Dependabot, `.github/dependabot.yml`, opens weekly npm and
 GitHub Actions update PRs instead).
 
+Tool names, `inputSchema` and `outputSchema` are a public contract: `test/contracts.test.ts` compares what the real
+server sends in `tools/list` with the committed snapshot `test/fixtures/tool-contracts.json` and fails naming each tool
+added, removed or changed. When the change is on purpose, rewrite the snapshot with `npm run contracts:update` and add
+a `CHANGELOG.md` entry in the same pull request. The same test prints the size of `tools/list` in characters
+(descriptions, inputSchemas, outputSchemas, total); the v0.24.1 baseline is in `SPEC.md`.
+
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
 trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:
 the real JSON shape with invented values), PNCP tests use a synthetic fixture with planted supplier keys, CPF, e-mail,
