@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.23.0 - 2026-11-23
+
+- New tool `service_areas_at_point` ("quem me atende"): for a `{lat, lon}` inside Curitiba, the health unit
+  (unidade de saúde) whose area covers the point, with its sanitary district, and the CRAS whose territory covers it,
+  each with the reference date the area carries as published (e.g. "março/2022", "MAR-2019"; it varies by area) and a
+  note that the area may have changed since. Read live from IPPUC's GeoCuritiba thematic map service
+  (`GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica`, layers 19 and 5); credit "Fonte: IPPUC/GeoCuritiba (SMS e
+  FAS)"; live queries only, no layer copied. 2 requests 5 s apart (a cold call takes about 5 s); a CRAS layer failure
+  after the health layer was read returns what was read with `partial: true`.
+- A new tool rather than more layers in `place_at_point`: those would make up to 6 requests 5 s apart, past the 20 s
+  call budget, and slow every `place_at_point` call by 10 s (SPEC.md). `place_at_point` is unchanged.
+- Privacy: same rule as `place_at_point` (0.22.0). The point is rounded to 4 decimals (about 11 m) first; only the
+  rounded point is sent, cached (6 hours, at most 500 points) and returned, and nothing is logged
+  ([docs/privacy.md](docs/privacy.md#details)). A point outside the Curitiba box is refused with no request.
+
 ## 0.22.0 - 2026-11-23
 
 - New tool `place_at_point` ("onde fica"): for a `{lat, lon}` inside Curitiba, the neighbourhood (bairro), the

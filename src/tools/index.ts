@@ -17,6 +17,7 @@ import { placeAtPoint } from "./placeAtPoint.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
 import { riverLevels } from "./riverLevels.js";
+import { serviceAreasAtPoint } from "./serviceAreasAtPoint.js";
 import { taxReformCuritiba } from "./taxReformCuritiba.js";
 import { usefulPhones } from "./usefulPhones.js";
 import { vaccinationSitesSearch } from "./vaccinationSitesSearch.js";
@@ -48,4 +49,5 @@ export const tools = [
   guairaEvents,
   taxReformCuritiba,
   placeAtPoint,
+  serviceAreasAtPoint,
 ] as const;
