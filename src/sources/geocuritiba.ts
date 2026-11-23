@@ -85,7 +85,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("espetaculos ao ar livre", 59, "Espaço para Espetáculos ao Ar Livre", [
     "espetaculo ao ar livre", "espaco para espetaculos ao ar livre", "espacos para espetaculos ao ar livre",
     "espaco para espetaculo ao ar livre",
-  ]),
+  ], true),
   equipment("gibiteca", 62, "Gibiteca", ["gibitecas"]),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),

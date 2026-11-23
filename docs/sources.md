@@ -934,7 +934,10 @@ in the city's own categories. Built.
   each layer's `?f=json`), so they use the same query, parser and contact allowlist. Every record had
   `divulgar_endereco` "Sim" and a name; `observacao` was filled in 55 of the 75 records. They include venues the city
   does not run: the Cinema layer lists commercial cinemas, and the e-mail field holds addresses of a bank's cultural
-  centre, associations and cinema companies (all dropped by the allowlist). The e-mails kept by the built tool were 20
+  centre, associations and cinema companies (all dropped by the allowlist). Criterion for the `mixedOwnership`
+  note ("may include private or non-profit venues"): a layer whose survey showed an e-mail domain outside the
+  city's (here 50, 51, 56 and 59; Museu and Teatro from the 2026-11-21 survey). Whether each such venue is private
+  was not checked: the domain alone does not tell (59's is an institute). The e-mails kept by the built tool were 20
   distinct `curitiba.pr.gov.br` role or unit mailboxes (cultural centres, memorials, the Cinemateca, the Gibiteca, a
   Farol do Saber named after its patron); none was added to the 2026-11-22 owner decision's count above.
   Requests to the host on 2026-11-23: six layer descriptions, six field surveys and six live calls of the built tool
