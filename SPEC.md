@@ -189,6 +189,30 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   workaround.
 - Check: `scripts/verify` exit 0 (`test/fetchEvents.test.ts` "a refusal ends the night").
 
+## v0.20.0 changes (task brief "curitibai v0.20.0 — espaços culturais do GeoCuritiba", 2026-11-23)
+
+- Goal: cover the cultural spaces the Curitiba App lists and CuritibAI did not. Source: the Cultura group of the
+  MapServer `Publico_GeoCuritiba_Equipamentos_Urbanos` that `city_facilities_search` already reads (robots.txt 404,
+  no licence found, same as the current layers).
+- Decision: six new `type` values in `city_facilities_search`, not a new tool. Why: the layers have the same fields
+  as the current point layers, so the same query, parser, contact allowlist, cache, gate and envelope apply with no
+  new surface (the tool count stays 22).
+- `src/sources/geocuritiba.ts` `FACILITY_TYPES`: `centro cultural` (layer 50 Centro Cultural), `espaco expositivo`
+  (51 Espaço Expositivo de Artes), `memorial` (53 Memorial), `cinema` (56 Cinema), `espetaculos ao ar livre`
+  (59 Espaço para Espetáculos ao Ar Livre), `gibiteca` (62 Gibiteca), each with plural or full-name aliases only. Same
+  HTTP client (`fetchText`), 6-hour cache, 15 s timeout, 2 MB cap, host gate (5 s, 10 s queue), User-Agent, fixed
+  `outFields`, fail-closed rules and contact allowlist as the current point layers. No new dependency.
+- An empty layer (`features: []`, WGS84) returns an empty list with `total` 0, not `source_unavailable` (the current
+  `parseLayer` rule). A record with no name is skipped and counted; with no `observacao`, `hours` is `[]`; with no
+  `divulgar_endereco`, address and position are null.
+- Docs: `docs/tools.md` (types in the `city_facilities_search` row; "Compared with the Curitiba App": cultural spaces
+  and attractions = partial, plus rows "—" for Defesa Civil alerts, EstaR and real-time buses with the reason from
+  the owner's research of 2026-11-23), `docs/sources.md` (the six layers, counts, requests made), CHANGELOG 0.20.0,
+  version 0.20.0.
+- Out of scope: a tourist-attraction layer (none in the service), Defesa Civil, EstaR, real-time buses.
+- Check: `scripts/verify` exit 0 (`test/cityFacilities.test.ts`: type mapping, a synthetic culture layer, an empty
+  layer, missing fields); one live call per new type through the built tool, one at a time.
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);

@@ -43,6 +43,12 @@ describe("type names", () => {
     ["academia ao ar livre", "Academia ao Ar Livre", "/MapServer/91"],
     ["bosques", "Parques e Bosques", "/FeatureServer/1"],
     ["ciclofaixa", "Estrutura Cicloviária", "/FeatureServer/0"],
+    ["centro cultural", "Centro Cultural", "/MapServer/50"],
+    ["Espaços Expositivos", "Espaço Expositivo de Artes", "/MapServer/51"],
+    ["memoriais", "Memorial", "/MapServer/53"],
+    ["cinema", "Cinema", "/MapServer/56"],
+    ["espetáculos ao ar livre", "Espaço para Espetáculos ao Ar Livre", "/MapServer/59"],
+    ["gibiteca", "Gibiteca", "/MapServer/62"],
   ])("%s maps to the layer %s", (input, label, path) => {
     const t = resolveType(input);
     expect(t?.label).toBe(label);
@@ -151,6 +157,40 @@ describe("parseLayer", () => {
     });
   });
 
+  it("reads a culture layer with the same fields; a missing field is null or empty, a record with no name is skipped", () => {
+    const { facilities, skipped } = parseLayer(type("centro cultural"), fixture("geocuritiba/centro_cultural_synthetic.json"));
+    expect(skipped).toBe(1);
+    expect(facilities).toHaveLength(2);
+    expect(facilities[0]).toMatchObject({
+      name: "Centro Cultural Ficticio Alfa",
+      address: "R. FICTICIA, 100",
+      bairro: "Centro",
+      hours: ["Terça a domingo, das 10h às 18h", "Entrada gratuita"],
+      open_periods: { morning: true, afternoon: true, night: false, all_day: false },
+      phones: ["(41) 3333-0101"],
+      emails: ["ccalfa@fcc.curitiba.pr.gov.br"],
+      lat: -25.43,
+      lon: -49.27,
+    });
+    // No divulgar_endereco, observacao, regional, func_*, telefone or dt_atualiz; a non-municipal e-mail.
+    expect(facilities[1]).toMatchObject({
+      name: "Centro Cultural Ficticio Beta",
+      address: null,
+      lat: null,
+      lon: null,
+      regional: null,
+      hours: [],
+      open_periods: null,
+      phones: [],
+      emails: [],
+      updated: null,
+    });
+  });
+
+  it("reads an empty layer as an empty list, not as a failure", () => {
+    expect(parseLayer(type("gibiteca"), '{"spatialReference":{"wkid":4326},"features":[]}')).toEqual({ facilities: [], skipped: 0 });
+  });
+
   it.each([
     ["an ArcGIS error sent with HTTP 200", '{"error":{"code":400,"message":"Invalid query"}}'],
     ["a layer cut by the record limit", '{"spatialReference":{"wkid":4326},"exceededTransferLimit":true,"features":[]}'],
@@ -174,6 +214,18 @@ describe("city_facilities_search", () => {
     expect(JSON.stringify(out)).not.toMatch(/"paths"/);
     await search({ type: "feiras" });
     expect(calls).toEqual([{ url: url("feira"), method: "GET" }]);
+  });
+
+  it("returns a culture layer through the same path", async () => {
+    stubFetch(route("centro cultural", "centro_cultural_synthetic.json"));
+    const cc = await search({ type: "centros culturais" });
+    expect(cc.data).toMatchObject({ type: "centro cultural", label: "Centro Cultural", total: 2, skipped_records: 1 });
+    expect(cc.source_url.endsWith("/MapServer/50")).toBe(true);
+  });
+
+  it("returns an empty layer as total 0 with no error", async () => {
+    stubFetch({ [`GET ${url("gibiteca")}`]: { body: '{"spatialReference":{"wkid":4326},"features":[]}', contentType: JSON_TYPE } });
+    expect((await search({ type: "gibiteca" })).data).toMatchObject({ type: "gibiteca", total: 0, items: [] });
   });
 
   it("filters by bairro (accents and case ignored, whole name)", async () => {

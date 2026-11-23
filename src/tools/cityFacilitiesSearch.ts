@@ -27,7 +27,8 @@ export const cityFacilitiesSearchInput = {
     .max(60)
     .describe(
       "Facility type in Portuguese, accents and case ignored: e.g. \"feira\", \"rua da cidadania\", \"ecoponto\", " +
-        "\"biblioteca\", \"farol do saber\", \"academia ao ar livre\", \"banheiro publico\", \"parque\", \"ciclovia\". " +
+        "\"biblioteca\", \"farol do saber\", \"centro cultural\", \"cinema\", \"academia ao ar livre\", \"banheiro publico\", " +
+        "\"parque\", \"ciclovia\". " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z

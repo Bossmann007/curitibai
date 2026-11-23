@@ -71,6 +71,13 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("farol do saber", 63, "Farol do Saber", ["farois do saber"]),
   equipment("museu", 54, "Museu", ["museus"]),
   equipment("teatro", 55, "Teatro", ["teatros"]),
+  // Cultura group, added in v0.20.0 (ids and counts read on 2026-11-23; at most 24 records each).
+  equipment("centro cultural", 50, "Centro Cultural", ["centros culturais"]),
+  equipment("espaco expositivo", 51, "Espaço Expositivo de Artes", ["espacos expositivos", "espaco expositivo de artes"]),
+  equipment("memorial", 53, "Memorial", ["memoriais"]),
+  equipment("cinema", 56, "Cinema", ["cinemas"]),
+  equipment("espetaculos ao ar livre", 59, "Espaço para Espetáculos ao Ar Livre", ["espaco para espetaculos ao ar livre"]),
+  equipment("gibiteca", 62, "Gibiteca", ["gibitecas"]),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),
   equipment("centro de esporte e lazer", 86, "Centro de Esporte e Lazer"),
