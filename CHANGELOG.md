@@ -2,8 +2,26 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.21.2 - 2026-11-23
+
+- `local_csv_summary`: with a filter, a `group_by.other_count` of 1 to 4 is `"<5"` (0 stays 0), as small groups
+  already are. A filter that leaves 1 to 4 rows out is refused (`column_not_allowed`), because `row_count -
+  matched_rows` would give their exact count. Known limit, kept because the output schema is frozen: when every group
+  of 5 or more is listed, `matched_rows` minus their counts still gives a masked `other_count` back.
+- `receita-version.yml`: a second schedule entry on day 2 (09:23 UTC) retries a day-1 run dropped from the shared
+  `data-branch` queue; with nothing changed since day 1 it makes no commit and opens no issue.
+- `scripts/check-release.mjs`: a copy that is not a git clone (tarball or zip, no `.git` at the root) or a machine
+  without git says "tag checks skipped" and still checks the version against the CHANGELOG (exit 0 when it matches).
+- `events/events.json` and `phones/phones.json` (local and on the `data` branch) carry `"credit": "Fonte: Instituto
+  Municipal de Turismo de Curitiba"` next to `source`, the page the facts came from; facts only, as before. Servers
+  before 0.21.2 read the new files unchanged. docs/sources.md records the owner's premise (Lei 9.610/98 art. 8º, V and
+  VI; no terms found; the Instituto not contacted).
+- CONTRIBUTING: after merging a version, tag the merge commit `vX.Y.Z` and push the tag (ADR 0006).
+
 ## 0.21.1 - 2026-11-23
 
+- **Breaking (output):** `local_csv_summary` `matched_rows`, `distinct_values` and `other_count` can be the string
+  `"<5"` instead of a number.
 - `local_csv_summary`: a filter that matches fewer than 5 rows (0 included) returns `"<5"` for `matched_rows`,
   `group_by.other_count` and `group_by.distinct_values` instead of the number, as groups under 5 rows already were
   (those three fields are now a number or the string `"<5"`).

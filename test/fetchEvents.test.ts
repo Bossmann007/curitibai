@@ -6,6 +6,7 @@ import { PhonesStatus } from "../src/tools/usefulPhones.js";
 import {
   acquireLock,
   CACHE_FILE,
+  CREDIT,
   curitibaDate,
   decodeBody,
   DEADLINE_MS,
@@ -403,6 +404,9 @@ describe("run", () => {
     }
     const doc = readJson(eventsFile());
     expect(doc).toMatchObject({ format: 1, list_date: "2026-11-21", count: 5, checked_at: expect.any(String) });
+    // Credit and the page the facts came from; each event keeps only facts and its own link (validEvent: exact keys).
+    expect(doc).toMatchObject({ credit: "Fonte: Instituto Municipal de Turismo de Curitiba", source: `${ORIGIN}/eventos/` });
+    expect(CREDIT).toBe("Fonte: Instituto Municipal de Turismo de Curitiba");
     expect(doc.events.map((e: { id: number }) => e.id)).toEqual([100, 101, 102, 200, 201]);
     expect(doc.events.every(validEvent)).toBe(true);
     expect(readJson(statusFile())).toMatchObject({ code: "ok", attempt: "2026-11-21T05:00:00.000Z", success: expect.any(String) });
@@ -829,8 +833,8 @@ describe("useful phones page", () => {
     expect(new Headers(last.init.headers).get("user-agent")).toBe(USER_AGENT);
     expect(last.at - h.calls[h.calls.length - 2]!.at).toBeGreaterThanOrEqual(GAP_MS);
     const doc = readJson(phonesFile());
-    expect(doc).toMatchObject({ format: 1, source: `${ORIGIN}${PHONES_PATH}`, count: 60, dropped: 0, checked_at: expect.any(String) });
-    expect(Object.keys(doc).sort()).toEqual(["checked_at", "count", "dropped", "entries", "format", "source"]);
+    expect(doc).toMatchObject({ format: 1, credit: CREDIT, source: `${ORIGIN}${PHONES_PATH}`, count: 60, dropped: 0, checked_at: expect.any(String) });
+    expect(Object.keys(doc).sort()).toEqual(["checked_at", "count", "credit", "dropped", "entries", "format", "source"]);
     expect(readJson(phonesStatus())).toMatchObject({ code: "ok", success: expect.any(String) });
     expect(PhonesStatus.safeParse(readJson(phonesStatus())).success).toBe(true); // the shape useful_phones reads
   });

@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkRelease, releasedVersions } from "../scripts/check-release.mjs";
 
@@ -36,5 +40,25 @@ describe("scripts/check-release.mjs", () => {
       notes: ["no v* tags in this clone: tag checks skipped"],
     });
     expect(checkRelease({ version: "0.9.0", changelog: CL, tags: [], branch: "" }).errors).toHaveLength(1);
+  });
+
+  it("outside a git clone (tarball or zip) the CLI skips the tag checks, still checks the version and exits 0", () => {
+    // Outside this repository, so no parent .git can be found.
+    const dir = mkdtempSync(join(tmpdir(), "curitibai-release-"));
+    try {
+      mkdirSync(join(dir, "scripts"));
+      copyFileSync(new URL("../scripts/check-release.mjs", import.meta.url), join(dir, "scripts", "check-release.mjs"));
+      writeFileSync(join(dir, "CHANGELOG.md"), CL);
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ version: "0.21.1" }));
+      const out = execFileSync(process.execPath, [join(dir, "scripts", "check-release.mjs")], { encoding: "utf8" });
+      expect(out).toContain("check-release: not a git clone (no .git, or git not installed): tag checks skipped");
+      expect(out).toContain("check-release: OK (0.21.1)");
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ version: "0.9.0" }));
+      expect(() => execFileSync(process.execPath, [join(dir, "scripts", "check-release.mjs")], { stdio: "pipe" })).toThrow(
+        expect.objectContaining({ status: 1 }),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

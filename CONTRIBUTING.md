@@ -43,6 +43,10 @@ mudança que contraria uma delas traz uma ADR nova no mesmo pull request.
 5. Abra o pull request para `main` com o modelo preenchido e o fim da saída do `scripts/verify`. O
    `scripts/verify` local é a verificação obrigatória; o workflow `.github/workflows/verify.yml` está configurado para
    rodar o mesmo script em pull requests.
+6. Depois do merge de um pull request que muda a versão (`package.json` e um novo `## X.Y.Z` no `CHANGELOG.md`),
+   quem faz o merge cria a tag no commit de merge e a envia: `git tag vX.Y.Z && git push origin vX.Y.Z`
+   ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Até a tag existir, `scripts/verify` falha na `main`
+   de um clone com tags (`main is at X.Y.Z with no tag vX.Y.Z`), e a versão seguinte falha em qualquer branch.
 
 ## Tamanho do pull request
 

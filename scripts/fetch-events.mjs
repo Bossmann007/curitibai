@@ -17,6 +17,13 @@ export const HOST = "turismo.curitiba.pr.gov.br";
 export const ALLOWED_HOSTS = Object.freeze([HOST]);
 export const ORIGIN = `https://${HOST}`;
 export const USER_AGENT = "curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)";
+/**
+ * Credit written at the top of events.json and phones.json (published on the `data` branch), next to `source`, the
+ * page the facts were read from; each event also keeps its own `link`. Per file, not per row: installed servers
+ * check rows for exact keys, and the files keep only facts (docs/sources.md "Credit to the Instituto Municipal de
+ * Turismo").
+ */
+export const CREDIT = "Fonte: Instituto Municipal de Turismo de Curitiba";
 
 /** Requests start only between 02:00 and 05:50 UTC (robots.txt Visit-time 0200-0600, with a 10-minute margin). */
 export const WINDOW_START_MIN = 2 * 60;
@@ -835,6 +842,7 @@ export async function runPhones({ client, now, env, attempt, skipCode }) {
     }
     const doc = {
       format: 1,
+      credit: CREDIT,
       source: PHONES_SOURCE,
       checked_at: now().toISOString(),
       count: parsed.entries.length,
@@ -1037,6 +1045,7 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
     counts.events = events.length;
     const doc = {
       format: 1,
+      credit: CREDIT,
       source: `${ORIGIN}/eventos/`,
       checked_at: now().toISOString(),
       list_date: date,

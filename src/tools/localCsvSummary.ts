@@ -255,7 +255,8 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
     "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
     "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, a " +
-    "filter that matches fewer than 5 rows returns \"<5\" instead of its counts, and " +
+    "filter that matches fewer than 5 rows returns \"<5\" instead of its counts (and a filtered other_count of 1 to 4 " +
+    "is \"<5\" too), a filter that leaves 1 to 4 rows out is refused, and " +
     "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges that look like " +
     "phone numbers) is refused. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
@@ -290,6 +291,15 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       // other_count, distinct values) is BELOW_MIN, so the answer never tells 1 row from 4 (or from 0).
       const few = filter !== undefined && s.matched < MIN_GROUP_COUNT;
       const count = (n: number) => (few ? BELOW_MIN : n);
+      // A filter that leaves 1 to 4 rows out: row_count - matched_rows would give their exact count (and unfiltered
+      // minus filtered groups their values), which "<5" cannot hide because matched_rows is then large. Refused.
+      const left = s.rows - s.matched;
+      if (filter !== undefined && !few && left > 0 && left < MIN_GROUP_COUNT) {
+        return fail(
+          "column_not_allowed",
+          `this filter leaves fewer than ${MIN_GROUP_COUNT} rows out, so the counts would single them out; filter on another value or column`,
+        );
+      }
       let groupOut = null;
       if (group_by !== undefined) {
         const sorted = [...s.groups].filter(([, n]) => n >= MIN_GROUP_COUNT).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -308,7 +318,11 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
           distinct_values: count(s.groups.size),
           distinct_capped: s.capped,
           top: shown,
-          other_count: count(s.matched - shownTotal),
+          // With a filter, a rest of 1 to 4 rows is BELOW_MIN too (0 stays 0). matched_rows - sum(top) can still give
+          // it back when every group of 5 or more is listed: known limit, the output schema is frozen.
+          other_count: filter !== undefined && s.matched - shownTotal > 0 && s.matched - shownTotal < MIN_GROUP_COUNT
+            ? BELOW_MIN
+            : count(s.matched - shownTotal),
         };
       }
       return ok({

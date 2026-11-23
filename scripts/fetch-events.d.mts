@@ -44,6 +44,7 @@ export interface RunResult {
 export const HOST: string;
 export const ALLOWED_HOSTS: readonly string[];
 export const ORIGIN: string;
+export const CREDIT: "Fonte: Instituto Municipal de Turismo de Curitiba";
 export const USER_AGENT: string;
 export const WINDOW_START_MIN: number;
 export const WINDOW_END_MIN: number;

@@ -21,7 +21,11 @@ names and counts. Data rows (after the first line) are never returned. What it d
 - **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 5
   rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
   cannot reveal a single record. A filter that matches fewer than 5 rows (0 included) returns `"<5"` for
-  `matched_rows`, `other_count` and `distinct_values` instead of the number (since 0.21.1).
+  `matched_rows`, `other_count` and `distinct_values` instead of the number (since 0.21.1). Since 0.21.2, with a
+  filter, an `other_count` of 1 to 4 is `"<5"` too (0 stays 0), and a filter that leaves 1 to 4 rows out is refused
+  (`column_not_allowed`), because `row_count - matched_rows` would give their count. Known limit: `matched_rows`
+  and the listed counts stay numbers, so when every group of 5 or more is listed, `matched_rows` minus their sum
+  still gives a masked `other_count` back.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
   ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the
@@ -140,7 +144,9 @@ GitHub-hosted runners is free" in public repositories, per
 [GitHub's billing page](https://docs.github.com/en/billing/concepts/product-billing/github-actions); no larger runner
 is used). It follows exactly the rules below (window, robots.txt check, 5 s gap, no retry) and then
 `scripts/publish-data.sh` commits only `events/events.json`, `events/status.json`, `phones/phones.json` and `phones/status.json` to the
-orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). It skips
+orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). Since 0.21.2 `events.json` and `phones.json` start
+with `"credit": "Fonte: Instituto Municipal de Turismo de Curitiba"` next to `source`, the page the facts came from
+([docs/sources.md](sources.md#credit-to-the-instituto-municipal-de-turismo-in-the-published-files-since-0212)). It skips
 the commit (and the push) when none of them changed. A run that fails inside the window (`robots_changed`,
 `http_error`, ...) keeps the previous files, updates only the `status.json` files and shows as failed in the Actions
 tab; after another failure (5xx, timeout, network, `layout_changed`, ...) the next schedule entry that night tries

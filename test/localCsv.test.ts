@@ -257,13 +257,13 @@ describe("local_csv_summary", () => {
 
   it("a filter matching fewer than 5 rows (0 included) shows \"<5\", not the count; 5 or more shows the number", async () => {
     expect(BELOW_MIN).toBe("<5");
-    writeFileSync(join(dataDir, "few.csv"), `tipo;bairro\n${"A;X\n".repeat(4)}${"B;Y\n".repeat(5)}`);
+    writeFileSync(join(dataDir, "few.csv"), `tipo;bairro\n${"A;X\n".repeat(4)}${"B;Y\n".repeat(5)}${"C;Z\n".repeat(5)}`);
     const run = async (value: string, group_by?: string) =>
       localCsvSummaryOutput.parse((await call({ file: "few.csv", filter_column: "tipo", filter_value: value, group_by })).structuredContent).data;
     for (const value of ["A", "Z"]) {
       const data = await run(value);
       expect(data.filter).toEqual({ column: "tipo", value, matched_rows: "<5" });
-      expect(data.row_count).toBe(9); // the whole file's count is not a filter result
+      expect(data.row_count).toBe(14); // the whole file's count is not a filter result
       const grouped = await run(value, "bairro");
       expect(grouped.group_by).toEqual({ column: "bairro", distinct_values: "<5", distinct_capped: false, top: [], other_count: "<5" });
       expect(JSON.stringify(grouped)).not.toMatch(/"matched_rows":\d|"other_count":\d|"distinct_values":\d/);
@@ -271,6 +271,35 @@ describe("local_csv_summary", () => {
     const five = await run("B", "bairro");
     expect(five.filter?.matched_rows).toBe(5);
     expect(five.group_by).toMatchObject({ distinct_values: 1, top: [{ value: "Y", count: 5 }], other_count: 0 });
+  });
+
+  it("with a filter, other_count of 1 to 4 is \"<5\" (0 stays 0; no filter keeps the number)", async () => {
+    writeFileSync(join(dataDir, "other.csv"), `tipo;bairro\n${"A;X\n".repeat(6)}${"A;Y\n".repeat(2)}${"B;X\n".repeat(5)}`);
+    const run = async (args: Record<string, unknown>) =>
+      localCsvSummaryOutput.parse((await call({ file: "other.csv", group_by: "bairro", ...args })).structuredContent).data;
+    const small = await run({ filter_column: "tipo", filter_value: "A" });
+    expect(small.filter?.matched_rows).toBe(8);
+    expect(small.group_by).toMatchObject({ top: [{ value: "X", count: 6 }], other_count: "<5" });
+    const none = await run({ filter_column: "tipo", filter_value: "B" });
+    expect(none.group_by).toMatchObject({ top: [{ value: "X", count: 5 }], other_count: 0 });
+    const unfiltered = await run({});
+    expect(unfiltered.group_by).toMatchObject({ top: [{ value: "X", count: 11 }], other_count: 2 });
+    // Known limit, kept on purpose (output schema frozen): matched_rows and top[].count stay numbers, so when every
+    // group of 5 or more is listed, matched_rows - sum(top) still gives the masked other_count back.
+    const shown = (small.group_by?.top ?? []).reduce((t, g) => t + g.count, 0);
+    expect((small.filter?.matched_rows as number) - shown).toBe(2);
+  });
+
+  it("refuses a filter that leaves 1 to 4 rows out (row_count - matched_rows would give their count)", async () => {
+    writeFileSync(join(dataDir, "complement.csv"), `tipo;bairro\n${"A;X\n".repeat(3)}${"B;X\n".repeat(7)}`);
+    const res = await call({ file: "complement.csv", filter_column: "tipo", filter_value: "B", group_by: "bairro" });
+    expect(errorOf(res)).toMatchObject({ error: "column_not_allowed" });
+    expect(JSON.stringify(res)).not.toMatch(/\b(3|7|10)\b/);
+    // The minority value itself is already masked, and a filter that matches every row leaves nothing out.
+    const minority = localCsvSummaryOutput.parse((await call({ file: "complement.csv", filter_column: "tipo", filter_value: "A" })).structuredContent).data;
+    expect(minority.filter?.matched_rows).toBe("<5");
+    const all = localCsvSummaryOutput.parse((await call({ file: "complement.csv", filter_column: "bairro", filter_value: "X" })).structuredContent).data;
+    expect(all.filter?.matched_rows).toBe(10);
   });
 
   it("returns a text-only first line as column names (documented limit: it cannot be told from a header)", async () => {

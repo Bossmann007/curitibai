@@ -9,6 +9,9 @@ on:
   schedule:
     # Day 1 of each month, 09:23 UTC: away from the nightly collection (02:37-05:13 UTC) and the busy top of the hour.
     - cron: "23 9 1 * *"
+    # Day 2, same time: a second try when the day-1 run was dropped while queued in the shared `data-branch` group.
+    # The check is idempotent: with nothing changed since day 1 it makes no commit and opens no issue.
+    - cron: "23 9 2 * *"
   workflow_dispatch:
 
 permissions:

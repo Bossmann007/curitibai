@@ -85,6 +85,19 @@ describe("published nightly copy", () => {
     expect(calls).toEqual([{ url: EVENTS_URL, method: "GET" }]);
   });
 
+  it("accepts the published files with the Turismo credit line (since 0.21.2) as well as without it", async () => {
+    const credit = { credit: "Fonte: Instituto Municipal de Turismo de Curitiba" };
+    const checked = new Date(Date.now() - 3600_000);
+    stubFetch({
+      [`GET ${EVENTS_URL}`]: json({ ...eventsFile(checked, [1]), ...credit }),
+      [`GET ${PHONES_URL}`]: json({ ...phonesFile(checked), ...credit }),
+    });
+    const ev = await events();
+    expect(ev.isError).toBeFalsy();
+    expect(eventsSearchOutput.parse(ev.structuredContent).data.items.map((e) => e.id)).toEqual([1]);
+    expect((await phones()).isError).toBeFalsy();
+  });
+
   it("also reads the published file when CURITIBAI_DATA_DIR is not set", async () => {
     vi.stubEnv(DATA_DIR_ENV, "");
     stubFetch({ [`GET ${PHONES_URL}`]: json(phonesFile(new Date(Date.now() - 3600_000))) });
