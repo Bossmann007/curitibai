@@ -1,6 +1,6 @@
 import { TtlCache, type Cached } from "../cache.js";
 import { blockHost, fetchText, SourceUnavailableError } from "../http.js";
-import { createHostGate } from "../hostGate.js";
+import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
 import { fold } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
@@ -137,7 +137,8 @@ const BIKE_FIELDS = "objectid,nome,ctba_tipo_ciclovia,ctba_localizacao,ctba_bair
 
 /**
  * The one fixed URL read for a type: the whole layer (where 1=1), fixed fields, WGS84 (outSR=4326). Nothing from the
- * user's input (neighbourhood, coordinates) is ever sent: filtering happens in this server.
+ * user's input (neighbourhood, coordinates) is ever sent: filtering happens in this server. (place_at_point's point
+ * queries, below, send a point rounded to 4 decimals.)
  */
 export function layerQueryUrl(t: FacilityType): string {
   const p = new URLSearchParams({ where: "1=1" });
@@ -447,6 +448,8 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
 }
 
 const cache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS);
+/** Point answers: keys are `GET <url>` with the rounded point; at most 500 kept (user positions are unbounded). */
+const pointCache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS, Date.now, 500);
 
 /** At least this long between two requests to the GeoCuritiba host from this process (any layer). */
 export const GEOCURITIBA_MIN_INTERVAL_MS = 5_000;
@@ -459,6 +462,7 @@ const gate = createHostGate({ minIntervalMs: GEOCURITIBA_MIN_INTERVAL_MS, maxQue
 /** Tests only. */
 export function clearGeoCuritibaCache(): void {
   cache.clear();
+  pointCache.clear();
   gate.reset();
 }
 
@@ -478,4 +482,144 @@ export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>
     if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
     return parseLayer(t, res.body, url);
   }));
+}
+
+// ---- Point queries: place_at_point (v0.22.0) ----
+
+/** IPPUC's cadastral map service (the GeoCuritiba/ folder: the root-level name answers 499 "Token Required"). */
+export const CADASTRAL_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer`;
+/** Streets are looked for within this distance of the point. */
+export const STREET_RADIUS_M = 100;
+
+export type PointLayer = "bairro" | "zoning_decree" | "zoning_law" | "street";
+
+const ZONING_FIELDS = "sg_zona,nm_zona,legislacao,data_versao";
+/** Layer ids and fixed fields, read from the service on 2026-11-23 (see docs/sources.md). */
+export const POINT_LAYERS: Record<PointLayer, { id: number; fields: string }> = {
+  bairro: { id: 2, fields: "nome,nm_regional" },
+  zoning_decree: { id: 41, fields: ZONING_FIELDS },
+  zoning_law: { id: 36, fields: ZONING_FIELDS },
+  street: { id: 12, fields: "gtm_nm_logradouro" },
+};
+
+export interface Point {
+  lat: number;
+  lon: number;
+}
+
+/** True inside the loose box used for every GeoCuritiba coordinate (LAT_RANGE, LON_RANGE). */
+export function inCuritibaBox(lat: number, lon: number): boolean {
+  return inside(lat, lon) !== null;
+}
+
+/** 4 decimals (about 11 m): the only precision sent to the source, cached or returned. */
+export function roundPoint(lat: number, lon: number): Point {
+  const r = (v: number) => Math.round(v * 1e4) / 1e4;
+  return { lat: r(lat), lon: r(lon) };
+}
+
+/**
+ * The fixed point query of one layer: the rounded point is the only user input in the URL. The street layer also asks
+ * for the lines within STREET_RADIUS_M in WGS84, so the nearest one is measured in this server.
+ */
+export function pointQueryUrl(layer: PointLayer, p: Point): string {
+  const l = POINT_LAYERS[layer];
+  const q = new URLSearchParams({
+    geometry: `${p.lon},${p.lat}`,
+    geometryType: "esriGeometryPoint",
+    inSR: "4326",
+    spatialRel: "esriSpatialRelIntersects",
+    outFields: l.fields,
+  });
+  if (layer === "street") {
+    q.set("distance", String(STREET_RADIUS_M));
+    q.set("units", "esriSRUnit_Meter");
+    q.set("returnGeometry", "true");
+    q.set("outSR", "4326");
+    q.set("geometryPrecision", "6");
+  } else {
+    q.set("returnGeometry", "false");
+  }
+  q.set("f", "json");
+  return `${CADASTRAL_SERVICE_URL}/${l.id}/query?${q.toString()}`;
+}
+
+export interface PointFeature {
+  attributes: Record<string, unknown>;
+  /** Street layer only: the line as [lon, lat] pairs inside the Curitiba box; null when absent or not understood. */
+  paths: [number, number][][] | null;
+}
+
+/**
+ * Reads a point query answer with parseLayer's fail-closed rules: an `error` object (ArcGIS sends errors with HTTP 200;
+ * 401/403/498/499 block the host), `exceededTransferLimit`, no `features` array, or 2,000 records or more. A spatial
+ * reference other than 4326 fails only when geometry was asked (answers without geometry carry none).
+ */
+export function parsePointQuery(body: string, url: string, withGeometry: boolean): PointFeature[] {
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new SourceUnavailableError("invalid JSON");
+  }
+  if (!isObject(json)) throw new SourceUnavailableError("query error");
+  if ("error" in json) {
+    const code = isObject(json.error) ? json.error.code : undefined;
+    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
+    throw new SourceUnavailableError("query error");
+  }
+  if (json.exceededTransferLimit === true) throw new SourceUnavailableError("answer cut by the record limit");
+  if (withGeometry) {
+    const sr = json.spatialReference;
+    if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  }
+  if (!Array.isArray(json.features) || json.features.length >= MAX_RECORDS) throw new SourceUnavailableError("no features");
+  const out: PointFeature[] = [];
+  for (const f of json.features as unknown[]) {
+    if (!isObject(f) || !isObject(f.attributes)) continue;
+    out.push({ attributes: f.attributes, paths: withGeometry ? streetPaths(isObject(f.geometry) ? f.geometry : null) : null });
+  }
+  return out;
+}
+
+/**
+ * A street line as [lon, lat] pairs. Unlike bikePaths, a vertex outside the Curitiba box is kept (a road near the
+ * point can run past the box); only a vertex that is not a valid WGS84 pair is dropped. Null when nothing is left.
+ */
+function streetPaths(g: Record<string, unknown> | null): [number, number][][] | null {
+  if (!g || !Array.isArray(g.paths)) return null;
+  const valid = (v: unknown, max: number): v is number => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= max;
+  const paths: [number, number][][] = [];
+  for (const path of g.paths as unknown[]) {
+    if (!Array.isArray(path)) continue;
+    const pts: [number, number][] = [];
+    for (const p of path as unknown[]) {
+      if (Array.isArray(p) && valid(p[0], 180) && valid(p[1], 90)) pts.push([p[0], p[1]]);
+    }
+    if (pts.length > 0) paths.push(pts);
+  }
+  return paths.length > 0 ? paths : null;
+}
+
+/** cleanText for a point-layer field; null when absent or empty. */
+export function cleanPointField(v: unknown, max: number): string | null {
+  return clean(v, max);
+}
+
+/**
+ * One point query through the same host gate as the layers (5 s between requests, failures remembered), cached 6 hours
+ * by its URL. `startBy`: no request starts after it (OutOfTimeError).
+ */
+export function getPointLayer(layer: PointLayer, p: Point, startBy?: number): Promise<Cached<PointFeature[]>> {
+  const url = pointQueryUrl(layer, p);
+  return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
+    const res = await fetchText(url, {
+      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+      maxBytes: GEOCURITIBA_MAX_BYTES,
+      sameHostOnly: true,
+      redirectPathPrefix: "/server/rest/services",
+    });
+    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+    return parsePointQuery(res.body, url, layer === "street");
+  }, startBy === undefined ? {} : { startBy })));
 }

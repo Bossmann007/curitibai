@@ -123,7 +123,7 @@ export const MIXED_NOTE =
 const bairroKey = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 /** Metres from `p` to the nearest point of a line, on a local flat projection (fine at a few km). */
-function distanceToPaths(p: { lat: number; lon: number }, paths: [number, number][][]): number {
+export function distanceToPaths(p: { lat: number; lon: number }, paths: [number, number][][]): number {
   const kx = 111_320 * Math.cos((p.lat * Math.PI) / 180);
   const ky = 110_574;
   let best = Infinity;
