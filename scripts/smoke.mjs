@@ -70,6 +70,12 @@ if (JSON.stringify(names) !== JSON.stringify(expected)) {
   console.error(`smoke: unexpected tools ${JSON.stringify(names)}`);
   process.exit(1);
 }
+// The built server reads its version from package.json (dist/../package.json), the one place it is written.
+const pkgVersion = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+if (client.getServerVersion()?.version !== pkgVersion) {
+  console.error(`smoke: server version ${client.getServerVersion()?.version} is not package.json ${pkgVersion}`);
+  process.exit(1);
+}
 if (cs.isError || !(cs.structuredContent?.data?.total > 0)) {
   console.error("smoke: city_services_search returned no services from the synthetic fixture");
   process.exit(1);

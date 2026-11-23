@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { tools } from "./tools/index.js";
 import { READ_ONLY } from "./tools/common.js";
 
+/** The one place the version is written: package.json (next to src/ and dist/). */
+export const VERSION: string = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+
 export function createServer(): McpServer {
   const server = new McpServer(
-    { name: "curitibai", version: "0.21.0" },
+    { name: "curitibai", version: VERSION },
     {
       instructions:
         "Unofficial, read-only access to public data about Curitiba (Brazil): city, federal (CNES, PNCP, INMET, ANA river telemetry), " +

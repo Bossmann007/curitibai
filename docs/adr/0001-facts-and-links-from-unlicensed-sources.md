@@ -25,7 +25,8 @@ Where it is written:
 - `docs/sources.md:883` (IPPUC, owner approval 2026-11-21), `docs/sources.md:896` (ANA, 2026-11-22),
   `docs/sources.md:1042` (Teatro Guaíra, 2026-11-22), `docs/sources.md:748` (Turismo events and phones on the `data`
   branch, 2026-11-22).
-- `SPEC.md:3` (v0.18.0 approval: the public `data` branch holds facts and links only).
+- `SPEC.md` at tag v0.21.0, line 3 (`git show v0.21.0:SPEC.md`; v0.18.0 approval: the public `data` branch holds
+  facts and links only).
 - PRs [#5](https://github.com/Bossmann007/curitibai/pull/5) (v0.15.0),
   [#7](https://github.com/Bossmann007/curitibai/pull/7) (v0.16.0),
   [#9](https://github.com/Bossmann007/curitibai/pull/9) (v0.17.0),

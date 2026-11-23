@@ -18,7 +18,7 @@
   - [`events_search`: Instituto Municipal de Turismo events calendar (local file written by a separate collector)](#events_search-instituto-municipal-de-turismo-events-calendar-local-file-written-by-a-separate-collector)
   - [`useful_phones`: Instituto Municipal de Turismo "Telefones Úteis" page (local file written by the same collector)](#useful_phones-instituto-municipal-de-turismo-telefones-úteis-page-local-file-written-by-the-same-collector)
   - [Published nightly copy of the events and phones files (since 0.18.0)](#published-nightly-copy-of-the-events-and-phones-files-since-0180)
-  - [Monthly check of the Receita Federal calculator version (unreleased)](#monthly-check-of-the-receita-federal-calculator-version-unreleased)
+  - [Monthly check of the Receita Federal calculator version (since 0.21.1)](#monthly-check-of-the-receita-federal-calculator-version-since-0211)
   - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
@@ -301,8 +301,8 @@ A cold `rates` call took 19.4 s and 20.6 s.
 | Routes used | `versao`; `aliquota-uniao?data=`; `aliquota-uf?codigoUf=41&data=`; `aliquota-municipio?codigoMunicipio=4106902&data=`; `nbs/lista?data=`; `ncm/vigentes?data=`; `classificacoes-tributarias/cbs-ibs?data=`. Only the date (validated) and fixed codes are in the URLs |
 | Answers on 2026-11-23 | `versao`: `versaoApp` `1.7.2-0d9b30c1`, `versaoDb` `V0073`, `dataVersaoDb` `2026-11-09`, `ambiente` `apr` (passed through as served, never hardcoded). Rates `{"aliquotaReferencia":0.9}` (CBS), `0.1` (IBS UF, PR), `0.0` (IBS municipal, Curitiba): percent, inferred from the values (the 2026 test-year rates). Lists: NBS 920 items (100 KB), NCM 10,516 (730 KB), cClassTrib 170 (148 KB). 1–6 s per request |
 | Not found | HTTP 404, `application/problem+json`, "Alíquota não encontrada" for the federal rate on 2024-01-01 and for the municipal rate on 2027-01-01: returned as a `null` rate with a note, not as a host failure |
-| Simulated data | The Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) marks every date from 2027-01-01 as simulated (`x-warning-dados-simulados` header on the rate routes). The tool returns those values with `simulated: true` and the note "valores simulados pela Receita Federal; não são alíquotas definitivas" (owner decision, 2026-11-23); a list answer with the header is flagged the same way |
-| Guards | `fetchText` with the project User-Agent; 15 s timeout; caps 64 KB (versions, rates) and 2 MB (lists); redirects only to the same host and the `dados-abertos` path; JSON only; one host gate (5 s between requests, 30 s queue limit, failures remembered 60 s to 1 hour, an HTML 200 answer included; a missing rate, HTTP 404, is not a failure and is not cached); cache in memory 24 h (lists at most 3). Fail closed on anything else (see SPEC "v0.21.0 changes") |
+| Simulated data | The Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) marks every date from 2027-01-01 as simulated (`x-warning-dados-simulados` header on the rate routes). The tool returns those values with `simulated: true` and the note "valores simulados pela Receita Federal; não são alíquotas definitivas" (owner decision, 2026-11-23: accept dates from 2027 and flag them instead of refusing); a list answer with the header is flagged the same way. Accepted dates run from 2026-01-01 to 2099-12-31; the upper bound only guards against typos such as 3026, which would send uncached requests to the shared host. Known gap: a missing rate (HTTP 404) is read without its headers, so a simulated mark on it is not seen; the year rule still applies |
+| Guards | `fetchText` with the project User-Agent; 15 s timeout; caps 64 KB (versions, rates) and 2 MB (lists); redirects only to the same host and the `dados-abertos` path; JSON only; one host gate (5 s between requests, 30 s queue limit, failures remembered 60 s to 1 hour, an HTML 200 answer included; a missing rate, HTTP 404, is not a failure and is not cached); cache in memory 24 h (lists at most 3). Fail closed on anything else (see `SPEC.md` at tag v0.21.0, "v0.21.0 changes": `git show v0.21.0:SPEC.md`) |
 | Terms / licence | The calculator's code repositories are MIT. **No terms of use for the hosted pilot API were found.** Values are passed on unchanged, with the source URL and fetch time in `license_note`, and every answer says "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador" |
 | Out of scope | The calculation `POST`, effective-rate arithmetic, any NFS-e or other invoice issuance, Imposto Seletivo data, other cities or states |
 | NFS-e note | Fixed text from the owner's v0.21.0 brief, which checked `https://lp.curitiba.pr.gov.br/notanacional` (conferido em 2026-11-23): mandatory issuance on the Emissor Nacional; 01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; Decreto 1960/2025 and Portaria 33/2025; public lookup `https://www.nfse.gov.br/consultapublica`. Never fetched by the server |
@@ -834,7 +834,7 @@ in the city's own categories. Built.
   (<https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule>,
   checked 2026-11-22); [docs/local-data.md](local-data.md#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script) says how to re-enable it.
 
-### Monthly check of the Receita Federal calculator version (unreleased)
+### Monthly check of the Receita Federal calculator version (since 0.21.1)
 
 Not a tool: a scheduled check so the owner hears when the Receita Federal pilot "calculadora de tributos do consumo"
 changes (owner request, 2026-11-23: monthly and automatic).
@@ -1003,6 +1003,9 @@ changes (owner request, 2026-11-23: monthly and automatic).
   was not checked: the domain alone does not tell (59's is an institute). The e-mails kept by the built tool were 20
   distinct `curitiba.pr.gov.br` role or unit mailboxes (cultural centres, memorials, the Cinemateca, the Gibiteca, a
   Farol do Saber named after its patron); none was added to the 2026-11-22 owner decision's count above.
+  Owner decisions (Enzo, 2026-11-23): those 20 institutional e-mails are approved, in addition to the 136 of the
+  2026-11-22 decision; the `mixedOwnership` note ("confirm days and hours with the venue, not the 156") stays,
+  including its change to `museu` and `teatro`.
   Requests to the host on 2026-11-23: six layer descriptions, six field surveys and six live calls of the built tool
   (one per new type, one at a time), at most one request per 5 s.
 - **Fixtures:** `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json` and `ciclovia.json` are
@@ -1247,7 +1250,9 @@ No network. The user downloads a file in a browser (for example the 156 CSV from
 folder named by `CURITIBAI_DATA_DIR`. The tool streams it and returns column names, row counts and grouped counts.
 Data rows (after the first line) are never returned.
 The values of the grouped column are returned; groups under 5 rows (3 before v0.13.2, owner decision 2026-11-21) are
-counted only in `other_count`, so a filter plus a group-by cannot reveal one record. Since v0.13.2 a grouped column is
+counted only in `other_count`, so a filter plus a group-by cannot reveal one record. Since v0.21.1 a filter that
+matches fewer than 5 rows (0 included) returns `"<5"` for `matched_rows`, `other_count` and `distinct_values`
+instead of the number. Since v0.13.2 a grouped column is
 refused (`column_not_allowed`) when any value that could be returned would be changed by the contact-data guard
 (`guardedSummary`: CPF/CNPJ-, e-mail- or phone-shaped text, or year ranges that look like phone numbers such as
 "2025 - 2026"). It does not detect names of people.

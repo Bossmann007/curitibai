@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import { tools } from "../src/tools/index.js";
@@ -5,6 +6,15 @@ import { datasetUrl, PORTAL_SEARCH_URL } from "../src/sources/portal.js";
 import { connectClient, errorOf, FILES_UNIDADES, fixture, happyRoutes, ID_TRANSPORTE, ID_UNIDADES, SAMPLE_CALLS, stubFetch, type Route } from "./helpers.js";
 
 const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+
+describe("server info", () => {
+  it("reports the version written in package.json (no second copy in the code)", async () => {
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string };
+    const client = await connectClient();
+    expect(client.getServerVersion()).toMatchObject({ name: "curitibai", version: pkg.version });
+    expect(readFileSync(new URL("../src/server.ts", import.meta.url), "utf8")).not.toMatch(/version: "\d/);
+  });
+});
 
 describe("tools/list", () => {
   it("lists exactly the twenty-two read-only tools with input and output schemas", async () => {

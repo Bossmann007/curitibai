@@ -23,8 +23,8 @@ automatic updates ("era pra ele pegar automático"), but only if free.
   `raw.githubusercontent.com` (`src/sources/publishedData.ts:133`). `CURITIBAI_REMOTE_DATA=0` (or `off`) turns that off
   (`src/sources/publishedData.ts:19`).
 
-Where it is written: `SPEC.md:1-47` (design, approved 2026-11-22, 35-minute timeout as an owner decision at
-`SPEC.md:31`), `.github/workflows/collect.yml`, `docs/local-data.md` "Events (Instituto Municipal de Turismo
+Where it is written: `SPEC.md` at tag v0.21.0 (`git show v0.21.0:SPEC.md`), lines 1-47 (design, approved 2026-11-22,
+35-minute timeout as an owner decision at line 31), `.github/workflows/collect.yml`, `docs/local-data.md` "Events (Instituto Municipal de Turismo
 calendar, collected by a separate script)", CHANGELOG 0.18.0, PR [#10](https://github.com/Bossmann007/curitibai/pull/10).
 `test/workflows.test.ts` pins the runner, SHAs, cron, timeout and the push rules.
 
@@ -34,7 +34,12 @@ calendar, collected by a separate script)", CHANGELOG 0.18.0, PR [#10](https://g
 - The `data` branch is public, so it holds facts and links only ([0001](0001-facts-and-links-from-unlicensed-sources.md)).
 - GitHub disables scheduled workflows in a public repository after 60 days with no repository activity. This is
   documented (`docs/local-data.md`, same section; `docs/sources.md:761`), not worked around with keep-alive commits
-  (`SPEC.md`, "Out of scope"). `stale: true` after 3 days is the first sign; the fix is `gh workflow enable collect.yml`.
+  (`SPEC.md` at tag v0.21.0, "Out of scope"). `stale: true` after 3 days is the first sign; the fix is `gh workflow enable collect.yml`.
 - Scheduled runs can start late or be dropped under GitHub load; a run after 05:50 UTC publishes only its status and
   the tools keep the last good copy.
 - The server gains one network host (`raw.githubusercontent.com`, three fixed paths).
+- A refusal by the site (HTTP 401, 403, 429 or a changed robots.txt) ends the night: later schedule entries that UTC
+  date make no request (`refused_tonight`); other failures are tried again by the next entry (owner decision
+  "uma recusa do site encerra a coleta da noite", 2026-11-23, v0.19.4).
+- Since v0.21.1 a second writer pushes to `data` (`receita-version.yml`); how the two share it is
+  [0007](0007-data-branch-writers.md).

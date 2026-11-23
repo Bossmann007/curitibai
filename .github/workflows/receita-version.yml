@@ -14,8 +14,10 @@ on:
 permissions:
   contents: read
 
+# Same group as collect.yml: both push to the `data` branch, so they never run at the same time. GitHub keeps
+# at most one pending run per group, so a run queued behind a running one can be replaced by a newer one.
 concurrency:
-  group: receita-version
+  group: data-branch
   cancel-in-progress: false
 
 jobs:

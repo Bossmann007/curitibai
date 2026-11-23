@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { CsvLimitError, CsvParser, detectDelimiter, MAX_COLUMNS, MAX_FIELD_CHARS } from "../src/csv.js";
 import { closeFile, DATA_DIR_ENV, LocalFileError, openDataFile, openVerified, readChunks } from "../src/localfs.js";
-import { isSensitiveColumn, localCsvSummaryOutput, looksLikeValue, MAX_VALUE_CHARS, MIN_GROUP_COUNT } from "../src/tools/localCsvSummary.js";
+import { BELOW_MIN, isSensitiveColumn, localCsvSummaryOutput, looksLikeValue, MAX_VALUE_CHARS, MIN_GROUP_COUNT } from "../src/tools/localCsvSummary.js";
 import { connectClient, errorOf } from "./helpers.js";
 
 // Synthetic files only, written to a temporary folder outside the repository.
@@ -250,8 +250,27 @@ describe("local_csv_summary", () => {
   it("cannot rebuild a row by filtering on a unique column", async () => {
     const res = await call({ file: "156.csv", group_by: "BAIRRO", filter_column: "PROTOCOLO", filter_value: "1" });
     const data = localCsvSummaryOutput.parse(res.structuredContent).data;
-    expect(data.group_by).toMatchObject({ top: [], other_count: 1 });
+    expect(data.filter).toEqual({ column: "PROTOCOLO", value: "1", matched_rows: "<5" });
+    expect(data.group_by).toMatchObject({ top: [], distinct_values: "<5", other_count: "<5" });
     expect(JSON.stringify(res)).not.toContain("Centro");
+  });
+
+  it("a filter matching fewer than 5 rows (0 included) shows \"<5\", not the count; 5 or more shows the number", async () => {
+    expect(BELOW_MIN).toBe("<5");
+    writeFileSync(join(dataDir, "few.csv"), `tipo;bairro\n${"A;X\n".repeat(4)}${"B;Y\n".repeat(5)}`);
+    const run = async (value: string, group_by?: string) =>
+      localCsvSummaryOutput.parse((await call({ file: "few.csv", filter_column: "tipo", filter_value: value, group_by })).structuredContent).data;
+    for (const value of ["A", "Z"]) {
+      const data = await run(value);
+      expect(data.filter).toEqual({ column: "tipo", value, matched_rows: "<5" });
+      expect(data.row_count).toBe(9); // the whole file's count is not a filter result
+      const grouped = await run(value, "bairro");
+      expect(grouped.group_by).toEqual({ column: "bairro", distinct_values: "<5", distinct_capped: false, top: [], other_count: "<5" });
+      expect(JSON.stringify(grouped)).not.toMatch(/"matched_rows":\d|"other_count":\d|"distinct_values":\d/);
+    }
+    const five = await run("B", "bairro");
+    expect(five.filter?.matched_rows).toBe(5);
+    expect(five.group_by).toMatchObject({ distinct_values: 1, top: [{ value: "Y", count: 5 }], other_count: 0 });
   });
 
   it("returns a text-only first line as column names (documented limit: it cannot be told from a header)", async () => {

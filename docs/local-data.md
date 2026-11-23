@@ -20,7 +20,8 @@ names and counts. Data rows (after the first line) are never returned. What it d
 
 - **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 5
   rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
-  cannot reveal a single record.
+  cannot reveal a single record. A filter that matches fewer than 5 rows (0 included) returns `"<5"` for
+  `matched_rows`, `other_count` and `distinct_values` instead of the number (since 0.21.1).
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
   ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the
