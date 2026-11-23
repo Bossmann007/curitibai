@@ -1,0 +1,49 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "CC Ficticio Alfa",
+        "nome_completo": "Centro Cultural Ficticio Alfa",
+        "nome_rua": "R. FICTICIA",
+        "num_pred": "100",
+        "compl_end": null,
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-0101",
+        "email": "ccalfa@exemplo.curitiba.pr.gov.br",
+        "dt_atualiz": 1700000000000,
+        "observacao": "Terça a domingo, das 10h às 18h\r\nEntrada gratuita"
+      },
+      "geometry": { "x": -49.27, "y": -25.43 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Centro Cultural Ficticio Beta",
+        "nome_rua": "AV. INVENTADA",
+        "num_pred": "200",
+        "bairro": "Rebouças",
+        "email": "contato@instituto-ficticio.org.br"
+      },
+      "geometry": { "x": -49.26, "y": -25.44 }
+    },
+    {
+      "attributes": {
+        "objectid": 3,
+        "nome": "  ",
+        "nome_completo": null,
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro"
+      },
+      "geometry": { "x": -49.27, "y": -25.43 }
+    }
+  ]
+}

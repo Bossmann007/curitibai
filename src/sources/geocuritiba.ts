@@ -41,19 +41,23 @@ export interface FacilityType {
   kind: LayerKind;
   /** The layer's REST URL (cited in results). */
   layerUrl: string;
+  /** The layer also lists private or non-profit venues (commercial cinemas, private theatres); results say so. */
+  mixedOwnership?: true;
 }
 
-const equipment = (id: string, layer: number, label: string, aliases: string[] = []): FacilityType => ({
+const equipment = (id: string, layer: number, label: string, aliases: string[] = [], mixed = false): FacilityType => ({
   id,
   label,
   aliases,
   kind: "facility",
   layerUrl: `${EQUIPMENT_SERVICE_URL}/${layer}`,
+  ...(mixed ? { mixedOwnership: true as const } : {}),
 });
 
 /**
- * The curated subset of layers (ids read from the services on 2026-11-21). Every layer had under 300 records then
- * (bike structure 838), far below the 2,000-record limit, so one request reads a whole layer.
+ * The curated subset of layers (ids read from the services on 2026-11-21; the Cultura layers added in v0.20.0 on
+ * 2026-11-23). Every layer had under 300 records then (bike structure 838), far below the 2,000-record limit, so one
+ * request reads a whole layer.
  */
 export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("feira", 8, "Feira", ["feiras", "feira livre", "feiras livres"]),
@@ -69,8 +73,20 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("banheiro publico", 28, "Sanitário Público", ["banheiros publicos", "sanitario publico", "sanitarios publicos", "banheiro"]),
   equipment("biblioteca", 64, "Biblioteca Geral", ["bibliotecas", "biblioteca geral"]),
   equipment("farol do saber", 63, "Farol do Saber", ["farois do saber"]),
-  equipment("museu", 54, "Museu", ["museus"]),
-  equipment("teatro", 55, "Teatro", ["teatros"]),
+  equipment("museu", 54, "Museu", ["museus"], true),
+  equipment("teatro", 55, "Teatro", ["teatros"], true),
+  // Cultura group, added in v0.20.0 (ids and counts read on 2026-11-23; at most 24 records each).
+  equipment("centro cultural", 50, "Centro Cultural", ["centros culturais"], true),
+  equipment("espaco expositivo", 51, "Espaço Expositivo de Artes", [
+    "espacos expositivos", "espaco expositivo de artes", "espaco expositivo de arte", "espacos expositivos de artes",
+  ], true),
+  equipment("memorial", 53, "Memorial", ["memoriais"]),
+  equipment("cinema", 56, "Cinema", ["cinemas"], true),
+  equipment("espetaculos ao ar livre", 59, "Espaço para Espetáculos ao Ar Livre", [
+    "espetaculo ao ar livre", "espaco para espetaculos ao ar livre", "espacos para espetaculos ao ar livre",
+    "espaco para espetaculo ao ar livre",
+  ], true),
+  equipment("gibiteca", 62, "Gibiteca", ["gibitecas"]),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),
   equipment("centro de esporte e lazer", 86, "Centro de Esporte e Lazer"),
