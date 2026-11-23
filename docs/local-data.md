@@ -142,7 +142,8 @@ is used). It follows exactly the rules below (window, robots.txt check, 5 s gap,
 orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). It skips
 the commit (and the push) when none of them changed. A run that fails inside the window (`robots_changed`,
 `http_error`, ...) keeps the previous files, updates only the `status.json` files and shows as failed in the Actions
-tab; the next schedule entry that night tries again. Once both steps (events and phones) succeeded on the UTC date, the
+tab; the next schedule entry that night tries again (so after a 403, 429 or `robots_changed` the site is asked again
+about 40 minutes later, at most four more times that night; each run still stops at the first refusal). Once both steps (events and phones) succeeded on the UTC date, the
 later entries exit 0 at once (`code=already_collected`): no request, no file change, no push.
 The job has `contents: write` only for itself, a 35-minute timeout (above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes), and never overlaps another run.
 
@@ -177,11 +178,13 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
 - **Runs can be late or dropped.** "The `schedule` event can be delayed during periods of high loads of GitHub
   Actions workflow runs. High load times include the start of every hour. If the load is sufficiently high enough,
   some queued jobs may be dropped" (same page). The first scheduled run, on 2026-11-23, started 8.5 h late. That is
-  why there are five entries. A run that starts outside 02:00–05:50 UTC (or is stopped by 05:50) makes no request
-  after that point, changes no file (neither data nor `status.json`, so the last successful record stays) and pushes
-  nothing; the tools keep answering from the last good copy. It exits 0 when both steps succeeded in the last 24 hours
-  (the `success` times in `events/status.json` and `phones/status.json`), and 1 otherwise, so a night with no
-  collection still shows as a failed run.
+  why there are five entries. A run that starts outside 02:00–05:50 UTC makes no request, changes no file (neither
+  data nor `status.json`, so the last successful record stays) and pushes nothing; the tools keep answering from the
+  last good copy. A run that reaches 05:50 mid-way leaves the status of the step it stopped as it was (the events
+  step: neither file is written; only the phones request: `phones/status.json` is kept, the finished events files are
+  published). Such a run exits 0 when both steps succeeded in the last 24 hours (the `success` times in
+  `events/status.json` and `phones/status.json`), and 1 otherwise, so a night with no collection still shows as a
+  failed run.
 - A manual run: `gh workflow run collect.yml` (or **Run workflow** in the Actions tab). Outside 02:00–05:50 UTC it
   makes no request to the site and changes nothing; on a UTC date when both steps already succeeded it exits 0 with
   `code=already_collected`.
@@ -189,7 +192,8 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
   about 5 minutes for the 50 or so events seen on 2026-11-21. With 10 list pages of 10 events (a pager showing more
   stops the run) it is about 112 requests, each followed by the 5 s gap, plus the site's response time: about 10
   to 15 minutes, more when the site is slow. The collector stops itself at its 30-minute deadline (or 05:50 UTC),
-  keeps the previous files and records the code in `status.json`, before the job's 35-minute timeout.
+  keeps the previous files and records the code in `status.json` (a 05:50 stop records nothing, as above), before the
+  job's 35-minute timeout.
 - `phones/status.json` is published too (since 0.18.1): when the last phones run failed, `useful_phones` names its
   `code` (and HTTP status) in the note, read from the same copy as the phones (a local file never makes a request),
   unless that attempt is older than the numbers. A missing or invalid status file adds nothing and never fails the
@@ -232,7 +236,7 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
 - It writes `events/events.json` and `events/status.json` (last attempt, last success, result code) atomically. When a
   page does not have the expected structure, a field fails validation, the run is cut short, or the count is 0 or
   outside 0.3x–3x of the previous file's, it keeps the old `events.json` and exits nonzero (`code=layout_changed`, or
-  the code of what stopped it). It prints only fixed status lines with counts and the exit code, never page text. If the
+  the code of what stopped it; a `window_closed` stop writes no `status.json` and exits as described above). It prints only fixed status lines with counts and the exit code, never page text. If the
   site really changes size (fewer or more than 0.3x–3x the previous count), every run keeps failing this way: check the
   site, then delete `events/events.json` to accept the new count on the next run.
 - **A day with no events also stops with `code=layout_changed`** and keeps the previous `events.json`. The script has
@@ -257,9 +261,9 @@ week".
 gap, deadline and User-Agent; robots.txt allows `/conteudo/`). It runs only after the events step ended `ok` or with
 `layout_changed`; after any other stop (an error status such as 403, 429 or 5xx, a redirect, a timeout, a network
 error, the window or the deadline) it makes no request, so the host is not asked again after a refusal, and
-`phones/status.json` gets the same code. It never changes the events files. It writes `phones/phones.json` and `phones/status.json` in
+`phones/status.json` gets the same code (except after a window stop, which leaves it as it was, since 0.19.3). It never changes the events files. It writes `phones/phones.json` and `phones/status.json` in
 `CURITIBAI_DATA_DIR` and prints one more fixed line, `fetch-events: phones_code=<code> phones=<n> phones_dropped=<n>`;
-the exit code is 0 only when both steps are ok.
+the exit code is 0 only when both steps are ok (or, since 0.19.3, a window stop after a collection in the last 24 hours).
 
 - It keeps, per entry, the section heading, the organ, service or company name and the numbers as published, plus
   the page link and when it was read. Notes and addresses on the page are not kept.

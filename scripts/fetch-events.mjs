@@ -790,8 +790,8 @@ export function readPreviousPhones(dir) {
 /**
  * The phones step: one GET of PHONES_PATH with the run's client (same window, deadline, robots rules, gap and
  * User-Agent), then phones/phones.json only when the page parsed and the count is within 0.3x–3x of the previous copy;
- * phones/status.json always tried. `skipCode` (the events step ended with a code other than ok or layout_changed)
- * makes no request.
+ * phones/status.json tried unless the window stopped the request (then it is left as it was). `skipCode` (the events
+ * step ended with a code other than ok or layout_changed) makes no request.
  */
 export async function runPhones({ client, now, env, attempt, skipCode }) {
   const out = { code: "ok", httpStatus: undefined, entries: 0, dropped: 0 };
@@ -929,11 +929,14 @@ export function acquireLock(dir, now) {
 
 /**
  * One collector run. Returns `{code, exit, counts}`. Takes the lock first (a locked run makes no request and writes
- * nothing). Each detail read is added to the detail cache at once; events.json is written only when the whole run
- * succeeded and the result passed validation; status.json is always tried. Then the phones step (runPhones) runs with
- * the same client, only when the events step ended ok or with layout_changed (any other code: no request, the phones
- * status gets that code); it never changes events files or the events code. Exit 0 only when both steps are ok. Network, clock, sleep and the recorded robots rules are injectable
- * for tests.
+ * nothing). With env CURITIBAI_COLLECT_ONCE_A_DAY=1, a run on a UTC date when both steps already succeeded stops with
+ * already_collected (no request, nothing written, exit 0). Each detail read is added to the detail cache at once;
+ * events.json is written only when the whole run succeeded and the result passed validation; status.json is tried
+ * unless the run was locked, skipped or stopped by the window. Then the phones step (runPhones) runs with the same
+ * client, only when the events step ended ok or with layout_changed (any other code: no request, the phones status
+ * gets that code, except after a window stop, which leaves it as it was); it never changes events files or the events
+ * code. Exit 0 when both steps are ok, or when each ended ok or window_closed and both succeeded less than
+ * RECENT_SUCCESS_MS before the start. Network, clock, sleep and the recorded robots rules are injectable for tests.
  */
 export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORDED_ROBOTS }) {
   const startedAt = now();

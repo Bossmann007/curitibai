@@ -26,7 +26,8 @@ cost.
   them as `github-actions[bot]`, skipping the commit when none changed (rare: `status.json` records every attempt); push `HEAD:refs/heads/data` without force; exit with the
   collector's code. No `data` branch yet: create it as an orphan. A `ls-remote` failure other than "no such branch"
   stops before collecting (so a network error never makes a new orphan). The collector already keeps the previous
-  `events.json` / `phones.json` on any failure and always writes `status.json`.
+  `events.json` / `phones.json` on any failure and always writes `status.json` (since v0.19.3, not on `window_closed`
+  or `already_collected`; see "v0.19.3 changes").
 - **Timing:** typical run about 5 minutes (50 events); with 10 list pages of 10 events, about 112 requests with a
   5 s gap after each plus response time, about 10–15 minutes, more when the site is slow. The job timeout is 35
   minutes (owner decision, 2026-11-22), above the collector's unchanged 30-minute deadline, so the collector always
@@ -168,7 +169,14 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   mid-run, events or phones step) writes neither status file, so the previous record is never replaced; the run exits
   0 when each step ended `ok` or `window_closed` and the last collection is less than 24 h before the start, else 1.
   Without the switch a by-hand run inside the window collects as before.
-- No change to the data files' format, the tools or any other source.
+- No change to the data files' format, the tools or any other source. This lifts "any change to the collector's
+  behaviour" in "Out of scope" below for these points only.
+- Consequence: after a 403, 429 or `robots_changed`, the next entry that night asks the site again (at most four more
+  runs, each stopping at its first refusal); before, the next attempt was the next night.
+- Check: `scripts/verify` exit 0 (new `test/fetchEvents.test.ts` "later schedule entries and late runs" and the cron
+  assertions in `test/workflows.test.ts`); `scripts/publish-data.sh` against a local bare repository outside the
+  window: success 2 h ago gives `already_collected`, exit 0; 20 h ago `window_closed`, exit 0; 30 h ago or none,
+  exit 1; no commit in any case.
 
 ## Out of scope
 
