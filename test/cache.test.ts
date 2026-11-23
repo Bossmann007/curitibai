@@ -66,7 +66,7 @@ describe("TtlCache", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it("with maxEntries drops the oldest stored entry first, and a reload counts as newly stored", async () => {
+  it("with maxEntries drops the oldest stored entry first; an expired entry reloaded is stored as the newest", async () => {
     const { clock, load, get } = setup(1000, 2);
     await get("a"); // expires at 1000
     clock.now = 500;

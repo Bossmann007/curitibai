@@ -19,14 +19,19 @@ interface Contract {
 
 async function listTools() {
   const client = await connectClient();
-  return (await client.listTools()).tools;
+  try {
+    return (await client.listTools()).tools;
+  } finally {
+    await client.close();
+  }
 }
 
-/** What a client sees as the contract of each tool, sorted by name. */
+/** What a client sees as the contract of each tool, as JSON on the wire (the in-memory transport does not serialize), sorted by name. */
 function contracts(tools: Awaited<ReturnType<typeof listTools>>): Contract[] {
-  return tools
+  const list = tools
     .map((t) => ({ name: t.name, inputSchema: t.inputSchema, ...(t.outputSchema === undefined ? {} : { outputSchema: t.outputSchema }) }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return JSON.parse(JSON.stringify(list)) as Contract[];
 }
 
 /** One line per tool added, removed or changed (naming the changed parts); empty when equal. */
