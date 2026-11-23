@@ -879,7 +879,9 @@ in the city's own categories. Built.
   28 Sanitário Público (37), 34 CRAS (39), 54 Museu (38), 55 Teatro (37), 63 Farol do Saber (43), 64 Biblioteca Geral
   (13), 68 Conselho Tutelar (10), 85 Clube da Gente (5), 86 Centro de Esporte e Lazer (25), 91 Academia ao Ar Livre
   (286), 92 Pista de Skate (37), 114 Cemitério Municipal (5), 116 Ecoponto (12), 117 Ecocidadão (40), 156 Posto de
-  Atendimento URBS (11), 162 Posto de Informações Turísticas (3), 163 Feira Turística (27); FeatureServer 0 Estrutura
+  Atendimento URBS (11), 162 Posto de Informações Turísticas (3), 163 Feira Turística (27); since v0.20, from the
+  Cultura group (counts on 2026-11-23): 50 Centro Cultural (24), 51 Espaço Expositivo de Artes (16), 53 Memorial (11),
+  56 Cinema (19), 59 Espaço para Espetáculos ao Ar Livre (4), 62 Gibiteca (1); FeatureServer 0 Estrutura
   Cicloviária (838, all `operacional` 1 and `situacaofisica` 5 "Construída") and 1 Parques e Bosques (53). The
   largest answer was about 250 KB (layer 0 with simplified geometry). Layers left out on purpose: health units (see
   `health_units_search`), schools, bus terminals, police, administrative offices and every other layer not in the
@@ -928,11 +930,22 @@ in the city's own categories. Built.
   contact surveys while building, three live calls of the built tool (Ecocidadão: 40 records, 26 landlines kept, no
   mobile and no webmail address returned; Parques within 3 km of the centre: 5; Estrutura Cicloviária within 3 km: 215)
   and robots.txt once; at most one request per 5 s.
+- **Cultura layers (v0.20, 2026-11-23):** the six layers have the same fields as the other point layers (read from
+  each layer's `?f=json`), so they use the same query, parser and contact allowlist. Every record had
+  `divulgar_endereco` "Sim" and a name; `observacao` was filled in 55 of the 75 records. They include venues the city
+  does not run: the Cinema layer lists commercial cinemas, and the e-mail field holds addresses of a bank's cultural
+  centre, associations and cinema companies (all dropped by the allowlist). The e-mails kept by the built tool were 20
+  distinct `curitiba.pr.gov.br` role or unit mailboxes (cultural centres, memorials, the Cinemateca, the Gibiteca, a
+  Farol do Saber named after its patron); none was added to the 2026-11-22 owner decision's count above.
+  Requests to the host on 2026-11-23: six layer descriptions, six field surveys and six live calls of the built tool
+  (one per new type, one at a time), at most one request per 5 s.
 - **Fixtures:** `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json` and `ciclovia.json` are
   real records (4, 2, 3 and 4) trimmed to the fields the tool reads (plus geometry or centroid); they hold only institutional contacts ("156", landlines,
   curitiba.pr.gov.br addresses). `ecocidadao_synthetic.json` is **synthetic**, with planted cases: a mobile, a webmail
   address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
+  `centro_cultural_synthetic.json` (v0.20) is **synthetic**: one complete record, one with most fields missing and a
+  non-municipal e-mail, and one with no name.
 
 ### `river_levels`: ANA telemetry (stations operated by IAT-PR)
 

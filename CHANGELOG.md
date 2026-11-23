@@ -2,6 +2,15 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.20.0 - 2026-11-23
+
+- `city_facilities_search`: six new types from the Cultura group of IPPUC's GeoCuritiba urban-equipment service:
+  `centro cultural` (24 records on 2026-11-23), `espaco expositivo` (Espaço Expositivo de Artes, 16), `memorial` (11),
+  `cinema` (19, commercial cinemas included), `espetaculos ao ar livre` (Espaço para Espetáculos ao Ar Livre, 4) and
+  `gibiteca` (1). Same request path, limits, cache and contact allowlist as the other point layers; no new tool.
+- docs/tools.md "Compared with the Curitiba App": cultural spaces and attractions are partial (GeoCuritiba has no
+  tourist-attraction layer); new "—" rows with the reason for Defesa Civil alerts, EstaR and real-time buses.
+
 ## 0.19.4 - 2026-11-23
 
 - Nightly collection: a refusal by the events site ends the night. When `events/status.json` or `phones/status.json`
