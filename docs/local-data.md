@@ -12,21 +12,25 @@ The server never downloads data files. A person does it in a browser:
    with `156`, then `dataset_files` with the dataset id, to get the links).
 3. On the dataset page, click DOWNLOAD and choose a CSV file (the daily 156 file is about 137 MB). Save it into the
    folder. Keep the `.csv` extension.
-4. Ask the assistant, for example: "with local_csv_summary, count `156.csv` by `ASSUNTO`, only where `BAIRRO` is
-   `CENTRO`". Use the column names the tool returns (call it with just `file` first).
+4. Ask the assistant, for example: "with local_csv_summary, count `156.csv` by `ASSUNTO`", or "how many rows of
+   `156.csv` have `BAIRRO` = `CENTRO`". One call takes a `group_by` or a filter, not both. Use the column names the
+   tool returns (call it with just `file` first).
 
 The tool streams the file (it never loads it whole), detects `;` or `,` and UTF-8 or Latin-1, and returns column
 names and counts. Data rows (after the first line) are never returned. What it does return, and what it refuses:
 
 - **Values of the grouped column are returned** (for example each `ASSUNTO` with its count). Groups with fewer than 5
-  rows (3 before 0.13.2) are added to `other_count` instead of being listed, so that a filter on a unique column
-  cannot reveal a single record. A filter that matches fewer than 5 rows (0 included) returns `"<5"` for
-  `matched_rows`, `other_count` and `distinct_values` instead of the number (since 0.21.1). Since 0.21.2, with a
-  filter, an `other_count` of 1 to 4 is `"<5"` too (0 stays 0), and a filter that leaves 1 to 4 rows out is refused
-  (`column_not_allowed`, for that value only), because `row_count - malformed_rows - matched_rows` would give their
-  count. Known limits (one query is checked at a time, and the output schema is frozen): when every group of 5 or
-  more is listed, `matched_rows` minus their sum still gives a masked `other_count` back; two allowed filters on the
-  same column can be subtracted from `row_count`; an unfiltered `group_by` still gives `other_count` as a number.
+  rows (3 before 0.13.2) are added to `other_count` instead of being listed, and since 0.21.3 an `other_count` of 1
+  to 4 is `"<5"` (0 stays 0).
+- **A filter and `group_by` cannot be used together** (since 0.21.3, `filter_with_group_by_not_allowed`): subtracting
+  a filtered from an unfiltered count, or two filtered counts, could give a group of 1 to 4 rows. A filter alone
+  returns only `matched_rows`: `"<5"` when it matches fewer than 5 rows (0 included), and a filter that leaves 1 to 4
+  rows out is refused (`column_not_allowed`, for that value only), because `row_count - malformed_rows -
+  matched_rows` would give their count.
+- **What is not protected** ([ADR 0008](adr/0008-local-csv-summary-small-counts.md)): the `"<5"` on `other_count` is
+  for consistency only, since `row_count - malformed_rows - sum(top)` gives the number back (it is the sum of every
+  unlisted group, not one value); two allowed filters on the same column can be subtracted from `row_count`, which
+  can give the size of a third value; `row_count`, `malformed_rows` and `distinct_values` describe the whole file.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
   ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the

@@ -9,11 +9,12 @@ import { guardedSummary } from "./cityServicesSearch.js";
 import { fail, ok, type ToolDef } from "./common.js";
 
 /**
- * Groups with fewer rows than this are folded into `other_count`, so a filter plus a group-by cannot rebuild a row.
- * 3 until 0.13.2; raised to 5 by owner decision (2026-11-21).
+ * Groups with fewer rows than this are folded into `other_count`, and a filter matching fewer rows shows BELOW_MIN.
+ * 3 until 0.13.2; raised to 5 by owner decision (2026-11-21). A filter and a group-by in one call are refused since
+ * 0.21.3 (docs/adr/0008).
  */
 export const MIN_GROUP_COUNT = 5;
-/** What a filtered answer shows instead of a count below MIN_GROUP_COUNT (0 included), as the groups do. */
+/** What a count of rows below MIN_GROUP_COUNT is shown as (matched_rows: 0 included; other_count: 1 to 4). */
 export const BELOW_MIN = `<${MIN_GROUP_COUNT}` as const;
 export const MAX_DISTINCT = 50_000;
 export const MAX_VALUE_CHARS = 120;
@@ -71,6 +72,7 @@ export const LOCAL_NOTE =
   "A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, long text) is refused; a first line made only of text cannot be told apart from a header and is returned as column names. Data rows (after the first line) are never returned. " +
   "Values of the grouped column are returned. " +
   `Groups with fewer than ${MIN_GROUP_COUNT} rows are counted in other_count only. ` +
+  "A filter and group_by cannot be used in the same call. " +
   "Columns whose names look personal (nome, CPF, e-mail, telefone, endereço, ...) are refused by name, and a grouped " +
   "column is refused when a value it would return looks like contact data (CPF/CNPJ, e-mail or phone shaped, or year " +
   "ranges that look like phone numbers); " +
@@ -96,12 +98,13 @@ export const localCsvSummaryOutput = z.object({
     columns: z.array(z.string()),
     row_count: z.number().int(),
     malformed_rows: z.number().int(),
-    // With a filter that matches fewer than MIN_GROUP_COUNT rows, these counts are BELOW_MIN instead of a number.
+    // matched_rows is BELOW_MIN when the filter matches fewer than MIN_GROUP_COUNT rows (0 included); other_count of 1 to
+    // 4 is BELOW_MIN, for consistency only (row_count - malformed_rows - sum(top) gives it back; docs/adr/0008).
     filter: z.object({ column: z.string(), value: z.string(), matched_rows: z.union([z.number().int(), z.literal(BELOW_MIN)]) }).nullable(),
     group_by: z
       .object({
         column: z.string(),
-        distinct_values: z.union([z.number().int(), z.literal(BELOW_MIN)]),
+        distinct_values: z.number().int(),
         distinct_capped: z.boolean(),
         top: z.array(z.object({ value: z.string(), count: z.number().int() })),
         other_count: z.union([z.number().int(), z.literal(BELOW_MIN)]),
@@ -254,9 +257,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
     "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
-    "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, a " +
-    "filter that matches fewer than 5 rows returns \"<5\" instead of its counts (and a filtered other_count of 1 to 4 " +
-    "is \"<5\" too), a filter that leaves 1 to 4 rows out is refused, and " +
+    "name only, refuses some harmless look-alikes and is not perfect. Use either group_by or a filter, not both: a " +
+    "call with both is refused (filter_with_group_by_not_allowed). Groups of fewer than 5 rows are not listed (an " +
+    "other_count of 1 to 4 is \"<5\"), a filter that matches fewer than 5 rows returns \"<5\" as matched_rows, a " +
+    "filter that leaves 1 to 4 rows out is refused, and " +
     "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges that look like " +
     "phone numbers) is refused. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
@@ -268,6 +272,14 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       return fail("invalid_csv", "filter_column and filter_value go together");
     }
     const filter = filter_column !== undefined ? { column: filter_column, value: filter_value ?? "" } : undefined;
+    // A filter and a group-by in one call are refused (docs/adr/0008): filtered and unfiltered groups, or the groups
+    // of two filters, could be subtracted to give a group of 1 to 4 rows inside the filter.
+    if (filter && group_by !== undefined) {
+      return fail(
+        "filter_with_group_by_not_allowed",
+        `use group_by or filter_column/filter_value, not both: subtracting the counts of two such calls could give a group of fewer than ${MIN_GROUP_COUNT} rows`,
+      );
+    }
     // Refuse before reading anything; the resolved header name is checked again during the scan.
     if ((group_by !== undefined && isSensitiveColumn(group_by)) || (filter && isSensitiveColumn(filter.column))) {
       return fail("column_not_allowed");
@@ -287,14 +299,13 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       } finally {
         closeFile(target.fd); // never throws, so the scan's own error code is kept
       }
-      // A filter that matched fewer than MIN_GROUP_COUNT rows: every count derived from those rows (matched rows,
-      // other_count, distinct values) is BELOW_MIN, so the answer never tells 1 row from 4 (or from 0).
+      // A filter that matched fewer than MIN_GROUP_COUNT rows: matched_rows is BELOW_MIN, so the answer never tells 1
+      // row from 4 (or from 0).
       const few = filter !== undefined && s.matched < MIN_GROUP_COUNT;
-      const count = (n: number) => (few ? BELOW_MIN : n);
       // A filter that leaves 1 to 4 well-formed rows out: row_count - malformed_rows - matched_rows would give their
-      // exact count (and unfiltered minus filtered groups their values), which "<5" cannot hide because matched_rows
-      // is then large. Refused. Malformed rows never match, so they are not "left out". One query only: two allowed
-      // filters on the same column can still be subtracted (known limit, docs/local-data.md).
+      // exact count, which "<5" cannot hide because matched_rows is then large. Refused. Malformed rows never match,
+      // so they are not "left out". One query only: two allowed filters on the same column can still be subtracted
+      // (known limit, docs/adr/0008).
       const left = s.rows - s.malformed - s.matched;
       if (filter !== undefined && !few && left > 0 && left < MIN_GROUP_COUNT) {
         return fail(
@@ -314,17 +325,15 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
           );
         }
         const shown = sorted.slice(0, top).map(([value, count]) => ({ value, count }));
-        const shownTotal = shown.reduce((t, g) => t + g.count, 0);
+        const rest = s.matched - shown.reduce((t, g) => t + g.count, 0);
         groupOut = {
           column: s.groupColumn,
-          distinct_values: count(s.groups.size),
+          distinct_values: s.groups.size,
           distinct_capped: s.capped,
           top: shown,
-          // With a filter, a rest of 1 to 4 rows is BELOW_MIN too (0 stays 0). matched_rows - sum(top) can still give
-          // it back when every group of 5 or more is listed: known limit, the output schema is frozen.
-          other_count: filter !== undefined && s.matched - shownTotal > 0 && s.matched - shownTotal < MIN_GROUP_COUNT
-            ? BELOW_MIN
-            : count(s.matched - shownTotal),
+          // A rest of 1 to 4 rows is BELOW_MIN (0 stays 0). Not a protection: row_count - malformed_rows - sum(top)
+          // gives it back (docs/adr/0008); it only keeps group counts (top, other_count) at 0 or 5 and over.
+          other_count: rest > 0 && rest < MIN_GROUP_COUNT ? BELOW_MIN : rest,
         };
       }
       return ok({
@@ -335,7 +344,7 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
           columns: s.columns,
           row_count: s.rows,
           malformed_rows: s.malformed,
-          filter: filter ? { column: cut(filter.column), value: cut(filter.value), matched_rows: count(s.matched) } : null,
+          filter: filter ? { column: cut(filter.column), value: cut(filter.value), matched_rows: few ? BELOW_MIN : s.matched } : null,
           group_by: groupOut,
         },
         source: "local_file" as const,

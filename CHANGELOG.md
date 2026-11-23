@@ -2,6 +2,17 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.21.3 - 2026-11-23
+
+- **Breaking (input):** `local_csv_summary` refuses a call with `filter_column`/`filter_value` and `group_by`
+  together, with the new error `filter_with_group_by_not_allowed` (before the file is read). A filter alone or
+  `group_by` alone works as before. Subtracting filtered and unfiltered groups could give a group of 1 to 4 rows
+  ([ADR 0008](docs/adr/0008-local-csv-summary-small-counts.md), owner decision 2026-11-23).
+- **Breaking (output):** `local_csv_summary` `group_by.other_count` of 1 to 4 is `"<5"` without a filter too (0 stays
+  0), so no count in an answer is 1 to 4. This is not a protection: `row_count - malformed_rows - sum(top)` gives the
+  number back. `group_by.distinct_values` is always a number (it was `"<5"` only with a small filter).
+- Known limit, kept: two allowed filters on the same column can be subtracted from `row_count` (ADR 0008).
+
 ## 0.21.2 - 2026-11-23
 
 - **Breaking (output):** `local_csv_summary`: with a filter, a `group_by.other_count` of 1 to 4 is `"<5"` (0 stays

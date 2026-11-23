@@ -46,6 +46,7 @@ export const ErrorResult = z.object({
     "file_not_found",
     "column_not_found",
     "column_not_allowed",
+    "filter_with_group_by_not_allowed",
     "no_header_detected",
     "invalid_csv",
     "invalid_date_range",
