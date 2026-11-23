@@ -171,14 +171,23 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   Without the switch a by-hand run inside the window collects as before.
 - No change to the data files' format, the tools or any other source. This lifts "any change to the collector's
   behaviour" in "Out of scope" below for these points only.
-- A refusal ends the night (owner decision, 2026-11-23): with the same switch, when `events/status.json` or
-  `phones/status.json` records `http_error` 401, 403 or 429, or `robots_changed`, with an `attempt` on the start's UTC
-  date, the run stops with `refused_tonight`: no request, nothing written, exit as for `window_closed`. Other failures
-  (5xx, timeout, network, `layout_changed`) are tried again by the next entry. The next night tries again.
+- Consequence: after a 403, 429 or `robots_changed`, the next entry that night asks the site again (at most four more
+  runs, each stopping at its first refusal); before, the next attempt was the next night.
 - Check: `scripts/verify` exit 0 (new `test/fetchEvents.test.ts` "later schedule entries and late runs" and the cron
   assertions in `test/workflows.test.ts`); `scripts/publish-data.sh` against a local bare repository outside the
   window: success 2 h ago gives `already_collected`, exit 0; 20 h ago `window_closed`, exit 0; 30 h ago or none,
   exit 1; no commit in any case.
+
+## v0.19.4 changes (owner decision "uma recusa do site encerra a coleta da noite", 2026-11-23)
+
+- `scripts/fetch-events.mjs` `run()`: with `CURITIBAI_COLLECT_ONCE_A_DAY=1`, after the `already_collected` check, when
+  `events/status.json` or `phones/status.json` records `http_error` 401, 403 or 429 (`REFUSAL_STATUSES`), or
+  `robots_changed`, with an `attempt` on the start's UTC date, the run stops with `refused_tonight`: no request,
+  nothing written, exit as for `window_closed` (0 only with both steps' success in the last 24 h). Other failures
+  (5xx, timeout, network, `layout_changed`) are tried again by the next entry. The next night tries again. This
+  replaces the v0.19.3 consequence above (a later entry asked the site again after a refusal). No new headers, no
+  workaround.
+- Check: `scripts/verify` exit 0 (`test/fetchEvents.test.ts` "a refusal ends the night").
 
 ## Out of scope
 

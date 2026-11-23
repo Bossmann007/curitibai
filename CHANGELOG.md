@@ -2,6 +2,16 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.19.4 - 2026-11-23
+
+- Nightly collection: a refusal by the events site ends the night. When `events/status.json` or `phones/status.json`
+  records an HTTP 401, 403 or 429 or a changed robots.txt (`robots_changed`) on the UTC date, the later schedule
+  entries that night make no request and write nothing (`code=refused_tonight`; exit 0 only with a successful
+  collection in the last 24 hours, else 1, so the night stays visible as failed). The next night tries again. Other
+  failures (5xx, timeout, network, `layout_changed`) are still retried by the next entry. Before, every later entry
+  asked the site again after a refusal. Only with `CURITIBAI_COLLECT_ONCE_A_DAY=1`, set by `scripts/publish-data.sh`;
+  a by-hand run is unchanged.
+
 ## 0.19.3 - 2026-11-23
 
 - Nightly collection: the first scheduled run of `collect.yml` (2026-11-23) started 8.5 h late, outside the events
@@ -9,9 +19,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `success: null`. GitHub can delay scheduled runs under load and drop queued ones. The workflow now has five
   schedule entries inside the window (02:37, 03:17, 03:59, 04:37 and 05:13 UTC). Once both steps (events and phones)
   succeeded on the UTC date, the later entries exit 0 at once with `code=already_collected`: no request, no file
-  change, no push (`CURITIBAI_COLLECT_ONCE_A_DAY=1`, set by `scripts/publish-data.sh`). A refusal ends the night:
-  after an HTTP 401, 403 or 429 or a changed robots.txt recorded that UTC date, the later entries make no request
-  (`code=refused_tonight`); the next night tries again. Other failures are retried by the next entry.
+  change, no push (`CURITIBAI_COLLECT_ONCE_A_DAY=1`, set by `scripts/publish-data.sh`).
 - `scripts/fetch-events.mjs`: a run stopped by the window (`window_closed`) no longer writes `events/status.json` or
   `phones/status.json`, so a late run never replaces the record of a successful collection. It exits 0 when both
   steps succeeded in the last 24 hours, so a late duplicate does not show as a failed run, and 1 otherwise, so a

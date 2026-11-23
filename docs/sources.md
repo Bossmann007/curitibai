@@ -701,7 +701,7 @@ in the city's own categories. Built.
   has been seen, so it cannot be told from a page the parser no longer understands. `locked` exits 1 without writing
   `status.json`. Since v0.19.3 `window_closed` writes neither status file either, and exits 0 when both steps succeeded
   in the last 24 hours (else 1); `already_collected` (only with `CURITIBAI_COLLECT_ONCE_A_DAY=1`) exits 0 and writes
-  nothing. With the same switch, a refusal (`http_error` 401, 403 or 429, or `robots_changed`) recorded in either status file on the UTC date ends the night:
+  nothing. Since v0.19.4, with the same switch, a refusal (`http_error` 401, 403 or 429, or `robots_changed`) recorded in either status file on the UTC date ends the night:
   later runs stop with `refused_tonight`, make no request, write nothing and exit as `window_closed` does; the next
   night tries again. `status.json` records `attempt`, `success` (the last successful run) and
   `code` (and `http_status` when one stopped the run). Output is limited to fixed status lines.
