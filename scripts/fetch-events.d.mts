@@ -112,5 +112,7 @@ export function needsDetail(entry: CacheEntry | undefined, item: { id: number; s
 export function acquireLock(dir: string, now: Date): () => void;
 export function run(deps: RunDeps): Promise<RunResult>;
 export const RECENT_SUCCESS_MS: number;
+export const REFUSAL_STATUSES: readonly number[];
+export function refusedOn(env: Record<string, string | undefined>, today: string): boolean;
 export function lastCollection(env: Record<string, string | undefined>, now: Date): Date | null;
 export function decodeHtml(s: string): string;

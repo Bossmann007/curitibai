@@ -559,6 +559,29 @@ export function lastCollection(env, now) {
   return new Date(Math.min(...times));
 }
 
+/** HTTP statuses that are a refusal by the site: after one, no other request is made that night. */
+export const REFUSAL_STATUSES = Object.freeze([401, 403, 429]);
+
+/**
+ * True when events/status.json or phones/status.json records a refusal (http_error 401, 403 or 429, or
+ * robots_changed) whose attempt is on the UTC date `today`.
+ */
+export function refusedOn(env, today) {
+  try {
+    return [eventsDir(env), dataSubdir(env, "phones")].some((dir) => {
+      try {
+        const s = JSON.parse(readFileSync(join(dir, "status.json"), "utf8"));
+        const refusal = s?.code === "robots_changed" || (s?.code === "http_error" && REFUSAL_STATUSES.includes(s.http_status));
+        return refusal && typeof s.attempt === "string" && s.attempt.slice(0, 10) === today;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
+
 function readStatus(dir) {
   try {
     const s = JSON.parse(readFileSync(join(dir, "status.json"), "utf8"));
@@ -930,12 +953,13 @@ export function acquireLock(dir, now) {
 /**
  * One collector run. Returns `{code, exit, counts}`. Takes the lock first (a locked run makes no request and writes
  * nothing). With env CURITIBAI_COLLECT_ONCE_A_DAY=1, a run on a UTC date when both steps already succeeded stops with
- * already_collected (no request, nothing written, exit 0). Each detail read is added to the detail cache at once;
+ * already_collected (no request, nothing written, exit 0); a run on a UTC date whose status records a refusal (http_error
+ * 401, 403 or 429, or robots_changed) stops with refused_tonight (no request, nothing written). Each detail read is added to the detail cache at once;
  * events.json is written only when the whole run succeeded and the result passed validation; status.json is tried
  * unless the run was locked, skipped or stopped by the window. Then the phones step (runPhones) runs with the same
  * client, only when the events step ended ok or with layout_changed (any other code: no request, the phones status
  * gets that code, except after a window stop, which leaves it as it was); it never changes events files or the events
- * code. Exit 0 when both steps are ok, or when each ended ok or window_closed and both succeeded less than
+ * code. Exit 0 when both steps are ok, or when each ended ok, window_closed or refused_tonight and both succeeded less than
  * RECENT_SUCCESS_MS before the start. Network, clock, sleep and the recorded robots rules are injectable for tests.
  */
 export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORDED_ROBOTS }) {
@@ -952,11 +976,13 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
     dir = eventsDir(env);
     release = acquireLock(dir, startedAt);
     collected = lastCollection(env, startedAt);
-    // CURITIBAI_COLLECT_ONCE_A_DAY=1 (set by scripts/publish-data.sh for the several nightly schedule entries): both
-    // steps already succeeded on this UTC date, so the later entries make no request and write nothing.
+    // CURITIBAI_COLLECT_ONCE_A_DAY=1 (set by scripts/publish-data.sh for the several nightly schedule entries): once
+    // both steps succeeded on this UTC date, or the site refused a run on it, the later entries make no request and
+    // write nothing. A refusal ends the night; the next night tries again.
     const today = startedAt.toISOString().slice(0, 10);
-    if (env.CURITIBAI_COLLECT_ONCE_A_DAY === "1" && collected?.toISOString().slice(0, 10) === today) {
-      throw new StopError("already_collected");
+    if (env.CURITIBAI_COLLECT_ONCE_A_DAY === "1") {
+      if (collected?.toISOString().slice(0, 10) === today) throw new StopError("already_collected");
+      if (refusedOn(env, today)) throw new StopError("refused_tonight");
     }
     if (!inWindow(startedAt)) throw new StopError("window_closed");
     client = createClient({ fetch, now, sleep, startedAt });
@@ -1031,7 +1057,7 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
   }
   // A locked run leaves status.json to the run holding the lock. A skipped run and a run stopped by the window write
   // neither status file, so a late schedule entry never replaces the record of a successful collection.
-  const quiet = code === "locked" || code === "already_collected" || code === "window_closed";
+  const quiet = code === "locked" || code === "already_collected" || code === "refused_tonight" || code === "window_closed";
   if (dir !== null && !quiet) {
     const status = {
       attempt: startedAt.toISOString(),
@@ -1055,7 +1081,7 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
   release?.();
   // Stopped by the window with nothing else wrong: exit 0 only while both steps succeeded in the last 24 h, so a missed
   // night still shows as a failed run.
-  const settled = (c) => c === "ok" || c === "window_closed";
+  const settled = (c) => c === "ok" || c === "window_closed" || c === "refused_tonight";
   const recent = collected !== null && startedAt.getTime() - collected.getTime() < RECENT_SUCCESS_MS;
   const exit =
     code === "data_dir_not_set"

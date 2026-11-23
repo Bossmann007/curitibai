@@ -178,6 +178,17 @@ The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 
   window: success 2 h ago gives `already_collected`, exit 0; 20 h ago `window_closed`, exit 0; 30 h ago or none,
   exit 1; no commit in any case.
 
+## v0.19.4 changes (owner decision "uma recusa do site encerra a coleta da noite", 2026-11-23)
+
+- `scripts/fetch-events.mjs` `run()`: with `CURITIBAI_COLLECT_ONCE_A_DAY=1`, after the `already_collected` check, when
+  `events/status.json` or `phones/status.json` records `http_error` 401, 403 or 429 (`REFUSAL_STATUSES`), or
+  `robots_changed`, with an `attempt` on the start's UTC date, the run stops with `refused_tonight`: no request,
+  nothing written, exit as for `window_closed` (0 only with both steps' success in the last 24 h). Other failures
+  (5xx, timeout, network, `layout_changed`) are tried again by the next entry. The next night tries again. This
+  replaces the v0.19.3 consequence above (a later entry asked the site again after a refusal). No new headers, no
+  workaround.
+- Check: `scripts/verify` exit 0 (`test/fetchEvents.test.ts` "a refusal ends the night").
+
 ## Out of scope
 
 Creating the `data` branch or running the workflow from this PR (the owner side does the first run after merge);
