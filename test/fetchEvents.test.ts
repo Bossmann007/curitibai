@@ -985,3 +985,54 @@ describe("later schedule entries and late runs", () => {
     expect((await run(late().deps)).exit).toBe(0);
   });
 });
+
+describe("a refusal ends the night", () => {
+  const refusals: [string, (r: Record<string, FakeRoute>) => void, string][] = [
+    ["403 on a list page", (r) => void (r[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 403, body: "x" }), "http_error"],
+    ["429 on a detail page", (r) => void (r[`${ORIGIN}/evento/evento-sintetico-101/101`] = { status: 429, body: "x" }), "http_error"],
+    ["401 on the phones page", (r) => void (r[`${ORIGIN}${PHONES_PATH}`] = { status: 401, body: "x" }), "ok"],
+    ["a changed robots.txt", (r) => void (r[`${ORIGIN}/robots.txt`] = { body: robotsBytes(ROBOTS + "\r\nDisallow: /eventos/"), contentType: "text/plain" }), "robots_changed"],
+  ];
+  for (const [name, refuse, code] of refusals) {
+    it(`after ${name}, the later entries that night make no request and change no file; the next night tries again`, async () => {
+      const routes = siteRoutes([ids(3)]);
+      refuse(routes);
+      expect((await run(onceADay(harness(routes, "2026-11-21T03:17:00Z")))).code).toBe(code);
+      const before = published();
+      for (const at of ["2026-11-21T03:59:00Z", "2026-11-21T05:13:00Z"]) {
+        const h = harness(siteRoutes([ids(3)]), at);
+        expect(await run(onceADay(h))).toMatchObject({ code: "refused_tonight", exit: 1 }); // no success yet: stays red
+        expect(h.calls).toEqual([]);
+        expect(published()).toEqual(before);
+      }
+      const nextNight = harness(siteRoutes([ids(3)]), "2026-11-22T03:17:00Z");
+      expect((await run(onceADay(nextNight))).code).not.toBe("refused_tonight");
+      expect(nextNight.calls.length).toBeGreaterThan(0);
+    });
+  }
+
+  it("not a refusal (500, timeout-like errors) or no switch: the next entry tries again", async () => {
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 500, body: "x" };
+    await run(onceADay(harness(routes, "2026-11-21T03:17:00Z")));
+    const retry = harness(siteRoutes([ids(3)]), "2026-11-21T03:59:00Z");
+    expect((await run(onceADay(retry))).code).toBe("ok");
+    const refused = siteRoutes([ids(3)]);
+    refused[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 403, body: "x" };
+    rmSync(dataDir, { recursive: true });
+    mkdirSync(dataDir);
+    await run(harness(refused, "2026-11-21T03:17:00Z").deps);
+    const byHand = harness(siteRoutes([ids(3)]), "2026-11-21T03:59:00Z");
+    expect((await run(byHand.deps)).code).toBe("ok");
+  });
+
+  it("a refusal with a success in the last 24 h: later entries skip with exit 0", async () => {
+    await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps);
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}/eventos/21-11-2026/1`] = { status: 403, body: "x" }; // 02:37 UTC on 22-11 is still 21-11 in Curitiba
+    expect((await run(onceADay(harness(routes, "2026-11-22T02:37:00Z")))).code).toBe("http_error");
+    const h = harness(siteRoutes([ids(3)]), "2026-11-22T03:00:00Z"); // 23 h 43 min after the success
+    expect(await run(onceADay(h))).toMatchObject({ code: "refused_tonight", exit: 0 });
+    expect(h.calls).toEqual([]);
+  });
+});

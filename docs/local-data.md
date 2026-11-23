@@ -142,8 +142,10 @@ is used). It follows exactly the rules below (window, robots.txt check, 5 s gap,
 orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). It skips
 the commit (and the push) when none of them changed. A run that fails inside the window (`robots_changed`,
 `http_error`, ...) keeps the previous files, updates only the `status.json` files and shows as failed in the Actions
-tab; the next schedule entry that night tries again (so after a 403, 429 or `robots_changed` the site is asked again
-about 40 minutes later, at most four more times that night; each run still stops at the first refusal). Once both steps (events and phones) succeeded on the UTC date, the
+tab; after another failure (5xx, timeout, network, `layout_changed`, ...) the next schedule entry that night tries
+again. **A refusal ends the night:** after a refusal (`http_error` 401, 403 or 429, or `robots_changed`) recorded on the UTC date, the later entries make no
+request and change nothing (`code=refused_tonight`; exit 0 only with a success in the last 24 hours); the next night
+tries again. Once both steps (events and phones) succeeded on the UTC date, the
 later entries exit 0 at once (`code=already_collected`): no request, no file change, no push.
 The job has `contents: write` only for itself, a 35-minute timeout (above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes), and never overlaps another run.
 
