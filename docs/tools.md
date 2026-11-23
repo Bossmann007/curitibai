@@ -226,30 +226,54 @@ listed here because the description no longer says them, and the table above doe
 The Prefeitura's official app is [Curitiba App](https://apps.apple.com/br/app/curitiba-app/id1447887852) (Prefeitura
 Municipal de Curitiba; App Store listing, version 4.5.2 of 2026-10-06). Its listing describes it as bringing together
 the Prefeitura's apps and services, with "consultas, agendamentos, informações sobre transportes, saúde e educação, entre
-outros". Rows marked * are features the owner noted in the app itself; the listing text does not name them (it
-says "agendamentos" but not Saúde Já). The app itself was not tested here, so no row claims CuritibAI is better:
-the listing's "entre outros" means a feature missing from it may still be in the app.
-CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login is out of scope by design.
-Compared on 2026-11-21 with public sources (the App Store listing above), not with the app itself; rows on cultural
-spaces, Defesa Civil, EstaR and real-time buses added on 2026-11-23 from the owner's research of that day.
+outros".
+
+Since March 2026 it is a single app for the Prefeitura's services with an AI assistant. The Prefeitura's news pages say:
+
+- It was announced on 2026-03-03 as unifying the former features with the Curitiba 156 app and dropping the login for
+  quick queries ([news, 2026-03-03](https://www.curitiba.pr.gov.br/noticias/prefeito-entrega-moradias-populares-novo-curitiba-app-obras-viarias-e-lanca-us-matriz-e-upa-santa-felicidade/81932)),
+  and launched on 2026-03-25 at the Smart City Expo Curitiba 2026 with "mais de 800 serviços"; the 156 is brought in
+  step by step ([launch, 2026-03-25](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311)).
+- Its AI assistant takes questions in everyday language and operates only on the Prefeitura's own databases, with
+  technical curation and monitoring ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311);
+  [new interface, 2026-09-23](https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129)).
+- Services: "cerca de 800" on 2026-08-11 ([award](https://www.curitiba.pr.gov.br/noticias/eduardo-pimentel-recebe-premio-de-prefeito-inovador-pela-criacao-do-curitiba-app/84518)),
+  "quase mil" on 2026-09-23 ([new interface](https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129)),
+  and "cerca de 1000", including those of the Curitiba 156 app, on 2026-11-11, when more than 360 thousand people had
+  it on their phones ([iBest, 2026-11-11](https://www.curitiba.pr.gov.br/noticias/curitiba-app-concorre-em-top-10-do-premio-ibest-2026-vote-ate-o-dia-22-de-novembro/85858)).
+- Bem Paraná's article of 2026-03-25, a reprint of the Prefeitura's release (byline SMCS), is the only source read
+  here that names Saúde Já ([Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)).
+
+Rows marked * are features the owner noted in the app itself; the App Store listing does not name them. Rows with a
+link name what the linked page says. The app itself was not tested here, so no row claims CuritibAI is better, and a
+feature missing from these sources may still be in the app ("entre outros").
+CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login, a payment or a registration is
+out of scope by design.
+Compared on 2026-11-21 with the App Store listing above, not with the app itself; rows on cultural spaces, Defesa
+Civil, EstaR and real-time buses added on 2026-11-23 from the owner's research of that day; refreshed on 2026-11-23
+from the Prefeitura's news pages linked above (and the Bem Paraná reprint), read in a browser that day.
 
 | Curitiba App feature | CuritibAI | Why |
 |---|---|---|
+| AI assistant ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311)) | partial | CuritibAI is an MCP server: it gives tools to the assistant the user picks (for example Claude or ChatGPT) and does not answer by itself. The app's assistant answers from the Prefeitura's curated data; CuritibAI's answers depend on that assistant and on the sources each tool names |
 | Consultas / services catalogue | ✓ | `city_services_search` searches the Carta de Serviços by words and category (from a copy you keep) |
-| Transport information | ✓ | `next_buses_near` answers "next buses near me" in one call (published departures at the stops within a radius, soonest first); `bus_stops_near`, `bus_departures` and `bus_line_stops` give the stops, timetables and itineraries; all from the URBS files you download; no real-time positions |
+| Transport information ([transport, 2026-04-14](https://www.curitiba.pr.gov.br/noticias/curitiba-app-traz-inovacoes-na-area-do-transporte-e-facilita-vida-dos-passageiros/82605)) | ✓ | `next_buses_near` answers "next buses near me" in one call (published departures at the stops within a radius, soonest first); `bus_stops_near`, `bus_departures` and `bus_line_stops` give the stops, timetables and itineraries; all from the URBS files you download; no real-time positions. The app lets visitors see timetables and routes without a login ("Acessar como visitante"), suggests routes from origin to destination and keeps favourite routes; its functions that need a registration stay for logged-in users. CuritibAI has no favourites or origin-to-destination routing |
 | Health information | ✓ | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
 | Education information | ✓ | Municipal and state schools and CMEIs from the URBS points export (`city_points_search`); no enrolment |
+| Creche / student registration, Vale Creche ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311); [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | — | The app gives access to "cadastro online de alunos", Vale Creche and the "cadastro para vagas em creche". These are registrations for a person; out of scope (that they need a login is not confirmed in the sources) |
+| School calendar ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311)) | — | Not covered yet; whether it is published as open data was not checked |
+| IPTU payment ([award, 2026-08-11](https://www.curitiba.pr.gov.br/noticias/eduardo-pimentel-recebe-premio-de-prefeito-inovador-pela-criacao-do-curitiba-app/84518)) | — | A payment for a property owner; out of scope (that it needs a login is not confirmed in the sources) |
 | Events * | ✓ | `events_search` over the Instituto Municipal de Turismo calendar (through the separate collector) |
 | Useful phones * | partial | `useful_phones` returns the 60 entries of the Instituto Municipal de Turismo's "Telefones Úteis" page (emergencies such as SAMU, Defesa Civil and Guarda Municipal, services, transport, radio taxis; through the separate collector). The app's own list was not compared, and that page has no Ouvidoria entry, so this is not claimed to match it |
-| 156 * (requests and their protocols) | — | Opening and following 156 requests needs a login; out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
-| Scheduling (agendamentos; Saúde Já *) | — | Needs a login; out of scope |
-| Curitiba Lê * | — | Not covered (not checked what it offers); `city_points_search` and `places_search` list library locations only |
-| Cartão Transporte * | — | Needs a login; out of scope |
+| 156 (requests and their protocols; [iBest](https://www.curitiba.pr.gov.br/noticias/curitiba-app-concorre-em-top-10-do-premio-ibest-2026-vote-ate-o-dia-22-de-novembro/85858)) | — | Opening and following 156 requests needs a login; out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
+| Scheduling (agendamentos; Saúde Já, [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | — | Needs a login; out of scope |
+| Curitiba Lê Digital ([new interface](https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129)) | — | A free reading platform in the app with more than 200 books (classics and local authors). Not covered: CuritibAI has no books; `city_points_search` and `places_search` list library locations only |
+| Cartão Transporte * (credit top-up; [transport](https://www.curitiba.pr.gov.br/noticias/curitiba-app-traz-inovacoes-na-area-do-transporte-e-facilita-vida-dos-passageiros/82605)) | — | Needs a login; out of scope |
 | Cultural spaces and attractions * | partial | `city_facilities_search` (since v0.20) covers IPPUC's Cultura layers: centros culturais, espaços expositivos de artes, memoriais, cinemas, espaços para espetáculos ao ar livre, the Gibiteca, museums, theatres and libraries, with hours as published. GeoCuritiba has no layer of tourist attractions (pontos turísticos); `informacoes turisticas` lists only the tourist information desks |
-| Defesa Civil alerts * | — | No public feed found (owner's research, 2026-11-23): the IDAP alert platform is restricted since June 2026 and SISDC-PR is for public bodies only. `weather_alerts` gives INMET's warnings; emergencies: Defesa Civil 199 |
+| Defesa Civil alerts * | — | No public feed found (owner's research, 2026-11-23): the IDAP alert platform is restricted since June 2026 and SISDC-PR is for public bodies only. `weather_alerts` gives INMET's warnings; emergencies: Defesa Civil 199. The [launch page](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311) names targeted alerts on health, mobility and Defesa Civil |
 | EstaR (parking) * | — | No open data found (owner's research, 2026-11-23), and www.urbs.curitiba.pr.gov.br answers 403 to non-browser clients |
 | Real-time buses * | — | URBS's real-time API needs a personal access code requested by LAI and allows 1 query every 2 minutes (owner's research, 2026-11-23); not usable by a shared tool. The bus tools give published timetables only |
-| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings, procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search |
+| — | extra (not named in the listing) | Also in CuritibAI, not named in the listing (the app may still have them): INMET forecast and warnings (the launch page quotes the mayor naming temperature and forecast in the app), procurement (PNCP), Detran-PR licensing calendar, open-data catalogue search |
 | — | extra (not named in the listing) | Tax reform (CBS/IBS) reference rates for Curitiba and NBS/NCM/cClassTrib lookup from the Receita Federal pilot API, plus a dated note on NFS-e in Curitiba (`tax_reform_curitiba`, since v0.21); not tax advice, no invoice issuance |
 | — | extra (not named in the listing) | City facilities from IPPUC's GeoCuritiba (`city_facilities_search`): feiras with days and hours, Ruas da Cidadania, ecopontos, outdoor gyms, sport and youth centres (since v0.24), public toilets, parks, conservation units (since v0.24) and bike lanes, by neighbourhood or distance |
 | — | extra (not named in the listing) | River level, flow and rain from ANA's telemetry stations around Curitiba (`river_levels`); not for emergencies (Defesa Civil 199) |
