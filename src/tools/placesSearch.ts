@@ -19,7 +19,7 @@ export const placesSearchInput = {
       "One fixed category of public place: " +
         PLACE_CATEGORY_NAMES.map((c) => `${c} (OSM ${PLACE_CATEGORIES[c].join("=")})`).join(", ") +
         ". community_centre and townhall include Ruas da Cidadania where OSM tags them so. police and fire_station " +
-        "come from a list bundled once from OSM (no network call). Not for emergencies: call 190 or 193.",
+        "come from a list bundled once from OSM (no network call).",
     ),
   name: z
     .string()
@@ -96,12 +96,10 @@ export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearch
   name: "places_search",
   title: "Public places in Curitiba (OpenStreetMap)",
   description:
-    "Public places in Curitiba from OpenStreetMap, by one fixed category (park, library, school, " +
-    "community centre, town hall, bus station, marketplace, police, fire station), optionally filtered by words in the name. " +
-    "Returns name, address as tagged, coordinates, opening hours, website and the OSM link. No shops, offices, " +
-    "doctors or hospitals (use health_units_search for public health units). Police and fire stations come from a " +
-    `list bundled once from OSM. ${POLICE_NOTE} NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). ` +
-    "Community data, may be outdated. © OpenStreetMap contributors (ODbL 1.0). Read-only.",
+    "Public places in Curitiba from OpenStreetMap (community data, may be outdated) by one category, optionally " +
+    "by name: address, position, hours, website. No shops or health units (use health_units_search). Prefer this " +
+    "only for police and fire stations, or when the other place tools find nothing. " +
+    "NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). Read-only.",
   inputSchema: placesSearchInput,
   outputSchema: placesSearchOutput,
   handler: async ({ category, name, limit, offset }) => {

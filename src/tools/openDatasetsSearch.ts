@@ -13,7 +13,7 @@ export const openDatasetsSearchInput = {
     .max(100)
     .describe(
       "Search term in Portuguese. When it finds nothing, the search is retried once without accents and then with a " +
-        "short list of synonyms (e.g. 'ônibus' → 'transporte coletivo'); `note` says which query matched.",
+        "short list of synonyms (e.g. 'ônibus' → 'transporte coletivo').",
     ),
   limit: z.number().int().min(1).max(20).default(5),
 };

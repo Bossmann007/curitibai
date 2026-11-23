@@ -48,7 +48,7 @@ export const procurementSearchInput = {
     .describe(
       "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to " +
         "PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object " +
-        "or body name contain it are kept. The search word is sent to PNCP.",
+        "or body name contain it are kept.",
     ),
   from: isoDate.optional().describe(`First publication date, YYYY-MM-DD. Default: ${DEFAULT_DAYS} days before 'to'.`),
   to: isoDate.optional().describe("Last publication date, YYYY-MM-DD. Default: today (Brasília). Range ≤ 365 days."),
@@ -140,15 +140,10 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
   name: "procurement_search",
   title: "Search procurement of Curitiba municipal bodies (PNCP)",
   description:
-    "Search contratações (licitações, dispensas, inexigibilidades...) published in the national PNCP portal by " +
-    "Curitiba municipal bodies: body, modality, object, estimated value, status, publication and proposal dates, link " +
-    "to the official PNCP page. One modality per call (default 6, Pregão - Eletrônico), publication dates up to 365 " +
-    "days apart (default the last 30 days). Never returns suppliers. Objects of dispensa, inexigibilidade, " +
-    "credenciamento and inaplicabilidade are withheld (object null, object_withheld set) because they may name a person; other objects " +
-    "are returned as published with CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain " +
-    "a name. With query, uses the search behind the pncp.gov.br site (pages of 100, about 1 s each, newest update " +
-    "first; the search word is sent to PNCP; if that search fails, the Consulta scan is used); without, lists the Consulta API (pages of 50, 8–13 s each). At most 5 pages and no new page after 20 s per " +
-    "call; continue with next_page, next_skip and next_page_source (passed back as page_source). Read-only.",
+    "Search procurement (licitações, dispensas...) by Curitiba municipal bodies in the national PNCP portal: body, " +
+    "modality, object, value, status, dates, link. One modality per call (default 6, Pregão - Eletrônico), dates up " +
+    "to 365 days apart (default the last 30). With query, the search word is sent to PNCP. No suppliers; objects " +
+    "are withheld or masked but may still name a person. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
   handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {

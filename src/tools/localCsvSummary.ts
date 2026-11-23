@@ -248,22 +248,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
   name: "local_csv_summary",
   title: "Summarise a CSV downloaded by hand",
   description:
-    "Count rows of a CSV file the user downloaded by hand into the folder set by CURITIBAI_DATA_DIR (for example the " +
-    "156 file from the Portal de Dados Abertos de Curitiba). Returns column names, row count, and either the top groups of one " +
-    "column (the values of that column are returned) or the count of rows where one column = value. Data rows (after the " +
-    "first line) are never returned. A first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, " +
-    "long text) is refused; a first line made only of text cannot be told apart from a header and is returned as " +
-    "column names, so use files with a header row. " +
-    "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
-    "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
-    "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
-    "name only, refuses some harmless look-alikes and is not perfect. Use either group_by or a filter, not both: a " +
-    "call with both is refused (filter_with_group_by_not_allowed). Groups of fewer than 5 rows are not listed (an " +
-    "other_count of 1 to 4 is \"<5\"), a filter that matches fewer than 5 rows returns \"<5\" as matched_rows, a " +
-    "filter that leaves 1 to 4 rows out is refused, and " +
-    "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges that look like " +
-    "phone numbers) is refused. " +
-    "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
+    "Count rows of a CSV file the user put in CURITIBAI_DATA_DIR (e.g. the 156 file): column names, row count, " +
+    "and either the top groups of one column or the rows where a column equals a value. Data rows are never " +
+    "returned; columns whose names look personal (nome, CPF, e-mail, telefone, endereço...) are refused; counts " +
+    "under 5 show as \"<5\". Needs a header row. No network. Read-only.",
   inputSchema: localCsvSummaryInput,
   outputSchema: localCsvSummaryOutput,
   annotations: { openWorldHint: false },

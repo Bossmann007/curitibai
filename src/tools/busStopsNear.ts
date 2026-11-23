@@ -173,10 +173,9 @@ export const busStopsNear: ToolDef<typeof busStopsNearInput, typeof busStopsNear
   title: "Curitiba bus stops near a position (URBS, local files)",
   description:
     "Which buses stop near a position in Curitiba (URBS): the stops within radius_m (default 400 m, at most 2000), " +
-    "nearest first, each once with its stop number, name, position, distance, shelter type and the lines and " +
-    "directions that serve it. Optionally only the stops of one line. Not real-time; for times call bus_departures " +
-    "with the stop_number. Reads the newest YYYY_MM_DD_pontosLinha.json and YYYY_MM_DD_linhas.json the user " +
-    "downloaded into CURITIBAI_DATA_DIR/urbs/; no network call. Read-only.",
+    "nearest first, with the lines and directions that serve each; optionally one line only. Not real-time; for " +
+    "times call bus_departures with the stop_number. Needs the URBS files the user downloaded into " +
+    "CURITIBAI_DATA_DIR/urbs/; no network call. Read-only.",
   inputSchema: busStopsNearInput,
   outputSchema: busStopsNearOutput,
   annotations: { openWorldHint: false },

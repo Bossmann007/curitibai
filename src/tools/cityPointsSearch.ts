@@ -293,17 +293,10 @@ export const cityPointsSearch: ToolDef<typeof cityPointsSearchInput, typeof city
   name: "city_points_search",
   title: "Curitiba points of interest open to the public (URBS, local file)",
   description:
-    "Find places open to the public in Curitiba from URBS's points-of-interest export: feiras, Câmbio Verde, popular " +
-    "restaurants, regional and city offices, Ruas da Cidadania, libraries, cemeteries, CMEIs, municipal and state " +
-    "schools, cultural spaces, bus terminals, transit-card offices and public health units. Filter by category id, " +
-    "words in the name, and/or a position with a radius (nearest first, with distance_m); call with no arguments to " +
-    "list the categories with counts, split per URBS name in source_categories (a 0 there may mean URBS renamed " +
-    "that name; such rows are dropped without a warning). URBS's private-business categories (supermarkets, markets, shopping centres, " +
-    "private schools and crèches, hotels, private clubs, newsstands), churches, hospitals, police and categories not " +
-    "on the allowlist are never returned. " +
-    `${MIXED_CATEGORIES.join(", ")} are ${MIXED_DETAIL}. No days or hours. ` +
-    "Reads the newest YYYY_MM_DD_pois.json the user downloaded into " +
-    "CURITIBAI_DATA_DIR/urbs/; no network call. Read-only. Not for emergencies.",
+    "Find public points in Curitiba in the URBS points-of-interest file the user put in " +
+    "CURITIBAI_DATA_DIR/urbs/ (no network): CMEIs, schools, terminals, regional offices and more; " +
+    "no hours. Filter by category, name or position; no arguments lists the categories. Prefer this for " +
+    "CMEIs, schools, terminals and regional offices, or all city points near a position. Not for emergencies. Read-only.",
   inputSchema: cityPointsSearchInput,
   outputSchema: cityPointsSearchOutput,
   annotations: { openWorldHint: false },

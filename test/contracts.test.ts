@@ -54,6 +54,13 @@ function contractDiff(expected: Contract[], actual: Contract[]): string[] {
 
 const size = (value: unknown) => (value === undefined ? 0 : JSON.stringify(value).length);
 
+// Guard on what every tools/list costs the client (SPEC.md): one description at most MAX_DESCRIPTION characters
+// (raw string), and all of them, measured as JSON like the baseline, at most MAX_DESCRIPTIONS_SUM.
+const MAX_DESCRIPTION = 400;
+const MAX_DESCRIPTIONS_SUM = 9_600;
+/** The same 5 numbers at v0.24.1, before descriptions were shortened (SPEC.md). */
+const BASELINE_V0_24_1 = { tools: 25, descriptions: 15_561, inputSchemas: 19_636, outputSchemas: 63_226, total: 107_011 };
+
 describe("tool contracts", () => {
   it("tool names, inputSchemas and outputSchemas match test/fixtures/tool-contracts.json", async () => {
     const actual = contracts(await listTools());
@@ -79,7 +86,7 @@ describe("tool contracts", () => {
     ).toEqual(["removed: a", "changed: b (inputSchema, outputSchema)", "added: d"]);
   });
 
-  it("prints the tools/list size in characters (baseline in SPEC.md; no ceiling yet)", async () => {
+  it(`every description is at most ${MAX_DESCRIPTION} characters and their sum at most ${MAX_DESCRIPTIONS_SUM} (SPEC.md)`, async () => {
     const tools = await listTools();
     const sum = (pick: (t: (typeof tools)[number]) => unknown) => tools.reduce((n, t) => n + size(pick(t)), 0);
     const measured = {
@@ -89,7 +96,15 @@ describe("tool contracts", () => {
       outputSchemas: sum((t) => t.outputSchema),
       total: size({ tools }),
     };
-    process.stdout.write(`tools/list size (characters): ${JSON.stringify(measured)}\n`);
+    process.stdout.write(`tools/list size (characters), v0.24.1: ${JSON.stringify(BASELINE_V0_24_1)}\n`);
+    process.stdout.write(`tools/list size (characters), now:     ${JSON.stringify(measured)}\n`);
+    // The measure itself works: names, titles and annotations make the total more than the three parts.
     expect(measured.total).toBeGreaterThan(measured.descriptions + measured.inputSchemas + measured.outputSchemas);
+    expect(measured.descriptions).toBeGreaterThan(0);
+    const tooLong = tools
+      .filter((t) => (t.description ?? "").length > MAX_DESCRIPTION)
+      .map((t) => `${t.name} (${(t.description ?? "").length})`);
+    expect(tooLong, `descriptions over ${MAX_DESCRIPTION} characters`).toEqual([]);
+    expect(measured.descriptions, `descriptions sum over the ceiling of ${MAX_DESCRIPTIONS_SUM}`).toBeLessThanOrEqual(MAX_DESCRIPTIONS_SUM);
   });
 });

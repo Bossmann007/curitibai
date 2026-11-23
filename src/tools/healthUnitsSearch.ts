@@ -85,10 +85,10 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   name: "health_units_search",
   title: "Search Curitiba public health units (CNES)",
   description:
-    "Search active public-administration health units in Curitiba in the Ministry of Health CNES open API: CNES code, " +
-    "name, unit type, address, neighbourhood, CEP, unit phone, management sphere. Filters by name text and unit type. " +
-    "Scans upstream pages of 20 until limit units match, at most 20 pages and no new page after 20 s per call; continue with next_page and next_skip. Private and non-profit units are not " +
-    "returned. Read-only.",
+    "Search active public-administration health units in Curitiba (Ministry of Health CNES open API) by name text " +
+    "and unit type: CNES code, name, type, address, neighbourhood, CEP, phone, management sphere. Private and " +
+    "non-profit units are not returned. Pages of 20, up to 20 s per call; continue with next_page and next_skip. " +
+    "Read-only.",
   inputSchema: healthUnitsSearchInput,
   outputSchema: healthUnitsSearchOutput,
   handler: async ({ name, unit_type, limit, page, skip }) => {
