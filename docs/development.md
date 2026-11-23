@@ -51,8 +51,8 @@ Manual run of the Receita check: `gh workflow run receita-version.yml --ref main
 - First run (no `receita/version.json` on `data` yet): `code=baseline exit=0`, then `pushed to 'data'`; the `data`
   branch gets one commit with only `receita/version.json`; no issue.
 - Later run, same version: `code=unchanged exit=0` and `nothing changed; no commit`; no issue.
-- Version changed: `code=changed exit=0 ... (issue created)` (or `issue existing` when an open issue has the same
-  title), then the commit; one issue "Receita: calculadora mudou (...)".
+- Version changed: `changed ... (issue created)` (or `issue existing` when an open issue has the same
+  title), `code=changed exit=0`, then the commit; one issue "Receita: calculadora mudou (...)".
 - Receita down or an unexpected answer: `code=receita_unavailable` or `invalid_response`, exit 1 (red run), no commit,
   no issue.
 
