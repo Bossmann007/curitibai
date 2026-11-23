@@ -291,9 +291,11 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       // other_count, distinct values) is BELOW_MIN, so the answer never tells 1 row from 4 (or from 0).
       const few = filter !== undefined && s.matched < MIN_GROUP_COUNT;
       const count = (n: number) => (few ? BELOW_MIN : n);
-      // A filter that leaves 1 to 4 rows out: row_count - matched_rows would give their exact count (and unfiltered
-      // minus filtered groups their values), which "<5" cannot hide because matched_rows is then large. Refused.
-      const left = s.rows - s.matched;
+      // A filter that leaves 1 to 4 well-formed rows out: row_count - malformed_rows - matched_rows would give their
+      // exact count (and unfiltered minus filtered groups their values), which "<5" cannot hide because matched_rows
+      // is then large. Refused. Malformed rows never match, so they are not "left out". One query only: two allowed
+      // filters on the same column can still be subtracted (known limit, docs/local-data.md).
+      const left = s.rows - s.malformed - s.matched;
       if (filter !== undefined && !few && left > 0 && left < MIN_GROUP_COUNT) {
         return fail(
           "column_not_allowed",

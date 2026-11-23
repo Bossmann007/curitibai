@@ -23,9 +23,10 @@ names and counts. Data rows (after the first line) are never returned. What it d
   cannot reveal a single record. A filter that matches fewer than 5 rows (0 included) returns `"<5"` for
   `matched_rows`, `other_count` and `distinct_values` instead of the number (since 0.21.1). Since 0.21.2, with a
   filter, an `other_count` of 1 to 4 is `"<5"` too (0 stays 0), and a filter that leaves 1 to 4 rows out is refused
-  (`column_not_allowed`), because `row_count - matched_rows` would give their count. Known limit: `matched_rows`
-  and the listed counts stay numbers, so when every group of 5 or more is listed, `matched_rows` minus their sum
-  still gives a masked `other_count` back.
+  (`column_not_allowed`, for that value only), because `row_count - malformed_rows - matched_rows` would give their
+  count. Known limits (one query is checked at a time, and the output schema is frozen): when every group of 5 or
+  more is listed, `matched_rows` minus their sum still gives a masked `other_count` back; two allowed filters on the
+  same column can be subtracted from `row_count`; an unfiltered `group_by` still gives `other_count` as a number.
 - **A grouped column whose values look like contact data is refused** (`column_not_allowed`): when a value that
   could be returned would be changed by the contact-data guard (CPF/CNPJ-, e-mail- or phone-shaped text, or year
   ranges that look like phone numbers such as "2025 - 2026"; the same masking as PNCP objects). Values are returned cut at 120 characters; since 0.13.3 the check runs on the

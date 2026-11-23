@@ -300,6 +300,13 @@ describe("local_csv_summary", () => {
     expect(minority.filter?.matched_rows).toBe("<5");
     const all = localCsvSummaryOutput.parse((await call({ file: "complement.csv", filter_column: "bairro", filter_value: "X" })).structuredContent).data;
     expect(all.filter?.matched_rows).toBe(10);
+    // Malformed rows never match: they neither hide a small rest nor make a filter on every valid row refused.
+    const bad = "x;y;z\n".repeat(5);
+    writeFileSync(join(dataDir, "complement-bad.csv"), `tipo;bairro\n${"A;X\n".repeat(3)}${"B;X\n".repeat(7)}${bad}`);
+    expect(errorOf(await call({ file: "complement-bad.csv", filter_column: "tipo", filter_value: "B" }))).toMatchObject({ error: "column_not_allowed" });
+    writeFileSync(join(dataDir, "all-bad.csv"), `tipo;bairro\n${"B;X\n".repeat(7)}${bad}`);
+    const allBad = localCsvSummaryOutput.parse((await call({ file: "all-bad.csv", filter_column: "tipo", filter_value: "B" })).structuredContent).data;
+    expect(allBad).toMatchObject({ row_count: 12, malformed_rows: 5, filter: { matched_rows: 7 } });
   });
 
   it("returns a text-only first line as column names (documented limit: it cannot be told from a header)", async () => {

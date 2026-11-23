@@ -4,10 +4,12 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 ## 0.21.2 - 2026-11-23
 
-- `local_csv_summary`: with a filter, a `group_by.other_count` of 1 to 4 is `"<5"` (0 stays 0), as small groups
-  already are. A filter that leaves 1 to 4 rows out is refused (`column_not_allowed`), because `row_count -
-  matched_rows` would give their exact count. Known limit, kept because the output schema is frozen: when every group
-  of 5 or more is listed, `matched_rows` minus their counts still gives a masked `other_count` back.
+- **Breaking (output):** `local_csv_summary`: with a filter, a `group_by.other_count` of 1 to 4 is `"<5"` (0 stays
+  0), as small groups already are. A filter that leaves 1 to 4 well-formed rows out is refused (`column_not_allowed`,
+  for that value only), because `row_count - malformed_rows - matched_rows` would give their exact count. Known
+  limits, kept because the output schema is frozen and one query is checked at a time: when every group of 5 or more
+  is listed, `matched_rows` minus their counts still gives a masked `other_count` back, and two allowed filters on the
+  same column can be subtracted from `row_count` (docs/local-data.md).
 - `receita-version.yml`: a second schedule entry on day 2 (09:23 UTC) retries a day-1 run dropped from the shared
   `data-branch` queue; with nothing changed since day 1 it makes no commit and opens no issue.
 - `scripts/check-release.mjs`: a copy that is not a git clone (tarball or zip, no `.git` at the root) or a machine

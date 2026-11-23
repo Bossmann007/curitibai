@@ -23,7 +23,9 @@ Close the low findings of the #26 review and credit the Instituto Municipal de T
      values), and `"<5"` on `matched_rows` would be false. A filter that matches every row is answered.
    - Known limit, kept because the output schema is frozen: `matched_rows` and `top[].count` stay numbers, so when
      every group of 5 or more is listed, `matched_rows - sum(top)` gives the masked `other_count` back. A test shows
-     it. Closing it needs a schema or behaviour decision (next phase).
+     it. Two allowed filters on the same column can also be subtracted from `row_count` (one query is checked at a
+     time). Closing these needs a schema or behaviour decision (next phase). Malformed rows never match, so they
+     are not counted as left out.
 3. **`scripts/check-release.mjs` outside a clone.** No `.git` at the repository root (tarball or zip) or no `git`
    installed: prints "not a git clone (no .git, or git not installed): tag checks skipped", still checks the version
    against the CHANGELOG, exits 0 when it matches. Other git failures in a clone still exit 2. Test runs the script
@@ -41,7 +43,8 @@ Close the low findings of the #26 review and credit the Instituto Municipal de T
 
 - Creating the `v0.21.2` tag (the owner tags `main` after the merge).
 - Pushing to the `data` branch by hand: the credit arrives with the next successful nightly collection.
-- Closing the `matched_rows - sum(top)` derivation (needs a schema or behaviour decision).
+- Closing the `matched_rows - sum(top)` and two-filter derivations, and masking an unfiltered `other_count`
+  (pre-existing; needs a schema or behaviour decision).
 - Any change to tool names, tool schemas, sources or dependencies.
 
 ## Check
