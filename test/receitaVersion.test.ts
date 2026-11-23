@@ -306,4 +306,14 @@ describe("check-receita-version", () => {
     expect(r).toMatchObject({ code: "previous_unreadable", exit: 1 });
     expect(posts()).toHaveLength(0);
   });
+
+  it("an open-issues page over 64 KB (real issues carry bodies) is still read for the duplicate check", async () => {
+    const before = await baseline();
+    const title = issueTitle(before, { ...before, versaoDb: "V0074" });
+    const page = Array.from({ length: 30 }, (_, i) => ({ number: i + 1, title: `other ${i}`, body: "x".repeat(8_000) }));
+    page.push({ number: 99, title, body: "" });
+    const r = await run(deps(network({ receita: () => json({ ...RECEITA_BODY, versaoDb: "V0074" }), issues: () => json(page) })));
+    expect(JSON.stringify(page).length).toBeGreaterThan(MAX_BYTES);
+    expect(r).toMatchObject({ code: "changed", exit: 0, issue: "existing" });
+  });
 });

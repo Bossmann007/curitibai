@@ -19,7 +19,9 @@ export const RELEASE_REPOS = Object.freeze(["calculadora-rtc-regime-regular", "c
 export const USER_AGENT = "curitibai-mcp/0.20 (+https://github.com/Bossmann007/curitibai)";
 export const VERSION_FILE = "receita/version.json";
 export const TIMEOUT_MS = 15_000;
+/** Body caps: the Receita version answer is under 1 KB; a page of 100 GitHub issues (bodies included) is far larger. */
 export const MAX_BYTES = 64 * 1024;
+export const GITHUB_MAX_BYTES = 4 * 1024 * 1024;
 export const DESCRIPTION_MAX = 300;
 /** Open issues read for the duplicate check: 10 pages of 100. */
 export const ISSUE_PAGES_MAX = 10;
@@ -35,15 +37,15 @@ class CheckError extends Error {
   }
 }
 
-/** The body as text, read as a stream and stopped past MAX_BYTES bytes (a larger body is an error). */
-async function readCapped(res) {
-  if (Number(res.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error("response too large");
+/** The body as text, read as a stream and stopped past `cap` bytes (a larger body is an error). */
+async function readCapped(res, cap) {
+  if (Number(res.headers.get("content-length") ?? 0) > cap) throw new Error("response too large");
   if (!res.body) return "";
   const chunks = [];
   let size = 0;
   for await (const chunk of res.body) {
     size += chunk.byteLength;
-    if (size > MAX_BYTES) throw new Error("response too large");
+    if (size > cap) throw new Error("response too large");
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString("utf8");
@@ -67,7 +69,7 @@ async function request(fetch, url, { token, method = "GET", body } = {}) {
     redirect: "manual",
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  const text = await readCapped(res);
+  const text = await readCapped(res, u.host === "api.github.com" ? GITHUB_MAX_BYTES : MAX_BYTES);
   if (!(res.headers.get("content-type") ?? "").includes("json")) return { status: res.status, data: undefined };
   let data;
   try {

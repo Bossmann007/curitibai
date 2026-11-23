@@ -850,11 +850,11 @@ changes (owner request, 2026-11-23: monthly and automatic).
   an HTML page, checked the same day with curl and User-Agent `curitibai-mcp/0.20`: no rules, RFC 9309) and one GET to
   `https://api.github.com/repos/ReceitaFederal/<repo>/releases/latest` for `calculadora-rtc-regime-regular` (then
   `1.7.2`) and `calculadora-rtc-simples-nacional` (then `1.0.2`). User-Agent
-  `curitibai-mcp/0.20 (+https://github.com/Bossmann007/curitibai)`, 15 s timeout, no redirect followed, 64 KB cap, no
+  `curitibai-mcp/0.20 (+https://github.com/Bossmann007/curitibai)`, 15 s timeout, no redirect followed, 64 KB cap (4 MB on GitHub), no
   retry, exact host allowlist. The workflow token goes to `api.github.com` only, never to the Receita host.
 - **Fails closed:** a Receita error (network, timeout, non-200, redirect, not JSON) or an answer whose `versaoApp`,
   `versaoDb` (letters, digits, `._+-`, up to 64) or `dataVersaoDb` (YYYY-MM-DD) does not match exits 1 and changes
-  nothing (red run in Actions). A body over 64 KB (Content-Length or bytes read) is refused. A failed release lookup
+  nothing (red run in Actions). A Receita body over 64 KB (Content-Length or bytes read) is refused (4 MB for GitHub API answers). A failed release lookup
   keeps the previous tag (no false change); on the first run, with no previous tag, it exits 1 and writes nothing. A
   repository with no release (404) is recorded as `null`.
 - **What is published:** only `receita/version.json` on the orphan branch `data` (never `main`; `events/` and `phones/`

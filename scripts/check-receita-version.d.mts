@@ -34,6 +34,7 @@ export const USER_AGENT: string;
 export const VERSION_FILE: string;
 export const TIMEOUT_MS: number;
 export const MAX_BYTES: number;
+export const GITHUB_MAX_BYTES: number;
 export const DESCRIPTION_MAX: number;
 export const ISSUE_PAGES_MAX: number;
 export function parseReceita(data: unknown): Omit<VersionRecord, "releases" | "recorded_at">;
