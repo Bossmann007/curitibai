@@ -9,6 +9,7 @@
   - [`health_units_search`: Ministry of Health CNES open API](#health_units_search-ministry-of-health-cnes-open-api)
   - [`procurement_search`: PNCP Consulta API (contratações of Curitiba municipal bodies)](#procurement_search-pncp-consulta-api-contratações-of-curitiba-municipal-bodies)
   - [`weather_forecast` and `weather_alerts`: INMET forecast and warnings API](#weather_forecast-and-weather_alerts-inmet-forecast-and-warnings-api)
+  - [`tax_reform_curitiba`: Receita Federal pilot tax-reform (CBS/IBS) open data](#tax_reform_curitiba-receita-federal-pilot-tax-reform-cbsibs-open-data)
   - [`places_search`: OpenStreetMap via the Overpass API](#places_search-openstreetmap-via-the-overpass-api)
   - [`detran_pr_info`: Detran-PR licensing calendar and units (bundled data)](#detran_pr_info-detran-pr-licensing-calendar-and-units-bundled-data)
   - [`city_services_search`: Prefeitura de Curitiba service catalog (local file, not shipped)](#city_services_search-prefeitura-de-curitiba-service-catalog-local-file-not-shipped)
@@ -88,6 +89,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does (run by the user or, since v0.18, by the nightly GitHub workflow), 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
 | `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
 | `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the three fixed files `/Bossmann007/curitibai/data/events/events.json`, `/Bossmann007/curitibai/data/phones/phones.json` and `/Bossmann007/curitibai/data/phones/status.json` (v0.18.1), published by this project's own nightly workflow (below) |
+| `piloto-cbs.tributos.gov.br` (Receita Federal, pilot "calculadora de tributos do consumo") | 404 (reported in the v0.21.0 brief, 2026-11-23; no rules) | No restriction (RFC 9309). **Contacted** (v0.21, `tax_reform_curitiba`), only fixed `GET` routes under `/servico/calculadora-consumo/api/calculadora/dados-abertos/`, at most one request per 5 s |
+| `lp.curitiba.pr.gov.br` (Prefeitura, NFS-e page `/notanacional`) | Has a `Visit-time` 0400-0645 UTC rule (v0.21.0 brief, 2026-11-23) | **The server never contacts it**: `tax_reform_curitiba` carries a fixed, dated note read by hand |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -283,6 +286,30 @@ requests in all.
 Prior art (2026-11-19, `gh search repos "inmet mcp"`: no results; `gh search repos inmet`): R, Python and Julia
 clients and scrapers for INMET station data, a Home Assistant alerts integration and a Telegram bot; no MCP server.
 Built: about 300 lines inside this server, reusing its HTTP client, cache and envelope.
+
+### `tax_reform_curitiba`: Receita Federal pilot tax-reform (CBS/IBS) open data
+
+Checked live on **2026-11-23** with curl, User-Agent `curitibai-mcp/0.7`, 12 GET requests 6 s apart, before any code
+was written (`versao`; the three rates for 2026-11-23; the NBS, NCM and cClassTrib lists; one NBS, one NCM and one
+cClassTrib detail; the federal rate for 2024-01-01 and the municipal rate for 2027-01-01). The built tool was then called live twice, once per topic each time (`rates`, `nbs`, `ncm`, `class_trib`;
+`nfse` makes no request): 7 requests per run (`versao`, three rates, three lists), 14 in all, through the 5 s gate.
+A cold `rates` call took 19.4 s and 20.6 s.
+
+| Field | Value |
+|---|---|
+| Base | `https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/`. Routes from `DadosAbertosController.java` (`@RequestMapping("calculadora/dados-abertos")`) and the README of <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT), not from third parties |
+| Routes used | `versao`; `aliquota-uniao?data=`; `aliquota-uf?codigoUf=41&data=`; `aliquota-municipio?codigoMunicipio=4106902&data=`; `nbs/lista?data=`; `ncm/vigentes?data=`; `classificacoes-tributarias/cbs-ibs?data=`. Only the date (validated) and fixed codes are in the URLs |
+| Answers on 2026-11-23 | `versao`: `versaoApp` `1.7.2-0d9b30c1`, `versaoDb` `V0073`, `dataVersaoDb` `2026-11-09`, `ambiente` `apr` (passed through as served, never hardcoded). Rates `{"aliquotaReferencia":0.9}` (CBS), `0.1` (IBS UF, PR), `0.0` (IBS municipal, Curitiba): percent, inferred from the values (the 2026 test-year rates). Lists: NBS 920 items (100 KB), NCM 10,516 (730 KB), cClassTrib 170 (148 KB). 1–6 s per request |
+| Not found | HTTP 404, `application/problem+json`, "Alíquota não encontrada" for the federal rate on 2024-01-01 and for the municipal rate on 2027-01-01: returned as a `null` rate with a note, not as a host failure |
+| Simulated data | The Receita code (`DadosAbertosService.getWarningDadosSimuladosPorData`) marks every date from 2027-01-01 as simulated (`x-warning-dados-simulados` header on the rate routes). The tool returns those values with `simulated: true` and the note "valores simulados pela Receita Federal; não são alíquotas definitivas" (owner decision, 2026-11-23); a list answer with the header is flagged the same way |
+| Guards | `fetchText` with the project User-Agent; 15 s timeout; caps 64 KB (versions, rates) and 2 MB (lists); redirects only to the same host and the `dados-abertos` path; JSON only; one host gate (5 s between requests, 30 s queue limit, failures remembered 60 s to 1 hour, an HTML 200 answer included; a missing rate, HTTP 404, is not a failure and is not cached); cache in memory 24 h (lists at most 3). Fail closed on anything else (see SPEC "v0.21.0 changes") |
+| Terms / licence | The calculator's code repositories are MIT. **No terms of use for the hosted pilot API were found.** Values are passed on unchanged, with the source URL and fetch time in `license_note`, and every answer says "API piloto da Receita Federal; não é orientação fiscal; confirme com o contador" |
+| Out of scope | The calculation `POST`, effective-rate arithmetic, any NFS-e or other invoice issuance, Imposto Seletivo data, other cities or states |
+| NFS-e note | Fixed text from the owner's v0.21.0 brief, which checked `https://lp.curitiba.pr.gov.br/notanacional` (conferido em 2026-11-23): mandatory issuance on the Emissor Nacional; 01/10/2025 sociedades uniprofissionais, 01/11/2025 Simples Nacional, 01/01/2026 all others; Decreto 1960/2025 and Portaria 33/2025; public lookup `https://www.nfse.gov.br/consultapublica`. Never fetched by the server |
+| Fixtures | **Synthetic**: `test/fixtures/receita/*.json`, small, invented codes and descriptions. No real response is committed |
+
+Prior art (2026-11-23, recorded in the brief): build small; tool shape inspired by bispado/mcp-calculadora-rtc (MIT),
+ideas only, no code copied.
 
 ### `places_search`: OpenStreetMap via the Overpass API
 

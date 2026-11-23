@@ -9,6 +9,7 @@ import { clearGuairaState } from "../src/sources/guaira.js";
 import { clearVaccinationCache } from "../src/sources/imunizaja.js";
 import { clearPublishedState } from "../src/sources/publishedData.js";
 import { resetOverpassCooldown } from "../src/sources/osm.js";
+import { clearReceitaState, RECEITA_GATE } from "../src/sources/receita.js";
 
 // No test may reach the network: any fetch that a test did not stub fails loudly.
 // CNES and PNCP gates: no spacing by default (multi-page tests would wait in real time); the spacing tests set it.
@@ -17,6 +18,8 @@ beforeEach(() => {
   resetPncpGate();
   CNES_GATE.minIntervalMs = 0;
   PNCP_GATE.minIntervalMs = 0;
+  clearReceitaState();
+  RECEITA_GATE.minIntervalMs = 0;
   sharedCache.clear();
   resetOverpassCooldown();
   clearVaccinationCache();

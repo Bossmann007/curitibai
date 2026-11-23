@@ -144,8 +144,8 @@ function issueBody(before, after) {
     "",
     `Source: ${RECEITA_URL}`,
     "",
-    "Reminder: review curitibai (the tax reform tool and its docs). The Receita marks the 2027+ rates as simulated",
-    "(not final rates); check whether this version changed them, the codes or the answer shape.",
+    "Reminder: review curitibai (`tax_reform_curitiba`, docs/sources.md). The Receita marks the 2027+ rates as",
+    "simulated (`simulated: true`, not final rates); check whether this version changed them, the codes or the answer shape.",
   ].join("\n");
 }
 
