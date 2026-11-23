@@ -134,15 +134,16 @@ before 04:00 are read as early trips of their own code's day (not verified).
 
 **How updating works (since 0.18.0): nobody has to run anything.** A GitHub Actions workflow,
 [`.github/workflows/collect.yml`](../.github/workflows/collect.yml), runs the collector `scripts/fetch-events.mjs` every
-night at 02:37 UTC (23:37 in Curitiba) on a standard GitHub-hosted runner (`ubuntu-latest`; "The use of standard
+night at 02:37 UTC (23:37 in Curitiba), with retries at 03:17, 03:59, 04:37 and 05:13 UTC (since 0.19.3), on a standard GitHub-hosted runner (`ubuntu-latest`; "The use of standard
 GitHub-hosted runners is free" in public repositories, per
 [GitHub's billing page](https://docs.github.com/en/billing/concepts/product-billing/github-actions); no larger runner
 is used). It follows exactly the rules below (window, robots.txt check, 5 s gap, no retry) and then
 `scripts/publish-data.sh` commits only `events/events.json`, `events/status.json`, `phones/phones.json` and `phones/status.json` to the
 orphan branch [`data`](https://github.com/Bossmann007/curitibai/tree/data) of this repository (never `main`). It skips
-the commit when none of them changed, which is rare: the `status.json` files record every attempt, so most nights add
-one small commit. A run that fails (`window_closed`, `robots_changed`, `http_error`, ...) keeps the previous
-files, updates only the `status.json` files, shows as failed in the Actions tab and is not retried until the next night.
+the commit (and the push) when none of them changed. A run that fails inside the window (`robots_changed`,
+`http_error`, ...) keeps the previous files, updates only the `status.json` files and shows as failed in the Actions
+tab; the next schedule entry that night tries again. Once both steps (events and phones) succeeded on the UTC date, the
+later entries exit 0 at once (`code=already_collected`): no request, no file change, no push.
 The job has `contents: write` only for itself, a 35-minute timeout (above the collector's own 30-minute deadline, so the collector always stops first and the run still publishes), and never overlaps another run.
 
 `events_search` and `useful_phones` read, in this order:
@@ -175,10 +176,15 @@ collection may have stopped, and `events_search` refuses a file more than 7 days
   `stale: true` in the tools' answers is the first sign.
 - **Runs can be late or dropped.** "The `schedule` event can be delayed during periods of high loads of GitHub
   Actions workflow runs. High load times include the start of every hour. If the load is sufficiently high enough,
-  some queued jobs may be dropped" (same page). A run that starts after 05:50 UTC records `window_closed` and
-  publishes only `events/status.json`; the tools keep answering from the last good copy.
+  some queued jobs may be dropped" (same page). The first scheduled run, on 2026-11-23, started 8.5 h late. That is
+  why there are five entries. A run that starts outside 02:00–05:50 UTC (or is stopped by 05:50) makes no request
+  after that point, changes no file (neither data nor `status.json`, so the last successful record stays) and pushes
+  nothing; the tools keep answering from the last good copy. It exits 0 when both steps succeeded in the last 24 hours
+  (the `success` times in `events/status.json` and `phones/status.json`), and 1 otherwise, so a night with no
+  collection still shows as a failed run.
 - A manual run: `gh workflow run collect.yml` (or **Run workflow** in the Actions tab). Outside 02:00–05:50 UTC it
-  makes no request to the site and only records `window_closed`.
+  makes no request to the site and changes nothing; on a UTC date when both steps already succeeded it exits 0 with
+  `code=already_collected`.
 - The detail cache (`events/details.json`) is not published, so every nightly run reads every detail page again:
   about 5 minutes for the 50 or so events seen on 2026-11-21. With 10 list pages of 10 events (a pager showing more
   stops the run) it is about 112 requests, each followed by the 5 s gap, plus the site's response time: about 10
@@ -199,8 +205,11 @@ CURITIBAI_DATA_DIR=~/curitibai-data node scripts/fetch-events.mjs
 ```
 
 - **Only between 02:00 and 05:50 UTC** (23:00 to 02:50 in Curitiba). The site's robots.txt asks for visits between
-  02:00 and 06:00 and at most one request every 5 seconds. Outside the window the script makes no request and exits
-  with `code=window_closed`. A scheduler (cron, launchd) can run it once a night inside the window.
+  02:00 and 06:00 and at most one request every 5 seconds. Outside the window the script makes no request, writes no
+  file and prints `code=window_closed`; it exits 0 when both steps succeeded in the last 24 hours, else 1. A scheduler
+  (cron, launchd) can run it once a night inside the window. With `CURITIBAI_COLLECT_ONCE_A_DAY=1` (what the
+  nightly workflow sets) a run on a UTC date when both steps already succeeded exits 0 with `code=already_collected`,
+  no request and no file change; without it every run inside the window collects.
 - Each run first takes a lock (`events/.lock`, created exclusively): if another run holds it, it exits with
   `code=locked` without any request or file change. A lock older than 1 hour is left by a run that died and is
   replaced.

@@ -457,16 +457,18 @@ describe("run", () => {
     expect(readJson(eventsFile()).list_date).toBe("2026-11-22");
   });
 
-  it("never requests anything outside the window and keeps the old file", async () => {
+  it("never requests anything outside the window and keeps the old files, status included", async () => {
     await run(harness(siteRoutes([ids(3)])).deps);
     const before = readFileSync(eventsFile(), "utf8");
-    for (const at of ["2026-11-21T05:50:00Z", "2026-11-21T01:59:00Z", "2026-11-21T15:00:00Z"]) {
+    const status = readFileSync(statusFile(), "utf8");
+    // 01:59 is before the success at 05:00 (a success "in the future" counts as none): a failed run.
+    for (const [at, exit] of [["2026-11-21T05:50:00Z", 0], ["2026-11-21T01:59:00Z", 1], ["2026-11-21T15:00:00Z", 0]] as const) {
       const h = harness(siteRoutes([ids(3)]), at);
-      expect(await run(h.deps)).toMatchObject({ code: "window_closed", exit: 1 });
+      expect(await run(h.deps)).toMatchObject({ code: "window_closed", exit });
       expect(h.calls).toEqual([]);
     }
     expect(readFileSync(eventsFile(), "utf8")).toBe(before);
-    expect(readJson(statusFile())).toMatchObject({ code: "window_closed", success: expect.any(String) });
+    expect(readFileSync(statusFile(), "utf8")).toBe(status);
   });
 
   it("checks the window before every request: closing mid-run stops it and keeps the old file", async () => {
@@ -877,9 +879,109 @@ describe("useful phones page", () => {
     const res = await run(harness(routes).deps);
     expect(res).toMatchObject({ code: "layout_changed", exit: 1, phones: { code: "ok", entries: 60 } });
     // Started at 05:49:50: the events pages run past 05:50, so the phones request is refused by the window check.
+    const phonesBefore = readFileSync(phonesStatus(), "utf8");
     const late = harness(siteRoutes([ids(3)]), "2026-11-21T05:49:50Z");
     const out = await run(late.deps);
     expect(out.phones.code).toBe("window_closed");
     expect(late.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
+    expect(readFileSync(phonesStatus(), "utf8")).toBe(phonesBefore); // a window stop leaves phones/status.json as it was
+  });
+});
+
+// ---------- several nightly schedule entries (v0.19.3) ----------
+
+/** The four files publish-data.sh pushes to the data branch, byte for byte (a missing file is null). */
+const published = () =>
+  Object.fromEntries(
+    [eventsFile(), statusFile(), phonesFile(), phonesStatus()].map((f) => [f, existsSync(f) ? readFileSync(f, "utf8") : null]),
+  );
+const onceADay = (h: Harness) => ({ ...h.deps, env: { ...h.deps.env, CURITIBAI_COLLECT_ONCE_A_DAY: "1" } });
+
+describe("later schedule entries and late runs", () => {
+  it("once a day: a run after today's (UTC) collection succeeded makes no request, changes no file and exits 0", async () => {
+    expect(await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps)).toMatchObject({ code: "ok", exit: 0 });
+    const before = published();
+    for (const at of ["2026-11-21T03:59:00Z", "2026-11-21T23:59:00Z"]) {
+      const h = harness(siteRoutes([ids(4)]), at);
+      expect(await run(onceADay(h))).toMatchObject({ code: "already_collected", exit: 0 });
+      expect(h.calls).toEqual([]);
+      expect(published()).toEqual(before);
+      expect(h.lines[0]).toBe("fetch-events: code=already_collected");
+    }
+  });
+
+  it("once a day: collects again after a failed step today, on the next UTC date, and always without the switch", async () => {
+    // 03:17: events ok, phones failed. The 03:59 entry runs the whole collection again; the 04:37 entry skips.
+    const routes = siteRoutes([ids(3)]);
+    routes[`${ORIGIN}${PHONES_PATH}`] = { status: 500, body: "x" };
+    expect(await run(onceADay(harness(routes, "2026-11-21T03:17:00Z")))).toMatchObject({ code: "ok", phones: { code: "http_error" }, exit: 1 });
+    const retry = harness(siteRoutes([ids(3)]), "2026-11-21T03:59:00Z");
+    expect(await run(onceADay(retry))).toMatchObject({ code: "ok", exit: 0 });
+    expect(retry.calls.length).toBeGreaterThan(0);
+    expect((await run(onceADay(harness(siteRoutes([ids(3)]), "2026-11-21T04:37:00Z")))).code).toBe("already_collected");
+    // By hand (no switch) a second run the same night still collects.
+    const noSwitch = harness(siteRoutes([ids(3)]), "2026-11-21T05:00:00Z");
+    expect((await run(noSwitch.deps)).code).toBe("ok");
+    expect(noSwitch.calls.length).toBeGreaterThan(0);
+    // A new UTC date is not "today" any more (here outside the window, so no request either).
+    const nextDay = harness(siteRoutes([ids(3)]), "2026-11-22T00:30:00Z");
+    expect(await run(onceADay(nextDay))).toMatchObject({ code: "window_closed", exit: 0 });
+    expect(nextDay.calls).toEqual([]);
+  });
+
+  it("outside the window: no request, no file changed, exit 0 while both steps succeeded in the last 24 h", async () => {
+    await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps);
+    const before = published();
+    for (const at of ["2026-11-21T11:08:05Z", "2026-11-22T01:59:00Z"]) {
+      const h = harness(siteRoutes([ids(3)]), at);
+      expect(await run(h.deps)).toMatchObject({ code: "window_closed", phones: { code: "window_closed" }, exit: 0 });
+      expect(h.calls).toEqual([]);
+      expect(published()).toEqual(before);
+    }
+  });
+
+  it("events ok but the window closes before the phones request: phones/status.json kept, exit 0 while recent", async () => {
+    await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps);
+    const phonesBefore = readFileSync(phonesStatus(), "utf8");
+    const routes: Record<string, FakeRoute | (() => FakeRoute)> = siteRoutes([ids(3, 200)]); // new ids: details not cached
+    const last = `${ORIGIN}/evento/evento-sintetico-202/202`;
+    const detail = routes[last] as FakeRoute;
+    const h = harness(routes, "2026-11-21T05:30:00Z");
+    routes[last] = () => {
+      h.clock.t = Date.parse("2026-11-21T05:50:00Z"); // the last events request ends as the window closes
+      return detail;
+    };
+    expect(await run(h.deps)).toMatchObject({ code: "ok", phones: { code: "window_closed" }, exit: 0 });
+    expect(h.calls.some((c) => c.url.endsWith(PHONES_PATH))).toBe(false);
+    expect(readFileSync(phonesStatus(), "utf8")).toBe(phonesBefore);
+    expect(readJson(statusFile()).code).toBe("ok");
+  });
+
+  it("outside the window: exit 1 (a failed run) with no success in the last 24 h, still changing no file", async () => {
+    // Nothing collected yet.
+    const first = harness(siteRoutes([ids(3)]), "2026-11-23T11:08:05Z");
+    expect(await run(first.deps)).toMatchObject({ code: "window_closed", exit: 1 });
+    expect(first.calls).toEqual([]);
+    expect(Object.values(published()).every((v) => v === null)).toBe(true);
+    // The last success is 24 h old or more.
+    await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps);
+    const before = published();
+    const stale = harness(siteRoutes([ids(3)]), "2026-11-22T11:08:05Z");
+    expect(await run(stale.deps)).toMatchObject({ code: "window_closed", exit: 1 });
+    expect(published()).toEqual(before);
+  });
+
+  it("outside the window: exit 1 when only one step succeeded recently, or the success time is unreadable or in the future", async () => {
+    await run(harness(siteRoutes([ids(3)]), "2026-11-21T03:17:00Z").deps);
+    const late = () => harness(siteRoutes([ids(3)]), "2026-11-21T11:08:05Z");
+    const phones = readFileSync(phonesStatus(), "utf8");
+    writeFileSync(phonesStatus(), JSON.stringify({ ...JSON.parse(phones), success: "2026-11-19T02:40:00.000Z" }));
+    expect((await run(late().deps)).exit).toBe(1);
+    writeFileSync(phonesStatus(), JSON.stringify({ ...JSON.parse(phones), success: "not a date" }));
+    expect((await run(late().deps)).exit).toBe(1);
+    writeFileSync(phonesStatus(), JSON.stringify({ ...JSON.parse(phones), success: "2026-11-21T12:00:00.000Z" }));
+    expect((await run(late().deps)).exit).toBe(1);
+    writeFileSync(phonesStatus(), phones);
+    expect((await run(late().deps)).exit).toBe(0);
   });
 });

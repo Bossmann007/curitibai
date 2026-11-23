@@ -11,7 +11,9 @@ automatic updates ("era pra ele pegar automático"), but only if free.
 
 ## Decision
 
-- `.github/workflows/collect.yml` runs at 02:37 UTC (inside the window) and on `workflow_dispatch`, on the standard
+- `.github/workflows/collect.yml` runs at 02:37 UTC (inside the window) and on `workflow_dispatch`; since v0.19.3 also
+  at 03:17, 03:59, 04:37 and 05:13 UTC, because GitHub delayed the first scheduled run by 8.5 h. Later entries skip once
+  the night's collection succeeded, and a run outside the window changes nothing; on the standard
   `ubuntu-latest` runner only (free for public repositories, never a larger runner), with `timeout-minutes: 35`, above
   the collector's own 30-minute deadline (`scripts/fetch-events.mjs:25`). Only the job has `contents: write`; actions are
   pinned by SHA; no `npm ci`, so no dependency code runs with write access.

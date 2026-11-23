@@ -3,11 +3,15 @@
 # orphan branch `data` of this repository (never main):
 #   1. fetch the previous copy from `data` (when the branch exists) into a temporary CURITIBAI_DATA_DIR, so the
 #      collector's ratio check and "a failed run keeps the previous files" work as on a local machine;
-#   2. run scripts/fetch-events.mjs once, unchanged (same robots.txt, window and 5 s rules; no retry);
+#   2. run scripts/fetch-events.mjs once (same robots.txt, window and 5 s rules; no retry inside the run), with
+#      CURITIBAI_COLLECT_ONCE_A_DAY=1: when both steps already succeeded on this UTC date (an earlier schedule entry),
+#      it makes no request and writes nothing;
 #   3. commit only events/events.json, events/status.json, phones/phones.json and phones/status.json (facts, links and
-#      result codes only), skipping the commit when none changed, and push without force. A failed collector run writes
-#      only the status.json files, so only those change (they record every attempt, so most runs commit).
-# Exits with the collector's exit code (after publishing), so a failed run shows red in Actions.
+#      result codes only), skipping the commit and the push when none changed, and push without force. A failed
+#      collector run writes only the status.json files, so only those change. A skipped run, and a run stopped by the
+#      window (GitHub started it late), write nothing, so they never commit.
+# Exits with the collector's exit code (after publishing), so a failed run shows red in Actions. A run outside the
+# window exits 0 only while both steps succeeded in the last 24 h.
 # Needs GITHUB_REPOSITORY and GH_TOKEN (contents: write); the token is passed to git only, never to the collector.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -49,7 +53,7 @@ for f in "${FILES[@]}"; do
 done
 
 code=0
-env -u GH_TOKEN CURITIBAI_DATA_DIR="$data" node scripts/fetch-events.mjs || code=$?
+env -u GH_TOKEN CURITIBAI_DATA_DIR="$data" CURITIBAI_COLLECT_ONCE_A_DAY=1 node scripts/fetch-events.mjs || code=$?
 
 changed=()
 for f in "${FILES[@]}"; do

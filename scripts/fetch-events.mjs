@@ -538,6 +538,27 @@ export function readPrevious(dir) {
   }
 }
 
+/**
+ * A run outside the window exits 0 (not a failed run) when both steps last succeeded less than this before it started,
+ * so a schedule entry that GitHub starts late does not look like a broken collection.
+ */
+export const RECENT_SUCCESS_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * When the whole collection last succeeded: the older of the `success` times in events/status.json and
+ * phones/status.json. Null when either is missing, unreadable, or later than `now` (fail closed).
+ */
+export function lastCollection(env, now) {
+  let times;
+  try {
+    times = [eventsDir(env), dataSubdir(env, "phones")].map((dir) => Date.parse(readStatus(dir) ?? ""));
+  } catch {
+    return null;
+  }
+  if (!times.every((t) => Number.isFinite(t) && t <= now.getTime())) return null;
+  return new Date(Math.min(...times));
+}
+
 function readStatus(dir) {
   try {
     const s = JSON.parse(readFileSync(join(dir, "status.json"), "utf8"));
@@ -808,6 +829,8 @@ export async function runPhones({ client, now, env, attempt, skipCode }) {
     out.code = err instanceof StopError ? err.code : "internal_error";
     out.httpStatus = err instanceof StopError ? err.httpStatus : undefined;
   }
+  // Stopped by the window: status.json is left as it was, as for events.
+  if (out.code === "window_closed") return out;
   const status = {
     attempt,
     success: out.code === "ok" ? now().toISOString() : readStatus(dir),
@@ -921,9 +944,17 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
   let httpStatus;
   let client = null;
   let robotsAccepted = false;
+  let collected = null;
   try {
     dir = eventsDir(env);
     release = acquireLock(dir, startedAt);
+    collected = lastCollection(env, startedAt);
+    // CURITIBAI_COLLECT_ONCE_A_DAY=1 (set by scripts/publish-data.sh for the several nightly schedule entries): both
+    // steps already succeeded on this UTC date, so the later entries make no request and write nothing.
+    const today = startedAt.toISOString().slice(0, 10);
+    if (env.CURITIBAI_COLLECT_ONCE_A_DAY === "1" && collected?.toISOString().slice(0, 10) === today) {
+      throw new StopError("already_collected");
+    }
     if (!inWindow(startedAt)) throw new StopError("window_closed");
     client = createClient({ fetch, now, sleep, startedAt });
 
@@ -995,8 +1026,10 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
     code = err instanceof StopError ? err.code : "internal_error";
     httpStatus = err instanceof StopError ? err.httpStatus : undefined;
   }
-  // A locked run leaves status.json to the run holding the lock.
-  if (dir !== null && code !== "locked") {
+  // A locked run leaves status.json to the run holding the lock. A skipped run and a run stopped by the window write
+  // neither status file, so a late schedule entry never replaces the record of a successful collection.
+  const quiet = code === "locked" || code === "already_collected" || code === "window_closed";
+  if (dir !== null && !quiet) {
     const status = {
       attempt: startedAt.toISOString(),
       success: code === "ok" ? now().toISOString() : readStatus(dir),
@@ -1010,14 +1043,23 @@ export async function run({ fetch, now, sleep, env, log, recordedRobots = RECORD
     }
   }
   let phones = { code, httpStatus, entries: 0, dropped: 0 };
-  if (dir !== null && code !== "locked") {
+  if (dir !== null && !quiet) {
     // The phones page is asked for only after an ok or layout_changed events result: after any refusal, error status,
     // redirect, timeout, network error, window or deadline stop, the host is not asked again in this run.
     const phonesMayRequest = robotsAccepted && (code === "ok" || code === "layout_changed");
     phones = await runPhones({ client, now, env, attempt: startedAt.toISOString(), skipCode: phonesMayRequest ? null : code });
   }
   release?.();
-  const exit = code === "data_dir_not_set" ? 2 : code === "ok" && phones.code === "ok" ? 0 : 1;
+  // Stopped by the window with nothing else wrong: exit 0 only while both steps succeeded in the last 24 h, so a missed
+  // night still shows as a failed run.
+  const settled = (c) => c === "ok" || c === "window_closed";
+  const recent = collected !== null && startedAt.getTime() - collected.getTime() < RECENT_SUCCESS_MS;
+  const exit =
+    code === "data_dir_not_set"
+      ? 2
+      : code === "already_collected" || (code === "ok" && phones.code === "ok") || (settled(code) && settled(phones.code) && recent)
+        ? 0
+        : 1;
   log(`fetch-events: code=${code}${httpStatus === undefined ? "" : ` http_status=${httpStatus}`}`);
   log(
     `fetch-events: pages=${counts.pages} listed=${counts.listed} details_fetched=${counts.fetched} ` +

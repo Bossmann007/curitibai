@@ -13,7 +13,8 @@ cost.
 ## Design
 
 - **Workflow** `.github/workflows/collect.yml`: `schedule` cron `37 2 * * *` (02:37 UTC, an odd minute inside the
-  Turismo site's robots.txt `Visit-time` 0200-0600) and `workflow_dispatch`. `runs-on: ubuntu-latest` only (standard
+  Turismo site's robots.txt `Visit-time` 0200-0600; since v0.19.3 also `17 3`, `59 3`, `37 4` and `13 5`, see "v0.19.3
+  changes") and `workflow_dispatch`. `runs-on: ubuntu-latest` only (standard
   runner, free in public repositories per <https://docs.github.com/en/billing/concepts/product-billing/github-actions>;
   never a larger runner). Workflow permissions `contents: read`; the job alone `contents: write`. Actions pinned by
   full commit SHA (the same two as `verify.yml`). `timeout-minutes: 35` (above the collector's 30-minute deadline). Concurrency group `collect`,
@@ -149,6 +150,25 @@ Approved: Enzo 2026-11-22 — PNCP search endpoint (undocumented, public); the u
   counts nor resets. The Consulta API keeps its immediate single retry.
 - `fetchText` (`src/http.ts`): a connection error or timeout while the body is read is `network error` / `timeout`,
   like one before the headers (it escaped as an unknown error before).
+
+## v0.19.3 changes (task brief "curitibai v0.19.3 — the nightly collector must actually collect", 2026-11-23)
+
+The only scheduled run so far was created 2026-11-23T11:08:05Z, 8.5 h after `37 2 * * *`, so it stopped with
+`window_closed` and the `data` branch holds only `status.json` files with `success: null`. GitHub: the `schedule` event
+"can be delayed during periods of high loads" and queued jobs may be dropped.
+
+- `collect.yml`: five schedule entries, `37 2`, `17 3`, `59 3`, `37 4` and `13 5 * * *` UTC: odd minutes, gaps of 36
+  minutes or more (above the 35-minute job timeout), the last start plus the 30-minute deadline before 05:50 UTC.
+  `NIGHTLY_RUN_UTC` stays `02:37` (the first entry). Robots.txt checks, the deadline, `persist-credentials: false`,
+  `contents: write` on the job only and no `npm ci` are unchanged.
+- `scripts/fetch-events.mjs` `run()`: after the lock, "last collection" is the older of the `success` times in
+  `events/status.json` and `phones/status.json` (null when either is missing, unparseable or later than the start).
+  With `CURITIBAI_COLLECT_ONCE_A_DAY=1` (set by `scripts/publish-data.sh`), a last collection on the start's UTC date
+  stops the run with `already_collected`: no request, no file written, exit 0. A `window_closed` stop (at the start or
+  mid-run, events or phones step) writes neither status file, so the previous record is never replaced; the run exits
+  0 when each step ended `ok` or `window_closed` and the last collection is less than 24 h before the start, else 1.
+  Without the switch a by-hand run inside the window collects as before.
+- No change to the data files' format, the tools or any other source.
 
 ## Out of scope
 

@@ -4,10 +4,18 @@ name: collect
 # orphan branch `data` (never main) by scripts/publish-data.sh. README "Events and useful phones" explains it.
 on:
   schedule:
-    # 02:37 UTC: inside the site's robots.txt Visit-time (0200-0600). An odd minute, away from the busy top of the hour.
-    # The collector checks the window (02:00-05:50 UTC) and robots.txt itself and stops on its own; a run GitHub starts
-    # late gets window_closed and publishes only status.json.
+    # Five entries inside the site's robots.txt Visit-time (0200-0600), at odd minutes away from the busy top of the
+    # hour. GitHub can delay a scheduled run during high load and drop queued ones (the first run, 2026-11-23, started
+    # 8.5 h late), so later entries are retries. Gaps of 36 min or more, above the 35-minute job timeout; the last start
+    # (05:13) plus the collector's 30-minute deadline ends before the window end it checks (05:50 UTC).
+    # publish-data.sh sets CURITIBAI_COLLECT_ONCE_A_DAY=1: once both steps succeeded on the UTC date, later entries exit
+    # 0 with no request and no push. A run GitHub starts outside the window makes no request and changes no file; it
+    # exits 0 while both steps succeeded in the last 24 h, else 1 (a missed night stays a failed run).
     - cron: "37 2 * * *"
+    - cron: "17 3 * * *"
+    - cron: "59 3 * * *"
+    - cron: "37 4 * * *"
+    - cron: "13 5 * * *"
   workflow_dispatch:
 
 permissions:
