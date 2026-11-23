@@ -9,7 +9,9 @@
 #   3. commit only events/events.json, events/status.json, phones/phones.json and phones/status.json (facts, links and
 #      result codes only), skipping the commit and the push when none changed, and push without force. A failed
 #      collector run writes only the status.json files, so only those change. A skipped run, and a run stopped by the
-#      window (GitHub started it late), write nothing, so they never commit.
+#      window (GitHub started it late), write nothing, so they never commit. A push rejected because
+#      receita-version.yml moved `data` meanwhile is redone once on the new tip (fetch, reset, copy, commit again);
+#      a second rejection exits 1. Both workflows share the concurrency group `data-branch`, so this is rare.
 # Exits with the collector's exit code (after publishing), so a failed run shows red in Actions. A run outside the
 # window exits 0 only while both steps succeeded in the last 24 h.
 # Needs GITHUB_REPOSITORY and GH_TOKEN (contents: write); the token is passed to git only, never to the collector.
@@ -55,25 +57,37 @@ done
 code=0
 env -u GH_TOKEN CURITIBAI_DATA_DIR="$data" CURITIBAI_COLLECT_ONCE_A_DAY=1 node scripts/fetch-events.mjs || code=$?
 
-changed=()
-for f in "${FILES[@]}"; do
-  if [[ -f "$data/$f" ]]; then
-    mkdir -p "$pub/$(dirname "$f")"
-    cp "$data/$f" "$pub/$f"
-    changed+=("$f")
+# Two tries: a push rejected because another run (receita-version.yml) moved `data` meanwhile is redone once on the
+# new tip; the files never overlap, so only the four files above are copied again from the collector's folder.
+for attempt in 1 2; do
+  changed=()
+  for f in "${FILES[@]}"; do
+    if [[ -f "$data/$f" ]]; then
+      mkdir -p "$pub/$(dirname "$f")"
+      cp "$data/$f" "$pub/$f"
+      changed+=("$f")
+    fi
+  done
+  if (( ${#changed[@]} > 0 )); then
+    git -C "$pub" add -- "${changed[@]}"
   fi
-done
-
-if (( ${#changed[@]} > 0 )); then
-  git -C "$pub" add -- "${changed[@]}"
-fi
-if [[ -z "$(git -C "$pub" status --porcelain)" ]]; then
-  echo "publish-data: nothing changed; no commit"
-else
+  if [[ -z "$(git -C "$pub" status --porcelain)" ]]; then
+    echo "publish-data: nothing changed; no commit"
+    break
+  fi
   git -C "$pub" -c user.name="github-actions[bot]" \
     -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
     commit -q -m "data: nightly collection $(date -u +%Y-%m-%dT%H:%MZ) (collector exit $code)"
-  pubgit push -q origin "HEAD:refs/heads/$BRANCH"
-  echo "publish-data: pushed to '$BRANCH'"
-fi
+  if pubgit push -q origin "HEAD:refs/heads/$BRANCH"; then
+    echo "publish-data: pushed to '$BRANCH'"
+    break
+  fi
+  if [[ $attempt == 2 ]]; then
+    echo "publish-data: push rejected twice; this run's files not published" >&2
+    exit 1
+  fi
+  echo "publish-data: push rejected; fetching '$BRANCH' again and retrying once"
+  pubgit fetch -q --depth=1 origin "refs/heads/$BRANCH"
+  git -C "$pub" reset -q --hard FETCH_HEAD
+done
 exit "$code"

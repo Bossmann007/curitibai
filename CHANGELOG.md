@@ -2,8 +2,19 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
-## Unreleased
+## 0.21.1 - 2026-11-23
 
+- `local_csv_summary`: a filter that matches fewer than 5 rows (0 included) returns `"<5"` for `matched_rows`,
+  `group_by.other_count` and `group_by.distinct_values` instead of the number, as groups under 5 rows already were
+  (those three fields are now a number or the string `"<5"`).
+- The shared in-memory cache of portal, OpenStreetMap and CNES answers keeps at most 500 entries (oldest dropped first).
+- The server reports the version written in `package.json` (no second copy in `src/server.ts`).
+- `collect.yml` and `receita-version.yml` share the concurrency group `data-branch`, so they never push to the `data`
+  branch at the same time; `scripts/publish-data.sh` redoes a rejected push once on the new tip (never forced), like
+  `scripts/publish-receita-version.sh`.
+- `scripts/verify` checks that `package.json` matches the newest CHANGELOG release and, in a clone with tags, that the
+  previous release (and, on `main`, the current one) has its `v` tag (`scripts/check-release.mjs`).
+- SPEC.md describes this version only; decisions that were written only there are now ADRs 0005 to 0007 in `docs/adr/`.
 - New monthly workflow `.github/workflows/receita-version.yml` (day 1, 09:23 UTC, plus manual runs): one GET to the
   Receita Federal pilot calculator's open-data `versao` endpoint and the latest release of
   `ReceitaFederal/calculadora-rtc-regime-regular` and `calculadora-rtc-simples-nacional`. It records

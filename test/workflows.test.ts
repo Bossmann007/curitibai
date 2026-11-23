@@ -61,7 +61,7 @@ describe("GitHub Actions workflows", () => {
     expect(collect).toMatch(/^ {4}permissions:\n {6}contents: write\n/m);
     expect(lines.filter((l) => l.includes("contents: write"))).toHaveLength(1);
     expect(lines).toContain("    timeout-minutes: 35");
-    expect(collect).toMatch(/^concurrency:\n {2}group: collect\n {2}cancel-in-progress: false\n/m);
+    expect(collect).toMatch(/^concurrency:\n {2}group: data-branch\n {2}cancel-in-progress: false\n/m);
     expect(collect).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
     expect(collect).toContain("persist-credentials: false");
     expect(lines.join("\n")).not.toMatch(/npm (ci|install)/);
@@ -76,12 +76,18 @@ describe("GitHub Actions workflows", () => {
     expect(code(verify).filter((l) => l.includes("pull_request.body"))).toEqual(["          PR_BODY: ${{ github.event.pull_request.body }}"]);
   });
 
+  it("collect and receita-version share one concurrency group (both push to the data branch)", () => {
+    const group = (f: string) => /^concurrency:\n {2}group: (\S+)\n {2}cancel-in-progress: false\n/m.exec(readFileSync(new URL(f, DIR), "utf8"))?.[1];
+    expect(group("collect.yml")).toBe("data-branch");
+    expect(group("receita-version.yml")).toBe("data-branch");
+  });
+
   it("publish-data.sh: pushes only the four public files to the data branch, never main, never forced", () => {
     expect(publish).toContain("BRANCH=data");
     expect(publish).toContain("FILES=(events/events.json events/status.json phones/phones.json phones/status.json)");
     expect(publish).toContain('push -q origin "HEAD:refs/heads/$BRANCH"');
-    const pushes = code(publish).filter((l) => /\bpush\b/.test(l) && !/^\s*#/.test(l));
-    expect(pushes).toEqual(['  pubgit push -q origin "HEAD:refs/heads/$BRANCH"']);
+    const pushes = code(publish).filter((l) => /\bpubgit push\b/.test(l) && !/^\s*#/.test(l));
+    expect(pushes).toEqual(['  if pubgit push -q origin "HEAD:refs/heads/$BRANCH"; then']);
     expect(publish).not.toMatch(/--force|\+HEAD|refs\/heads\/main|add -A|add \./);
     expect(publish).toContain("env -u GH_TOKEN CURITIBAI_DATA_DIR=");
     // Later schedule entries skip once today's collection succeeded.
@@ -97,7 +103,7 @@ describe("GitHub Actions workflows", () => {
     expect(wf).toMatch(/^ {4}permissions:\n {6}contents: write\n {6}issues: write\n/m);
     expect(lines.filter((l) => /: write$/.test(l))).toHaveLength(2);
     expect(lines).toContain("    timeout-minutes: 5");
-    expect(wf).toMatch(/^concurrency:\n {2}group: receita-version\n {2}cancel-in-progress: false\n/m);
+    expect(wf).toMatch(/^concurrency:\n {2}group: data-branch\n {2}cancel-in-progress: false\n/m);
     expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
     expect(wf).toContain("persist-credentials: false");
     expect(lines.join("\n")).not.toMatch(/npm (ci|install)/);

@@ -56,7 +56,7 @@ describe("no tool writes", () => {
     // Every mention of the fs module (any spelling) must be one of these named imports.
     const allowed: Record<string, string[]> = {
       "localfs.ts": ["closeSync", "constants", "fstatSync", "openSync", "read", "readdirSync", "realpathSync", "statSync"],
-      "server.ts": ["realpathSync"],
+      "server.ts": ["readFileSync", "realpathSync"], // readFileSync: package.json, for the version
     };
     const anyFs = /["'](node:)?fs(\/[\w]+)?["']/g;
     const namedImport = /^import\s*\{([^}]*)\}\s*from\s*"node:fs";$/gm;

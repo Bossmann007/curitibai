@@ -40,7 +40,7 @@ must run at the top of a checkout (exit 2 elsewhere).
 | Workflow | When | What it does |
 |---|---|---|
 | `.github/workflows/collect.yml` | Nightly, 02:37 UTC plus four retries | Events and useful phones to the `data` branch ([docs/sources.md](sources.md#published-nightly-copy-of-the-events-and-phones-files-since-0180)) |
-| `.github/workflows/receita-version.yml` | Day 1 of each month, 09:23 UTC | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-unreleased)) |
+| `.github/workflows/receita-version.yml` | Day 1 of each month, 09:23 UTC | Receita calculator version check: `receita/version.json` on `data`, one issue when it changed ([docs/sources.md](sources.md#monthly-check-of-the-receita-federal-calculator-version-since-0211)) |
 
 Both also run by hand (Actions, "Run workflow", or `gh workflow run <file>`) and only on `Bossmann007/curitibai`
 `main`.
@@ -55,6 +55,9 @@ Manual run of the Receita check: `gh workflow run receita-version.yml --ref main
   title), `code=changed exit=0`, then the commit; one issue "Receita: calculadora mudou (...)".
 - Receita down or an unexpected answer: `code=receita_unavailable` or `invalid_response`, exit 1 (red run), no commit,
   no issue.
+- A corrupt `receita/version.json` on `data` (not JSON or the wrong shape): `code=previous_unreadable`, exit 1, no
+  request, no commit and no issue; every monthly run stays red until someone fixes or deletes that file by hand on
+  `data` (deleting it makes the next run a new baseline).
 
 To turn one off: Actions, select the workflow, "..." menu, "Disable workflow", or
 `gh workflow disable receita-version.yml` (`gh workflow enable` turns it back on). Removing its `schedule:` block in

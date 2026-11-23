@@ -11,3 +11,6 @@ a new record that supersedes the old one; the old one stays, marked "Superseded 
 | [0002](0002-nightly-collection-to-data-branch.md) | Nightly GitHub Actions collection to an orphan `data` branch | Accepted |
 | [0003](0003-shared-per-host-request-gate.md) | Shared per-host request gate (`src/hostGate.ts`) | Accepted |
 | [0004](0004-user-downloads-for-blocked-hosts.md) | No automated access to hosts that disallow robots or refuse non-browsers | Accepted |
+| [0005](0005-extend-a-tool-before-adding-one.md) | Extend an existing tool (a `type` or `topic` value) before adding a new one | Accepted |
+| [0006](0006-spec-holds-the-current-version.md) | `SPEC.md` describes the current version only; releases are checked | Accepted |
+| [0007](0007-data-branch-writers.md) | Two writers of the `data` branch: one concurrency group, one retry, never forced | Accepted |

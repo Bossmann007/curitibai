@@ -13,6 +13,8 @@ import { fail, ok, type ToolDef } from "./common.js";
  * 3 until 0.13.2; raised to 5 by owner decision (2026-11-21).
  */
 export const MIN_GROUP_COUNT = 5;
+/** What a filtered answer shows instead of a count below MIN_GROUP_COUNT (0 included), as the groups do. */
+export const BELOW_MIN = `<${MIN_GROUP_COUNT}` as const;
 export const MAX_DISTINCT = 50_000;
 export const MAX_VALUE_CHARS = 120;
 /** Bounds of the cache of long values already checked clean (about 10 MB at most). */
@@ -94,14 +96,15 @@ export const localCsvSummaryOutput = z.object({
     columns: z.array(z.string()),
     row_count: z.number().int(),
     malformed_rows: z.number().int(),
-    filter: z.object({ column: z.string(), value: z.string(), matched_rows: z.number().int() }).nullable(),
+    // With a filter that matches fewer than MIN_GROUP_COUNT rows, these counts are BELOW_MIN instead of a number.
+    filter: z.object({ column: z.string(), value: z.string(), matched_rows: z.union([z.number().int(), z.literal(BELOW_MIN)]) }).nullable(),
     group_by: z
       .object({
         column: z.string(),
-        distinct_values: z.number().int(),
+        distinct_values: z.union([z.number().int(), z.literal(BELOW_MIN)]),
         distinct_capped: z.boolean(),
         top: z.array(z.object({ value: z.string(), count: z.number().int() })),
-        other_count: z.number().int(),
+        other_count: z.union([z.number().int(), z.literal(BELOW_MIN)]),
       })
       .nullable(),
   }),
@@ -251,7 +254,8 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
     "Refuses to group or filter by columns whose names look personal (nome, name, CPF, CNPJ, RG, e-mail, telefone, " +
     "tel, celular, matrícula, endereço, logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, " +
     "pai, solicitante, requerente, cidadão, contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição; camelCase and digits are split, so numeroRG or CEP2 are refused). This check is by column " +
-    "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, and " +
+    "name only, refuses some harmless look-alikes and is not perfect. Groups of fewer than 5 rows are not listed, a " +
+    "filter that matches fewer than 5 rows returns \"<5\" instead of its counts, and " +
     "a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges that look like " +
     "phone numbers) is refused. " +
     "No network; reads only. Detects ; or , and UTF-8 or Latin-1.",
@@ -282,6 +286,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
       } finally {
         closeFile(target.fd); // never throws, so the scan's own error code is kept
       }
+      // A filter that matched fewer than MIN_GROUP_COUNT rows: every count derived from those rows (matched rows,
+      // other_count, distinct values) is BELOW_MIN, so the answer never tells 1 row from 4 (or from 0).
+      const few = filter !== undefined && s.matched < MIN_GROUP_COUNT;
+      const count = (n: number) => (few ? BELOW_MIN : n);
       let groupOut = null;
       if (group_by !== undefined) {
         const sorted = [...s.groups].filter(([, n]) => n >= MIN_GROUP_COUNT).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -297,10 +305,10 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
         const shownTotal = shown.reduce((t, g) => t + g.count, 0);
         groupOut = {
           column: s.groupColumn,
-          distinct_values: s.groups.size,
+          distinct_values: count(s.groups.size),
           distinct_capped: s.capped,
           top: shown,
-          other_count: s.matched - shownTotal,
+          other_count: count(s.matched - shownTotal),
         };
       }
       return ok({
@@ -311,7 +319,7 @@ export const localCsvSummary: ToolDef<typeof localCsvSummaryInput, typeof localC
           columns: s.columns,
           row_count: s.rows,
           malformed_rows: s.malformed,
-          filter: filter ? { column: cut(filter.column), value: cut(filter.value), matched_rows: s.matched } : null,
+          filter: filter ? { column: cut(filter.column), value: cut(filter.value), matched_rows: count(s.matched) } : null,
           group_by: groupOut,
         },
         source: "local_file" as const,

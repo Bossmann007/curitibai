@@ -57,4 +57,6 @@ export class TtlCache {
   }
 }
 
-export const sharedCache = new TtlCache();
+/** Portal, OSM and CNES answers: at most 500 entries (keys carry user queries, so the count is otherwise unbounded). */
+export const SHARED_CACHE_MAX_ENTRIES = 500;
+export const sharedCache = new TtlCache(CACHE_TTL_MS, Date.now, SHARED_CACHE_MAX_ENTRIES);
