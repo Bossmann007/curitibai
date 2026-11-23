@@ -18,7 +18,8 @@ behind it.
   this server; it is not asked again for 10 minutes (per host)"; no retry, no other headers, no browser
   fallback; the host is then not asked again for 10 minutes in that process, and a paged tool returns what it found
   with `next_page: null`). The block is per host, not per path: a 403 on one portal path pauses every tool that uses
-  that host. The events collector stops the run on any non-200 answer, 403 included. Another 429 is
+  that host. The events collector stops the run on any non-200 answer, 403 included, and a refusal (401, 403, 429 or a
+  changed robots.txt) ends the night: the later nightly schedule entries make no request; the next night tries again. Another 429 is
   returned as `rate_limited` with the source's wait. PNCP alone retries once: after a connection error, or after a
   429 whose `Retry-After` is 5 s or less; never after a 401, 403 or CAPTCHA.
 - Requests identify the project and its contact: User-Agent `curitibai-mcp/<version> (+https://github.com/Bossmann007/curitibai)`.

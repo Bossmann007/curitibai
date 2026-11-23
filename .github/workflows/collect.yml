@@ -9,7 +9,8 @@ on:
     # 8.5 h late), so later entries are retries. Gaps of 36 min or more, above the 35-minute job timeout; the last start
     # (05:13) plus the collector's 30-minute deadline ends before the window end it checks (05:50 UTC).
     # publish-data.sh sets CURITIBAI_COLLECT_ONCE_A_DAY=1: once both steps succeeded on the UTC date, later entries exit
-    # 0 with no request and no push. A run GitHub starts outside the window makes no request and changes no file; it
+    # 0 with no request and no push; after a refusal (HTTP 401, 403, 429 or a changed robots.txt) that UTC date, later
+    # entries make no request either (a refusal ends the night; the next night tries again). A run GitHub starts outside the window makes no request and changes no file; it
     # exits 0 while both steps succeeded in the last 24 h, else 1 (a missed night stays a failed run).
     - cron: "37 2 * * *"
     - cron: "17 3 * * *"

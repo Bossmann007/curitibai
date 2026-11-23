@@ -701,7 +701,9 @@ in the city's own categories. Built.
   has been seen, so it cannot be told from a page the parser no longer understands. `locked` exits 1 without writing
   `status.json`. Since v0.19.3 `window_closed` writes neither status file either, and exits 0 when both steps succeeded
   in the last 24 hours (else 1); `already_collected` (only with `CURITIBAI_COLLECT_ONCE_A_DAY=1`) exits 0 and writes
-  nothing. `status.json` records `attempt`, `success` (the last successful run) and
+  nothing. With the same switch, a refusal (`http_error` 401, 403 or 429, or `robots_changed`) recorded in either status file on the UTC date ends the night:
+  later runs stop with `refused_tonight`, make no request, write nothing and exit as `window_closed` does; the next
+  night tries again. `status.json` records `attempt`, `success` (the last successful run) and
   `code` (and `http_status` when one stopped the run). Output is limited to fixed status lines.
 - **Needs a live check** (decided from one sample of each page): the text of an empty list page is unknown, so a
   count of 0 always stops the run; date ranges and multi-date events in `lblDatas`, an event without `lblHorario`, and entities in the
@@ -763,7 +765,8 @@ in the city's own categories. Built.
   built-ins only.
 - **Same collector rules:** the job runs `scripts/publish-data.sh`, which runs `scripts/fetch-events.mjs` once with
   `CURITIBAI_COLLECT_ONCE_A_DAY=1` (a run on a UTC date when both steps already succeeded makes no request, writes
-  nothing and exits 0: `already_collected`) and otherwise the same rules (window 02:00–05:50 UTC, robots.txt group compared on every run, one request per 5 s, 15 s per request,
+  nothing and exits 0: `already_collected`; after a refusal, 401, 403, 429 or `robots_changed`, recorded that UTC
+  date it makes no request: `refused_tonight`, so a refusal ends the night and the next night tries again) and otherwise the same rules (window 02:00–05:50 UTC, robots.txt group compared on every run, one request per 5 s, 15 s per request,
   no redirect, no retry, User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)`). Before the
   run it copies the previous `events/events.json`, `events/status.json` and `phones/phones.json` from the `data`
   branch into a temporary `CURITIBAI_DATA_DIR`, so the 0.3x–3x ratio check and "a failed run keeps the previous
