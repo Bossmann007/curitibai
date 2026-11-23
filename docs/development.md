@@ -14,7 +14,9 @@ Tool names, `inputSchema` and `outputSchema` are a public contract: `test/contra
 server sends in `tools/list` with the committed snapshot `test/fixtures/tool-contracts.json` and fails naming each tool
 added, removed or changed. When the change is on purpose, rewrite the snapshot with `npm run contracts:update` and add
 a `CHANGELOG.md` entry in the same pull request. The same test prints the size of `tools/list` in characters
-(descriptions, inputSchemas, outputSchemas, total); the v0.24.1 baseline is in `SPEC.md`.
+(descriptions, inputSchemas, outputSchemas, total) and fails when a tool description is over 400 characters or
+the descriptions sum is over its ceiling (`MAX_DESCRIPTION` and `MAX_DESCRIPTIONS_SUM` in the test; numbers and
+reason in `SPEC.md`). Move long notes to `docs/tools.md` or the response instead of raising the ceiling.
 
 Tests run offline: every network call is stubbed, and an unstubbed call fails the test. Portal parser tests use
 trimmed real responses in `test/fixtures/`. CNES tests use **synthetic** fixtures (`test/fixtures/cnes_*_synthetic.json`:

@@ -6,6 +6,8 @@ limits of each source. The short list of tools is in the [README](../README.md#t
 - [Inputs, outputs and errors](#tool-reference)
 - [`guaira_events` cold and warm calls](#guaira_events-cold-and-warm-calls)
 - [`river_levels` data quality](#river_levels-data-quality)
+- [Which place tool](#which-place-tool)
+- [Notes moved out of the tool descriptions](#notes-moved-out-of-the-tool-descriptions)
 - [Compared with the Curitiba App](#compared-with-the-curitiba-app)
 - [Deferred](#deferred)
 - [Limits](#limits)
@@ -152,6 +154,52 @@ follows the level where present). `stale` (latest reading older than 2 h) is a s
 `weather_alerts` tool), not from this tool.
 
 Details for each source (format, terms, robots.txt) are in [docs/sources.md](sources.md).
+
+## Which place tool
+
+Three tools find places; each kind of place has one preferred tool (the "Prefer this when" line of each description):
+
+| Question | Tool | Why |
+|---|---|---|
+| Feiras, Ruas da Cidadania, libraries, parks, museums, Câmbio Verde, popular restaurants, cemeteries, any kind with a type in `list types`, or days, hours and a phone | `city_facilities_search` | Live from IPPUC, with hours and an institutional phone |
+| CMEIs, municipal and state schools, bus terminals, regional offices, or every kind of city point near a position | `city_points_search` | Local URBS file, all categories in one call, no hours |
+| Police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or nothing found by the other two | `places_search` | OpenStreetMap community data |
+
+## Notes moved out of the tool descriptions
+
+In 0.25.0 every tool description was cut to at most 400 characters (SPEC.md). These rules did not change; they are
+listed here because the description no longer says them, and the table above does not either.
+
+- `events_search`: `data_not_available` when the file is over 7 days old or missing; the local file
+  `CURITIBAI_DATA_DIR/events/events.json` comes first, else the copy the nightly collection publishes on GitHub
+  (fixed URL, cached 1 hour).
+- `useful_phones`: the same local-then-published order with `phones/phones.json`; the result has the source URL and
+  when the page was read.
+- `procurement_search`: objects of dispensa, inexigibilidade, credenciamento and inaplicabilidade are withheld
+  (`object` null, `object_withheld` set) because they may name a person; other objects are returned as published with
+  CPF/CNPJ-shaped numbers, e-mails and phones masked, and may rarely still contain a name. Continue with `next_page`,
+  `next_skip` and `next_page_source` (passed back as `page_source`).
+- `local_csv_summary`: a first line that looks like data (digits, CPF/CNPJ, e-mail, phone, date, CEP, long text) is
+  refused; a first line made only of text cannot be told apart from a header and is returned as column names. The
+  personal column names refused are nome, name, CPF, CNPJ, RG, e-mail, telefone, tel, celular, matrícula, endereço,
+  logradouro, rua, CEP, nascimento/nasc, servidor, beneficiário, paciente, mãe, pai, solicitante, requerente, cidadão,
+  contribuinte, titular, responsável, documento, identidade, contato, whatsapp, usuário, morador, placa, inscrição;
+  camelCase and digits are split, so `numeroRG` or `CEP2` are refused. The check is by column name only, refuses some
+  harmless look-alikes and is not perfect. A call with both `group_by` and a filter is refused
+  (`filter_with_group_by_not_allowed`). Groups of fewer than 5 rows are not listed (an `other_count` of 1 to 4 is
+  `"<5"`), a filter that matches fewer than 5 rows returns `"<5"` as `matched_rows`, a filter that leaves 1 to 4 rows
+  out is refused, and a grouped column whose values look like contact data (CPF/CNPJ, e-mail, phone, or year ranges
+  that look like phone numbers) is refused. Detects `;` or `,` and UTF-8 or Latin-1.
+- `city_points_search`: URBS's private-business categories (supermarkets, markets, shopping centres, private schools
+  and crèches, hotels, private clubs, newsstands), churches, hospitals, police and categories not on the allowlist are
+  never returned. `cultural_space`, `special_education` and `vocational_education` are open to the public but may
+  include private or non-profit institutions. With no arguments the categories are listed with counts, split per URBS
+  name in `source_categories`; a 0 there may mean URBS renamed that name, and such rows are dropped without a warning.
+- `places_search`: police and fire stations come from a list bundled once from OSM; police is as tagged in OSM and
+  includes Guarda Municipal, identification institutes and some non-police offices (said in every police result's
+  `note`). © OpenStreetMap contributors (ODbL 1.0), in `attribution` and `license_note`.
+- `tax_reform_curitiba`: Curitiba is IBGE 4106902 (PR); the rates come with the Receita app and base versions, and
+  cClassTrib results with their reduction percentages.
 
 ## Compared with the Curitiba App
 
