@@ -22,6 +22,7 @@
   - [Monthly check of the Receita Federal calculator version (since 0.21.1)](#monthly-check-of-the-receita-federal-calculator-version-since-0211)
   - [`vaccination_sites_search`: Prefeitura "Imuniza Já" vaccination sites page](#vaccination_sites_search-prefeitura-imuniza-já-vaccination-sites-page)
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
+  - [`place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)](#place_at_point-ippuc-geocuritiba-cadastral-map-since-0220)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
   - [`guaira_events`: Centro Cultural Teatro Guaíra calendar (live)](#guaira_events-centro-cultural-teatro-guaíra-calendar-live)
   - [`local_csv_summary`: a file the user downloaded](#local_csv_summary-a-file-the-user-downloaded)
@@ -80,7 +81,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes) |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, with the point rounded to 4 decimals, through the same host gate |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
@@ -1035,6 +1036,40 @@ changes (owner request, 2026-11-23: monthly and automatic).
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
   `centro_cultural_synthetic.json` (v0.20) is **synthetic**: one complete record, one with most fields missing and a
   non-municipal e-mail, and one with no name.
+
+### `place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)
+
+- **Source:** IPPUC, GeoCuritiba ArcGIS REST, anonymous GET, `f=json`:
+  <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer>
+  (`currentVersion` 11.5, native spatial reference EPSG 31982, `maxRecordCount` 2,000; checked 2026-11-23 with curl).
+  The same name at the services root (`/services/Publico_GeoCuritiba_MapaCadastral/MapServer`) answers error 499
+  "Token Required" with HTTP 200; the tool uses the `GeoCuritiba/` folder only (pinned in a test), since a 499 blocks
+  the host for every GeoCuritiba tool. No licence or terms found: live queries only, nothing copied to this repository
+  or the `data` branch, credit "Fonte: IPPUC/GeoCuritiba" in `source`.
+- **Layers used** (checked 2026-11-23): 2 Bairro (75 polygons; `nome`, `nm_regional`), 41 Áreas - Zoneamento (143
+  polygons, in the group "Áreas para Empreendimentos em Parceria com a COHAB-CT (Dec. 297 / 2026)"; `sg_zona`,
+  `nm_zona`, `legislacao`, `data_versao`), 36 Zoneamento Lei 15.511/2019 (223 polygons, same fields) and 12 Logradouro
+  (polylines; `gtm_nm_logradouro`). Layer 41 covers about 266 of the city's 435 km² (sum of `st_area`): at 9 sample
+  points it was empty at 3 where layer 36 gave ZS-2, ZI and UC, and where both answered the zone was the same and 41's
+  `legislacao` added "DECRETO Nª 297 / 2026" (e.g. "LEI Nº 15511 / 2019 - DECRETO Nª 297 / 2026"). So 41 is read first
+  and 36 only when 41 has no polygon at the point. Layer 3 Regional is not read: layer 2 carries `nm_regional`, and
+  layer 3's `sigla` was null at the three points tried. Layer 25 (the Zoneamento group) answers error 400 to a point
+  query. Example (Centro, -25.4296, -49.2713): CENTRO, REGIONAL MATRIZ, ZH-1 "ZONA HISTÓRICA 1", version 2020-08.
+- **Query:** one fixed URL per layer: `geometry=<lon>,<lat>` (the point rounded to 4 decimals, about 11 m),
+  `geometryType=esriGeometryPoint`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, a fixed `outFields` list,
+  `returnGeometry=false`; the street layer adds `distance=100&units=esriSRUnit_Meter`, `returnGeometry=true`,
+  `outSR=4326`, `geometryPrecision=6`, and the nearest line is measured in the server (straight line, local flat
+  projection). The rounded point is the only user input in the URL and the cache key.
+- **Requests and failures:** in order bairro, zoning 41, zoning 36 (only when 41 is empty), street; none after the
+  bairro when no neighbourhood contains the point. Same host gate, timeout (15 s), cap (2 MB), redirect rule and
+  refusal handling as `city_facilities_search`; each answer cached 6 hours (at most 500 entries). No request starts
+  later than about 20 s after the call began. The bairro layer failing is an error; a zoning or street failure after it
+  keeps what was read (`partial: true`).
+- **Fails closed** on an `error` object (codes 401, 403, 498 and 499 are a refusal), `exceededTransferLimit`, no
+  `features` array, 2,000 records or more, invalid JSON, a non-JSON content type, and, for the street layer only (the
+  others return no geometry and no spatial reference), a spatial reference other than 4326.
+- **Fields returned:** as published, through the same cleaning and masking as the other GeoCuritiba text fields. A
+  missing field is null; a feature with none of the fields read is skipped.
 
 ### `river_levels`: ANA telemetry (stations operated by IAT-PR)
 

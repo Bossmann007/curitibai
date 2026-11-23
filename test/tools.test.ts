@@ -17,7 +17,7 @@ describe("server info", () => {
 });
 
 describe("tools/list", () => {
-  it("lists exactly the twenty-two read-only tools with input and output schemas", async () => {
+  it("lists exactly the twenty-four read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -36,6 +36,7 @@ describe("tools/list", () => {
       "local_csv_summary",
       "next_buses_near",
       "open_datasets_search",
+      "place_at_point",
       "places_search",
       "procurement_search",
       "river_levels",

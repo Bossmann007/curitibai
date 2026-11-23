@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.22.0 - 2026-11-23
+
+- New tool `place_at_point` ("onde fica"): for a `{lat, lon}` inside Curitiba, the neighbourhood (bairro), the
+  regional, the zoning (code, name, law or decree, version date) and the nearest street within 100 m, read live from
+  IPPUC's GeoCuritiba cadastral map service (`GeoCuritiba/Publico_GeoCuritiba_MapaCadastral`, layers 2, 41, 36 and
+  12). Zoning comes from layer 41 (with the Decree 297/2026 areas), or from layer 36 (Lei 15.511/2019) where 41, which
+  covers about 61% of the city, has no polygon. Same host, gate, timeout, cap and refusal rules as
+  `city_facilities_search`; up to 4 requests 5 s apart (a cold call takes about 10–20 s); a zoning or street layer
+  failure after the bairro was read returns what was read with `partial: true`. Credit "Fonte: IPPUC/GeoCuritiba";
+  live queries only, no layer copied.
+- Privacy: this is the first tool that sends a position to a source. The point is rounded to 4 decimals (about 11 m)
+  first; only the rounded point is sent, cached (6 hours, at most 500 points) and returned, and nothing is logged
+  ([docs/privacy.md](docs/privacy.md#details)). A point outside the Curitiba box is refused with no request.
+- 0.21.3 entry below: "so no count in an answer is 1 to 4" corrected to "so no group or filter count is 1 to 4"
+  (`row_count` and `malformed_rows` are not masked).
+
 ## 0.21.3 - 2026-11-23
 
 - **Breaking (input):** `local_csv_summary` refuses a call with `filter_column`/`filter_value` and `group_by`
@@ -9,7 +25,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
   `group_by` alone works as before. Subtracting filtered and unfiltered groups could give a group of 1 to 4 rows
   ([ADR 0008](docs/adr/0008-local-csv-summary-small-counts.md), owner decision 2026-11-23).
 - **Breaking (output):** `local_csv_summary` `group_by.other_count` of 1 to 4 is `"<5"` without a filter too (0 stays
-  0), so no count in an answer is 1 to 4. This is not a protection: `row_count - malformed_rows - sum(top)` gives the
+  0), so no group or filter count is 1 to 4. This is not a protection: `row_count - malformed_rows - sum(top)` gives the
   number back. `group_by.distinct_values` is always a number (it was `"<5"` only with a small filter).
 - Known limits, kept (ADR 0008): two allowed filters on the same column can be subtracted from `row_count`; with
   `group_by` alone, when only one group is unlisted, `row_count - malformed_rows - sum(top)` is that value's size.

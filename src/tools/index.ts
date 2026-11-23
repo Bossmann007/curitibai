@@ -13,6 +13,7 @@ import { healthUnitsSearch } from "./healthUnitsSearch.js";
 import { localCsvSummary } from "./localCsvSummary.js";
 import { nextBusesNear } from "./nextBusesNear.js";
 import { openDatasetsSearch } from "./openDatasetsSearch.js";
+import { placeAtPoint } from "./placeAtPoint.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
 import { riverLevels } from "./riverLevels.js";
@@ -46,4 +47,5 @@ export const tools = [
   riverLevels,
   guairaEvents,
   taxReformCuritiba,
+  placeAtPoint,
 ] as const;
