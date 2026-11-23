@@ -1,64 +1,79 @@
-# SPEC: v0.24.1 quality block, part 1 (contract test, tools/list size, gate and cache tests)
+# SPEC: v0.25.0 quality block, part 2 (shorter tool descriptions, size ceiling)
 
-Approved: Enzo 2026-11-23 (roadmap "bloco de qualidade", task brief "curitibai v0.24.1 — bloco de qualidade, parte
-1"). Scope frozen: tests, guards, docs and the version only. No tool behaviour, name, title, description or schema
-changes; `git diff main -- src` is empty.
+Approved: Enzo 2026-11-23 (roadmap "bloco de qualidade", task brief "curitibai v0.25.0 — bloco de qualidade, parte
+2"). Scope frozen: tool and input-field description text, a size guard, docs and the version. No tool behaviour, name,
+title, type, required field, enum, output or `outputSchema` changes.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Tool names and schemas are a public contract (Hyrum's law): a client depends on every field it can see. Make a change
-to them fail a test with a clear message instead of passing unnoticed, measure the size of `tools/list` as a baseline
-for a ceiling in part 2, and cover the two shared pieces every live source relies on (`src/hostGate.ts`,
-`src/cache.ts`) with unit tests on a fake clock.
+Every `tools/list` costs the client's context window. At v0.24.1 the 25 descriptions take 15,561 characters and the
+longest is 1,657. Make each description say what the tool does, when to use it and its main input, in at most 400
+characters, keep only what the model needs before calling (privacy, safety, preconditions), and add a guard so the
+text cannot grow back unnoticed.
 
 ## Changes
 
-1. **Contract snapshot** (`test/contracts.test.ts`, `test/fixtures/tool-contracts.json`). The test connects a client
-   to the real server (`createServer()` over the in-memory transport, as the other tool tests do), calls
-   `tools/list`, and keeps, per tool sorted by name: `name`, `inputSchema` and `outputSchema` as sent on the wire.
-   It compares them with the committed snapshot tool by tool and fails naming each tool added, removed or changed
-   (and the changed part), with the instruction to update the snapshot on purpose (`npm run contracts:update`) and
-   add a `CHANGELOG.md` entry for the change. A missing snapshot fails too; the test writes the file only when
-   `CURITIBAI_UPDATE_CONTRACTS=1` is set, which is what `npm run contracts:update` does. Titles, descriptions and
-   annotations are not in the snapshot (wording may change in a patch release); they are counted in the size below.
-2. **`tools/list` size** (same test, printed, no ceiling yet). Characters of `JSON.stringify` of: every tool's
-   `description` summed, every `inputSchema` summed, every `outputSchema` summed, and the whole `tools/list` result
-   (`total`, which also holds names, titles and annotations, so it is more than the sum of the three). Baseline below.
-3. **`src/hostGate.ts` unit tests** (`test/hostGate.test.ts`), own `createHostGate` instances on a fake clock (not the
-   source gates that `test/setup.ts` adjusts): request starts at least `minIntervalMs` apart, in call order; a turn
-   more than `maxQueueWaitMs` away is refused with `rate_limited` and the wait, reserves no slot and is not remembered
-   as a failure (a turn exactly `maxQueueWaitMs` away is accepted); a failure is remembered 60 s, a 429's Retry-After
-   when longer, at most 1 hour, and a remembered 429 returns the remaining seconds; a request that was waiting when an
-   earlier one failed is refused without running (`failedMeanwhile`).
-4. **`src/cache.ts` unit tests** (`test/cache.test.ts`), small `TtlCache` instances with an injected clock: concurrent
-   calls for one key share one load; a failed load is not stored (both waiting callers get the error, the next call
-   loads again); an entry expires exactly at its TTL; with `maxEntries` the oldest stored entry is dropped first.
-5. **`partial` removal date.** `guaira_events`' `partial` (deprecated alias of `truncated` since 0.18.3) is removed
-   no earlier than 2027-03-01, in the first minor release on or after that date, with its own CHANGELOG entry. Written
-   in `CHANGELOG.md` and `docs/tools.md`; the tool's description and schema are unchanged in this version.
-6. Docs: `docs/development.md` (the snapshot and its update command), CHANGELOG 0.24.1, version 0.24.1 in
+1. **Descriptions** (`src/tools/*.ts`): every tool description is at most 400 characters (`description.length`, raw
+   string). Kept in the description: what is sent where before the call (the rounded point sent to IPPUC, the search
+   word sent to PNCP, "your position is never sent"), that `local_csv_summary` never returns data rows and refuses
+   personal-looking columns, "not for emergencies" with the number, "not real-time", "not tax advice", the
+   untrusted-text warning (short form), the local file a tool needs, and the cold-call latency of the slow live tools.
+   Moved out: licence and source credits (already in `license_note` / `source` of every response), paging and timing
+   details, and edge-case rules. Each moved clause is either already in `docs/tools.md` or added there under
+   "Notes moved out of the tool descriptions". Response text (`note`, `license_note`) is not changed.
+2. **Place tools** (`places_search`, `city_points_search`, `city_facilities_search`): one "Prefer this when…" sentence
+   in each, so each overlapping kind of place has one tool:
+   - `city_facilities_search`: any kind it has a type for (feiras, Ruas da Cidadania, libraries, parks, museums,
+     Câmbio Verde, popular restaurants, cemeteries...), or when days, hours or a phone are needed. Live (IPPUC).
+   - `city_points_search`: CMEIs, schools, bus terminals, regional offices, or every kind of city point near a
+     position at once. Local URBS file, no hours.
+   - `places_search`: police, fire stations, community centres, town halls and marketplaces as mapped in OSM, or when
+     the other two find nothing.
+   Names are a contract: no tool is merged or renamed.
+3. **Input-field descriptions**: only redundant text is cut (a clause repeated in the field and in the tool
+   description, or OSM tag names repeated per category). No type, name, required flag, enum or default changes.
+   The contract snapshot is rewritten on purpose with `npm run contracts:update`; CHANGELOG says only text changed.
+   Proof: the old and new `test/fixtures/tool-contracts.json` are deep-equal once every `description` key is removed.
+4. **Size guard** (`test/contracts.test.ts`): fails when any description is over 400 characters (naming the tool and
+   its length) or when the descriptions sum (same measure as the baseline: `JSON.stringify(description).length`
+   summed) is over the ceiling below. The test also prints the 5 numbers of the baseline.
+5. **outputSchemas in the client's context**: assessed, not changed (see below).
+6. `test/osm.test.ts`: the `places_search` description no longer carries the police note (it stays in every police
+   result's `note`); the assertion on the description is removed on purpose.
+7. Docs: `docs/tools.md` (moved notes), `docs/development.md` (the guard), CHANGELOG 0.25.0, version 0.25.0 in
    `package.json` and `package-lock.json`.
 
-## Baseline: `tools/list` size at v0.24.1 (25 tools, characters)
+## Size (`tools/list`, 25 tools, characters)
 
-| Part | Characters |
-|---|---|
-| descriptions | 15,561 |
-| inputSchemas | 19,636 |
-| outputSchemas | 63,226 |
-| total (`tools/list` result) | 107,011 |
+| Part | v0.24.1 | v0.25.0 |
+|---|---|---|
+| descriptions | 15,561 | 8,725 (−44%) |
+| inputSchemas | 19,636 | 19,532 |
+| outputSchemas | 63,226 | 63,226 (unchanged) |
+| total (`tools/list` result) | 107,011 | 100,071 |
+
+Ceiling on the descriptions sum: 9,600 (8,725 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
+that the per-tool limit alone would allow, so a new tool or a longer description needs a deliberate change to it.
+Longest description: 400 characters or fewer for all 25 (v0.24.1: 1,657).
+
+## outputSchemas in the client's context
+
+Não verificado. No client was checked against this server in this version for whether it puts `outputSchema` in the
+model's context (Claude Code's own MCP tool definitions shown to the model in the working session carried only name,
+description and input parameters, but none of the servers loaded there was confirmed to declare an `outputSchema`, so
+that does not settle it). outputSchemas are not cut in this version.
 
 ## Out of scope
 
-A ceiling on the size (part 2), shortening any description or schema, removing `partial`, changing the gate or the
-cache, snapshotting descriptions, creating the `v0.24.1` tag.
+Changing outputSchemas, response text, tool behaviour, names or titles; merging the place tools; a ceiling on
+inputSchemas or the total; creating the `v0.25.0` tag.
 
 ## Check
 
-- `scripts/verify` exits 0 (the new tests run in its vitest step).
-- The contract test fails with the expected message when the snapshot is changed by hand (one property removed from
-  one tool's `inputSchema`), and passes again when restored. Output in the PR body.
-- `git diff main...HEAD -- src` is empty.
+- `scripts/verify` exits 0 (the guard runs in its vitest step).
+- The guard fails with the expected message when one description is made 401 characters long, and passes again when
+  restored. Output in the PR body.
+- Old and new contract snapshots are deep-equal without `description` keys; `outputSchemas` is still 63,226.
