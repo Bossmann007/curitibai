@@ -20,7 +20,8 @@ step. CuritibAI stays read-only: guidance and official links only; the citizen a
    line (what happens and what the citizen types on the official site), `citizen_types_on_site`, `url`, `url_host` and
    `link_source`. `data.carta` gives the status of the user's local Carta copy, and `data.delegation` mentions the
    Autorização Digital as information. Annotations: `readOnlyHint: true`, `destructiveHint: false`,
-   `idempotentHint: true`, `openWorldHint: false` (no network call). Description within the size guard (each ≤ 400
+   `idempotentHint: true`, `openWorldHint: true` (the server makes no network call, but `open_step` can lead the
+   client to open an external site). Description within the size guard (each ≤ 400
    characters, sum ≤ 9,600; now 9,588).
 2. **Host allowlist** `isAllowedUrl`: https only, no credentials, no port, no punycode label. Hosts: subdomains of
    `curitiba.pr.gov.br` except `obituarios.curitiba.pr.gov.br`, plus `www.detran.pr.gov.br`,
@@ -30,7 +31,7 @@ step. CuritibAI stays read-only: guidance and official links only; the citizen a
    must match exactly one service to give a Carta link. Several matches are returned as candidates with no link.
    Without the file, the guide keeps its fixed links and `carta.message` says how to save the copy.
 4. **`open_step`**: `ToolContext.elicitUrl` (built per call in `src/server.ts`) sends a URL-mode elicitation only when
-   the client declared `elicitation.url` (SDK 1.32.2, protocol 2025-11-25), with a 5-minute timeout. The message is
+   the client declared `elicitation.url` (SDK 1.32.2, protocol 2025-11-25), with a 55 s timeout (under the 60 s default tools/call timeout of SDK clients). The message is
    fixed server text. Results: `accepted` (link returned), `declined` / `cancelled` / `no_answer` (no link, told to
    stop), `not_supported` (link returned, told to ask in the conversation first).
 5. **Docs and version**: README (28 tools, row), docs/tools.md (reference row, consent and links section, Curitiba

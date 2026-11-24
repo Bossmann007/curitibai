@@ -439,7 +439,9 @@ export async function cityServiceGuideResult(
       ? "The user approved opening this link in their client. Wait for them before the next step. "
       : result === "not_supported"
         ? "This client cannot show a consent prompt: ask the user in the conversation before giving or opening the link. "
-        : "The user did not approve (or did not answer): stop here and do not give or open the link. ";
+        : result === "no_answer"
+          ? "No answer from the user in time: do not give or open the link; ask the user whether to try this step again. "
+          : "The user did not approve: stop here and do not give or open the link. ";
   return {
     ok: true as const,
     payload: {
@@ -461,7 +463,6 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
     "before each needs_consent step; never type their passwords or payment data.",
   inputSchema: cityServiceGuideInput,
   outputSchema: cityServiceGuideOutput,
-  annotations: { openWorldHint: false },
   handler: async (args, ctx) => {
     const res = await cityServiceGuideResult(args.service, args.open_step, await readCatalog(), ctx);
     return res.ok ? ok(res.payload) : fail("invalid_argument", res.message);

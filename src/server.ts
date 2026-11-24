@@ -9,8 +9,11 @@ import { READ_ONLY, type ElicitUrlAnswer, type ToolContext } from "./tools/commo
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 
-/** How long a consent prompt may wait for the user before the call answers "no_answer". */
-export const ELICITATION_TIMEOUT_MS = 5 * 60_000;
+/**
+ * How long a consent prompt may wait for the user before the call answers "no_answer". Under the 60 s default
+ * tools/call timeout of SDK-based clients, so the client still gets the answer; the user can be asked again.
+ */
+export const ELICITATION_TIMEOUT_MS = 55_000;
 
 /** Per-call context: URL-mode elicitation only when the client declared `elicitation.url`. */
 function toolContext(server: McpServer, extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ToolContext {

@@ -154,7 +154,7 @@ describe("guide invariants (every guide, with and without the Carta copy)", () =
     expect(Object.keys(props).sort()).toEqual(["open_step", "service"]);
     expect(props.service!.enum).toEqual([...GUIDE_IDS]);
     expect(props.open_step!.type).toBe("integer");
-    expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, openWorldHint: false });
+    expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, openWorldHint: true });
   });
 
   it("every fixed link in the guide table is on the allowlist", () => {
@@ -290,6 +290,14 @@ describe("open_step (URL-mode elicitation)", () => {
     expect(o.data.open_step).toEqual({ step: 2, result, url: null, url_host: null });
     expect(JSON.stringify(o)).not.toContain("saudeja.curitiba.pr.gov.br");
     expect(o.note).toMatch(/stop here/);
+  });
+
+  it("no answer (timeout or a failed request): no link, offer to ask again", async () => {
+    const res = await cityServiceGuideResult("saude_ja", 2, null, { elicitUrl: async () => "error" });
+    if (!res.ok) throw new Error(res.message);
+    const o = cityServiceGuideOutput.parse(res.payload);
+    expect(o.data.open_step).toEqual({ step: 2, result: "no_answer", url: null, url_host: null });
+    expect(o.note).toMatch(/ask the user whether to try this step again/);
   });
 
   it("client without URL elicitation: falls back to the link and tells the assistant to ask first", async () => {

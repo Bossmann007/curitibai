@@ -24,7 +24,8 @@ client declared `elicitation.url`, and the SDK has no `InputRequiredResult`.
   different (host allowlist, consent invariants) and so are its inputs (a guide id, a step number). ADR 0005 allows
   a new tool in that case. 27 → 28 tools.
 - **Read-only by construction.** The input is an enum and an integer only, so no free text can carry personal data.
-  The server never logs in, submits, opens or fetches anything and makes no network call. The guides are bundled in
+  The server never logs in, submits, opens or fetches anything and makes no network call. `openWorldHint` stays true
+  (unlike `city_services_search`), because `open_step` can lead the client to open an external site. The guides are bundled in
   the code; the only file read is the user's local Carta copy.
 - **Consent at every step.** Every step that leaves the conversation has `needs_consent: true` and a one-line
   plain-Portuguese `consent` text. The text says what will happen and what the citizen will type on the official
