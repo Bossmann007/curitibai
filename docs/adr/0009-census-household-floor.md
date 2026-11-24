@@ -1,7 +1,8 @@
 # 0009. `census_at_point`: a floor of 20 occupied households per figure
 
-Status: Proposed (v0.27.0 brief, 2026-11-24: "aggregate numbers for the sector/neighbourhood of a point only; check
-that no field can identify a household"); the floor value is an open owner question in the v0.27.0 PR.
+Status: Accepted (v0.27.0 brief, 2026-11-24: "aggregate numbers for the sector/neighbourhood of a point only; check
+that no field can identify a household"). Decided by the owner (Enzo) on 2026-11-24: floor = 20 households; 29 of
+3,190 sectors withheld at v0.27.0.
 
 ## Context
 
@@ -39,5 +40,5 @@ Where it is written: `src/tools/censusAtPoint.ts`, `src/sources/geocuritiba.ts` 
 - The code review of the first draft (2026-11-24) found that totals over every sector let a caller subtract the other
   sectors and get a withheld sector's residents and households, hence its household size; the `where` filter closes
   that.
-- 20 is a judgement, between ADR 0008's floor of 5 rows and IBGE's own suppression below 5 households; the owner can
-  change it in one constant.
+- 20 is a judgement, between ADR 0008's floor of 5 rows and IBGE's own suppression below 5 households, confirmed by
+  the owner on 2026-11-24; changing it later is one constant and a new decision here.
