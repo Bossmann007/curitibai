@@ -31,13 +31,16 @@ a tarball that holds only what users need and a publish path that needs no store
    devDependencies (already installed through the MCP SDK).
 4. **`scripts/check-pack.mjs`** (verify step after the build): `npm pack --dry-run --json` paths must match an
    allowlist (`package.json`, `README.md`, `LICENSE`, `CHANGELOG.md`, `docs/licences.md`, `dist/**.js`), none may
-   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and the packed size must be at most 250,000 bytes
+   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and no `dist/` file may lack a `src/` module (a leftover of an earlier build), and the packed size must be at most 250,000 bytes
    (0.26.0: about 179,000; about 40% headroom). Unit tests in `test/checkPack.test.ts`.
-5. **`.github/workflows/publish.yml`**: `workflow_dispatch` only, `main` and this repository only, `id-token: write`
-   and `contents: read`, actions pinned by SHA, `mcp-publisher` v1.8.1 checked with cosign as the registry docs show.
-   Order: preflight (Node ≥ 22.14, npm ≥ 11.5.1, OIDC token, `server.json` version, package exists on npm), then
-   `scripts/verify`, `mcp-publisher validate`, `mcp-publisher login github-oidc`, `npm publish` (skipped when the
-   version is already on npm), `mcp-publisher publish`. A refused `npm publish` prints which npmjs.com fields to check.
+5. **`.github/workflows/publish.yml`**: `workflow_dispatch` only, this repository only, on `main` or a `v*` tag, and
+   only when the commit is the one tagged `v<version>`; actions pinned by SHA, `mcp-publisher` v1.8.1 checked with
+   cosign as the registry docs show. Job `verify` (`contents: read` only): tag, `server.json` version, package exists
+   on npm (a 404 says "publish the first version by hand"; other errors are shown as they are), `scripts/verify`,
+   `dist/` uploaded. Job `publish` (`id-token: write`, no `npm ci`, no tests): Node ≥ 22.14, npm ≥ 11.5.1, OIDC
+   token, `check-pack`, `mcp-publisher validate`, `login github-oidc`, `npm publish --ignore-scripts` (skipped when
+   the version is already on npm), wait until npm serves the version's `mcpName`, `mcp-publisher publish`. A refused
+   `npm publish` prints which npmjs.com fields to check.
 6. **Docs**: README "Install from npm (after the first release)"; `docs/development.md` "Release" (first release by
    hand, then trusted publishing); CHANGELOG 0.26.0; the `docs/tools.md` login rows (156, Scheduling, Cartão
    Transporte) say "needs a registration or login (owner's note; not confirmed in the linked sources); out of scope".

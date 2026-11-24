@@ -30,7 +30,7 @@ step "build"
 npm run --silent build
 
 step "package contents: npm pack --dry-run --json holds only dist/*.js, README.md, LICENSE, CHANGELOG.md, docs/licences.md and package.json; no data-local/, tests, fixtures, src/, .env* or *.local; packed size printed, under 250,000 bytes"
-node scripts/check-pack.mjs | tail -n 2
+node scripts/check-pack.mjs
 
 step "stdio smoke test (tools/list of the 25 tools; useful_phones, city_services_search, bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic fixtures; events_search with no copy and CURITIBAI_REMOTE_DATA=0; city_facilities_search list types)"
 node scripts/smoke.mjs

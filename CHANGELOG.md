@@ -17,10 +17,11 @@ description, schema or output changed.
   `test/serverJson.test.ts` validates it against the vendored schema (`test/fixtures/mcp-registry/`) and checks that
   its name, version and package match `package.json`.
 - `scripts/verify` runs `scripts/check-pack.mjs` after the build: `npm pack --dry-run --json` must list only allowed
-  paths (no `data-local/`, tests, fixtures, `src/`, `.env*` or `*.local`), and the packed size, printed, must stay
+  paths (no `data-local/`, tests, fixtures, `src/`, `.env*` or `*.local`, no `dist/` file without a `src/` module), and the packed size, printed, must stay
   under 250,000 bytes (0.26.0: about 179,000).
-- `.github/workflows/publish.yml`: started by hand only (`workflow_dispatch`, `main` only). npm trusted publishing
-  (OIDC) and the MCP Registry with GitHub OIDC; no secret. Release steps in
+- `.github/workflows/publish.yml`: started by hand only (`workflow_dispatch`), on the commit tagged
+  `v<version>`. npm trusted publishing (OIDC) and the MCP Registry with GitHub OIDC; no secret. The OIDC token is only
+  in the publish job, which runs no `npm ci` and no tests (it gets `dist/` from the verify job). Release steps in
   [docs/development.md](docs/development.md#release); README has an [Install from npm](README.md#install-from-npm-after-the-first-release)
   section for after the first release.
 - [Compared with the Curitiba App](docs/tools.md#compared-with-the-curitiba-app): the 156, Scheduling and Cartão

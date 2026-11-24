@@ -76,7 +76,7 @@ describe("GitHub Actions workflows", () => {
     expect(code(verify).filter((l) => l.includes("pull_request.body"))).toEqual(["          PR_BODY: ${{ github.event.pull_request.body }}"]);
   });
 
-  it("publish: started by hand on main only, OIDC instead of secrets, checks before the irreversible steps", () => {
+  it("publish: started by hand on main or a release tag, OIDC only in the job without npm ci, checks before the irreversible steps", () => {
     const wf = readFileSync(new URL("publish.yml", DIR), "utf8");
     const lines = code(wf).map((l) => l.trimEnd());
     const body = lines.join("\n");
@@ -86,16 +86,23 @@ describe("GitHub Actions workflows", () => {
     expect(wf).toMatch(/^permissions: \{\}\n/m);
     expect(wf).toMatch(/^ {4}permissions:\n {6}contents: read\n {6}id-token: write/m);
     expect(lines.filter((l) => /: write$/.test(l))).toEqual(["      id-token: write"]);
-    expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
-    expect(wf).toContain("persist-credentials: false");
+    expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))");
+    expect(wf).toContain("[[ \"$tag_sha\" == \"$head_sha\" ]]");
+    expect(wf.match(/persist-credentials: false/g)).toHaveLength(2);
     expect(body).not.toMatch(/secrets\.|NPM_TOKEN|NODE_AUTH_TOKEN|releases\/latest/);
+    // The job with id-token runs no npm ci, install or tests: it gets dist/ from the verify job.
+    const publishJob = body.slice(body.indexOf("\n  publish:\n"));
+    const verifyJob = body.slice(0, body.indexOf("\n  publish:\n"));
+    expect(verifyJob).not.toContain("id-token");
+    expect(publishJob).toContain("needs: verify");
+    expect(publishJob).not.toMatch(/npm (ci|install|test)|scripts\/verify|vitest/);
     expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
     // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
     const at = (re: RegExp) => lines.findIndex((l) => re.test(l));
-    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish 2>&1/, /mcp-publisher publish$/].map(at);
+    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish --ignore-scripts 2>&1/, /mcp-publisher publish$/].map(at);
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish 2>&1 | tee npm-publish.log; then"]);
+    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then"]);
   });
 
   it("collect and receita-version share one concurrency group (both push to the data branch)", () => {

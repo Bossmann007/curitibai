@@ -45,13 +45,16 @@ must run at the top of a checkout (exit 2 elsewhere).
 
 ## Release
 
-Only the owner publishes, by hand: `.github/workflows/publish.yml` runs only from "Run workflow" on `main` (never on a
-tag or a push). It checks the Node and npm versions, the OIDC token and that the package exists on npm, runs
-`scripts/verify`, validates `server.json` with the MCP Registry, then runs `npm publish` (trusted publishing, so no
-npm token and automatic [provenance](https://docs.npmjs.com/trusted-publishers)) and `mcp-publisher publish` (GitHub
-OIDC, namespace `io.github.Bossmann007`). It skips `npm publish` when that version is already on npm, so a run whose
-MCP Registry step failed can be run again. `scripts/verify` checks the tarball (`scripts/check-pack.mjs`) and that
-`server.json` is valid and has the same version as `package.json` (`test/serverJson.test.ts`).
+Only the owner publishes, by hand: `.github/workflows/publish.yml` runs only from "Run workflow" (never on a tag push
+or a push), on `main` or on a `v*` tag, and only when that commit is the one tagged `v<package.json version>`. Its
+`verify` job (no OIDC token) checks the tag, `server.json`'s version and that the package exists on npm, runs
+`scripts/verify` and hands `dist/` on. Its `publish` job (OIDC token, no `npm ci`, no tests) checks Node, npm and the
+package contents, validates `server.json` with the MCP Registry, runs `npm publish` (trusted publishing, so no npm
+token and automatic [provenance](https://docs.npmjs.com/trusted-publishers)), waits until npm serves the version, then
+runs `mcp-publisher publish` (GitHub OIDC, namespace `io.github.Bossmann007`). It skips `npm publish` when that
+version is already on npm, so a run whose MCP Registry step failed can be run again. `scripts/verify` checks the
+tarball (`scripts/check-pack.mjs`) and that `server.json` is valid and has the same version as `package.json`
+(`test/serverJson.test.ts`).
 
 First release (0.26.0), once:
 
@@ -61,13 +64,13 @@ First release (0.26.0), once:
 4. Publish the first version by hand: `npm publish --access public` (npm's docs say a trusted publisher can only be configured for a package that exists: [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust)).
 5. On npmjs.com, package `curitibai-mcp`, Settings, Trusted publishing: GitHub Actions, owner `Bossmann007`, repository `curitibai`, workflow `publish.yml`, no environment.
 6. In the same form, under "Allowed actions", also allow `npm publish` (new configurations allow only `npm stage publish`).
-7. Actions, `publish`, "Run workflow" on `main`: it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry.
+7. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on): it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry.
 8. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
 
 Every later release:
 
 1. Merge the release PR, tag its merge commit `vX.Y.Z` on `main` and push the tag.
-2. Actions, `publish`, "Run workflow" on `main`; it fails with ENEEDAUTH and names the npmjs.com fields if the trusted publisher is wrong.
+2. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on); if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
 
 ## Scheduled workflows
 

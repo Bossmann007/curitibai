@@ -26,6 +26,12 @@ describe("scripts/check-pack.mjs", () => {
     expect(checkPack(pack([...base, "scripts/verify"]))).toEqual([expect.stringContaining("not on the allowlist")]);
   });
 
+  it("refuses a dist/ file that no src/ module builds", () => {
+    const built = ["dist/server.js", "dist/tools/busLines.js"];
+    expect(checkPack(pack(base), built)).toEqual([]);
+    expect(checkPack(pack([...base, "dist/tools/oldName.js"]), built)).toEqual([expect.stringContaining("no src/ module")]);
+  });
+
   it("fails when a required file is missing or the package is too big", () => {
     expect(checkPack(pack(base.filter((p) => p !== "docs/licences.md")))).toEqual(["missing from the package: docs/licences.md"]);
     expect(checkPack(pack(base, MAX_PACKED_BYTES + 1))).toEqual([expect.stringContaining("is over")]);
