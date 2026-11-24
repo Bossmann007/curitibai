@@ -2,6 +2,26 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.30.0 - 2026-11-24
+
+Follow-ups from the v0.29 reviews (owner approval 2026-11-24). 28 tools. Publishes nothing.
+
+- `bus_stops_near` can stay local: with `CURITIBAI_REMOTE_DATA=0` (or `off`), the switch that already turned off the
+  published copy of events and phones, the tool no longer reads the GeoCuritiba stop layer when there is no
+  `pontosLinha` file; it answers `data_not_available` (with how to use the export), as before 0.29.0, and makes no
+  request. Unset, the 0.29.0 fallback is unchanged. docs/privacy.md, docs/local-data.md, docs/tools.md,
+  docs/sources.md and the README say so; the README no longer says that every bus tool needs `CURITIBAI_DATA_DIR`.
+- `bus_stops_near`: a failure text that is not JSON with a string `error` is passed on as is instead of throwing
+  while the "how to use the export" hint is added.
+- `city_service_guide`: when the one Carta title that matches has a link outside the official-host allowlist, the
+  message says it matched but its link is not on the allowlist (status `no_match`, no link) instead of "No service
+  matched"; when two or more match and every link is refused, the status is `ambiguous` (it was `no_match`) and the
+  message says no link is on the allowlist; when only some are refused, it says how many were left out of `matches`.
+- Tests: the `local_csv_summary` sweep of every filter and group (about 60 calls) has its own 20 s timeout; it took
+  5.09 s on a GitHub runner once and failed CI. The global timeout is unchanged.
+- A CEP lookup through OpenCEP was considered and not built: opencep.com publishes no terms of use and no licence for
+  its data (the MIT licence of its repository covers the software), which describes itself as Correios and IBGE data.
+
 ## 0.29.0 - 2026-11-24
 
 `bus_stops_near` answers without the URBS download (the proposal in PR #38, "URBS layers on GeoCuritiba"; owner

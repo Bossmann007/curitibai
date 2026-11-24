@@ -110,12 +110,14 @@ The server will also be listed in the [MCP Registry](https://registry.modelconte
 To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search`, `useful_phones` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
 (Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
 `local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns
-`{"error":"data_not_available"}` (the bus tools and `city_points_search` too), and the other tools work as usual.
+`{"error":"data_not_available"}` (the bus tools and `city_points_search` too, except `bus_stops_near`, which then
+lists the nearby stops without their lines from IPPUC's GeoCuritiba layer), and the other tools work as usual.
 `events_search` and `useful_phones` work without it: they then read the copy the nightly collection publishes
 ([Events and useful phones](#events-and-useful-phones)). [Local data files](docs/local-data.md) says what to put in that folder.
 
-**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: the tools then read
-only the local file, as before 0.18.0, and make no network call.
+**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: `events_search` and
+`useful_phones` then read only the local file, as before 0.18.0, and `bus_stops_near` only the URBS export, as before
+0.29.0 (`data_not_available` without it); these three then make no network call. The live tools still ask their sources.
 
 <a id="tools"></a>
 

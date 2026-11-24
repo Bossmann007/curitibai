@@ -1,6 +1,8 @@
 import { z } from "zod";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dateInCuritiba } from "../sources/detran.js";
 import { getUrbsStops, URBS_STOPS_LAYER_URL, type UrbsStopsLayer } from "../sources/geocuritiba.js";
+import { remoteDataEnabled, REMOTE_DATA_ENV } from "../sources/publishedData.js";
 import { loadUrbs, parseCoordinate, URBS_SOURCE_URL, type Linha, type Ponto, type UrbsFile } from "../sources/urbs.js";
 import {
   busEnvelope,
@@ -236,8 +238,29 @@ export function busStopsNearLayerResult(layer: UrbsStopsLayer, args: BusStopsNea
   };
 }
 
+/** The error code and message of a `fail()` result; null when its text is not that JSON (the result is then kept as is). */
+export function failurePayload(failed: CallToolResult): { error: ErrorCode; message?: string } | null {
+  const first = failed.content[0];
+  if (first?.type !== "text") return null;
+  try {
+    const v: unknown = JSON.parse(first.text);
+    if (typeof v !== "object" || v === null || typeof (v as { error?: unknown }).error !== "string") return null;
+    const { error, message } = v as { error: ErrorCode; message?: unknown };
+    return typeof message === "string" ? { error, message } : { error };
+  } catch {
+    return null;
+  }
+}
+
 /** Without a local stops file: the GeoCuritiba layer (no line filter: it has no lines per stop). */
 async function fromLayer(args: BusStopsNearArgs) {
+  if (!remoteDataEnabled()) {
+    return fail(
+      "data_not_available",
+      `${REMOTE_DATA_ENV} is 0 or off, so this tool stays local: the GeoCuritiba stop layer is not read. ` +
+        NOT_AVAILABLE("pontosLinha"),
+    );
+  }
   if (args.line_code !== undefined) {
     return fail(
       "data_not_available",
@@ -248,8 +271,7 @@ async function fromLayer(args: BusStopsNearArgs) {
     return ok(busStopsNearLayerResult((await getUrbsStops(callStartBy())).value, args));
   } catch (err) {
     const failed = failFrom(err);
-    const first = failed.content[0];
-    const payload = first?.type === "text" ? (JSON.parse(first.text) as { error: ErrorCode; message?: string }) : null;
+    const payload = failurePayload(failed);
     return payload === null ? failed : fail(payload.error, [payload.message, LAYER_FAILED_HINT].filter(Boolean).join(" "));
   }
 }

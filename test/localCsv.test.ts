@@ -328,7 +328,8 @@ describe("local_csv_summary", () => {
     expect(counts.length).toBeGreaterThan(30);
     expect(counts.filter((c) => typeof c === "number" && c >= 1 && c < MIN_GROUP_COUNT)).toEqual([]);
     expect(counts).toContain(BELOW_MIN);
-  });
+    // About 60 calls, each reading the file: 5 s on a busy CI runner once (v0.29), so this test gets its own budget.
+  }, 20_000);
 
   it("refuses a filter that leaves 1 to 4 rows out (row_count - matched_rows would give their count)", async () => {
     writeFileSync(join(dataDir, "complement.csv"), `tipo;bairro\n${"A;X\n".repeat(3)}${"B;X\n".repeat(7)}`);

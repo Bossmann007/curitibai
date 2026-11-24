@@ -13,7 +13,8 @@ import {
   urbsStopsPageUrl,
 } from "../src/sources/geocuritiba.js";
 import { MASK } from "../src/sources/pncp.js";
-import { busStopsNearOutput } from "../src/tools/busStopsNear.js";
+import { REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
+import { busStopsNearOutput, failurePayload } from "../src/tools/busStopsNear.js";
 import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
 
 // Invented stops written into a temporary CURITIBAI_DATA_DIR/urbs/ at run time, in the real pontosLinha shape; the lines
@@ -82,6 +83,7 @@ beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-near-")));
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-21T12:00:00Z"));
+  vi.stubEnv(REMOTE_DATA_ENV, ""); // remote reading on, whatever the developer's shell has; one test turns it off
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -311,6 +313,34 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     const res = await layerCall({ near: CENTRE, line_code: "901" });
     expect(errorOf(res)).toMatchObject({ error: "data_not_available" });
     expect(calls).toHaveLength(0);
+  });
+
+  it(`${REMOTE_DATA_ENV}=0 keeps it local: data_not_available with no request; unset, the layer answers`, async () => {
+    const calls = stubFetch(layerRoutes());
+    for (const value of ["0", "off", " OFF "]) {
+      vi.stubEnv(REMOTE_DATA_ENV, value);
+      const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
+      expect(err).toMatchObject({ error: "data_not_available" });
+      expect(err.message).toContain(`${REMOTE_DATA_ENV} is 0 or off, so this tool stays local`);
+      vi.useRealTimers();
+    }
+    expect(calls).toHaveLength(0);
+    vi.stubEnv(REMOTE_DATA_ENV, "");
+    const res = await layerCall({ near: CENTRE });
+    expect(busStopsNearOutput.parse(res.structuredContent).data.source).toBe("geocuritiba_layer");
+    expect(calls).toHaveLength(2);
+  });
+
+  it("failurePayload keeps a failure whose text is not JSON instead of throwing", () => {
+    expect(failurePayload({ content: [{ type: "text", text: "not json" }], isError: true })).toBeNull();
+    expect(failurePayload({ content: [], isError: true })).toBeNull();
+    for (const text of ["5", '"x"', "[]", "{}", "null", '{"error":1}']) {
+      expect(failurePayload({ content: [{ type: "text", text }], isError: true })).toBeNull();
+    }
+    expect(failurePayload({ content: [{ type: "text", text: '{"error":"rate_limited","message":"m"}' }] })).toEqual({
+      error: "rate_limited",
+      message: "m",
+    });
   });
 
   it("fails closed on a short page cut by the record limit, and on more pages than expected", async () => {
