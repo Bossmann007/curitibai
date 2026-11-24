@@ -243,7 +243,10 @@ export function failurePayload(failed: CallToolResult): { error: ErrorCode; mess
   const first = failed.content[0];
   if (first?.type !== "text") return null;
   try {
-    return JSON.parse(first.text) as { error: ErrorCode; message?: string };
+    const v: unknown = JSON.parse(first.text);
+    if (typeof v !== "object" || v === null || typeof (v as { error?: unknown }).error !== "string") return null;
+    const { error, message } = v as { error: ErrorCode; message?: unknown };
+    return typeof message === "string" ? { error, message } : { error };
   } catch {
     return null;
   }
@@ -254,7 +257,8 @@ async function fromLayer(args: BusStopsNearArgs) {
   if (!remoteDataEnabled()) {
     return fail(
       "data_not_available",
-      `${REMOTE_DATA_ENV}=0 keeps this tool local: the GeoCuritiba stop layer is not read. ${NOT_AVAILABLE("pontosLinha")}`,
+      `${REMOTE_DATA_ENV} is 0 or off, so this tool stays local: the GeoCuritiba stop layer is not read. ` +
+        NOT_AVAILABLE("pontosLinha"),
     );
   }
   if (args.line_code !== undefined) {

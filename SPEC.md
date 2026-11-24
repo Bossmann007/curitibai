@@ -18,11 +18,12 @@ lookup through OpenCEP and build it only if its terms allow reuse by a public op
    steps and no request, as before v0.29. Unset, the GeoCuritiba fallback is unchanged. The live tools are not
    affected by the switch. Tool description unchanged (size guard: 9,593 of 9,600 characters).
 2. **Fail closed on a non-JSON failure text** (`failurePayload` in `src/tools/busStopsNear.ts`): the `JSON.parse` of
-   the `failFrom` text is guarded; on a throw the failure is returned as it is.
+   the `failFrom` text is guarded; on a throw, or JSON without a string `error`, the failure is returned as it is.
 3. **`cartaFor` wording** (`src/tools/cityServiceGuide.ts`): one title match whose link fails the allowlist is
    `no_match` with "1 service in the local Carta copy matched, but its link is not on the official-host allowlist; no
    Carta link is given."; two or more title matches with every link refused are `ambiguous`, with no link and a message
-   that says none of their links is on the allowlist. No output schema change.
+   that says none of their links is on the allowlist; with some refused, the message says how many were left out of
+   `matches`. No output schema change.
 4. **Flaky test**: the `local_csv_summary` sweep in `test/localCsv.test.ts` gets its own 20 s timeout; the global
    `testTimeout` is not changed.
 5. **Docs and version**: README (data folder paragraph, remote switch), docs/privacy.md, docs/local-data.md,
@@ -46,7 +47,8 @@ tags.
 
 - `test/busStopsNear.test.ts`: with `CURITIBAI_REMOTE_DATA` `0`, `off` and ` OFF `, no request and
   `data_not_available`; unset, the layer answers (`geocuritiba_layer`, two page requests); `failurePayload` returns
-  null for non-JSON text and for no text.
+  null for non-JSON text, JSON without a string `error` and no text. The bus tests stub the switch empty, so a shell
+  with `CURITIBAI_REMOTE_DATA=0` does not change them.
 - `test/cityServiceGuide.test.ts`: one refused match gives `no_match` with the "matched, but its link is not on the
   official-host allowlist" message; two refused give `ambiguous`; no refused URL anywhere in the output.
 - `test/contracts.test.ts` size guard; `scripts/smoke.mjs` unchanged (it sets `CURITIBAI_REMOTE_DATA=0` and has the

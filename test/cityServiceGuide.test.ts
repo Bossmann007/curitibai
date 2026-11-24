@@ -249,6 +249,7 @@ describe("Carta copy", () => {
     const three = cartaFor({ ...base, services }, GUIDES.iptu);
     expect(three.info.status).toBe("ambiguous");
     expect(three.info.matches).toEqual([{ title: kept.title, official_url: kept.official_url }]);
+    expect(three.info.message).toMatch(/^3 services .* 2 of their links are not on the official-host allowlist and are not listed;/);
     expect(three.links).toEqual({ page: null, online: null });
     // One bad and one good: the good one is never promoted to a single match.
     const two = cartaFor({ ...base, services: [services[0]!, kept] }, GUIDES.iptu);

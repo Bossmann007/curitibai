@@ -404,7 +404,12 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
     return { info: { status: "no_match", matches, message }, links: none };
   }
   if (all.length > 1) {
-    const refused = found.length === 0 ? " none of their links is on the official-host allowlist, so" : "";
+    const refused =
+      found.length === 0
+        ? " none of their links is on the official-host allowlist, so"
+        : found.length < all.length
+          ? ` ${all.length - found.length} of their links are not on the official-host allowlist and are not listed;`
+          : "";
     const message =
       `${all.length} services in the local Carta copy match;${refused} no Carta link is given. Ask the user which one ` +
       "(matches, at most 3) or use city_services_search.";

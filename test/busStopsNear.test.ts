@@ -83,6 +83,7 @@ beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-near-")));
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-21T12:00:00Z"));
+  vi.stubEnv(REMOTE_DATA_ENV, ""); // remote reading on, whatever the developer's shell has; one test turns it off
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -320,7 +321,7 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
       vi.stubEnv(REMOTE_DATA_ENV, value);
       const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
       expect(err).toMatchObject({ error: "data_not_available" });
-      expect(err.message).toContain(`${REMOTE_DATA_ENV}=0 keeps this tool local`);
+      expect(err.message).toContain(`${REMOTE_DATA_ENV} is 0 or off, so this tool stays local`);
       vi.useRealTimers();
     }
     expect(calls).toHaveLength(0);
@@ -333,6 +334,9 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
   it("failurePayload keeps a failure whose text is not JSON instead of throwing", () => {
     expect(failurePayload({ content: [{ type: "text", text: "not json" }], isError: true })).toBeNull();
     expect(failurePayload({ content: [], isError: true })).toBeNull();
+    for (const text of ["5", '"x"', "[]", "{}", "null", '{"error":1}']) {
+      expect(failurePayload({ content: [{ type: "text", text }], isError: true })).toBeNull();
+    }
     expect(failurePayload({ content: [{ type: "text", text: '{"error":"rate_limited","message":"m"}' }] })).toEqual({
       error: "rate_limited",
       message: "m",
