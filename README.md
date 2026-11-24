@@ -81,7 +81,7 @@ Other MCP clients: configure a stdio server with the command `node` and the sing
 
 ### Install from npm (after the first release)
 
-Not on npm yet: this works once `curitibai-mcp` 0.26.0 or later is published ([release steps](docs/development.md#release)).
+Not on npm yet: this works once `curitibai-mcp` 0.26.1 or later is published ([release steps](docs/development.md#release)).
 Then no clone or build is needed; `npx` downloads the package and runs its `curitibai-mcp` command (Node.js 26.13.1
 or newer, as above):
 

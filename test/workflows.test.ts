@@ -100,14 +100,43 @@ describe("GitHub Actions workflows", () => {
     expect(publishJob).toMatch(/^ {4}environment: release$/m);
     expect(publishJob).toContain("tag_sha\" == \"$(git rev-parse HEAD)\"");
     expect(publishJob).toContain('[[ "$sha" == "$APPROVED_SHA256" ]]');
-    expect(publishJob).not.toMatch(/npm (ci|install|test)|scripts\/verify|vitest/);
+    expect(publishJob).not.toMatch(/npm (ci|install|i|add|update|up|exec|x|test)\b|\bnpx\b|corepack|scripts\/verify|vitest/);
     expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
     // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
     const at = (re: RegExp) => lines.findIndex((l) => re.test(l));
-    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish --ignore-scripts 2>&1/, /mcp-publisher publish$/].map(at);
+    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish "\.\/\$TARBALL" --ignore-scripts 2>&1/, /mcp-publisher publish$/].map(at);
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then"]);
+    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(['          if ! npm publish "./$TARBALL" --ignore-scripts 2>&1 | tee npm-publish.log; then']);
+    // npm publish uploads the tarball whose sha256 was checked (packed once, kept, hashed again just before), not a new
+    // pack of the tree.
+    expect(publishJob.match(/\bnpm pack\b/g)).toHaveLength(1);
+    expect(publishJob).not.toContain('rm -f "$file"');
+    expect(publishJob).toContain('echo "tarball=$file" >> "$GITHUB_OUTPUT"');
+    expect(publishJob).toContain("TARBALL: ${{ steps.preflight.outputs.tarball }}");
+    expect(publishJob.match(/\[\[ "\$sha" == "\$APPROVED_SHA256" \]\]/g)).toHaveLength(2);
+    const publishStep = publishJob.slice(publishJob.indexOf("- name: Publish to npm"));
+    const recheck = publishStep.indexOf('[[ "$sha" == "$APPROVED_SHA256" ]]');
+    expect(recheck).toBeGreaterThan(0);
+    expect(recheck).toBeLessThan(publishStep.indexOf("npm publish"));
+  });
+
+  it("release docs: the first release is the package.json version, and its git tag/push commands name no other tag", () => {
+    // Tag v0.26.0 is the commit before the 0.26.1 hardening; the first release must not be published from it. When the
+    // first release is done and the version moves on, update or drop this section and this test together.
+    const version = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version as string;
+    const doc = readFileSync(new URL("../docs/development.md", import.meta.url), "utf8");
+    const start = doc.indexOf("\nFirst release (");
+    const end = doc.indexOf("\nEvery later release:", start);
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const section = doc.slice(start, end);
+    expect(section).toContain(`First release (${version}), once.`);
+    const commands = section.split("`").filter((piece, i) => i % 2 === 1 && /\bgit (tag|push)\b/.test(piece)).join("\n");
+    const tags = commands.match(/\bv\d+\.\d+\.\d+\b/g) ?? [];
+    expect(tags.length).toBeGreaterThan(0);
+    expect(new Set(tags)).toEqual(new Set([`v${version}`]));
+    expect(section).toContain(`on tag \`v${version}\``);
   });
 
   it("id-token only in the publish job of publish.yml, which runs in the release environment", () => {
