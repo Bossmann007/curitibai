@@ -108,7 +108,8 @@ their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automate
    `YYYY_MM_DD_pois.json.xz` (points of interest, used by `city_points_search`). Save them into `urbs`; a tool only
    needs its own file (`bus_stops_near` needs both `pontosLinha` and `linhas`; `next_buses_near` needs those two and
    `tabelaLinha`). Without `pontosLinha`, `bus_stops_near` lists the nearby stops from IPPUC's GeoCuritiba layer
-   instead (since 0.29.0), with no lines per stop, no `line_code` filter and no update date.
+   instead (since 0.29.0), with no lines per stop, no `line_code` filter and no update date; `CURITIBAI_REMOTE_DATA=0`
+   turns that off (since 0.30.0).
 3. Decompress them there: `xz -d ~/curitibai-data/urbs/*.json.xz` (this leaves `YYYY_MM_DD_linhas.json` and so on;
    `xz` ships with macOS and most Linux distributions). Keep the names as they are: the tools look for exactly
    `YYYY_MM_DD_<kind>.json`.
@@ -179,7 +180,9 @@ The job has `contents: write` only for itself, a 35-minute timeout (above the co
    run has published anything the tools answer `data_not_available`.
 
 **Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: the tools then read
-only the local file, as before 0.18.0, and make no network call.
+only the local file, as before 0.18.0, and make no network call. Since 0.30.0 the same switch keeps `bus_stops_near`
+local too: without `pontosLinha` it answers `data_not_available` instead of reading the GeoCuritiba stop layer. The
+live tools (GeoCuritiba, CNES, PNCP and the others) still ask their sources.
 
 Both tools return the file's `checked_at`; after 3 days they say `stale: true`, with a note that the nightly
 collection may have stopped, and `events_search` refuses a file more than 7 days old.

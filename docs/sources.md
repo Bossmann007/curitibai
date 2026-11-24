@@ -1265,7 +1265,8 @@ Prior art (2026-11-24): `gh search repos "mcp server government services guide"`
   `SEQ`, `SENTIDO`, `ITINERARY_ID`) and no update date, so `bus_departures`, `bus_line_stops` and `next_buses_near`
   still need the export, and freshness cannot be proven from the metadata. The terminals come from the
   urban-equipment layers 157 and 158 instead (above). Layer 0 is never read (it carries `indfiscal`).
-- **Used since v0.29.0 by `bus_stops_near`, only when no local `pontosLinha` file exists:** layer 1, fixed query
+- **Used since v0.29.0 by `bus_stops_near`, only when no local `pontosLinha` file exists and
+  `CURITIBAI_REMOTE_DATA` is not `0` or `off` (since v0.30.0):** layer 1, fixed query
   `where=1=1&outFields=num,nome_ponto,tipo&returnGeometry=true&outSR=4326&geometryPrecision=6&orderByFields=objectid`
   with `resultOffset` 0, 2,000, 4,000, 6,000 and `resultRecordCount=2000` (`maxRecordCount` 2,000, pagination
   supported). Re-checked on 2026-11-24 before coding: `robots.txt` answers 404 (IIS "Not Found" page, so no rule

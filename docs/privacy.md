@@ -54,7 +54,8 @@ behind it.
   files and logs no request). A point outside the Curitiba box is refused before any request. Every other tool that
   takes a position (`city_facilities_search`, `bus_stops_near`, `next_buses_near`, `city_points_search`,
   `vaccination_sites_search`, `river_levels`) filters in the server and never sends it (`bus_stops_near` without the
-  URBS export reads the whole GeoCuritiba stop layer with fixed queries, since 0.29.0).
+  URBS export reads the whole GeoCuritiba stop layer with fixed queries, since 0.29.0; `CURITIBAI_REMOTE_DATA=0` keeps
+  it local, since 0.30.0: it then answers `data_not_available` and makes no request).
 - The server contacts exactly eleven hosts, `https://dadosabertos.curitiba.pr.gov.br`,
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to

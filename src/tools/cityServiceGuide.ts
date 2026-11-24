@@ -394,13 +394,20 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
     return official === null ? [] : [{ ...s, official_url: official }];
   });
   const matches = found.slice(0, 3).map((s) => ({ title: clip(s.title), official_url: s.official_url }));
-  if (found.length === 0) {
+  if (all.length === 0) {
     return { info: { status: "no_match", matches, message: "No service in the local Carta copy matched this guide." }, links: none };
   }
-  if (all.length > 1) {
+  if (all.length === 1 && found.length === 0) {
     const message =
-      `${all.length} services in the local Carta copy match; no Carta link is given. Ask the user which one (matches, ` +
-      "at most 3) or use city_services_search.";
+      "1 service in the local Carta copy matched, but its link is not on the official-host allowlist; no Carta link " +
+      "is given.";
+    return { info: { status: "no_match", matches, message }, links: none };
+  }
+  if (all.length > 1) {
+    const refused = found.length === 0 ? " none of their links is on the official-host allowlist, so" : "";
+    const message =
+      `${all.length} services in the local Carta copy match;${refused} no Carta link is given. Ask the user which one ` +
+      "(matches, at most 3) or use city_services_search.";
     return { info: { status: "ambiguous", matches, message }, links: none };
   }
   const s = found[0]!;

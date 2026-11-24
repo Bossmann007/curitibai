@@ -261,8 +261,17 @@ describe("Carta copy", () => {
       for (const u of bad) expect(out).not.toContain(u);
     }
 
-    const onlyBad = { ...base, services: services.slice(0, 2) };
-    expect(cartaFor(onlyBad, GUIDES.iptu)).toMatchObject({ info: { status: "no_match", matches: [] }, links: { page: null } });
+    // Two title matches, both refused: still ambiguous, and the message says why no link is given.
+    const onlyBad = cartaFor({ ...base, services: services.slice(0, 2) }, GUIDES.iptu);
+    expect(onlyBad).toMatchObject({ info: { status: "ambiguous", matches: [] }, links: { page: null, online: null } });
+    expect(onlyBad.info.message).toMatch(/^2 services .* none of their links is on the official-host allowlist/);
+    // One title match, refused: said as such, not as "no service matched".
+    const oneBad = cartaFor({ ...base, services: services.slice(0, 1) }, GUIDES.iptu);
+    expect(oneBad).toMatchObject({ info: { status: "no_match", matches: [] }, links: { page: null, online: null } });
+    expect(oneBad.info.message).toBe(
+      "1 service in the local Carta copy matched, but its link is not on the official-host allowlist; no Carta link is given.",
+    );
+    for (const r of [onlyBad, oneBad]) for (const u of bad) expect(JSON.stringify(r)).not.toContain(u);
   });
 
   it("Carta titles in matches are cut to 120 characters", () => {
