@@ -1,6 +1,6 @@
 {
   "name": "curitibai-mcp",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "Unofficial read-only MCP server for public Curitiba (Brazil) city data. Not affiliated with Prefeitura de Curitiba.",
   "mcpName": "io.github.Bossmann007/curitibai",
   "license": "(Apache-2.0 AND ODbL-1.0)",

@@ -2,10 +2,19 @@ import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { OutOfTimeError } from "../src/hostGate.js";
 import { DATA_DIR_ENV } from "../src/localfs.js";
+import {
+  clearGeoCuritibaCache,
+  getUrbsStops,
+  URBS_STOPS_LAYER_URL,
+  URBS_STOPS_MAX_PAGES,
+  URBS_STOPS_PAGE_SIZE,
+  urbsStopsPageUrl,
+} from "../src/sources/geocuritiba.js";
 import { MASK } from "../src/sources/pncp.js";
 import { busStopsNearOutput } from "../src/tools/busStopsNear.js";
-import { connectClient, errorOf } from "./helpers.js";
+import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
 
 // Invented stops written into a temporary CURITIBAI_DATA_DIR/urbs/ at run time, in the real pontosLinha shape; the lines
 // file is the shared synthetic fixture (901, X91, 092, 903). No real URBS rows.
@@ -153,7 +162,7 @@ describe("bus_stops_near", () => {
     dataDir();
     const stop = (await near({})).data.items.find((s) => s.stop_number === "990105");
     expect(stop).toMatchObject({ stop_name: "Parada Fictícia 990105", distance_m: 200, type: "Plataforma" });
-    expect(stop?.lines.map((l) => [l.line_code, l.direction])).toEqual([
+    expect(stop?.lines?.map((l) => [l.line_code, l.direction])).toEqual([
       ["092", "Água Imaginária"],
       ["901", "Bairro Inventado"],
       ["903", "Bairro Inventado"],
@@ -199,14 +208,135 @@ describe("bus_stops_near", () => {
     expect((await near({ radius_m: 2000, limit: 50 })).data.total).toBe(7);
   });
 
-  it("data_not_available without the stops file or without the lines file", async () => {
+  it("data_not_available without the lines file; without the stops file, line_code is data_not_available", async () => {
     dataDir({ lines: null });
     expect(errorOf(await call({ near: CENTRE }))).toMatchObject({ error: "data_not_available" });
     rmSync(join(tmp, "urbs"), { recursive: true });
     mkdirSync(join(tmp, "urbs"));
     copyFileSync(join(FIXTURES, "linhas.json"), join(tmp, "urbs", "2026_11_20_linhas.json"));
-    const missing = errorOf(await call({ near: CENTRE })) as { error: string; message: string };
-    expect(missing).toMatchObject({ error: "data_not_available" });
-    expect(missing.message).toContain("pontosLinha");
+    // Without the stops file the GeoCuritiba layer is asked (v0.29.0); here the test fetch stub fails.
+    expect(errorOf(await call({ near: CENTRE }))).toMatchObject({ error: "source_unavailable" });
+    const withLine = errorOf(await call({ near: CENTRE, line_code: "901" })) as { error: string; message: string };
+    expect(withLine).toMatchObject({ error: "data_not_available" });
+    expect(withLine.message).toContain("pontosLinha");
+  });
+});
+
+// v0.29.0: without a local stops file, the GeoCuritiba stop layer (invented features in the layer's shape, built here).
+describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
+  type Feature = { attributes: Record<string, unknown>; geometry?: { x: number; y: number } };
+  const feature = (num: unknown, lat: number, lon: number, extra: Record<string, unknown> = {}): Feature => ({
+    attributes: { num, nome_ponto: `Parada Fictícia ${String(num)}`, tipo: "Domus", ...extra },
+    geometry: { x: lon, y: lat },
+  });
+  const far = (i: number) => feature(800_000 + i, north(20_000 + (i % 100)), CENTRE.lon);
+  const pageBody = (features: Feature[], extra: Record<string, unknown> = {}) =>
+    JSON.stringify({ spatialReference: { wkid: 4326, latestWkid: 4326 }, features, ...extra });
+  const route = (body: string): Route => ({ body, contentType: "application/json; charset=UTF-8" });
+
+  function layerRoutes(): Record<string, Route> {
+    const first = Array.from({ length: URBS_STOPS_PAGE_SIZE }, (_, i) => far(i));
+    first[0] = feature(990201, north(100), CENTRE.lon);
+    first[1] = feature(990202, CENTRE.lat, east(300), { nome_ponto: "Praça Inventada - contato ficticio@example.invalid", tipo: null });
+    const second = [
+      feature(990203, north(-250), CENTRE.lon, { tipo: "Estação tubo" }),
+      feature(990201, north(5000), CENTRE.lon), // repeated number: the first record wins
+      feature(990204, north(600), CENTRE.lon), // outside 400 m
+      feature(990205, -10, -40), // outside the Curitiba box: skipped
+      { attributes: { num: "99A", nome_ponto: "Sem número", tipo: "Domus" }, geometry: { x: CENTRE.lon, y: CENTRE.lat } },
+    ];
+    return {
+      [`GET ${urbsStopsPageUrl(0)}`]: route(pageBody(first, { exceededTransferLimit: true })),
+      [`GET ${urbsStopsPageUrl(1)}`]: route(pageBody(second)),
+    };
+  }
+
+  /** The host gate spaces requests 5 s apart: run the call on fake timers and let them pass. */
+  async function layerCall(args: Record<string, unknown>) {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    vi.setSystemTime(new Date("2026-11-24T12:00:00Z"));
+    vi.stubEnv(DATA_DIR_ENV, tmp); // an empty data folder: no urbs/ at all
+    const client = await connectClient();
+    const pending = client.callTool({ name: "bus_stops_near", arguments: args });
+    await vi.advanceTimersByTimeAsync(60_000);
+    return pending;
+  }
+
+  it("reads every page once, filters the position here and says which source answered", async () => {
+    const calls = stubFetch(layerRoutes());
+    const res = await layerCall({ near: CENTRE });
+    expect(res.isError, JSON.stringify(res.content)).toBeFalsy();
+    const out = busStopsNearOutput.parse(res.structuredContent);
+    expect(out.data.source).toBe("geocuritiba_layer");
+    expect(out.data.items.map((s) => [s.stop_number, s.distance_m, s.type, s.lines])).toEqual([
+      ["990201", 100, "Domus", null],
+      ["990203", 250, "Estação tubo", null],
+      ["990202", 300, "", null],
+    ]);
+    expect(out.data.items[2]?.stop_name).toBe(`Praça Inventada - contato ${MASK}`);
+    expect(out.data.skipped_rows).toBe(2);
+    expect(out.source_url).toBe(URBS_STOPS_LAYER_URL);
+    expect(out.checked_at).toBe("2026-11-24");
+    expect(out.note).toContain("publishes no update date");
+    expect(out.note).toContain("1 repeated stop number(s)");
+    // Two fixed page queries on layer 1; the user's position is never sent, and no other field is asked.
+    expect(calls.map((c) => c.url)).toEqual([urbsStopsPageUrl(0), urbsStopsPageUrl(1)]);
+    for (const c of calls) {
+      const u = new URL(c.url);
+      expect(u.pathname).toBe("/server/rest/services/GeoCuritiba/URBS_Transporte_Publico/MapServer/1/query");
+      expect(u.searchParams.get("outFields")).toBe("num,nome_ponto,tipo");
+      expect(c.url).not.toContain("-25.5");
+    }
+    // Cached: a second call makes no request.
+    await layerCall({ near: CENTRE, radius_m: 2000 });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("line_code without the export is data_not_available, with no request", async () => {
+    const calls = stubFetch(layerRoutes());
+    const res = await layerCall({ near: CENTRE, line_code: "901" });
+    expect(errorOf(res)).toMatchObject({ error: "data_not_available" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("fails closed on a short page cut by the record limit, and on more pages than expected", async () => {
+    const routes = layerRoutes();
+    routes[`GET ${urbsStopsPageUrl(1)}`] = route(pageBody([far(1)], { exceededTransferLimit: true }));
+    stubFetch(routes);
+    expect(errorOf(await layerCall({ near: CENTRE }))).toMatchObject({ error: "source_unavailable" });
+
+    clearGeoCuritibaCache();
+    vi.useRealTimers();
+    const full = route(pageBody(Array.from({ length: URBS_STOPS_PAGE_SIZE }, (_, i) => far(i)), { exceededTransferLimit: true }));
+    stubFetch(Object.fromEntries(Array.from({ length: URBS_STOPS_MAX_PAGES }, (_, p) => [`GET ${urbsStopsPageUrl(p)}`, full])));
+    expect(errorOf(await layerCall({ near: CENTRE }))).toMatchObject({ error: "source_unavailable" });
+  });
+
+  it("a call stopped by its time budget caches the pages read, and the next call resumes from them", async () => {
+    const calls = stubFetch(layerRoutes());
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    const first = getUrbsStops(Date.now() + 1_000).catch((e: unknown) => e);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await first).toBeInstanceOf(OutOfTimeError);
+    expect(calls).toHaveLength(1);
+    const second = getUrbsStops(Date.now() + 20_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect((await second).stops).toHaveLength(URBS_STOPS_PAGE_SIZE + 2);
+    expect(calls.map((c) => c.url)).toEqual([urbsStopsPageUrl(0), urbsStopsPageUrl(1)]);
+  });
+
+  it("with the export, keeps today's answer (source urbs_export, lines per stop) and makes no request", async () => {
+    dataDir();
+    const out = await near({});
+    expect(out.data.source).toBe("urbs_export");
+    expect(out.data.items[0]?.lines).toHaveLength(3);
+    expect(out.note).toContain("Source: the local URBS export.");
+  });
+
+  it("a stops file that is not valid keeps its error (no fallback to the layer)", async () => {
+    mkdirSync(join(tmp, "urbs"), { recursive: true });
+    writeFileSync(join(tmp, "urbs", "2026_11_20_pontosLinha.json"), "not json");
+    copyFileSync(join(FIXTURES, "linhas.json"), join(tmp, "urbs", "2026_11_20_linhas.json"));
+    expect(errorOf(await call({ near: CENTRE }))).toMatchObject({ error: "invalid_data" });
   });
 });

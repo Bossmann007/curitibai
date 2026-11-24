@@ -385,7 +385,12 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   const none: CartaLinks = { page: null, online: null };
   if (catalog === null) return { info: { status: "not_available", matches: [], message: CARTA_HOW_TO }, links: none };
   if (catalog instanceof Error) return { info: { status: "invalid", matches: [], message: catalog.message }, links: none };
-  const found = matchCarta(catalog, guide.carta);
+  // Each match's official_url passes the allowlist here (normalized), not only in the module that read the copy: a
+  // match whose URL fails it is dropped before the status, the count and the links are worked out.
+  const found = matchCarta(catalog, guide.carta).flatMap((s) => {
+    const official = allowedUrl(s.official_url);
+    return official === null ? [] : [{ ...s, official_url: official }];
+  });
   const matches = found.slice(0, 3).map((s) => ({ title: clip(s.title), official_url: s.official_url }));
   if (found.length === 0) {
     return { info: { status: "no_match", matches, message: "No service in the local Carta copy matched this guide." }, links: none };

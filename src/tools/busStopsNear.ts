@@ -1,14 +1,19 @@
 import { z } from "zod";
-import { parseCoordinate, URBS_SOURCE_URL, type Linha, type Ponto } from "../sources/urbs.js";
+import { dateInCuritiba } from "../sources/detran.js";
+import { getUrbsStops, URBS_STOPS_LAYER_URL, type UrbsStopsLayer } from "../sources/geocuritiba.js";
+import { loadUrbs, parseCoordinate, URBS_SOURCE_URL, type Linha, type Ponto, type UrbsFile } from "../sources/urbs.js";
 import {
   busEnvelope,
   isFailure,
+  isMissingUrbsFile,
   lineCodeInput,
   loadUrbsOrFail,
+  NOT_AVAILABLE,
   page,
   pagingInput,
   skippedNote,
   skippedRowsOutput,
+  urbsFailure,
   urbsLicenseNote,
   urbsNote,
   type UrbsSource,
@@ -16,7 +21,8 @@ import {
 import { lineStops } from "./busLineStops.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { guardedSummary } from "./cityServicesSearch.js";
-import { fail, ok, type ToolDef } from "./common.js";
+import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
+import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const NEAR_RADIUS_DEFAULT_M = 400;
 export const NEAR_RADIUS_MAX_M = 2000;
@@ -45,11 +51,17 @@ const NearStop = z.object({
   lon: z.number(),
   distance_m: z.number().int(),
   type: z.string(),
-  lines: z.array(StopLine),
+  lines: z
+    .array(StopLine)
+    .nullable()
+    .describe("Lines and directions serving the stop; null when `source` is geocuritiba_layer (it has no lines per stop)."),
 });
 
 export const busStopsNearOutput = busEnvelope(
   z.object({
+    source: z
+      .enum(["urbs_export", "geocuritiba_layer"])
+      .describe("urbs_export: the user's local URBS files; geocuritiba_layer: IPPUC's GeoCuritiba stop layer, used when no local stops file exists."),
     total: z.number().int(),
     offset: z.number().int(),
     next_offset: z.number().int().nullable(),
@@ -140,6 +152,7 @@ export function busStopsNearResult(
       : ` Line names come from ${linesSrc.file} (dated ${linesSrc.date}), a different date from the stops file: compare before relying on them.`;
   return {
     data: {
+      source: "urbs_export" as const,
       ...p,
       skipped_rows: src.skipped,
       items: p.items.map(({ stop, distance }) => ({
@@ -159,7 +172,7 @@ export function busStopsNearResult(
     license_note: urbsLicenseNote(src.file, linesSrc.file),
     note:
       urbsNote(src, now) +
-      " This is not real-time: it lists the stops in the published itineraries; for times, call bus_departures " +
+      " Source: the local URBS export. This is not real-time: it lists the stops in the published itineraries; for times, call bus_departures " +
       "with the stop_number. `distance_m` is the straight-line distance, not the walking distance. One item per " +
       "stop number: its name, position and type come from its first row in the file with coordinates, and `lines` " +
       "lists each line and direction (SENTIDO) whose itinerary includes it. `line_name` is null when the line code " +
@@ -168,20 +181,90 @@ export function busStopsNearResult(
   };
 }
 
+/** Stops whose position is within `radiusM` of `near`, with the distance rounded to the metre (compared before rounding). */
+export function layerStopsWithin(layer: UrbsStopsLayer, near: { lat: number; lon: number }, radiusM: number) {
+  const matches: { stop: UrbsStopsLayer["stops"][number]; distance: number }[] = [];
+  for (const stop of layer.stops) {
+    const exact = distanceM(near, stop);
+    if (exact <= radiusM) matches.push({ stop, distance: Math.round(exact) });
+  }
+  return matches;
+}
+
+export const LAYER_NOTE =
+  "Source: IPPUC's GeoCuritiba layer URBS_Transporte_Publico (Parada de Ônibus), read because no local URBS stops " +
+  "file was found. The layer publishes no update date, so its freshness cannot be proved: stops may have moved or " +
+  "closed. It has no lines per stop, so `lines` is null; for lines and times download the URBS export (docs/local-data.md). " +
+  "Your position is never sent: the whole layer is read (4 pages of 2,000 stops, cached 6 hours) and filtered here.";
+
+export function busStopsNearLayerResult(layer: UrbsStopsLayer, args: BusStopsNearArgs) {
+  const matches = layerStopsWithin(layer, args.near, args.radius_m);
+  matches.sort((a, b) => a.distance - b.distance || Number(a.stop.num) - Number(b.stop.num));
+  const p = page(matches, args.offset, args.limit);
+  const left =
+    layer.skipped + layer.duplicates === 0
+      ? ""
+      : ` ${layer.skipped} record(s) without a stop number, name or position in Curitiba were left out; ` +
+        `${layer.duplicates} repeated stop number(s) kept their first record.`;
+  return {
+    data: {
+      source: "geocuritiba_layer" as const,
+      ...p,
+      skipped_rows: layer.skipped,
+      items: p.items.map(({ stop, distance }) => ({
+        stop_number: stop.num,
+        stop_name: guardedSummary(stop.name),
+        lat: stop.lat,
+        lon: stop.lon,
+        distance_m: distance,
+        type: stop.type,
+        lines: null,
+      })),
+    },
+    source_url: URBS_STOPS_LAYER_URL,
+    checked_at: dateInCuritiba(new Date(layer.fetchedAt)),
+    license_note: `Fonte: IPPUC/GeoCuritiba (URBS). ${FACILITIES_LICENSE_NOTE}`,
+    note:
+      `${LAYER_NOTE} \`checked_at\` is the day the layer was read (${layer.fetchedAt}), not a publication date. ` +
+      "Not real-time; `distance_m` is the straight-line distance, not the walking distance. Confirm with URBS " +
+      `before relying on it.${left}`,
+  };
+}
+
+/** Without a local stops file: the GeoCuritiba layer (no line filter: it has no lines per stop). */
+async function fromLayer(args: BusStopsNearArgs) {
+  if (args.line_code !== undefined) {
+    return fail(
+      "data_not_available",
+      `line_code needs the lines of each stop, which only the URBS export has. ${NOT_AVAILABLE("pontosLinha")}`,
+    );
+  }
+  try {
+    return ok(busStopsNearLayerResult(await getUrbsStops(callStartBy()), args));
+  } catch (err) {
+    return failFrom(err);
+  }
+}
+
 export const busStopsNear: ToolDef<typeof busStopsNearInput, typeof busStopsNearOutput> = {
   name: "bus_stops_near",
-  title: "Curitiba bus stops near a position (URBS, local files)",
+  title: "Curitiba bus stops near a position (URBS export or GeoCuritiba)",
   description:
-    "Which buses stop near a position in Curitiba (URBS): the stops within radius_m (default 400 m, at most 2000), " +
-    "nearest first, with the lines and directions that serve each; optionally one line only. Not real-time; for " +
-    "times call bus_departures with the stop_number. Needs the URBS files the user downloaded into " +
-    "CURITIBAI_DATA_DIR/urbs/; no network call. Read-only.",
+    "Bus stops near a position in Curitiba (URBS): those within radius_m (default 400 m, at most 2000), nearest " +
+    "first. With the URBS files in CURITIBAI_DATA_DIR/urbs/: the lines and directions serving each, and line_code. " +
+    "Without them: stops only, from IPPUC's GeoCuritiba layer (no update date). Not real-time; for times call " +
+    "bus_departures with the stop_number. Read-only.",
   inputSchema: busStopsNearInput,
   outputSchema: busStopsNearOutput,
-  annotations: { openWorldHint: false },
+  annotations: { openWorldHint: true },
   handler: async (args) => {
-    const [stops, lines] = await Promise.all([loadUrbsOrFail("pontosLinha"), loadUrbsOrFail("linhas")]);
-    if (isFailure(stops)) return stops;
+    let stops: UrbsFile<"pontosLinha">;
+    try {
+      stops = await loadUrbs("pontosLinha");
+    } catch (err) {
+      return isMissingUrbsFile(err) ? fromLayer(args) : urbsFailure("pontosLinha", err);
+    }
+    const lines = await loadUrbsOrFail("linhas");
     if (isFailure(lines)) return lines;
     if (args.line_code !== undefined) {
       if (lineStops(stops.rows, args.line_code).length === 0) {

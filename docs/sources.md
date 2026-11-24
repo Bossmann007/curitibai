@@ -1264,8 +1264,24 @@ Prior art (2026-11-24): `gh search repos "mcp server government services guide"`
 - **Not used:** GeoCuritiba has no timetable (`tabelaLinha`), no stop order per line and direction (`pontosLinha`
   `SEQ`, `SENTIDO`, `ITINERARY_ID`) and no update date, so `bus_departures`, `bus_line_stops` and `next_buses_near`
   still need the export, and freshness cannot be proven from the metadata. The terminals come from the
-  urban-equipment layers 157 and 158 instead (above). A v0.28 candidate: `bus_stops_near` reading the stop layer
-  (4 pages of 2,000, once per 6 hours) when no local export is present, with the lines per stop still from the export.
+  urban-equipment layers 157 and 158 instead (above). Layer 0 is never read (it carries `indfiscal`).
+- **Used since v0.29.0 by `bus_stops_near`, only when no local `pontosLinha` file exists:** layer 1, fixed query
+  `where=1=1&outFields=num,nome_ponto,tipo&returnGeometry=true&outSR=4326&geometryPrecision=6&orderByFields=objectid`
+  with `resultOffset` 0, 2,000, 4,000, 6,000 and `resultRecordCount=2000` (`maxRecordCount` 2,000, pagination
+  supported). Re-checked on 2026-11-24 before coding: `robots.txt` answers 404 (IIS "Not Found" page, so no rule
+  applies); `returnCountOnly` gave 7,249; the four pages gave 2,000, 2,000, 2,000 and 1,249 features (311 KB, 310 KB,
+  307 KB and 197 KB, 0.8–3.2 s each, 5 s apart), `exceededTransferLimit: true` on the three full pages only,
+  spatial reference 4326; 7,248 distinct `num` (one repeated), every record with a name and a position inside the
+  Curitiba box, 18 with `tipo` null. Guards: a short page that still says `exceededTransferLimit`, a fifth page that
+  is still full, an `error` object, a spatial reference other than 4326 or anything not JSON fails closed
+  (`source_unavailable`); the tool never answers from part of the layer. Same host gate, cache period and time budget
+  as the other GeoCuritiba reads. A record without a positive integer `num`, a name or a position in the Curitiba box
+  is skipped and counted; a repeated `num` keeps its first record (by `objectid`). The tool says in `data.source`
+  and `note` which source answered, and that freshness cannot be proved.
+- **Live check, built server, 2026-11-24** (stops within the radius; same counts from the export of 2026-11-20 and
+  from the layer): Praça Tiradentes (-25.4296, -49.2713) 38 / 72 / 217 within 200 / 400 / 1,000 m, nearest stop
+  101012 at 25 m; Terminal Pinheirinho (-25.5126, -49.2954) 48 / 51 / 95, nearest 105702 at 20 m. First layer call
+  15.3 s (4 pages), later calls under 10 ms; export calls 35–52 ms.
 
 ### `river_levels`: ANA telemetry (stations operated by IAT-PR)
 
