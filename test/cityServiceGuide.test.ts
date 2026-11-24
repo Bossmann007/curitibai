@@ -233,6 +233,38 @@ describe("Carta copy", () => {
     expect(step).toMatchObject({ url: "https://iptu-x.curitiba.pr.gov.br/Guia", url_host: "iptu-x.curitiba.pr.gov.br" });
   });
 
+  it("a match whose official_url fails the allowlist is dropped, whatever module built the catalog", () => {
+    // Built by hand (not by buildCatalog), so cartaFor alone has to refuse these URLs.
+    const base = buildCatalog(
+      carta([
+        { title: "IPTU sintético um", slug: "iptu-e", id: 9411, online: null },
+        { title: "IPTU sintético dois", slug: "iptu-j", id: 9412, online: null },
+        { title: "IPTU sintético três", slug: "iptu-ok", id: 9413, online: null },
+      ]),
+    );
+    const bad = ["https://evil.example/phish", "javascript:alert(1)"];
+    const services = base.services.map((s, i) => (i < bad.length ? { ...s, official_url: bad[i]! } : s));
+    const kept = services[2]!;
+    // Three title matches, two dropped: still ambiguous (no link), and only the allowlisted one is listed.
+    const three = cartaFor({ ...base, services }, GUIDES.iptu);
+    expect(three.info.status).toBe("ambiguous");
+    expect(three.info.matches).toEqual([{ title: kept.title, official_url: kept.official_url }]);
+    expect(three.links).toEqual({ page: null, online: null });
+    // One bad and one good: the good one is never promoted to a single match.
+    const two = cartaFor({ ...base, services: [services[0]!, kept] }, GUIDES.iptu);
+    expect(two.info.status).toBe("ambiguous");
+    const { info, links } = cartaFor({ ...base, services: [kept] }, GUIDES.iptu);
+    expect(info.status).toBe("matched");
+    expect(links.page).toBe(kept.official_url);
+    for (const r of [three, two]) {
+      const out = JSON.stringify({ ...r, steps: buildSteps(GUIDES.iptu, r.links) });
+      for (const u of bad) expect(out).not.toContain(u);
+    }
+
+    const onlyBad = { ...base, services: services.slice(0, 2) };
+    expect(cartaFor(onlyBad, GUIDES.iptu)).toMatchObject({ info: { status: "no_match", matches: [] }, links: { page: null } });
+  });
+
   it("Carta titles in matches are cut to 120 characters", () => {
     const long = buildCatalog(carta([{ title: `IPTU ${"x".repeat(300)}`, slug: "iptu-l", id: 9403, online: null }]));
     const title = cartaFor(long, GUIDES.iptu).info.matches[0]!.title;

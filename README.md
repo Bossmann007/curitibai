@@ -131,7 +131,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Transport | `bus_lines_search` | Find URBS bus lines by name, code or category | Local (URBS file) |
 | Transport | `bus_line_stops` | The stops of one line, per direction, in itinerary order | Local (URBS file) |
 | Transport | `bus_departures` | Published departure times for a line, a stop or both | Local (URBS file) |
-| Transport | `bus_stops_near` | Stops near a point and the lines that serve each one | Local (URBS files) |
+| Transport | `bus_stops_near` | Stops near a point and the lines that serve each one | Local (URBS files); without them, stops only from GeoCuritiba (live) |
 | Transport | `next_buses_near` | The next published departures at the stops near a point | Local (URBS files) |
 | Health | `health_units_search` | Public-administration health units in Curitiba (CNES) | Live (Ministry of Health) |
 | Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Live (Imuniza Já page) |

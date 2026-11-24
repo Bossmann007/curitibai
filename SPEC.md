@@ -1,56 +1,57 @@
-# SPEC: v0.28.0 service guides with consent at every step ("route 2")
+# SPEC: v0.29.0 bus stops from GeoCuritiba when there is no URBS export
 
-Approved: Enzo 2026-11-24 (task brief "curitibai v0.28.0, route 2": "sim mas apenas se ele autorizar"). **This change
-publishes nothing**: no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-24 (task brief "curitibai v0.29.0": "segue com o curitibaai"; vision: everything a Curitiba
+citizen needs inside their own AI). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-The citizen's own assistant can help them use city services that need a login (156, Saúde Já, IPTU, Cartão
-Transporte, Agenda Online, creche registration, Detran-PR), only with the citizen's explicit authorization at every
-step. CuritibAI stays read-only: guidance and official links only; the citizen acts.
+"Which bus stops are near me" works for a citizen who has not downloaded the URBS export, without weakening the
+answer for one who has. Implements the proposal in PR #38 (v0.27.0), section "URBS layers on GeoCuritiba".
 
 ## Changes
 
-1. **New tool `city_service_guide`** (`src/tools/cityServiceGuide.ts`; [ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md)).
-   Input: `service` (enum of 7 guide ids), optional `open_step` (1–10). Output `{data, source_url, checked_at,
-   license_note, note}`. `data.steps` is a numbered list; each step has `needs_consent`, a plain-Portuguese `consent`
-   line (what happens and what the citizen types on the official site), `citizen_types_on_site`, `url`, `url_host` and
-   `link_source`. `data.carta` gives the status of the user's local Carta copy, and `data.delegation` mentions the
-   Autorização Digital as information. Annotations: `readOnlyHint: true`, `destructiveHint: false`,
-   `idempotentHint: true`, `openWorldHint: true` (the server makes no network call, but `open_step` can lead the
-   client to open an external site). Description within the size guard (each ≤ 400
-   characters, sum ≤ 9,600; now 9,588).
-2. **Host allowlist** `allowedUrl` / `isAllowedUrl`: https only, no credentials, no port, no punycode label, no
-   backslash, whitespace or control character in the raw text; only `URL.href` is emitted, `url_host` from the same
-   parse. Known limit: every `curitiba.pr.gov.br` subdomain is accepted. Hosts: subdomains of
-   `curitiba.pr.gov.br` except `obituarios.curitiba.pr.gov.br`, plus `www.detran.pr.gov.br`,
-   `www.agendamento.detran.pr.gov.br` and `www.gov.br`. Fixed links and how each was checked: docs/tools.md,
-   "`city_service_guide` consent and links".
-3. **Carta copy** (`carta-servicos.json`, never committed; `scripts/check-no-catalog` unchanged): a guide's title query
-   must match exactly one service to give a Carta link. Several matches are returned as candidates with no link.
-   Without the file, the guide keeps its fixed links and `carta.message` says how to save the copy.
-4. **`open_step`**: `ToolContext.elicitUrl` (built per call in `src/server.ts`) sends a URL-mode elicitation only when
-   the client declared `elicitation.url` (SDK 1.32.2, protocol 2025-11-25), with a 55 s timeout (under the 60 s default tools/call timeout of SDK clients). The message is
-   fixed server text. In this branch `carta` holds only its status (no matches, so a refused link is not returned
-   another way). Results: `accepted` (link returned), `declined` / `cancelled` / `no_answer` (no link, told to
-   stop), `not_supported` (link returned, told to ask in the conversation first).
-5. **Docs and version**: README (28 tools, row), docs/tools.md (reference row, consent and links section, Curitiba
-   App rows 156, scheduling, IPTU, Cartão Transporte and creche), docs/privacy.md, docs/local-data.md, ADR 0010 and the
-   index, CHANGELOG 0.28.0, version 0.28.0 in `package.json`, `package-lock.json` and `server.json`, this SPEC.
+1. **`bus_stops_near` fallback** (`src/tools/busStopsNear.ts`, `src/sources/geocuritiba.ts`). When loading the newest
+   `pontosLinha` fails because there is no such file or no `CURITIBAI_DATA_DIR` (`isMissingUrbsFile`), the tool reads
+   the GeoCuritiba layer `GeoCuritiba/URBS_Transporte_Publico/MapServer/1` (stops): fixed queries
+   (`outFields=num,nome_ponto,tipo`, WGS84, ordered by `objectid`, `resultOffset` in steps of 2,000), at most 5 pages
+   (4 needed on 2026-11-24), read one after another through the shared GeoCuritiba host gate (5 s between requests)
+   with the call's 20 s start budget (`callStartBy`); the assembled layer cached 6 hours, pages 10 minutes (a
+   budget-stopped call resumes; one answer never joins pages read further apart). Fails closed on a short page with
+   `exceededTransferLimit`, a fifth page still full, an `error` object, a spatial reference other than 4326, non-JSON,
+   no stop, or more than 5% unusable records; never answers from part of the layer. A failed read's message says how
+   to use the export. Records without a positive integer `num`, a name or a position in
+   the Curitiba box are skipped and counted; a repeated `num` keeps its first record. The position is filtered in the
+   server, never sent. Layer 0 (terminals, `indfiscal`) is never read. `line_code` without the export:
+   `data_not_available`, no request.
+2. **When the export exists** the answer is unchanged (lines per stop from the export). An invalid or not allowed stops
+   file keeps its error; no fallback from it.
+3. **Output** (contract change, on purpose): `data.source` = `urbs_export` | `geocuritiba_layer`; `lines` nullable
+   (null from the layer). From the layer, `source_url` is the layer URL, `checked_at` the day it was read, and `note`
+   says which source answered and that the layer publishes no update date (freshness not provable). `openWorldHint`
+   true. Description within the size guard (each ≤ 400 characters, sum ≤ 9,600; now 9,593).
+4. **`city_service_guide` hardening**: `cartaFor` passes each match's `official_url` through `allowedUrl` and drops the
+   match when it returns null; ambiguity still counts every title match; matches carry the normalized URL.
+5. **Docs and version**: docs/tools.md (bus tools, Curitiba App "Transport information" row), docs/sources.md (robots
+   and sample request re-checked 2026-11-24, live counts), docs/local-data.md, docs/privacy.md, README, CHANGELOG
+   0.29.0, version 0.29.0 in `package.json`, `package-lock.json` and `server.json`, this SPEC.
 
 ## Out of scope
 
-Logging in, submitting, paying or fetching any page; form-mode elicitation; the 2026-07-28 `InputRequiredResult`
-mechanism (not in the SDK yet; ADR 0010); following a 156 protocol; Vale Creche; publishing; tags.
+Lines per stop, timetables or itineraries from GeoCuritiba (the layers have no timetable, stop order or direction);
+`next_buses_near`, `bus_line_stops` and `bus_departures` (still export only); layer 0 and layer 2; publishing; tags.
 
 ## Check
 
-- `test/cityServiceGuide.test.ts`, on handler output for every guide with and without a Carta copy: consent flags
-  on every outward step, no URL outside the allowlist (and the allowlist refuses lookalike hosts), no personal-data
-  request in steps and an input of an enum and an integer only, the behaviour without the Carta file, and
-  `open_step` with accept, decline, cancel, no capability and out-of-range steps over `InMemoryTransport`.
-- `scripts/smoke.mjs` calls `open_step` over stdio with a client that has no elicitation capability (fallback).
-- `scripts/verify` exits 0 (in a clone without tags, as CI runs it).
+- `test/busStopsNear.test.ts`: without the export, pages read once in order with fixed URLs (no position, only the
+  three fields), dedupe, skipped records, masked names, `source`, `lines` null, the no-update-date note, cache reuse;
+  `line_code` without the export makes no request; short page cut and too many pages fail closed; a budget-stopped call
+  resumes from cached pages; with the export the answer keeps `urbs_export` and lines; an invalid stops file keeps
+  `invalid_data`.
+- `test/cityServiceGuide.test.ts`: a hand-built catalog with `https://evil.example/phish` and `javascript:alert(1)`
+  gives neither URL anywhere in the output (fails without the change).
+- `test/contracts.test.ts` snapshot and size guard; `scripts/smoke.mjs` checks `source: "urbs_export"`.
+- Live run of the built server with and without the owner's export (docs/sources.md).
+- `scripts/verify` exits 0.

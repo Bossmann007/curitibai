@@ -136,26 +136,34 @@ export function urbsNote({ file, date, skipped, emptyFields }: UrbsSource, now: 
   );
 }
 
-const NOT_AVAILABLE = (kind: UrbsKind) =>
+export const NOT_AVAILABLE = (kind: UrbsKind) =>
   `URBS data is not shipped with this server. Download the daily file YYYY_MM_DD_${kind}.json.xz from ` +
   `${URBS_MIRROR_URL}, decompress it with \`xz -d\`, and put it in the folder "${URBS_SUBDIR}" inside ` +
   "CURITIBAI_DATA_DIR (see docs/local-data.md).";
+
+/** True when loadUrbs failed because there is no file of the kind (or no CURITIBAI_DATA_DIR), not a bad one. */
+export function isMissingUrbsFile(err: unknown): boolean {
+  return err instanceof UrbsFileMissingError || (err instanceof LocalFileError && err.code !== "file_not_allowed");
+}
+
+/** The error result for a loadUrbs failure of `kind` (v0.6 codes). */
+export function urbsFailure(kind: UrbsKind, err: unknown): CallToolResult {
+  if (err instanceof LocalFileError && err.code === "file_not_allowed") return fail("file_not_allowed");
+  if (isMissingUrbsFile(err)) return fail("data_not_available", NOT_AVAILABLE(kind));
+  if (err instanceof InvalidUrbsDataError) return fail("invalid_data", err.message);
+  return fail(
+    "invalid_data",
+    `The newest ${kind} file could not be read. To use an older file instead, delete it or change its name (for ` +
+      `example add .bad) in the ${URBS_SUBDIR} folder.`,
+  );
+}
 
 /** Loads the newest file of `kind`, or the error result to return (v0.6 codes). */
 export async function loadUrbsOrFail<K extends UrbsKind>(kind: K): Promise<UrbsFile<K> | CallToolResult> {
   try {
     return await loadUrbs(kind);
   } catch (err) {
-    if (err instanceof LocalFileError) {
-      return err.code === "file_not_allowed" ? fail("file_not_allowed") : fail("data_not_available", NOT_AVAILABLE(kind));
-    }
-    if (err instanceof UrbsFileMissingError) return fail("data_not_available", NOT_AVAILABLE(kind));
-    if (err instanceof InvalidUrbsDataError) return fail("invalid_data", err.message);
-    return fail(
-      "invalid_data",
-      `The newest ${kind} file could not be read. To use an older file instead, delete it or change its name (for ` +
-        `example add .bad) in the ${URBS_SUBDIR} folder.`,
-    );
+    return urbsFailure(kind, err);
   }
 }
 

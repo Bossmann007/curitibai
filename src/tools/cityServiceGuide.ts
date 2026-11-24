@@ -385,14 +385,21 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   const none: CartaLinks = { page: null, online: null };
   if (catalog === null) return { info: { status: "not_available", matches: [], message: CARTA_HOW_TO }, links: none };
   if (catalog instanceof Error) return { info: { status: "invalid", matches: [], message: catalog.message }, links: none };
-  const found = matchCarta(catalog, guide.carta);
+  // Each match's official_url passes the allowlist here (normalized), not only in the module that read the copy: a
+  // match whose URL fails it is dropped. Ambiguity still counts every title match, so dropping one never turns two
+  // candidates into a single confident link.
+  const all = matchCarta(catalog, guide.carta);
+  const found = all.flatMap((s) => {
+    const official = allowedUrl(s.official_url);
+    return official === null ? [] : [{ ...s, official_url: official }];
+  });
   const matches = found.slice(0, 3).map((s) => ({ title: clip(s.title), official_url: s.official_url }));
   if (found.length === 0) {
     return { info: { status: "no_match", matches, message: "No service in the local Carta copy matched this guide." }, links: none };
   }
-  if (found.length > 1) {
+  if (all.length > 1) {
     const message =
-      `${found.length} services in the local Carta copy match; no Carta link is given. Ask the user which one (matches, ` +
+      `${all.length} services in the local Carta copy match; no Carta link is given. Ask the user which one (matches, ` +
       "at most 3) or use city_services_search.";
     return { info: { status: "ambiguous", matches, message }, links: none };
   }

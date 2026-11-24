@@ -595,6 +595,7 @@ const gate = createHostGate({ minIntervalMs: GEOCURITIBA_MIN_INTERVAL_MS, maxQue
 /** Tests only. */
 export function clearGeoCuritibaCache(): void {
   cache.clear();
+  stopPageCache.clear();
   pointCache.clear();
   gate.reset();
 }
@@ -845,4 +846,154 @@ export function getCensusBairro(name: string, minHouseholds: number, startBy?: n
       sectors: count(a.sectors),
     };
   }, startBy === undefined ? {} : { startBy })));
+}
+
+// ---- URBS bus stops on GeoCuritiba (bus_stops_near without the local export, v0.29.0) ----
+
+/**
+ * URBS_Transporte_Publico layer 1 "Parada de Ônibus" (num, nome_ponto, lat, lon, tipo; 7,249 records, read on
+ * 2026-11-24). No update date in the layer or service metadata. Layer 0 (terminals, with `indfiscal`) is never read.
+ */
+export const URBS_STOPS_LAYER_URL = `${SERVICES}/GeoCuritiba/URBS_Transporte_Publico/MapServer/1`;
+/** Records per page: the service's maxRecordCount. */
+export const URBS_STOPS_PAGE_SIZE = MAX_RECORDS;
+/** Pages read at most (4 were needed on 2026-11-24); a last page still full fails closed instead of cutting. */
+export const URBS_STOPS_MAX_PAGES = 5;
+
+/** The fixed query of one page, ordered by objectid; no user input (the position is filtered in this server). */
+export function urbsStopsPageUrl(page: number): string {
+  const q = new URLSearchParams({
+    where: "1=1",
+    outFields: "num,nome_ponto,tipo",
+    returnGeometry: "true",
+    outSR: "4326",
+    geometryPrecision: "6",
+    orderByFields: "objectid",
+    resultOffset: String(page * URBS_STOPS_PAGE_SIZE),
+    resultRecordCount: String(URBS_STOPS_PAGE_SIZE),
+    f: "json",
+  });
+  return `${URBS_STOPS_LAYER_URL}/query?${q.toString()}`;
+}
+
+export interface LayerStop {
+  /** `num` as digits. */
+  num: string;
+  name: string;
+  /** `tipo` as published; "" when null. */
+  type: string;
+  lat: number;
+  lon: number;
+}
+
+export interface StopsPage {
+  stops: LayerStop[];
+  /** Records left out: no positive integer `num`, no name, or no position inside the Curitiba box. */
+  skipped: number;
+  /** A full page: the next page must be read. */
+  full: boolean;
+}
+
+/**
+ * Reads one page with parseLayer's fail-closed rules (an `error` object, 401/403/498/499 block the host, a spatial
+ * reference other than 4326, no `features` array, more than a page). `exceededTransferLimit` is expected on a full page
+ * only: on a short page it fails closed.
+ */
+export function parseStopsPage(body: string, url: string): StopsPage {
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new SourceUnavailableError("invalid JSON");
+  }
+  if (!isObject(json)) throw new SourceUnavailableError("query error");
+  if ("error" in json) {
+    const code = isObject(json.error) ? json.error.code : undefined;
+    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
+    throw new SourceUnavailableError("query error");
+  }
+  const sr = json.spatialReference;
+  if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  if (!Array.isArray(json.features) || json.features.length > URBS_STOPS_PAGE_SIZE) {
+    throw new SourceUnavailableError("no features");
+  }
+  const full = json.features.length === URBS_STOPS_PAGE_SIZE;
+  if (json.exceededTransferLimit === true && !full) throw new SourceUnavailableError("page cut by the record limit");
+  const stops: LayerStop[] = [];
+  let skipped = 0;
+  for (const f of json.features as unknown[]) {
+    const a = isObject(f) && isObject(f.attributes) ? f.attributes : null;
+    const g = isObject(f) && isObject(f.geometry) ? f.geometry : null;
+    const num = a?.num;
+    const name = a === null ? null : clean(a.nome_ponto, NAME_MAX);
+    const at = g === null ? null : inside(g.y, g.x);
+    if (typeof num !== "number" || !Number.isSafeInteger(num) || num <= 0 || name === null || at === null) {
+      skipped++;
+      continue;
+    }
+    stops.push({ num: String(num), name, type: clean(a?.tipo, 100) ?? "", lat: at.lat, lon: at.lon });
+  }
+  return { stops, skipped, full };
+}
+
+export interface UrbsStopsLayer {
+  /** One per `num`, the first record in objectid order. */
+  stops: LayerStop[];
+  skipped: number;
+  /** Records whose `num` was already read (one on 2026-11-24). */
+  duplicates: number;
+  /** When the oldest page used was read (ISO). */
+  fetchedAt: string;
+  pages: number;
+}
+
+/** More than 1 record in this many (5%) without a usable `num`, name or position: the layer is refused (shape changed). */
+export const URBS_STOPS_MAX_SKIPPED_ONE_IN = 20;
+/**
+ * Pages are kept this long for a call stopped by its time budget to resume from; the assembled layer is kept 6 hours.
+ * So one answer never joins pages read more than this far apart (offset paging over a layer edited in between could
+ * miss or repeat stops).
+ */
+export const URBS_STOPS_PAGE_TTL_MS = 10 * 60 * 1000;
+const stopPageCache = new TtlCache(URBS_STOPS_PAGE_TTL_MS);
+
+/**
+ * Every page of the stop layer, read one after another through the GeoCuritiba gate (5 s between requests, failures
+ * remembered), assembled once and cached 6 hours. A call stopped by its time budget (`startBy`, OutOfTimeError) leaves
+ * the pages it read in a 10-minute page cache, so the next call resumes from them. Never answers from part of the
+ * layer: a fifth full page, no stop at all, or more than 5% of records skipped fails closed.
+ */
+export function getUrbsStops(startBy?: number): Promise<Cached<UrbsStopsLayer>> {
+  return underOwnBudget(startBy, () => cache.getOrLoad(`GET ${URBS_STOPS_LAYER_URL} (all pages)`, async () => {
+    const byNum = new Map<string, LayerStop>();
+    let skipped = 0;
+    let duplicates = 0;
+    let fetchedAt: string | null = null;
+    for (let page = 0; page < URBS_STOPS_MAX_PAGES; page++) {
+      const url = urbsStopsPageUrl(page);
+      const res = await stopPageCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
+        const r = await fetchText(url, {
+          timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+          maxBytes: GEOCURITIBA_MAX_BYTES,
+          sameHostOnly: true,
+          redirectPathPrefix: "/server/rest/services",
+        });
+        if (!/json/i.test(r.contentType)) throw new SourceUnavailableError("not JSON");
+        return parseStopsPage(r.body, url);
+      }, startBy === undefined ? {} : { startBy }));
+      if (fetchedAt === null || res.fetchedAt < fetchedAt) fetchedAt = res.fetchedAt;
+      skipped += res.value.skipped;
+      for (const s of res.value.stops) {
+        if (byNum.has(s.num)) duplicates++;
+        else byNum.set(s.num, s);
+      }
+      if (res.value.full) continue;
+      const records = byNum.size + duplicates + skipped;
+      if (byNum.size === 0 || skipped * URBS_STOPS_MAX_SKIPPED_ONE_IN > records) {
+        throw new SourceUnavailableError("stop layer shape changed");
+      }
+      return { stops: [...byNum.values()], skipped, duplicates, fetchedAt, pages: page + 1 };
+    }
+    throw new SourceUnavailableError("more stops than expected");
+  }));
 }

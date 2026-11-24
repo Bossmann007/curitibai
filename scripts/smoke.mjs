@@ -87,8 +87,8 @@ if (bus.isError || !(bus.structuredContent?.data?.total > 0)) {
   console.error("smoke: bus_departures returned no departures from the synthetic URBS fixtures");
   process.exit(1);
 }
-if (near.isError || !(near.structuredContent?.data?.total > 0)) {
-  console.error("smoke: bus_stops_near returned no stops from the synthetic URBS fixtures");
+if (near.isError || !(near.structuredContent?.data?.total > 0) || near.structuredContent.data.source !== "urbs_export") {
+  console.error("smoke: bus_stops_near returned no stops from the synthetic URBS fixtures (source urbs_export)");
   process.exit(1);
 }
 if (next.isError || !(next.structuredContent?.data?.total > 0)) {

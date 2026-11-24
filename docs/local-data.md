@@ -107,7 +107,8 @@ their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automate
    `bus_line_stops` and `bus_stops_near`), `YYYY_MM_DD_tabelaLinha.json.xz` (timetables, used by `bus_departures` and `next_buses_near`) and
    `YYYY_MM_DD_pois.json.xz` (points of interest, used by `city_points_search`). Save them into `urbs`; a tool only
    needs its own file (`bus_stops_near` needs both `pontosLinha` and `linhas`; `next_buses_near` needs those two and
-   `tabelaLinha`).
+   `tabelaLinha`). Without `pontosLinha`, `bus_stops_near` lists the nearby stops from IPPUC's GeoCuritiba layer
+   instead (since 0.29.0), with no lines per stop, no `line_code` filter and no update date.
 3. Decompress them there: `xz -d ~/curitibai-data/urbs/*.json.xz` (this leaves `YYYY_MM_DD_linhas.json` and so on;
    `xz` ships with macOS and most Linux distributions). Keep the names as they are: the tools look for exactly
    `YYYY_MM_DD_<kind>.json`.

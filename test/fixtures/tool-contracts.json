@@ -577,6 +577,14 @@
         "data": {
           "type": "object",
           "properties": {
+            "source": {
+              "type": "string",
+              "enum": [
+                "urbs_export",
+                "geocuritiba_layer"
+              ],
+              "description": "urbs_export: the user's local URBS files; geocuritiba_layer: IPPUC's GeoCuritiba stop layer, used when no local stops file exists."
+            },
             "total": {
               "type": "integer",
               "minimum": -9007199254740991,
@@ -631,30 +639,38 @@
                     "type": "string"
                   },
                   "lines": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "line_code": {
-                          "type": "string"
-                        },
-                        "line_name": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "direction": {
-                          "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "line_code": {
+                              "type": "string"
+                            },
+                            "line_name": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "direction": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "line_code",
+                            "line_name",
+                            "direction"
+                          ],
+                          "additionalProperties": false
                         }
                       },
-                      "required": [
-                        "line_code",
-                        "line_name",
-                        "direction"
-                      ],
-                      "additionalProperties": false
-                    }
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Lines and directions serving the stop; null when `source` is geocuritiba_layer (it has no lines per stop)."
                   }
                 },
                 "required": [
@@ -671,6 +687,7 @@
             }
           },
           "required": [
+            "source",
             "total",
             "offset",
             "next_offset",
