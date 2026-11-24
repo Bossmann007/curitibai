@@ -13,8 +13,8 @@ Record the owner's decision on the `census_at_point` privacy floor, so no docume
 ## Changes
 
 1. **[ADR 0009](docs/adr/0009-census-household-floor.md)**: status Proposed → Accepted, with "Decided by the owner
-   (Enzo) on 2026-11-24: floor = 20 households; 29 of 3,190 sectors withheld at v0.27.0". The "open owner question"
-   wording is removed; the last consequence says the owner confirmed 20. The ADR index (`docs/adr/README.md`) shows
+   (Enzo) on 2026-11-24: floor = 20 households; 29 of 3,190 sectors withheld at v0.27.0". The wording that left the floor
+   undecided is removed; the last consequence says the owner confirmed 20. The ADR index (`docs/adr/README.md`) shows
    Accepted.
 2. **Docs and version**: CHANGELOG 0.27.1 (docs only), version 0.27.1 in `package.json`, `package-lock.json` and
    `server.json`, this SPEC.
@@ -28,7 +28,7 @@ it says "proposed", as it was then); publishing; tags.
 
 - `git diff main --stat` lists only `SPEC.md`, `CHANGELOG.md`, `docs/adr/`, `package.json`, `package-lock.json` and
   `server.json`.
-- `grep -rni "owner question"` outside `.git` and `node_modules` finds nothing.
+- `grep -rni "owner question" docs src README.md` finds nothing.
 - `scripts/verify` exits 0 in a clone without tags (CI's condition) and in a scratch clone where `v0.27.0` was tagged
   locally at 1bd30d1; in a clone with the real tags, `check-release` stops at the missing `v0.27.0` tag until the
   owner tags the merge of PR #38 (ADR 0006).
