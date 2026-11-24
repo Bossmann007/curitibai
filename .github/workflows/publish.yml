@@ -134,8 +134,8 @@ jobs:
             const [maj, min] = process.versions.node.split(".").map(Number);
             if (maj < 22 || (maj === 22 && min < 14)) { console.log("::error::Node " + process.versions.node + " is too old for npm trusted publishing (22.14.0 or newer)"); process.exit(1); }'
           node -e '
-            const [a, b, c] = process.argv[1].split(".").map(Number);
-            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) { console.log("::error::npm " + process.argv[1] + " is too old for trusted publishing (11.5.1 or newer)"); process.exit(1); }' "$(npm --version)"
+            const [a, b] = process.argv[1].split(".").map(Number);
+            if (a < 11 || (a === 11 && b < 20)) { console.log("::error::npm " + process.argv[1] + " is older than 11.20.0, the npm of Node 26.13.1 (.nvmrc); never install another npm in this job"); process.exit(1); }' "$(npm --version)"
           [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]] || { echo "::error::No GitHub OIDC token: the job needs permissions id-token: write."; exit 1; }
           node scripts/check-pack.mjs
           chmod -R u=rwX,go=rX dist # the hash depends on file modes; artifacts do not keep them

@@ -4,8 +4,9 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 ## 0.26.1 - 2026-11-24
 
-Hardening of the release path added in 0.26.0 (low findings of the security review). Nothing is published by this
-version; no tool behaviour, name, description, schema or output changed.
+Hardening of the release path added in 0.26.0 (findings of the security review). 0.26.1 is the first version to
+publish (0.26.0 was never published; tag `v0.26.0` lacks this hardening and must not be published from); this change
+itself publishes nothing. No tool behaviour, name, description, schema or output changed.
 
 - `.github/workflows/publish.yml`: the publish job keeps the tarball whose sha256 it checked against the verify job,
   hashes it again right before the upload and runs `npm publish ./<file>.tgz --ignore-scripts` on that file, instead
@@ -18,6 +19,13 @@ version; no tool behaviour, name, description, schema or output changed.
   `repo` scope can approve through the API; `npm logout` right after the first manual publish; not verified whether
   the MCP Registry accepts the GitHub OIDC login with an `environment:release` subject (the first run shows it before
   `npm publish`).
+- The publish job requires npm 11.20.0 or newer (the npm of Node 26.13.1, pinned in `.nvmrc`; was 11.5.1) and
+  installs no other npm.
+- First release: 0.26.1, tagged on the merge commit of PR #37, run on tag `v0.26.1`. The manual publish packs once,
+  notes the sha256, publishes that file (`npm publish ./curitibai-mcp-0.26.1.tgz --ignore-scripts --access public`) and
+  runs `npm logout`; the workflow run afterwards cross-checks its summary sha256 against it. `test/workflows.test.ts`
+  fails when the "First release" section is not the `package.json` version or its `git tag`/`git push` commands name
+  another tag. README's npm note says 0.26.1.
 
 ## 0.26.0 - 2026-11-24
 

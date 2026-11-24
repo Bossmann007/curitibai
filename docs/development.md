@@ -84,14 +84,15 @@ Not verified: whether the MCP Registry accepts the GitHub OIDC login when the to
 (`mcp-publisher login github-oidc`) before `npm publish`, so the first run shows a refusal before anything
 irreversible.
 
-First release (0.26.0), once:
+First release (0.26.1), once. Tag `v0.26.0` is the commit before this hardening (the merge of PR #36): never publish
+from it.
 
-1. Merge the release PR, then tag its merge commit: `git tag v0.26.0 <merge commit> && git push origin v0.26.0`.
+1. Merge the release PR (#37), then tag its merge commit: `git tag v0.26.1 <merge commit> && git push origin v0.26.1`.
 2. In a clean clone of that tag, run `scripts/verify` (exit 0; it also builds `dist/`).
 3. Log in to npm with your account (2FA on): `npm login`.
-4. Publish the first version by hand: `npm publish --ignore-scripts --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists). Right after it, run `npm logout`, so no npm session token stays on the machine.
+4. In that clone, pack once and note the sha256: `npm pack --ignore-scripts`, then `shasum -a 256 curitibai-mcp-0.26.1.tgz`. Publish that file by hand: `npm publish ./curitibai-mcp-0.26.1.tgz --ignore-scripts --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists). Right after it, run `npm logout`, so no npm session token stays on the machine.
 5. On npmjs.com, package `curitibai-mcp`, Settings, Publishing access: "Require two-factor authentication and disallow tokens" (trusted publishing keeps working: [docs](https://docs.npmjs.com/trusted-publishers)).
-6. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on), check the ref and the commit on the approval screen (see "Approving a run"), approve `release`: it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
+6. Actions, `publish`, "Run workflow" on tag `v0.26.1`. Before approving, compare the sha256 in the verify job's summary with the one noted in step 4 (a cross-check, not a gate: a build on a Mac may differ from the Linux one; the verify job stops at the npm 404 until step 4 is done, so this comparison can only come after it). Check the ref and the commit on the approval screen (see "Approving a run"), approve `release`: it skips npm (0.26.1 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
 7. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
 
 Every later release:
