@@ -1274,8 +1274,10 @@ Prior art (2026-11-24): `gh search repos "mcp server government services guide"`
   spatial reference 4326; 7,248 distinct `num` (one repeated), every record with a name and a position inside the
   Curitiba box, 18 with `tipo` null. Guards: a short page that still says `exceededTransferLimit`, a fifth page that
   is still full, an `error` object, a spatial reference other than 4326 or anything not JSON fails closed
-  (`source_unavailable`); the tool never answers from part of the layer. Same host gate, cache period and time budget
-  as the other GeoCuritiba reads. A record without a positive integer `num`, a name or a position in the Curitiba box
+  (`source_unavailable`), and so does a layer that yields no stop or more than 5% unusable records (a changed shape);
+  the tool never answers from part of the layer. Same host gate, cache period (the assembled layer, 6 hours) and time
+  budget as the other GeoCuritiba reads; pages are kept 10 minutes so a call stopped by the budget resumes, and one
+  answer never joins pages read further apart. A record without a positive integer `num`, a name or a position in the Curitiba box
   is skipped and counted; a repeated `num` keeps its first record (by `objectid`). The tool says in `data.source`
   and `note` which source answered, and that freshness cannot be proved.
 - **Live check, built server, 2026-11-24** (stops within the radius; same counts from the export of 2026-11-20 and

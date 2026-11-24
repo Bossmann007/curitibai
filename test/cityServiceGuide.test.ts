@@ -245,12 +245,21 @@ describe("Carta copy", () => {
     const bad = ["https://evil.example/phish", "javascript:alert(1)"];
     const services = base.services.map((s, i) => (i < bad.length ? { ...s, official_url: bad[i]! } : s));
     const kept = services[2]!;
-    const { info, links } = cartaFor({ ...base, services }, GUIDES.iptu);
+    // Three title matches, two dropped: still ambiguous (no link), and only the allowlisted one is listed.
+    const three = cartaFor({ ...base, services }, GUIDES.iptu);
+    expect(three.info.status).toBe("ambiguous");
+    expect(three.info.matches).toEqual([{ title: kept.title, official_url: kept.official_url }]);
+    expect(three.links).toEqual({ page: null, online: null });
+    // One bad and one good: the good one is never promoted to a single match.
+    const two = cartaFor({ ...base, services: [services[0]!, kept] }, GUIDES.iptu);
+    expect(two.info.status).toBe("ambiguous");
+    const { info, links } = cartaFor({ ...base, services: [kept] }, GUIDES.iptu);
     expect(info.status).toBe("matched");
-    expect(info.matches).toEqual([{ title: kept.title, official_url: kept.official_url }]);
     expect(links.page).toBe(kept.official_url);
-    const out = JSON.stringify({ info, links, steps: buildSteps(GUIDES.iptu, links) });
-    for (const u of bad) expect(out).not.toContain(u);
+    for (const r of [three, two]) {
+      const out = JSON.stringify({ ...r, steps: buildSteps(GUIDES.iptu, r.links) });
+      for (const u of bad) expect(out).not.toContain(u);
+    }
 
     const onlyBad = { ...base, services: services.slice(0, 2) };
     expect(cartaFor(onlyBad, GUIDES.iptu)).toMatchObject({ info: { status: "no_match", matches: [] }, links: { page: null } });

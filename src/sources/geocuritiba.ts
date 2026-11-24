@@ -595,6 +595,7 @@ const gate = createHostGate({ minIntervalMs: GEOCURITIBA_MIN_INTERVAL_MS, maxQue
 /** Tests only. */
 export function clearGeoCuritibaCache(): void {
   cache.clear();
+  stopPageCache.clear();
   pointCache.clear();
   gate.reset();
 }
@@ -946,35 +947,53 @@ export interface UrbsStopsLayer {
   pages: number;
 }
 
+/** More than 1 record in this many (5%) without a usable `num`, name or position: the layer is refused (shape changed). */
+export const URBS_STOPS_MAX_SKIPPED_ONE_IN = 20;
+/**
+ * Pages are kept this long for a call stopped by its time budget to resume from; the assembled layer is kept 6 hours.
+ * So one answer never joins pages read more than this far apart (offset paging over a layer edited in between could
+ * miss or repeat stops).
+ */
+export const URBS_STOPS_PAGE_TTL_MS = 10 * 60 * 1000;
+const stopPageCache = new TtlCache(URBS_STOPS_PAGE_TTL_MS);
+
 /**
  * Every page of the stop layer, read one after another through the GeoCuritiba gate (5 s between requests, failures
- * remembered), each page cached 6 hours by its URL, so a call stopped by its time budget (`startBy`, OutOfTimeError)
- * resumes from the cached pages next time. Never answers from part of the layer.
+ * remembered), assembled once and cached 6 hours. A call stopped by its time budget (`startBy`, OutOfTimeError) leaves
+ * the pages it read in a 10-minute page cache, so the next call resumes from them. Never answers from part of the
+ * layer: a fifth full page, no stop at all, or more than 5% of records skipped fails closed.
  */
-export async function getUrbsStops(startBy?: number): Promise<UrbsStopsLayer> {
-  const byNum = new Map<string, LayerStop>();
-  let skipped = 0;
-  let duplicates = 0;
-  let fetchedAt: string | null = null;
-  for (let page = 0; page < URBS_STOPS_MAX_PAGES; page++) {
-    const url = urbsStopsPageUrl(page);
-    const res = await underOwnBudget(startBy, () => cache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-      const r = await fetchText(url, {
-        timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-        maxBytes: GEOCURITIBA_MAX_BYTES,
-        sameHostOnly: true,
-        redirectPathPrefix: "/server/rest/services",
-      });
-      if (!/json/i.test(r.contentType)) throw new SourceUnavailableError("not JSON");
-      return parseStopsPage(r.body, url);
-    }, startBy === undefined ? {} : { startBy })));
-    if (fetchedAt === null || res.fetchedAt < fetchedAt) fetchedAt = res.fetchedAt;
-    skipped += res.value.skipped;
-    for (const s of res.value.stops) {
-      if (byNum.has(s.num)) duplicates++;
-      else byNum.set(s.num, s);
+export function getUrbsStops(startBy?: number): Promise<Cached<UrbsStopsLayer>> {
+  return underOwnBudget(startBy, () => cache.getOrLoad(`GET ${URBS_STOPS_LAYER_URL} (all pages)`, async () => {
+    const byNum = new Map<string, LayerStop>();
+    let skipped = 0;
+    let duplicates = 0;
+    let fetchedAt: string | null = null;
+    for (let page = 0; page < URBS_STOPS_MAX_PAGES; page++) {
+      const url = urbsStopsPageUrl(page);
+      const res = await stopPageCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
+        const r = await fetchText(url, {
+          timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+          maxBytes: GEOCURITIBA_MAX_BYTES,
+          sameHostOnly: true,
+          redirectPathPrefix: "/server/rest/services",
+        });
+        if (!/json/i.test(r.contentType)) throw new SourceUnavailableError("not JSON");
+        return parseStopsPage(r.body, url);
+      }, startBy === undefined ? {} : { startBy }));
+      if (fetchedAt === null || res.fetchedAt < fetchedAt) fetchedAt = res.fetchedAt;
+      skipped += res.value.skipped;
+      for (const s of res.value.stops) {
+        if (byNum.has(s.num)) duplicates++;
+        else byNum.set(s.num, s);
+      }
+      if (res.value.full) continue;
+      const records = byNum.size + duplicates + skipped;
+      if (byNum.size === 0 || skipped * URBS_STOPS_MAX_SKIPPED_ONE_IN > records) {
+        throw new SourceUnavailableError("stop layer shape changed");
+      }
+      return { stops: [...byNum.values()], skipped, duplicates, fetchedAt, pages: page + 1 };
     }
-    if (!res.value.full) return { stops: [...byNum.values()], skipped, duplicates, fetchedAt, pages: page + 1 };
-  }
-  throw new SourceUnavailableError("more stops than expected");
+    throw new SourceUnavailableError("more stops than expected");
+  }));
 }

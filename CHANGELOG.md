@@ -9,9 +9,11 @@ approval 2026-11-24). 28 tools. Publishes nothing.
 
 - `bus_stops_near` with no local `pontosLinha` file (or no `CURITIBAI_DATA_DIR`) reads the stops of IPPUC's
   GeoCuritiba layer `URBS_Transporte_Publico/MapServer/1` (7,249 records on 2026-11-24): 4 fixed pages of 2,000,
-  read one after another through the existing GeoCuritiba host gate and time budget, each page cached 6 hours, and
-  filtered in the server (the position is never sent). A call stopped by the time budget answers `rate_limited` and
-  the next call resumes from the cached pages; a partial layer is never answered from. Only `num`, `nome_ponto` and
+  read one after another through the existing GeoCuritiba host gate and time budget, the assembled layer cached
+  6 hours, and filtered in the server (the position is never sent). A call stopped by the time budget answers
+  `rate_limited` and the next call within 10 minutes resumes from the pages read; a partial layer, a layer with no
+  stop or with more than 5% unusable records is never answered from (`source_unavailable`, with how to use the
+  export instead). Only `num`, `nome_ponto` and
   `tipo` are asked; layer 0 (terminals, with `indfiscal`) is never read.
 - When the export exists, the answer is unchanged, with lines per stop from the export. An invalid or not allowed
   stops file keeps its error (no fallback). `line_code` without the export is `data_not_available`.
@@ -21,8 +23,9 @@ approval 2026-11-24). 28 tools. Publishes nothing.
   `openWorldHint` is now true. Description and title updated within the tools/list size guard (descriptions 9,593 of
   9,600 characters).
 - `city_service_guide`: `cartaFor` now passes each match's `official_url` through the host allowlist itself and drops
-  the match when it fails, before the status, the count and the links are worked out, so the guide no longer depends
-  on the catalog reader's validation (low finding of the v0.28 review). Matches carry the normalized URL.
+  the match when it fails, so the guide no longer depends on the catalog reader's validation (low finding of the v0.28
+  review). Ambiguity still counts every title match, so a dropped match never turns two candidates into one link.
+  Matches carry the normalized URL.
 - docs/tools.md (bus tools, Curitiba App "Transport information" row), docs/sources.md (robots.txt and sample
   request re-checked, live counts), docs/local-data.md, docs/privacy.md, README.
 

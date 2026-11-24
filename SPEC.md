@@ -18,9 +18,11 @@ answer for one who has. Implements the proposal in PR #38 (v0.27.0), section "UR
    the GeoCuritiba layer `GeoCuritiba/URBS_Transporte_Publico/MapServer/1` (stops): fixed queries
    (`outFields=num,nome_ponto,tipo`, WGS84, ordered by `objectid`, `resultOffset` in steps of 2,000), at most 5 pages
    (4 needed on 2026-11-24), read one after another through the shared GeoCuritiba host gate (5 s between requests)
-   with the call's 20 s start budget (`callStartBy`), each page cached 6 hours by its URL. Fails closed on a short page
-   with `exceededTransferLimit`, a fifth page still full, an `error` object, a spatial reference other than 4326, or
-   non-JSON; never answers from part of the layer. Records without a positive integer `num`, a name or a position in
+   with the call's 20 s start budget (`callStartBy`); the assembled layer cached 6 hours, pages 10 minutes (a
+   budget-stopped call resumes; one answer never joins pages read further apart). Fails closed on a short page with
+   `exceededTransferLimit`, a fifth page still full, an `error` object, a spatial reference other than 4326, non-JSON,
+   no stop, or more than 5% unusable records; never answers from part of the layer. A failed read's message says how
+   to use the export. Records without a positive integer `num`, a name or a position in
    the Curitiba box are skipped and counted; a repeated `num` keeps its first record. The position is filtered in the
    server, never sent. Layer 0 (terminals, `indfiscal`) is never read. `line_code` without the export:
    `data_not_available`, no request.
@@ -31,7 +33,7 @@ answer for one who has. Implements the proposal in PR #38 (v0.27.0), section "UR
    says which source answered and that the layer publishes no update date (freshness not provable). `openWorldHint`
    true. Description within the size guard (each ≤ 400 characters, sum ≤ 9,600; now 9,593).
 4. **`city_service_guide` hardening**: `cartaFor` passes each match's `official_url` through `allowedUrl` and drops the
-   match when it returns null, before status, count and links; matches carry the normalized URL.
+   match when it returns null; ambiguity still counts every title match; matches carry the normalized URL.
 5. **Docs and version**: docs/tools.md (bus tools, Curitiba App "Transport information" row), docs/sources.md (robots
    and sample request re-checked 2026-11-24, live counts), docs/local-data.md, docs/privacy.md, README, CHANGELOG
    0.29.0, version 0.29.0 in `package.json`, `package-lock.json` and `server.json`, this SPEC.

@@ -22,7 +22,7 @@ import { lineStops } from "./busLineStops.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
-import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { callStartBy, fail, failFrom, ok, type ErrorCode, type ToolDef } from "./common.js";
 
 export const NEAR_RADIUS_DEFAULT_M = 400;
 export const NEAR_RADIUS_MAX_M = 2000;
@@ -193,9 +193,13 @@ export function layerStopsWithin(layer: UrbsStopsLayer, near: { lat: number; lon
 
 export const LAYER_NOTE =
   "Source: IPPUC's GeoCuritiba layer URBS_Transporte_Publico (Parada de Ônibus), read because no local URBS stops " +
-  "file was found. The layer publishes no update date, so its freshness cannot be proved: stops may have moved or " +
-  "closed. It has no lines per stop, so `lines` is null; for lines and times download the URBS export (docs/local-data.md). " +
-  "Your position is never sent: the whole layer is read (4 pages of 2,000 stops, cached 6 hours) and filtered here.";
+  "file was found (if you downloaded the export, check that CURITIBAI_DATA_DIR is set and the files are decompressed " +
+  "with `xz -d` in its urbs folder). The layer publishes no update date, so its freshness cannot be proved: stops may " +
+  "have moved or closed. It has no lines per stop, so `lines` is null; lines and times (bus_departures) need the URBS " +
+  "export (docs/local-data.md). Your position is never sent: the whole layer is read and filtered here.";
+
+/** Said with a failed layer read: the local export works without the network. */
+const LAYER_FAILED_HINT = `Without the network, this tool works from the URBS export. ${NOT_AVAILABLE("pontosLinha")}`;
 
 export function busStopsNearLayerResult(layer: UrbsStopsLayer, args: BusStopsNearArgs) {
   const matches = layerStopsWithin(layer, args.near, args.radius_m);
@@ -225,7 +229,8 @@ export function busStopsNearLayerResult(layer: UrbsStopsLayer, args: BusStopsNea
     checked_at: dateInCuritiba(new Date(layer.fetchedAt)),
     license_note: `Fonte: IPPUC/GeoCuritiba (URBS). ${FACILITIES_LICENSE_NOTE}`,
     note:
-      `${LAYER_NOTE} \`checked_at\` is the day the layer was read (${layer.fetchedAt}), not a publication date. ` +
+      `${LAYER_NOTE} Read as ${layer.pages} page(s), ${layer.stops.length} stops, cached 6 hours; \`checked_at\` is ` +
+      `the day the layer was read (${layer.fetchedAt}), not a publication date. ` +
       "Not real-time; `distance_m` is the straight-line distance, not the walking distance. Confirm with URBS " +
       `before relying on it.${left}`,
   };
@@ -240,9 +245,12 @@ async function fromLayer(args: BusStopsNearArgs) {
     );
   }
   try {
-    return ok(busStopsNearLayerResult(await getUrbsStops(callStartBy()), args));
+    return ok(busStopsNearLayerResult((await getUrbsStops(callStartBy())).value, args));
   } catch (err) {
-    return failFrom(err);
+    const failed = failFrom(err);
+    const first = failed.content[0];
+    const payload = first?.type === "text" ? (JSON.parse(first.text) as { error: ErrorCode; message?: string }) : null;
+    return payload === null ? failed : fail(payload.error, [payload.message, LAYER_FAILED_HINT].filter(Boolean).join(" "));
   }
 }
 

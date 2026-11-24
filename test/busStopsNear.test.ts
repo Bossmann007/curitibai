@@ -279,6 +279,7 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     expect(out.checked_at).toBe("2026-11-24");
     expect(out.note).toContain("publishes no update date");
     expect(out.note).toContain("1 repeated stop number(s)");
+    expect(out.note).toContain(`Read as 2 page(s), ${URBS_STOPS_PAGE_SIZE + 2} stops`);
     // Two fixed page queries on layer 1; the user's position is never sent, and no other field is asked.
     expect(calls.map((c) => c.url)).toEqual([urbsStopsPageUrl(0), urbsStopsPageUrl(1)]);
     for (const c of calls) {
@@ -290,6 +291,19 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     // Cached: a second call makes no request.
     await layerCall({ near: CENTRE, radius_m: 2000 });
     expect(calls).toHaveLength(2);
+  });
+
+  it("a changed layer shape (num as text) fails closed instead of answering no stops; the error says how to use the export", async () => {
+    const routes = layerRoutes();
+    const asText = (f: Feature): Feature => ({ ...f, attributes: { ...f.attributes, num: String(f.attributes.num) } });
+    for (const p of [0, 1]) {
+      const body = JSON.parse(routes[`GET ${urbsStopsPageUrl(p)}`]!.body!) as { features: Feature[] };
+      routes[`GET ${urbsStopsPageUrl(p)}`] = route(pageBody(body.features.map(asText), p === 0 ? { exceededTransferLimit: true } : {}));
+    }
+    stubFetch(routes);
+    const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
+    expect(err.error).toBe("source_unavailable");
+    expect(err.message).toContain("pontosLinha");
   });
 
   it("line_code without the export is data_not_available, with no request", async () => {
@@ -321,7 +335,7 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     expect(calls).toHaveLength(1);
     const second = getUrbsStops(Date.now() + 20_000);
     await vi.advanceTimersByTimeAsync(10_000);
-    expect((await second).stops).toHaveLength(URBS_STOPS_PAGE_SIZE + 2);
+    expect((await second).value.stops).toHaveLength(URBS_STOPS_PAGE_SIZE + 2);
     expect(calls.map((c) => c.url)).toEqual([urbsStopsPageUrl(0), urbsStopsPageUrl(1)]);
   });
 
