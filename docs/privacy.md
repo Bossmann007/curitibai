@@ -45,6 +45,8 @@ behind it.
   client opens the page in the user's browser, and what the user types there goes only to the official site, never
   through this server. The answer is only accept, decline or cancel. The Prefeitura's Autorização Digital (letting
   another person or company act for the citizen in e-Cidadão) is only mentioned; CuritibAI plays no part in it.
+  The links are public: consent is enforced by the citizen's client and assistant, not by withholding the URL, and a
+  call without `open_step` returns every step with its link.
 - **User position (`place_at_point` since 0.22.0, `service_areas_at_point` since 0.23.0, `census_at_point` since 0.27.0).** These are the only tools
   that send a position to a source, under the same rules. The point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
   `geocuritiba.ippuc.org.br` (in the query URL), kept as the in-memory cache key (6 hours, at most 500 points) and

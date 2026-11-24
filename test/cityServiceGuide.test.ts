@@ -91,6 +91,13 @@ describe("host allowlist", () => {
     "https://gov.br/",
     "https://pr.gov.br/",
     "https://loja.exemplo.com.br/",
+    "https://www.gov.br\\@evil.com/",
+    "https://www.gov.br\\@evil.com/login",
+    "https://www.gov.br\t.evil.com/",
+    "https://156.curitiba.pr.gov.br\n/",
+    " https://156.curitiba.pr.gov.br/",
+    "https://156.curitiba.pr.gov.br/a b",
+    "https://156.curitiba.pr.gov.br/\u0000",
     "javascript:alert(1)",
     "not a url",
   ])("refuses %s", (url) => expect(isAllowedUrl(url)).toBe(false));
@@ -113,6 +120,15 @@ describe("guide invariants (every guide, with and without the Carta copy)", () =
       expect(first.needs_consent).toBe(false);
       expect(first.url).toBeNull();
       expect(first.action).toMatch(/Não peça nesta conversa CPF, senha/);
+    }
+  });
+
+  it("choosing and confirming are separate steps: no consent text both chooses and confirms", async () => {
+    for (const o of await everyOutput()) {
+      for (const s of allSteps(o)) {
+        const c = (s.consent ?? "").toLowerCase();
+        expect(c.includes("escolhe") && c.includes("confirma"), `${o.data.service} #${s.step}: ${c}`).toBe(false);
+      }
     }
   });
 
@@ -198,6 +214,30 @@ describe("Carta copy", () => {
     const steps = buildSteps(GUIDES.iptu, links);
     expect(steps[1]).toMatchObject({ url: links.page, link_source: "carta_copy" });
     expect(steps[2]).toMatchObject({ url: links.online, link_source: "carta_copy", url_host: "iptu-sintetico.curitiba.pr.gov.br" });
+  });
+
+  it("a Carta online link that another parser reads with another host is dropped (backslash before @)", () => {
+    const tricky = buildCatalog(
+      carta([{ title: "IPTU sintético", slug: "iptu-t", id: 9401, online: "https://www.gov.br\\@evil.com/login" }]),
+    );
+    const { links } = cartaFor(tricky, GUIDES.iptu);
+    expect(links.online).toBeNull();
+    expect(buildSteps(GUIDES.iptu, links)[2]!.url).toBeNull();
+  });
+
+  it("links are emitted in normalized form (URL.href), url_host from the same parse", () => {
+    const mixed = buildCatalog(
+      carta([{ title: "IPTU sintético", slug: "iptu-m", id: 9402, online: "https://IPTU-X.Curitiba.PR.gov.br/Guia" }]),
+    );
+    const step = buildSteps(GUIDES.iptu, cartaFor(mixed, GUIDES.iptu).links)[2]!;
+    expect(step).toMatchObject({ url: "https://iptu-x.curitiba.pr.gov.br/Guia", url_host: "iptu-x.curitiba.pr.gov.br" });
+  });
+
+  it("Carta titles in matches are cut to 120 characters", () => {
+    const long = buildCatalog(carta([{ title: `IPTU ${"x".repeat(300)}`, slug: "iptu-l", id: 9403, online: null }]));
+    const title = cartaFor(long, GUIDES.iptu).info.matches[0]!.title;
+    expect(title).toHaveLength(120);
+    expect(title.endsWith("…")).toBe(true);
   });
 
   it("drops an online link whose host is not allowed (third party, port)", () => {
@@ -305,6 +345,21 @@ describe("open_step (URL-mode elicitation)", () => {
     expect(JSON.stringify(o)).not.toContain("saudeja.curitiba.pr.gov.br");
     expect(o.note).toMatch(/stop here/);
   });
+
+  it.each(["decline", "cancel", "error"] as const)(
+    "%s on a Carta link: the payload holds no Carta URL (matches left out), only the status",
+    async (answer) => {
+      const one = buildCatalog(
+        carta([{ title: "IPTU sintético", slug: "iptu-d", id: 9501, online: "https://iptu-d.curitiba.pr.gov.br/guia" }]),
+      );
+      const res = await cityServiceGuideResult("iptu", 2, one, { elicitUrl: async () => answer });
+      if (!res.ok) throw new Error(res.message);
+      const o = cityServiceGuideOutput.parse(res.payload);
+      expect(o.data.carta).toEqual({ status: "matched", matches: [], message: null });
+      expect(JSON.stringify(res.payload)).not.toContain("servicos.curitiba.pr.gov.br");
+      expect(JSON.stringify(res.payload)).not.toContain("iptu-d.curitiba.pr.gov.br");
+    },
+  );
 
   it("no answer (timeout or a failed request): no link, offer to ask again", async () => {
     const res = await cityServiceGuideResult("saude_ja", 2, null, { elicitUrl: async () => "error" });

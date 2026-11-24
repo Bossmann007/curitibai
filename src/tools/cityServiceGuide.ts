@@ -18,19 +18,33 @@ import {
 export const EXACT_HOSTS: readonly string[] = ["www.detran.pr.gov.br", "www.agendamento.detran.pr.gov.br", "www.gov.br"];
 export const CITY_ZONE = "curitiba.pr.gov.br";
 
-/** True for an https URL on an allowed host, with no credentials, no port and no punycode label. */
-export function isAllowedUrl(raw: string): boolean {
+/**
+ * Backslash, whitespace and control characters: WHATWG URL parsing strips or rewrites them, so the raw text could be
+ * read with another host by a different parser (`https://www.gov.br\\@evil.com/` is evil.com to RFC 3986).
+ */
+const UNSAFE_RAW = /[\\\s\x00-\x20\x7f]/;
+
+/**
+ * The normalized URL (`URL.href`) when `raw` is an https URL on an allowed host, with no credentials, no port, no
+ * punycode label and no character that parsers read differently; else null. Only the normalized form is ever emitted.
+ */
+export function allowedUrl(raw: string): string | null {
+  if (UNSAFE_RAW.test(raw)) return null;
   let u: URL;
   try {
     u = new URL(raw);
   } catch {
-    return false;
+    return null;
   }
-  if (u.protocol !== "https:" || u.username !== "" || u.password !== "" || u.port !== "") return false;
+  if (u.protocol !== "https:" || u.username !== "" || u.password !== "" || u.port !== "") return null;
   const host = u.hostname.toLowerCase();
-  if (host.split(".").some((label) => label.startsWith("xn--"))) return false;
-  if (host === OBITUARY_HOST || host.endsWith(`.${OBITUARY_HOST}`)) return false;
-  return EXACT_HOSTS.includes(host) || host.endsWith(`.${CITY_ZONE}`);
+  if (host.split(".").some((label) => label.startsWith("xn--"))) return null;
+  if (host === OBITUARY_HOST || host.endsWith(`.${OBITUARY_HOST}`)) return null;
+  return EXACT_HOSTS.includes(host) || host.endsWith(`.${CITY_ZONE}`) ? u.href : null;
+}
+
+export function isAllowedUrl(raw: string): boolean {
+  return allowedUrl(raw) !== null;
 }
 
 /** Date the guides were written and their fixed links checked (see docs/tools.md). */
@@ -81,6 +95,12 @@ const CARTA_PAGE: StepDef = {
   action: "Abrir a página oficial do serviço na Carta de Serviços da Prefeitura e ler os requisitos.",
   consent: "Abrir a página oficial do serviço no site da Prefeitura, no navegador do cidadão. Nada é digitado.",
   link: "carta_page",
+};
+
+const CHOOSE_TIME: StepDef = {
+  action: "Escolher o serviço, o dia e o horário entre as opções do site.",
+  consent: "O cidadão escolhe o serviço, o dia e o horário no site oficial. Nada é enviado nesta etapa.",
+  types: ["escolha de serviço, dia e horário"],
 };
 
 const PAY: StepDef = {
@@ -134,10 +154,10 @@ export const GUIDES = {
         link: { fixed: "https://saudeja.curitiba.pr.gov.br/" },
       },
       LOGIN_ECIDADAO,
+      CHOOSE_TIME,
       {
-        action: "Escolher dia e horário entre as opções do site.",
-        consent: "O cidadão escolhe dia e horário no site oficial e confirma o agendamento. Só se ele confirmar.",
-        types: ["escolha de dia e horário"],
+        action: "Confirmar o agendamento e anotar o comprovante.",
+        consent: "Confirmar o agendamento no site oficial. Só se o cidadão confirmar.",
       },
     ],
   },
@@ -154,9 +174,13 @@ export const GUIDES = {
         link: "carta_online",
       },
       {
-        action: "Emitir a guia no serviço online.",
-        consent: "O cidadão digita no site oficial os dados do imóvel que o site pedir e emite a guia. Só se ele confirmar.",
+        action: "Digitar no serviço online os dados do imóvel.",
+        consent: "O cidadão digita no site oficial os dados do imóvel que o site pedir. Nada é emitido nem enviado nesta etapa.",
         types: ["dados do imóvel que o site pedir"],
+      },
+      {
+        action: "Emitir a guia.",
+        consent: "Emitir a guia no site oficial. Só se o cidadão confirmar.",
       },
       PAY,
     ],
@@ -174,9 +198,14 @@ export const GUIDES = {
         link: { fixed: "https://www.urbs.curitiba.pr.gov.br/" },
       },
       {
-        action: "Entrar ou pedir o serviço do cartão no site oficial, se ele oferecer.",
-        consent: "O cidadão digita no site oficial o login e os dados do cartão que o site pedir. Só se ele confirmar.",
-        types: ["login e dados do cartão que o site pedir"],
+        action: "Entrar no site oficial, se ele pedir login.",
+        consent: "O cidadão digita o login no site oficial. O assistente não digita a senha.",
+        types: ["login que o site pedir"],
+      },
+      {
+        action: "Informar no site oficial os dados do cartão, se o serviço pedir.",
+        consent: "O cidadão digita no site oficial os dados do cartão que o site pedir. Nada é pago nesta etapa.",
+        types: ["dados do cartão que o site pedir"],
       },
       PAY,
     ],
@@ -194,9 +223,13 @@ export const GUIDES = {
       },
       {
         action: "Escolher o serviço, o local e o horário.",
-        consent:
-          "O cidadão escolhe o serviço e o horário e digita no site os dados que ele pedir para identificá-lo. Só se ele confirmar.",
-        types: ["dados de identificação que o site pedir", "escolha de dia e horário"],
+        consent: "O cidadão escolhe o serviço, o local e o horário no site oficial. Nada é enviado nesta etapa.",
+        types: ["escolha de serviço, local, dia e horário"],
+      },
+      {
+        action: "Digitar no site os dados de identificação que ele pedir.",
+        consent: "O cidadão digita no site oficial os dados que ele pedir para identificá-lo. O assistente não digita esses dados.",
+        types: ["dados de identificação que o site pedir"],
       },
       {
         action: "Confirmar o agendamento e anotar o comprovante.",
@@ -246,9 +279,14 @@ export const GUIDES = {
         link: { fixed: "https://www.agendamento.detran.pr.gov.br/detran-agendamento/portal" },
       },
       {
-        action: "Entrar no portal e escolher o serviço ou o horário.",
-        consent: "O cidadão entra no portal e digita ali os dados que ele pedir. Só se ele confirmar.",
-        types: ["login do portal e dados que ele pedir"],
+        action: "Entrar no portal.",
+        consent: "O cidadão entra no portal oficial e digita ali o login que ele pedir. O assistente não digita a senha.",
+        types: ["login do portal"],
+      },
+      CHOOSE_TIME,
+      {
+        action: "Confirmar o pedido ou o agendamento e anotar o comprovante.",
+        consent: "Confirmar o pedido ou o agendamento no site oficial. Só se o cidadão confirmar.",
       },
       PAY,
     ],
@@ -338,13 +376,17 @@ export function matchCarta(catalog: Catalog, queries: readonly (readonly string[
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
 }
 
+/** Longest Carta title returned: it is local-file text placed next to the consent rules. */
+export const MAX_MATCH_TITLE = 120;
+const clip = (t: string) => (t.length > MAX_MATCH_TITLE ? `${t.slice(0, MAX_MATCH_TITLE - 1)}…` : t);
+
 /** Carta status and links for one guide. Links pass the allowlist or are left out; ambiguous matches give no link. */
 export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { info: CartaInfo; links: CartaLinks } {
   const none: CartaLinks = { page: null, online: null };
   if (catalog === null) return { info: { status: "not_available", matches: [], message: CARTA_HOW_TO }, links: none };
   if (catalog instanceof Error) return { info: { status: "invalid", matches: [], message: catalog.message }, links: none };
   const found = matchCarta(catalog, guide.carta);
-  const matches = found.slice(0, 3).map((s) => ({ title: s.title, official_url: s.official_url }));
+  const matches = found.slice(0, 3).map((s) => ({ title: clip(s.title), official_url: s.official_url }));
   if (found.length === 0) {
     return { info: { status: "no_match", matches, message: "No service in the local Carta copy matched this guide." }, links: none };
   }
@@ -358,8 +400,8 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   return {
     info: { status: "matched", matches, message: null },
     links: {
-      page: isAllowedUrl(s.official_url) ? s.official_url : null,
-      online: s.online_url !== null && isAllowedUrl(s.online_url) ? s.online_url : null,
+      page: allowedUrl(s.official_url),
+      online: s.online_url === null ? null : allowedUrl(s.online_url),
     },
   };
 }
@@ -380,10 +422,8 @@ export function buildSteps(guide: GuideDef, links: CartaLinks): StepOut[] {
       url = s.link.fixed;
       source = "official_allowlist";
     }
-    if (url !== null && !isAllowedUrl(url)) {
-      url = null;
-      source = null;
-    }
+    if (url !== null) url = allowedUrl(url);
+    if (url === null) source = null;
     return {
       step: i + 1,
       action: s.action,
@@ -433,7 +473,7 @@ export async function cityServiceGuideResult(
   const guide: GuideDef = GUIDES[id];
   const { info, links } = cartaFor(catalog, guide);
   const steps = buildSteps(guide, links);
-  const base = {
+  const base: { service: GuideId; title: string; what: string; carta: CartaInfo; delegation: { text: string; source_url: string } } = {
     service: id,
     title: guide.title,
     what: guide.what,
@@ -448,6 +488,8 @@ export async function cityServiceGuideResult(
   if (step.url === null || step.url_host === null) {
     return { ok: false as const, message: `Step ${openStep} has no link to open (call without open_step to see the steps).` };
   }
+  // Only the status: matches carry official_url, the very link the user may refuse.
+  base.carta = { status: info.status, matches: [], message: null };
   const answer = ctx ? await ctx.elicitUrl(elicitationMessage(guide, openStep, step.url_host), step.url) : "unsupported";
   const result = answer === "unsupported" ? "not_supported" : answer === "error" ? "no_answer" : ELICITATION_RESULT[answer];
   // The link is returned only when the user accepted, or when the client cannot ask (then the assistant must ask).

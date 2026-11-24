@@ -23,7 +23,9 @@ step. CuritibAI stays read-only: guidance and official links only; the citizen a
    `idempotentHint: true`, `openWorldHint: true` (the server makes no network call, but `open_step` can lead the
    client to open an external site). Description within the size guard (each ≤ 400
    characters, sum ≤ 9,600; now 9,588).
-2. **Host allowlist** `isAllowedUrl`: https only, no credentials, no port, no punycode label. Hosts: subdomains of
+2. **Host allowlist** `allowedUrl` / `isAllowedUrl`: https only, no credentials, no port, no punycode label, no
+   backslash, whitespace or control character in the raw text; only `URL.href` is emitted, `url_host` from the same
+   parse. Known limit: every `curitiba.pr.gov.br` subdomain is accepted. Hosts: subdomains of
    `curitiba.pr.gov.br` except `obituarios.curitiba.pr.gov.br`, plus `www.detran.pr.gov.br`,
    `www.agendamento.detran.pr.gov.br` and `www.gov.br`. Fixed links and how each was checked: docs/tools.md,
    "`city_service_guide` consent and links".
@@ -32,7 +34,8 @@ step. CuritibAI stays read-only: guidance and official links only; the citizen a
    Without the file, the guide keeps its fixed links and `carta.message` says how to save the copy.
 4. **`open_step`**: `ToolContext.elicitUrl` (built per call in `src/server.ts`) sends a URL-mode elicitation only when
    the client declared `elicitation.url` (SDK 1.32.2, protocol 2025-11-25), with a 55 s timeout (under the 60 s default tools/call timeout of SDK clients). The message is
-   fixed server text. Results: `accepted` (link returned), `declined` / `cancelled` / `no_answer` (no link, told to
+   fixed server text. In this branch `carta` holds only its status (no matches, so a refused link is not returned
+   another way). Results: `accepted` (link returned), `declined` / `cancelled` / `no_answer` (no link, told to
    stop), `not_supported` (link returned, told to ask in the conversation first).
 5. **Docs and version**: README (28 tools, row), docs/tools.md (reference row, consent and links section, Curitiba
    App rows 156, scheduling, IPTU, Cartão Transporte and creche), docs/privacy.md, docs/local-data.md, ADR 0010 and the

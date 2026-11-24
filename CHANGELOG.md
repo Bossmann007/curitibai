@@ -16,9 +16,12 @@ authorization at every step (owner approval 2026-11-24). CuritibAI stays read-on
 - Links are https on allowlisted official hosts only: subdomains of `curitiba.pr.gov.br` (not the obituary system),
   `www.detran.pr.gov.br`, `www.agendamento.detran.pr.gov.br` and `www.gov.br`. Each was checked by hand on 2026-11-24
   (docs/tools.md). Links from the user's Carta copy pass the same check, and only a unique match gives a link.
+  A raw link with a backslash, whitespace or control character is dropped; only the normalized URL is returned.
+  Carta titles in `matches` are cut to 120 characters. Known limit: any `curitiba.pr.gov.br` subdomain is accepted.
   Without the copy, `carta.message` says how to save it.
 - Optional `open_step`: when the client supports MCP URL-mode elicitation, the server asks the client to show the link
-  and its host for the user's approval. Accept returns the link; decline or cancel return none and say to stop.
+  and its host for the user's approval. Accept returns the link; decline or cancel return none and say to stop, and
+  `carta` then carries only its status. Choosing, typing and confirming are separate consent steps.
   Without the capability, the link is returned with the instruction to ask in the conversation first.
 - The Prefeitura's Autorização Digital (e-Cidadão) is mentioned as information only.
 - [ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md); docs/tools.md (reference, allowlist, Curitiba
