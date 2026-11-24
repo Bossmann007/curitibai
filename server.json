@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Bossmann007/curitibai",
+  "title": "CuritibAI",
+  "description": "Unofficial read-only MCP server for public data about Curitiba, Brazil.",
+  "repository": {
+    "url": "https://github.com/Bossmann007/curitibai",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/Bossmann007/curitibai#readme",
+  "version": "0.26.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "curitibai-mcp",
+      "version": "0.26.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CURITIBAI_DATA_DIR",
+          "description": "Folder with the files you download for the local-data tools (URBS exports, CSVs, catalog copy). Optional.",
+          "format": "filepath",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "CURITIBAI_REMOTE_DATA",
+          "description": "Set to 0 or off to stop reading the published events and phones copy from GitHub. Optional.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

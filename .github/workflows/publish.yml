@@ -1,0 +1,109 @@
+name: publish
+
+# Publishes the version in package.json to npm (trusted publishing, OIDC) and then server.json to the MCP Registry
+# (GitHub OIDC). Runs only when started by hand (Actions, "publish", "Run workflow" on main): never on a tag or a push.
+# Release steps: docs/development.md, "Release". The npm trusted publisher must name this file, publish.yml.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing and mcp-publisher login github-oidc
+    env:
+      # Pinned as in https://modelcontextprotocol.io/registry/github-actions; upgrade on purpose, never releases/latest.
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false # no cache in a release build (https://docs.npmjs.com/trusted-publishers)
+
+      # Everything that can fail runs before the first irreversible step (npm publish).
+      - id: preflight
+        name: Preflight (versions, OIDC, package on npm)
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+          node -e '
+            const [maj, min] = process.versions.node.split(".").map(Number);
+            if (maj < 22 || (maj === 22 && min < 14)) { console.log("::error::Node " + process.versions.node + " is too old for npm trusted publishing (22.14.0 or newer)"); process.exit(1); }'
+          npm_v="$(npm --version)"
+          node -e '
+            const [a, b, c] = process.argv[1].split(".").map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) { console.log("::error::npm " + process.argv[1] + " is too old for trusted publishing (11.5.1 or newer)"); process.exit(1); }' "$npm_v"
+          [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]] || fail "No GitHub OIDC token: the job needs permissions id-token: write."
+          name="$(node -p 'require("./package.json").name')"
+          version="$(node -p 'require("./package.json").version')"
+          [[ "$(node -p 'require("./server.json").version')" == "$version" ]] || fail "server.json version is not package.json's $version."
+          echo "package $name@$version, node $(node --version), npm $npm_v"
+          # npm trusted publishing is configured per package on npmjs.com, and npm's docs say the package must already
+          # exist there (https://docs.npmjs.com/cli/v12/commands/npm-trust). npm does not check the configuration when
+          # it is saved, so a missing one only shows as ENEEDAUTH at publish time; this is the check that can run now.
+          if ! npm view "$name" name >/dev/null 2>&1; then
+            fail "$name is not on npm yet, so no trusted publisher can be configured for it. Publish the first version by hand (docs/development.md, Release), configure the trusted publisher on npmjs.com (workflow file publish.yml), then run this workflow again."
+          fi
+          if [[ "$(npm view "$name@$version" version 2>/dev/null || true)" == "$version" ]]; then
+            echo "$name@$version is already on npm: npm publish is skipped, the MCP Registry step still runs."
+            echo "skip_npm=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip_npm=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: scripts/verify
+        env:
+          CURITIBAI_SKIP_AUDIT: "1"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Validate server.json with the MCP Registry
+        run: ./mcp-publisher validate server.json
+
+      - name: Log in to the MCP Registry (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to npm (trusted publishing; provenance is added automatically)
+        if: steps.preflight.outputs.skip_npm != 'true'
+        run: |
+          set -uo pipefail
+          if ! npm publish 2>&1 | tee npm-publish.log; then
+            if grep -qE 'ENEEDAUTH|E401|E403|E404|OIDC|trusted' npm-publish.log; then
+              echo "::error::npm refused the publish. Check the trusted publisher of curitibai-mcp on npmjs.com: GitHub Actions, owner Bossmann007, repository curitibai, workflow file publish.yml (exact, case-sensitive), no environment, and 'npm publish' enabled under Allowed actions (new configurations allow only 'npm stage publish'). See https://docs.npmjs.com/trusted-publishers"
+            fi
+            exit 1
+          fi
+
+      - name: Publish server.json to the MCP Registry
+        run: ./mcp-publisher publish

@@ -79,6 +79,34 @@ Claude Code: `claude mcp add curitibai -- node /absolute/path/to/curitibai/dist/
 Other MCP clients: configure a stdio server with the command `node` and the single argument
 `/absolute/path/to/curitibai/dist/server.js`. Check your client's documentation for where that setting goes.
 
+### Install from npm (after the first release)
+
+Not on npm yet: this works once `curitibai-mcp` 0.26.0 or later is published ([release steps](docs/development.md#release)).
+Then no clone or build is needed; `npx` downloads the package and runs its `curitibai-mcp` command (Node.js 26.13.1
+or newer, as above):
+
+```sh
+npx -y curitibai-mcp   # speaks MCP over stdio
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "curitibai": {
+      "command": "npx",
+      "args": ["-y", "curitibai-mcp"]
+    }
+  }
+}
+```
+
+Claude Code: `claude mcp add curitibai -- npx -y curitibai-mcp`
+
+The server will also be listed in the [MCP Registry](https://registry.modelcontextprotocol.io/) as
+`io.github.Bossmann007/curitibai` (`server.json`).
+
 To use `local_csv_summary`, `city_services_search`, `city_points_search`, `events_search`, `useful_phones` or the bus tools, add `"env": {"CURITIBAI_DATA_DIR": "/absolute/path/to/a/folder"}` next to `args`
 (Claude Code: `claude mcp add curitibai -e CURITIBAI_DATA_DIR=/absolute/path/to/a/folder -- node ...`). Without it,
 `local_csv_summary` returns `{"error":"data_dir_not_set"}`, `city_services_search` returns

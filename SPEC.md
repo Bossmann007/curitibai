@@ -1,82 +1,57 @@
-# SPEC: v0.25.0 quality block, part 2 (shorter tool descriptions, size ceiling)
+# SPEC: v0.26.0 release preparation (npm and MCP Registry)
 
-Approved: Enzo 2026-11-23 (roadmap "bloco de qualidade", task brief "curitibai v0.25.0 — bloco de qualidade, parte
-2"). Scope frozen: tool and input-field description text, a size guard, docs and the version. No tool behaviour, name,
-title, type, required field, enum, output or `outputSchema` changes.
+Approved: Enzo 2026-11-24 ("segue com o curitibaai", roadmap step after v0.25; task brief "curitibai v0.26.0 —
+prepare publication to npm and the official MCP Registry"). Scope frozen: package metadata, `server.json`, a manual
+publish workflow, a package-contents check, release docs and one docs fix. **Nothing is published by this version**:
+no `npm publish`, no `mcp-publisher publish`, no npm login, no new secret, no tag push, no workflow run. The owner
+publishes later with his own npm account.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Every `tools/list` costs the client's context window. At v0.24.1 the 25 descriptions take 15,561 characters and the
-longest is 1,651 (raw length). Make each description say what the tool does, when to use it and its main input, in at most 400
-characters, keep only what the model needs before calling (privacy, safety, preconditions), and add a guard so the
-text cannot grow back unnoticed.
+Make `curitibai-mcp` installable with `npx` and listed in the official MCP Registry once the owner publishes it, with
+a tarball that holds only what users need and a publish path that needs no stored token.
 
 ## Changes
 
-1. **Descriptions** (`src/tools/*.ts`): every tool description is at most 400 characters (`description.length`, raw
-   string). Kept in the description: what is sent where before the call (the rounded point sent to IPPUC, the search
-   word sent to PNCP, "your position is never sent"), that `local_csv_summary` never returns data rows and refuses
-   personal-looking columns, "not for emergencies" with the number, "not real-time", "not tax advice", the
-   untrusted-text warning (short form), the local file a tool needs, and the cold-call time of `place_at_point`,
-   `service_areas_at_point` and `guaira_events`. Moved out: the OSM licence credit of `places_search` (in its
-   `attribution` and `license_note`), paging and timing
-   details, and edge-case rules. Each moved clause is either already in `docs/tools.md` or added there under
-   "Notes moved out of the tool descriptions". Response text (`note`, `license_note`) is not changed.
-2. **Place tools** (`places_search`, `city_points_search`, `city_facilities_search`): one "Prefer this when…" sentence
-   in each, so each overlapping kind of place has one tool:
-   - `city_facilities_search`: any kind it has a type for (feiras, Ruas da Cidadania, libraries, parks, museums,
-     Câmbio Verde, popular restaurants, cemeteries...), or when days, hours or a phone are needed. Live (IPPUC).
-   - `city_points_search`: CMEIs, schools, bus terminals, regional offices, or every kind of city point near a
-     position at once. Local URBS file, no hours.
-   - `places_search`: police and fire stations, or when the other two find nothing (its other OSM categories,
-     parks, libraries, schools, community centres, town halls, bus stations and marketplaces, overlap kinds the other
-     two own).
-   Public health units go to `health_units_search` (named in `places_search`). Names are a contract: no tool is merged or renamed.
-3. **Input-field descriptions**: only redundant text is cut (a clause repeated in the field and in the tool
-   description, or OSM tag names repeated per category). No type, name, required flag, enum or default changes.
-   The contract snapshot is rewritten on purpose with `npm run contracts:update`; CHANGELOG says only text changed.
-   Proof: the old and new `test/fixtures/tool-contracts.json` are deep-equal once every `description` key is removed.
-4. **Size guard** (`test/contracts.test.ts`): fails when any description is over 400 characters (naming the tool and
-   its length) or when the descriptions sum (same measure as the baseline: `JSON.stringify(description).length`
-   summed) is over the ceiling below. The test also prints the 5 numbers of the baseline.
-5. **outputSchemas in the client's context**: assessed, not changed (see below).
-6. `test/osm.test.ts`: the `places_search` description no longer carries the police note (it stays in every police
-   result's `note`); the assertion on the description is removed on purpose.
-7. Docs: `docs/tools.md` (moved notes), `docs/development.md` (the guard), CHANGELOG 0.25.0, version 0.25.0 in
-   `package.json` and `package-lock.json`.
-
-## Size (`tools/list`, 25 tools, characters)
-
-| Part | v0.24.1 | v0.25.0 |
-|---|---|---|
-| tools | 25 | 25 |
-| descriptions | 15,561 | 8,705 (−44%) |
-| inputSchemas | 19,636 | 19,532 |
-| outputSchemas | 63,226 | 63,226 (unchanged) |
-| total (`tools/list` result) | 107,011 | 100,051 |
-
-Ceiling on the descriptions sum: 9,600 (8,705 plus about 10%, rounded up to a hundred), below the 25 × 400 = 10,000
-that the per-tool limit alone would allow, so a new tool or a longer description needs a deliberate change to it.
-Longest description (raw `description.length`): 400 or fewer for all 25 (v0.24.1: 1,651).
-
-## outputSchemas in the client's context
-
-Não verificado. No client was checked against this server in this version for whether it puts `outputSchema` in the
-model's context (Claude Code's own MCP tool definitions shown to the model in the working session carried only name,
-description and input parameters, but none of the servers loaded there was confirmed to declare an `outputSchema`, so
-that does not settle it). outputSchemas are not cut in this version.
+1. **`package.json`**: `private` removed; `files` = `dist/`, `CHANGELOG.md`, `docs/licences.md` (the ODbL notice for
+   the bundled OSM extract, with the other data licences; `LICENSE` is Apache-2.0 only); `mcpName`
+   `io.github.Bossmann007/curitibai`; `repository`, `homepage`, `bugs`, `keywords`; `publishConfig.access: public`.
+   `publishConfig.provenance` is **not** set: npm adds provenance automatically with trusted publishing, and the
+   setting would make the manual first publish from a laptop fail (provenance needs a supported CI). `engines`
+   unchanged.
+2. **`server.json`** (schema `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`): name =
+   `mcpName`, description at most 100 characters, version = `package.json`, one npm stdio package, the environment
+   variables `CURITIBAI_DATA_DIR` and `CURITIBAI_REMOTE_DATA` (optional, not secret).
+3. **`test/serverJson.test.ts`**: validates `server.json` with Ajv (draft-07 + formats) against the schema vendored in
+   `test/fixtures/mcp-registry/server.schema.json`, whose `$id` must equal `server.json`'s `$schema`; name, version,
+   identifier and repository agree with `package.json`. `ajv` 8.20.0 and `ajv-formats` 3.0.1 become pinned
+   devDependencies (already installed through the MCP SDK).
+4. **`scripts/check-pack.mjs`** (verify step after the build): `npm pack --dry-run --json` paths must match an
+   allowlist (`package.json`, `README.md`, `LICENSE`, `CHANGELOG.md`, `docs/licences.md`, `dist/**.js`), none may
+   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and the packed size must be at most 250,000 bytes
+   (0.26.0: about 179,000; about 40% headroom). Unit tests in `test/checkPack.test.ts`.
+5. **`.github/workflows/publish.yml`**: `workflow_dispatch` only, `main` and this repository only, `id-token: write`
+   and `contents: read`, actions pinned by SHA, `mcp-publisher` v1.8.1 checked with cosign as the registry docs show.
+   Order: preflight (Node ≥ 22.14, npm ≥ 11.5.1, OIDC token, `server.json` version, package exists on npm), then
+   `scripts/verify`, `mcp-publisher validate`, `mcp-publisher login github-oidc`, `npm publish` (skipped when the
+   version is already on npm), `mcp-publisher publish`. A refused `npm publish` prints which npmjs.com fields to check.
+6. **Docs**: README "Install from npm (after the first release)"; `docs/development.md` "Release" (first release by
+   hand, then trusted publishing); CHANGELOG 0.26.0; the `docs/tools.md` login rows (156, Scheduling, Cartão
+   Transporte) say "needs a registration or login (owner's note; not confirmed in the linked sources); out of scope".
 
 ## Out of scope
 
-Changing outputSchemas, response text, tool behaviour, names or titles; merging the place tools; a ceiling on
-inputSchemas or the total; creating the `v0.25.0` tag.
+Publishing anything; changing `engines` (Node 22.12 and 24 results go in the PR body only); tool behaviour; staged
+publishing (`npm stage publish`) in the workflow; creating the `v0.26.0` tag.
 
 ## Check
 
-- `scripts/verify` exits 0 (the guard runs in its vitest step).
-- The guard fails with the expected message when one description is made 401 characters long, and passes again when
-  restored. Output in the PR body.
-- Old and new contract snapshots are deep-equal without `description` keys; `outputSchemas` is still 63,226.
+- `scripts/verify` exits 0 and prints the package size.
+- `test/serverJson.test.ts` fails when `server.json`'s version differs from `package.json` or its description is
+  over 100 characters (shown by editing and restoring).
+- The packed tarball installed in an empty folder runs `npx --no-install curitibai-mcp` and answers `tools/list` with
+  25 tools and version 0.26.0.
+- `actionlint` reports nothing on `publish.yml`.

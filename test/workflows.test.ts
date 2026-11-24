@@ -13,7 +13,7 @@ const code = (text: string) => text.split("\n").map((l) => l.replace(/\s#.*$/, "
 
 describe("GitHub Actions workflows", () => {
   it("found the workflows", () => {
-    expect(workflows.map((w) => w.name).sort()).toEqual(["collect.yml", "receita-version.yml", "verify.yml"]);
+    expect(workflows.map((w) => w.name).sort()).toEqual(["collect.yml", "publish.yml", "receita-version.yml", "verify.yml"]);
   });
 
   it("use only the standard ubuntu-latest runner (free for public repositories), never a larger one", () => {
@@ -74,6 +74,28 @@ describe("GitHub Actions workflows", () => {
     expect(verify).toContain("if: github.event.action != 'edited' || github.event.pull_request.state == 'open'");
     expect(verify).toMatch(/- if: \$\{\{ !cancelled\(\) && steps\.checkout\.outcome == 'success' && github\.event_name == 'pull_request' \}\}\n {8}run: scripts\/pr-size\.mjs HEAD\^1 HEAD\n {8}env:\n {10}PR_BODY: \$\{\{ github\.event\.pull_request\.body \}\}\n/);
     expect(code(verify).filter((l) => l.includes("pull_request.body"))).toEqual(["          PR_BODY: ${{ github.event.pull_request.body }}"]);
+  });
+
+  it("publish: started by hand on main only, OIDC instead of secrets, checks before the irreversible steps", () => {
+    const wf = readFileSync(new URL("publish.yml", DIR), "utf8");
+    const lines = code(wf).map((l) => l.trimEnd());
+    const body = lines.join("\n");
+    // Only workflow_dispatch: never on a tag, a push or a schedule (the owner pushes tags after merges).
+    expect(body).toMatch(/^on:\n {2}workflow_dispatch:\n\n/m);
+    expect(body).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|tags|release|workflow_run):/m);
+    expect(wf).toMatch(/^permissions: \{\}\n/m);
+    expect(wf).toMatch(/^ {4}permissions:\n {6}contents: read\n {6}id-token: write/m);
+    expect(lines.filter((l) => /: write$/.test(l))).toEqual(["      id-token: write"]);
+    expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && github.ref == 'refs/heads/main'");
+    expect(wf).toContain("persist-credentials: false");
+    expect(body).not.toMatch(/secrets\.|NPM_TOKEN|NODE_AUTH_TOKEN|releases\/latest/);
+    expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
+    // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
+    const at = (re: RegExp) => lines.findIndex((l) => re.test(l));
+    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish 2>&1/, /mcp-publisher publish$/].map(at);
+    expect(order.every((i) => i > 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish 2>&1 | tee npm-publish.log; then"]);
   });
 
   it("collect and receita-version share one concurrency group (both push to the data branch)", () => {
