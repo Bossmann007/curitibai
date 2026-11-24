@@ -16,3 +16,4 @@ a new record that supersedes the old one; the old one stays, marked "Superseded 
 | [0007](0007-data-branch-writers.md) | Two writers of the `data` branch: one concurrency group, one retry, never forced | Accepted |
 | [0008](0008-local-csv-summary-small-counts.md) | `local_csv_summary`: a floor of 5 rows, and no filter with `group_by` | Accepted |
 | [0009](0009-census-household-floor.md) | `census_at_point`: a floor of 20 occupied households per figure | Accepted |
+| [0010](0010-service-guides-consent-at-every-step.md) | `city_service_guide`: steps and official links for services that need a login; the citizen acts, with consent at every step | Accepted |

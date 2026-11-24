@@ -90,6 +90,10 @@ Call it with no arguments to see the categories, then search by words ("iptu", "
 catalog has one, to the online service (`online_url`). The server never opens those links; they are for people. Check
 the official page before acting: the summary is only the site's short teaser, and the copy is a dated snapshot.
 
+`city_service_guide` (since 0.28.0) reads the same file to add the official page and online link of a guide's
+service. It gives a link only when one service matches and its host is allowed. Without the file, the guide still works
+with its fixed official links, and `carta.message` says how to save the copy.
+
 ## Bus lines, stops, timetables and points of interest (URBS files you download)
 
 `bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near` and `city_points_search` read URBS's daily exports from the dataset "Transporte
