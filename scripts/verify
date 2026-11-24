@@ -14,8 +14,8 @@ node scripts/check-links.mjs
 step "release: package.json version is the newest CHANGELOG release; tags vX.Y.Z when the clone has tags (docs/adr/0006)"
 node scripts/check-release.mjs
 
-step "npm ci"
-npm ci --no-audit --no-fund --prefer-offline
+step "npm ci --ignore-scripts (no dependency install script runs; none is needed)"
+npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
 
 step "tsc --noEmit"
 npx tsc --noEmit

@@ -2,10 +2,11 @@
 // Package check: what `npm publish` would upload. Runs `npm pack --dry-run --json` (no tarball written, no network) and
 // fails unless every path is on the allowlist below, none is a forbidden kind (local data, tests, fixtures, .env*,
 // *.local), every dist/ file comes from a src/ module (a leftover of a renamed module would ship otherwise: the build
-// does not empty dist/) and the packed size is under MAX_PACKED_BYTES. Run it after `npm run build`: dist/ is gitignored.
+// does not empty dist/), no packed line looks like a secret (scanSecrets) and the packed size is under
+// MAX_PACKED_BYTES. Run it after `npm run build`: dist/ is gitignored.
 // Exit 0 = fine, 1 = a rule failed (each one printed), 2 = npm pack failed.
 import { execFileSync } from "node:child_process";
-import { readdirSync, realpathSync } from "node:fs";
+import { readFileSync, readdirSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /** Packed (gzip) size ceiling. 0.26.0 packs to about 179 KB; a jump past this means something unplanned got in. */
@@ -30,6 +31,35 @@ const FORBIDDEN = [
   /\.local(\.|$)/,
   /(^|\/)src\//,
 ];
+
+/** Secret shapes that must never ship: [label, pattern]. Each line of each packed file is tested. */
+const SECRETS = [
+  ["private key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+  ["GitHub token", /\b(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})\b/],
+  ["npm token", /\bnpm_[A-Za-z0-9]{36}\b/],
+  ["AWS access key", /\b(AKIA|ASIA)[0-9A-Z]{16}\b/],
+  ["Google API key", /\bAIza[0-9A-Za-z_-]{35}\b/],
+  ["Slack token", /\bxox[abposr]-[A-Za-z0-9-]{10,}/],
+  ["OpenAI/Anthropic-style key", /\bsk-(ant-)?[A-Za-z0-9_-]{32,}/],
+  ["JWT", /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
+  ["URL with credentials", /\b[a-z][a-z0-9+.-]*:\/\/[^\s/:@'"`]+:[^\s/@'"`]+@[^\s'"`]+/i],
+  [".env-style secret", /^\s*(export\s+)?[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\s*=\s*['"]?[^\s'"$]{8,}/],
+];
+
+/**
+ * @param {string} path  packed path, for the message
+ * @param {string} text  file content
+ * @returns {string[]} one error per line that looks like a secret (the value itself is never printed)
+ */
+export function scanSecrets(path, text) {
+  const errors = [];
+  for (const [i, line] of text.split("\n").entries()) {
+    for (const [label, re] of SECRETS) {
+      if (re.test(line)) errors.push(`possible ${label} in ${path}:${i + 1}`);
+    }
+  }
+  return errors;
+}
 
 /**
  * @param {{ files: { path: string }[], size: number }} pack  one entry of `npm pack --dry-run --json`
@@ -71,6 +101,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   for (const f of pack.files) console.log(`  ${String(f.size).padStart(8)}  ${f.path}`);
   console.log(`check-pack: ${pack.filename}, ${pack.files.length} files, packed ${pack.size} bytes, unpacked ${pack.unpackedSize} bytes (ceiling ${MAX_PACKED_BYTES} packed)`);
   const errors = checkPack(pack, built);
+  for (const { path } of pack.files) errors.push(...scanSecrets(path, readFileSync(new URL(`../${path}`, import.meta.url), "utf8")));
   for (const e of errors) console.error(`check-pack: ${e}`);
   if (errors.length > 0) process.exit(1);
   console.log("check-pack: OK");

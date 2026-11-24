@@ -86,7 +86,8 @@ describe("GitHub Actions workflows", () => {
     expect(wf).toMatch(/^permissions: \{\}\n/m);
     expect(wf).toMatch(/^ {4}permissions:\n {6}contents: read\n {6}id-token: write/m);
     expect(lines.filter((l) => /: write$/.test(l))).toEqual(["      id-token: write"]);
-    expect(wf).toContain("if: github.repository == 'Bossmann007/curitibai' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))");
+    const gate = "    if: github.repository == 'Bossmann007/curitibai' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))";
+    expect(lines.filter((l) => l === gate)).toHaveLength(2); // both jobs
     expect(wf).toContain("[[ \"$tag_sha\" == \"$head_sha\" ]]");
     expect(wf.match(/persist-credentials: false/g)).toHaveLength(2);
     expect(body).not.toMatch(/secrets\.|NPM_TOKEN|NODE_AUTH_TOKEN|releases\/latest/);
@@ -95,6 +96,10 @@ describe("GitHub Actions workflows", () => {
     const verifyJob = body.slice(0, body.indexOf("\n  publish:\n"));
     expect(verifyJob).not.toContain("id-token");
     expect(publishJob).toContain("needs: verify");
+    // The owner approves each run in the GitHub environment "release" (main and v* only); npm's trusted publisher names it.
+    expect(publishJob).toMatch(/^ {4}environment: release$/m);
+    expect(publishJob).toContain("tag_sha\" == \"$(git rev-parse HEAD)\"");
+    expect(publishJob).toContain('[[ "$sha" == "$APPROVED_SHA256" ]]');
     expect(publishJob).not.toMatch(/npm (ci|install|test)|scripts\/verify|vitest/);
     expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
     // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
@@ -103,6 +108,19 @@ describe("GitHub Actions workflows", () => {
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then"]);
+  });
+
+  it("id-token only in the publish job of publish.yml, which runs in the release environment", () => {
+    for (const w of workflows) {
+      const text = code(w.text).join("\n");
+      const count = (text.match(/^\s*id-token\s*:/gm) ?? []).length; // permission keys, not messages
+      expect(count, w.name).toBe(w.name === "publish.yml" ? 1 : 0);
+    }
+    const jobs = code(readFileSync(new URL("publish.yml", DIR), "utf8")).join("\n").split(/\n(?= {2}[a-z_-]+:\n)/);
+    const withToken = jobs.filter((j) => j.includes("id-token: write"));
+    expect(withToken).toHaveLength(1);
+    expect(withToken[0]).toMatch(/^ {2}publish:\n/);
+    expect(withToken[0]).toMatch(/^ {4}environment: release$/m);
   });
 
   it("collect and receita-version share one concurrency group (both push to the data branch)", () => {

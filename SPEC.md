@@ -32,17 +32,24 @@ a tarball that holds only what users need and a publish path that needs no store
    devDependencies (already installed through the MCP SDK).
 4. **`scripts/check-pack.mjs`** (verify step after the build): `npm pack --dry-run --json` paths must match an
    allowlist (`package.json`, `README.md`, `LICENSE`, `CHANGELOG.md`, `docs/licences.md`, `dist/**.js`), none may
-   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and no `dist/` file may lack a `src/` module (a leftover of an earlier build), and the packed size must be at most 250,000 bytes
-   (0.26.0: about 179,000; about 40% headroom). Unit tests in `test/checkPack.test.ts`.
+   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and no `dist/` file may lack a `src/` module (a leftover of an earlier build), no packed line may look like a secret (private keys, GitHub/npm/AWS/Google/Slack tokens, JWTs, URLs with credentials, `.env`-style secrets), and the packed size must be at most 250,000 bytes
+   (0.26.0: about 179,000; about 40% headroom). Unit tests in `test/checkPack.test.ts`. `scripts/verify` installs with
+   `npm ci --ignore-scripts` (no dependency install script runs; build, tests and smoke pass without them).
 5. **`.github/workflows/publish.yml`**: `workflow_dispatch` only, this repository only, on `main` or a `v*` tag, and
-   only when the commit is the one tagged `v<version>`; actions pinned by SHA, `mcp-publisher` v1.8.1 checked with
-   cosign as the registry docs show. Job `verify` (`contents: read` only): tag, `server.json` version, package exists
-   on npm (a 404 says "publish the first version by hand"; other errors are shown as they are), `scripts/verify`,
-   `dist/` uploaded. The 0.26.0 run skips npm (published by hand first), so it needs no trusted publisher; that is
-   configured before the next release (it expires if unused for 2 days). Job `publish` (`id-token: write`, no `npm ci`, no tests): Node ≥ 22.14, npm ≥ 11.5.1, OIDC
-   token, `check-pack`, `mcp-publisher validate`, `login github-oidc`, `npm publish --ignore-scripts` (skipped when
-   the version is already on npm), wait until npm serves the version's `mcpName`, `mcp-publisher publish`. A refused
-   `npm publish` prints which npmjs.com fields to check.
+   only when the commit is the one tagged `v<version>` (checked in both jobs); actions pinned by SHA, `mcp-publisher`
+   v1.8.1 checked with cosign as the registry docs show. Job `verify` (`contents: read` only): tag, `server.json`
+   version, package exists on npm (a 404 says "publish the first version by hand"; other errors are shown as they
+   are), `scripts/verify`, the tarball's sha256 in the job summary, `dist/` uploaded. Job `publish` runs in the GitHub
+   environment `release` (required reviewer: the owner; only `main` and `v*`), because npm's trusted publisher binds
+   only owner, repository, workflow file and environment, and a workflow runs from the dispatched ref: without the
+   environment, a pushed branch with an edited `publish.yml` could publish. It has `id-token: write`, no `npm ci`, no
+   tests: tag again, Node ≥ 22.14, npm ≥ 11.5.1, OIDC token, `check-pack`, tarball sha256 equal to the approved one
+   (file modes normalised first), `mcp-publisher validate`, `login github-oidc`, `npm publish --ignore-scripts`
+   (skipped when the version is already on npm), wait until npm serves the version's `mcpName`, `mcp-publisher
+   publish`. A refused `npm publish` prints which npmjs.com fields to check. The 0.26.0 run skips npm (published by
+   hand first), so it needs no trusted publisher; that is configured, with environment `release`, before the next
+   release (it expires if unused for 2 days). `test/workflows.test.ts` fails if `id-token` appears in any other job
+   or workflow, or the publish job loses `environment: release`.
 6. **Docs**: README "Install from npm (after the first release)"; `docs/development.md` "Release" (first release by
    hand, then trusted publishing); CHANGELOG 0.26.0; the `docs/tools.md` login rows (156, Scheduling, Cartão
    Transporte) say "needs a registration or login (owner's note; not confirmed in the linked sources); out of scope".
