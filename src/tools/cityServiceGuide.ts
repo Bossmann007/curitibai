@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { FileTooLargeError, LocalFileError } from "../localfs.js";
-import { fold } from "../text.js";
 import { fail, ok, type ToolContext, type ToolDef } from "./common.js";
 import {
   CATALOG_FILE,
@@ -310,11 +309,14 @@ const CARTA_HOW_TO =
   `browser and save the listing yourself as ${CATALOG_FILE} in the folder set by CURITIBAI_DATA_DIR (shape and steps: ` +
   "docs/local-data.md, \"Finding a city service\"). The server never downloads it.";
 
-/** Services of the user's Carta copy whose title holds every word of one of the guide's queries. */
+/** Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words. */
 export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[]) {
   const words = queries.map((q) => queryWords(q.join(" ")));
   return catalog.services
-    .filter((s) => words.some((ws) => ws.every((w) => fold(s.title).includes(w))))
+    .filter((s) => {
+      const title = new Set(queryWords(s.title));
+      return words.some((ws) => ws.every((w) => title.has(w)));
+    })
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
 }
 

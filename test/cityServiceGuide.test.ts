@@ -200,8 +200,17 @@ describe("Carta copy", () => {
     expect(buildSteps(GUIDES.creche, links)[1]).toMatchObject({ url: CITY_SERVICES_SOURCE_URL, link_source: "official_allowlist" });
   });
 
-  it("no match", () => {
+  it("no match; query words must be whole title words (\"ja\" is not \"jardim\", \"156\" is not \"1560\")", () => {
     expect(cartaFor(CATALOG, GUIDES.saude_ja).info.status).toBe("no_match");
+    const near = buildCatalog(
+      carta([
+        { title: "Saúde no Jardim sintético", slug: "saude-jardim", id: 9301, online: null },
+        { title: "Lei 1560 sintética", slug: "lei-1560", id: 9302, online: null },
+        { title: "Saúde Já sintético", slug: "saude-ja", id: 9303, online: null },
+      ]),
+    );
+    expect(cartaFor(near, GUIDES["156"]).info.status).toBe("no_match");
+    expect(cartaFor(near, GUIDES.saude_ja).info.matches.map((m) => m.title)).toEqual(["Saúde Já sintético"]);
   });
 
   it("without the file: guide still returned, Carta links left out, message says how to save the copy", async () => {
