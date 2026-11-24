@@ -88,10 +88,13 @@ describe("type names", () => {
     expect(FACILITY_TYPES.some((t) => t.layerUrl.startsWith(UC) && /\/(2|3|4|7|8|10|11)$/.test(t.layerUrl))).toBe(false);
   });
 
-  it("does not guess an unknown type, and every type and alias is unique", () => {
+  it("does not guess an unknown type, and every type and alias is unique and reachable", () => {
     expect(resolveType("posto de gasolina")).toBeNull();
     const names = FACILITY_TYPES.flatMap((t) => [t.id, ...t.aliases]);
     expect(new Set(names).size).toBe(names.length);
+    // Input is folded (no accents, lower case) before matching: an alias written otherwise could never match.
+    for (const t of FACILITY_TYPES) for (const name of [t.id, ...t.aliases]) expect(resolveType(name)).toBe(t);
+    expect(names.filter((n) => n !== n.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase())).toEqual([]);
   });
 
   it("reads one fixed URL per layer: whole layer, WGS84, no user input", () => {

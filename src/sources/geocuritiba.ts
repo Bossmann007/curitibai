@@ -157,7 +157,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   {
     id: "local de votacao",
     label: "Locais de Votação",
-    aliases: ["locais de votacao", "local de votação", "votacao", "secao eleitoral", "secoes eleitorais", "onde votar"],
+    aliases: ["locais de votacao", "votacao", "secao eleitoral", "secoes eleitorais", "onde votar"],
     kind: "voting",
     layerUrl: `${THEMATIC_SERVICE_URL}/12`,
     credit: VOTING_CREDIT,
@@ -802,10 +802,14 @@ const CENSUS_STATISTICS = JSON.stringify([
   { statisticType: "count", onStatisticField: "objectid", outStatisticFieldName: "sectors" },
 ]);
 
-/** The neighbourhood totals query, or null when the name is not one of CENSUS_BAIRROS (then nothing is sent). */
-export function censusBairroUrl(name: string): string | null {
-  if (!CENSUS_BAIRROS.includes(name)) return null;
-  const q = new URLSearchParams({ where: `nm_bairro='${name.replace(/'/g, "''")}'`, outStatistics: CENSUS_STATISTICS, f: "json" });
+/**
+ * The neighbourhood totals query over its sectors with at least `minHouseholds` occupied households (so a withheld
+ * sector cannot be subtracted back), or null when the name is not one of CENSUS_BAIRROS (then nothing is sent).
+ */
+export function censusBairroUrl(name: string, minHouseholds: number): string | null {
+  if (!CENSUS_BAIRROS.includes(name) || !Number.isInteger(minHouseholds) || minHouseholds < 0) return null;
+  const where = `nm_bairro='${name.replace(/'/g, "''")}' AND v0007 >= ${minHouseholds}`;
+  const q = new URLSearchParams({ where, outStatistics: CENSUS_STATISTICS, f: "json" });
   return `${THEMATIC_SERVICE_URL}/${POINT_LAYERS.census_sector.id}/query?${q.toString()}`;
 }
 
@@ -819,8 +823,8 @@ export interface CensusTotals {
 const count = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
 
 /** One request per neighbourhood and cache period, through the same gate; null for a name not in the list. */
-export function getCensusBairro(name: string, startBy?: number): Promise<Cached<CensusTotals>> | null {
-  const url = censusBairroUrl(name);
+export function getCensusBairro(name: string, minHouseholds: number, startBy?: number): Promise<Cached<CensusTotals>> | null {
+  const url = censusBairroUrl(name, minHouseholds);
   if (url === null) return null;
   return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
     const res = await fetchText(url, {

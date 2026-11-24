@@ -842,7 +842,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Sectors counted: those with 20 or more households."
                     },
                     "persons": {
                       "anyOf": [
@@ -897,7 +898,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Totals of the sector's neighbourhood (no income: a mean of sector means is not the neighbourhood's); null when not read, or under 20 households."
+              "description": "Totals of the neighbourhood's sectors with 20 or more households, so a withheld sector cannot be subtracted back (no income: a mean of sector means is not the neighbourhood's); null when not read or none."
             },
             "partial": {
               "type": "boolean",

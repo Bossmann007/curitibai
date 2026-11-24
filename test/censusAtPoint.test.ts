@@ -12,7 +12,7 @@ const sector = (over: Record<string, unknown> = {}) =>
   attrs([{ cd_setor: "410690205010084", nm_bairro: "São Francisco", v0001: 231, v0007: 129, area_km2: 0.19, dens_pop_km2: 1229.99, renda_media: 4583.33, ...over }]);
 const TOTALS = attrs([{ persons: 5008, households: 2395, area_km2: 1.3055, sectors: 12 }]);
 const SECTOR_KEY = `GET ${pointQueryUrl("census_sector", P)}`;
-const BAIRRO_KEY = `GET ${censusBairroUrl("São Francisco")}`;
+const BAIRRO_KEY = `GET ${censusBairroUrl("São Francisco", 20)}`;
 
 function routes(s: Route = {}, b: Route = {}): Record<string, Route> {
   return {
@@ -48,16 +48,17 @@ describe("census_at_point query URLs", () => {
     expect(u.toString()).not.toMatch(/v0005|v0006|fcu/);
   });
 
-  it("asks the neighbourhood totals only for one of the 75 IBGE names, quoting it", () => {
+  it("asks the neighbourhood totals only for one of the 75 IBGE names, over its sectors at the floor", () => {
     expect(CENSUS_BAIRROS).toHaveLength(75);
-    const u = new URL(censusBairroUrl("São Francisco")!);
-    expect(u.searchParams.get("where")).toBe("nm_bairro='São Francisco'");
+    const u = new URL(censusBairroUrl("São Francisco", 20)!);
+    // Withheld sectors are left out of the sums, so they cannot be subtracted back.
+    expect(u.searchParams.get("where")).toBe("nm_bairro='São Francisco' AND v0007 >= 20");
     expect(JSON.parse(u.searchParams.get("outStatistics")!).map((s: { onStatisticField: string }) => s.onStatisticField)).toEqual([
       "v0001", "v0007", "area_km2", "objectid",
     ]);
-    expect(censusBairroUrl("Centro' OR 1=1 --")).toBeNull();
-    expect(censusBairroUrl("Butiatuvinha")).toBeNull();
-    expect(censusBairroUrl("Botiatuvinha")).not.toBeNull();
+    expect(censusBairroUrl("Centro' OR 1=1 --", 20)).toBeNull();
+    expect(censusBairroUrl("Butiatuvinha", 20)).toBeNull();
+    expect(censusBairroUrl("Botiatuvinha", 20)).not.toBeNull();
   });
 });
 
@@ -99,6 +100,13 @@ describe("census_at_point answers", () => {
   it("withholds neighbourhood totals under 20 households", async () => {
     stubFetch(routes({}, { body: attrs([{ persons: 30, households: 12, area_km2: 0.5, sectors: 1 }]) }));
     expect((await census()).data.neighbourhood).toBeNull();
+  });
+
+  it("a sector code in another format still means inside Curitiba (code null), and income 0 is not published", async () => {
+    stubFetch(routes({ body: sector({ cd_setor: "410690205010084P", renda_media: 0 }) }));
+    const out = await census();
+    expect(out.data).toMatchObject({ inside_curitiba: true, sector: { code: null, mean_income_brl: null, persons: 231 } });
+    expect(out.note).not.toMatch(/boundary/);
   });
 
   it("never sends a neighbourhood name it does not know", async () => {

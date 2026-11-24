@@ -1186,8 +1186,9 @@ changes (owner request, 2026-11-23: monthly and automatic).
   one sector has `v0007 = 1` with `v0005 = 8.0`. 29 sectors have fewer than 20 households. Floor:
   [ADR 0009](adr/0009-census-household-floor.md) (20 households for sector figures and for neighbourhood totals).
 - **Queries:** the sector at the rounded point (point query, like the other areas) and, for its neighbourhood, one
-  `where=nm_bairro='<name>'` query with `outStatistics` (sums of `v0001`, `v0007`, `area_km2` and the count of
-  sectors). The name comes from the sector answer and must be one of the 75 IBGE names bundled in the code (IBGE
+  `where=nm_bairro='<name>' AND v0007 >= 20` query with `outStatistics` (sums of `v0001`, `v0007`, `area_km2` and
+  the count of sectors), so withheld sectors are not in the sums (checked live: Cidade Industrial de Curitiba, 285 of
+  290 sectors, 172,457 residents and 62,819 households, equal to the survey's sums over those 285). The name comes from the sector answer and must be one of the 75 IBGE names bundled in the code (IBGE
   spells "Botiatuvinha" and "Tinguí"); any other name sends nothing. Example (-25.4284, -49.2733): sector
   410690205010084, São Francisco, 231 residents, 129 households, 1,229.99 per km², R$ 4,583.33; São Francisco: 12
   sectors, 5,008 residents, 2,395 households, 1.305 km² (the statistics query matched the sum of the 12 sectors read

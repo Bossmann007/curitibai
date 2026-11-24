@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cleanPointField, getPointLayer, inCuritibaBox, roundPoint, THEMATIC_SERVICE_URL, type Point, type PointFeature } from "../sources/geocuritiba.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { SourceRefusedError } from "../http.js";
 import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
@@ -259,10 +260,14 @@ export async function serviceAreasAt(p: Point, startBy: number, areas: "care" | 
   };
 }
 
-const failureNote = (refused: boolean) =>
-  refused
-    ? "The source refused this server; it is not asked again for 10 minutes."
-    : "The host was busy or failing (after a failure no request is made for 60 s); try again in a minute, the layers already read are cached.";
+/** Why a later layer is missing: a refusal, the call's time budget, or a busy or failing host (worst first). */
+export function missingNote(errors: unknown[]): string {
+  if (errors.some((e) => e instanceof SourceRefusedError)) return "The source refused this server; it is not asked again for 10 minutes.";
+  if (errors.every((e) => e instanceof OutOfTimeError)) {
+    return "It was not asked: the call's time budget ran out (requests to the host are 5 s apart); call again, the layers already read are cached.";
+  }
+  return "The host was busy or failing (after a failure no request is made for 60 s); try again in a minute, the layers already read are cached.";
+}
 
 /**
  * Polícia Militar company first (its 13 areas cover Curitiba only); when it has none, the bairro layer decides whether
@@ -279,7 +284,7 @@ async function safetyAreasAt(p: Point, startBy: number): Promise<Output> {
     inside = insideCuritiba(bairroRes.value);
   }
   const missing: string[] = [];
-  let refused = false;
+  const errors: unknown[] = [];
   async function later<T>(layer: "civil_district" | "fire_platoon", label: string, read: (f: PointFeature[]) => T[]): Promise<T[]> {
     if (!inside) return [];
     try {
@@ -288,7 +293,7 @@ async function safetyAreasAt(p: Point, startBy: number): Promise<Output> {
       return read(r.value);
     } catch (err) {
       missing.push(label);
-      if (err instanceof SourceRefusedError) refused = true;
+      errors.push(err);
       return [];
     }
   }
@@ -302,7 +307,7 @@ async function safetyAreasAt(p: Point, startBy: number): Promise<Output> {
     none(civil, "Polícia Civil", missing.includes("Polícia Civil")),
     none(fire, "fire", missing.includes("fire")),
     pm.length > 1 || civil.length > 1 || fire.length > 1 ? "The point is on a boundary: more than one area is listed." : "",
-    missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now. ${failureNote(refused)}` : "",
+    missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now. ${missingNote(errors)}` : "",
   ].filter(Boolean);
   return {
     data: {

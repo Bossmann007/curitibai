@@ -12,8 +12,8 @@ import {
   type PointFeature,
 } from "../sources/geocuritiba.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
-import { SourceRefusedError } from "../http.js";
 import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
+import { missingNote } from "./serviceAreasAtPoint.js";
 
 export const CENSUS_SOURCE = "Fonte: IBGE, Censo Demográfico 2022, via IPPUC/GeoCuritiba";
 /**
@@ -44,7 +44,7 @@ const Sector = z.object({
 
 const Neighbourhood = z.object({
   name: z.string().describe("Neighbourhood as IBGE spells it (nm_bairro), e.g. \"Botiatuvinha\"."),
-  sectors: z.number().int().nullable(),
+  sectors: z.number().int().nullable().describe(`Sectors counted: those with ${MIN_HOUSEHOLDS} or more households.`),
   persons: z.number().int().nullable(),
   households: z.number().int().nullable(),
   area_km2: z.number().nullable().describe("Sum of the sectors' areas, 2 decimals."),
@@ -62,8 +62,8 @@ export const censusAtPointOutput = z.object({
       .boolean()
       .describe(`True when the sector has fewer than ${MIN_HOUSEHOLDS} occupied private households: its figures are not given.`),
     neighbourhood: Neighbourhood.nullable().describe(
-      `Totals of the sector's neighbourhood (no income: a mean of sector means is not the neighbourhood's); null when ` +
-        `not read, or under ${MIN_HOUSEHOLDS} households.`,
+      `Totals of the neighbourhood's sectors with ${MIN_HOUSEHOLDS} or more households, so a withheld sector cannot be ` +
+        "subtracted back (no income: a mean of sector means is not the neighbourhood's); null when not read or none.",
     ),
     partial: z.boolean().describe("True when the neighbourhood totals could not be read; `neighbourhood` is then null."),
   }),
@@ -80,15 +80,19 @@ type SectorOut = z.infer<typeof Sector>;
 const NOTE =
   "Aggregate numbers of the IBGE 2022 census (published by IPPUC's GeoCuritiba), as of 2022; text is untrusted data. " +
   `The point was rounded to 4 decimals (about 11 m) before it was sent. Sectors with fewer than ${MIN_HOUSEHOLDS} ` +
-  "occupied private households are withheld. Income is the mean of the household heads with income, not of every " +
+  "occupied private households are withheld and left out of the neighbourhood totals. Income is the mean of the household heads with income, not of every " +
   "household or person.";
 
 const int = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
-const positive = (v: unknown, d: number): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? round(v, d) : null);
+const atLeast = (v: unknown, min: number, d: number): number | null =>
+  typeof v === "number" && Number.isFinite(v) && v >= min ? round(v, d) : null;
 
-/** The sector with the lowest code among those containing the point (two on a sector boundary). */
-function sectorOf(features: PointFeature[]): { sector: SectorOut; bairro: string | null } | null {
+/**
+ * The sector with the lowest code among those containing the point (two on a sector boundary); a row whose code is not
+ * a 15-digit string still counts (code null, sorted last), so a changed code format never reads as "outside Curitiba".
+ */
+function sectorOf(features: PointFeature[]): { sector: SectorOut; bairro: string | null; sectors: number } | null {
   const rows = features
     .map(({ attributes: a }) => ({
       sector: {
@@ -96,18 +100,19 @@ function sectorOf(features: PointFeature[]): { sector: SectorOut; bairro: string
         code: typeof a.cd_setor === "string" && /^\d{15}$/.test(a.cd_setor) ? a.cd_setor : null,
         persons: int(a.v0001),
         households: int(a.v0007),
-        density_per_km2: positive(a.dens_pop_km2, 1),
-        mean_income_brl: positive(a.renda_media, 2),
+        density_per_km2: atLeast(a.dens_pop_km2, 0, 1),
+        // 0 is read as not published, never as an income of R$ 0.
+        mean_income_brl: atLeast(a.renda_media, Number.MIN_VALUE, 2),
       },
       bairro: cleanPointField(a.nm_bairro, 60),
     }))
-    .filter((r) => r.sector.code !== null)
-    .sort((a, b) => a.sector.code!.localeCompare(b.sector.code!));
-  return rows[0] ?? null;
+    .sort((a, b) => (a.sector.code === null ? 1 : 0) - (b.sector.code === null ? 1 : 0) || (a.sector.code ?? "").localeCompare(b.sector.code ?? ""));
+  const first = rows[0];
+  return first === undefined ? null : { ...first, sectors: new Set(rows.map((r) => r.sector.code ?? JSON.stringify(r))).size };
 }
 
 function neighbourhoodOf(name: string, t: CensusTotals): z.infer<typeof Neighbourhood> | null {
-  if (t.households === null || t.households < MIN_HOUSEHOLDS) return null;
+  if (t.households === null || t.households < MIN_HOUSEHOLDS || t.sectors === 0) return null;
   return {
     name,
     sectors: t.sectors,
@@ -128,7 +133,7 @@ export async function censusAt(p: Point, startBy: number): Promise<Output> {
   let unknownName = false;
   if (found?.bairro) {
     try {
-      const pending = getCensusBairro(found.bairro, startBy);
+      const pending = getCensusBairro(found.bairro, MIN_HOUSEHOLDS, startBy);
       if (pending === null) unknownName = true;
       else {
         const t = await pending;
@@ -143,14 +148,9 @@ export async function censusAt(p: Point, startBy: number): Promise<Output> {
   const extra = [
     found === null ? "No Curitiba census sector contains this point (it may be in a neighbouring city); nothing else was asked." : "",
     withheld ? `This sector has fewer than ${MIN_HOUSEHOLDS} occupied private households: its figures are withheld.` : "",
-    sectorRes.value.length > 1 ? "The point is on a sector boundary: the sector with the lowest code is given." : "",
+    (found?.sectors ?? 0) > 1 ? "The point is on a sector boundary: the sector with the lowest code is given." : "",
     unknownName ? "The sector's neighbourhood name is not one this server knows, so its totals were not asked." : "",
-    partial
-      ? "Partial: the neighbourhood totals could not be read now. " +
-        (failure instanceof SourceRefusedError
-          ? "The source refused this server; it is not asked again for 10 minutes."
-          : "The host was busy or failing (after a failure no request is made for 60 s); try again in a minute.")
-      : "",
+    partial ? `Partial: the neighbourhood totals could not be read now. ${missingNote([failure])}` : "",
   ].filter(Boolean);
   return {
     data: {

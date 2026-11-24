@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer } from "../src/sources/geocuritiba.js";
-import { serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
+import { OutOfTimeError } from "../src/hostGate.js";
+import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
+import { missingNote, serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
 import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and dates, the real fields and shapes of layers 19 and 5 as read on 2026-11-23).
@@ -250,6 +252,12 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("a failing PM layer is source_unavailable", async () => {
     stubFetch(safetyRoutes({ pm_company: { status: 500 } }));
     expect(errorOf(await call({ ...AT, areas: "safety" }))).toMatchObject({ error: "source_unavailable" });
+  });
+
+  it("names why a later layer is missing: a refusal first, then the time budget, else a busy host", () => {
+    expect(missingNote([new OutOfTimeError(0)])).toMatch(/not asked: the call's time budget ran out/);
+    expect(missingNote([new OutOfTimeError(0), new SourceUnavailableError("x")])).toMatch(/busy or failing/);
+    expect(missingNote([new OutOfTimeError(0), new SourceRefusedError(403)])).toMatch(/refused this server/);
   });
 
   it("an unknown areas value is refused", async () => {

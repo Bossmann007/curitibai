@@ -20,8 +20,10 @@ A sector of a few households lets a reader who knows the street guess one family
 - Sector figures (residents, households, density, income) are returned only when the sector has at least 20 occupied
   private households (`MIN_HOUSEHOLDS` in `src/tools/censusAtPoint.ts`); below it the answer says
   `sector_withheld: true` and gives none of them.
-- Neighbourhood totals (sums of residents, households and area, from one `outStatistics` query) follow the same
-  floor. No neighbourhood income: a mean of the sectors' means is not the neighbourhood's mean.
+- Neighbourhood totals (sums of residents, households and area, from one `outStatistics` query) are summed over the
+  neighbourhood's sectors that pass the floor only (`AND v0007 >= 20` in the `where`), so the totals minus the
+  figures of the other sectors give nothing back; they are null when those sectors add up to under 20 households.
+  No neighbourhood income: a mean of the sectors' means is not the neighbourhood's mean.
 - `v0005`, `v0006` (share of imputed households) and the favela or community name (`nm_fcu`) are never asked for.
 - The neighbourhood name in the totals query comes from the sector answer and must be one of the 75 IBGE names
   bundled in `CENSUS_BAIRROS`; any other name sends nothing.
@@ -31,9 +33,11 @@ Where it is written: `src/tools/censusAtPoint.ts`, `src/sources/geocuritiba.ts` 
 
 ## Consequences
 
-- 29 sectors (0.9 %) answer without sector figures; the neighbourhood totals still come.
-- **Not a protection**, kept and documented: the neighbourhood totals minus the figures of its other sectors give a
-  withheld sector's residents and households. Those counts are published by IBGE; the income and household size,
-  which the floor is for, cannot be derived that way.
+- 29 sectors (0.9 %) answer without sector figures; the neighbourhood totals still come, without those sectors
+  (Cidade Industrial de Curitiba on 2026-11-24: 285 of 290 sectors, 172,457 residents). The note and the
+  `neighbourhood` description say the totals leave them out.
+- The code review of the first draft (2026-11-24) found that totals over every sector let a caller subtract the other
+  sectors and get a withheld sector's residents and households, hence its household size; the `where` filter closes
+  that.
 - 20 is a judgement, between ADR 0008's floor of 5 rows and IBGE's own suppression below 5 households; the owner can
   change it in one constant.

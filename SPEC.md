@@ -37,8 +37,9 @@ parser and fail-closed rules), plus two dated notes that need no request.
    sector containing the point (BaseTematica layer 43) with persons, occupied private households, density per km² and
    mean monthly income of the household heads with income, and the neighbourhood totals (persons, households, area,
    density) from one `outStatistics` query. Floor ([ADR 0009](docs/adr/0009-census-household-floor.md)): sector
-   figures only when the sector has at least 20 occupied private households (29 of 3,190 sectors have fewer), the
-   neighbourhood totals only at 20 or more; `v0005`, `v0006` and the favela/community name are never asked for. The
+   figures only when the sector has at least 20 occupied private households (29 of 3,190 sectors have fewer); the
+   neighbourhood totals sum only the sectors at the floor (`AND v0007 >= 20`), so a withheld sector cannot be
+   subtracted back; `v0005`, `v0006` and the favela/community name are never asked for. The
    neighbourhood name sent in the `where` comes from the sector answer and must be one of the 75 IBGE names bundled in
    the code. No neighbourhood income (a mean of sector means is not the neighbourhood mean).
 4. **`city_calendar`** (new tool, no network, data bundled like `detran_pr_info`): `topic` `holidays` (Decreto
@@ -65,6 +66,7 @@ in the brief); voter data of any kind; publishing; tags.
 - `scripts/verify` exits 0 (in a clone where tag `v0.26.1` exists; until the owner tags it, `check-release` reports
   the missing previous tag, as ADR 0006 intends).
 - Tests: voting URL has no `num_eleitores`; voting record parsing; terminal 65-line `observacao` returned whole;
-  cut marker at the cap; `name` filter; `safety` layers, order and `partial`; census floor at 19/20 households,
-  neighbourhood name not in the list is never sent; `city_calendar` before and after 2026-12-31.
+  cut marker at the cap; `name` filter; every alias reachable; `safety` layers, order, `partial` and why a layer is
+  missing; census floor at 19/20 households, totals `where` with the floor, neighbourhood name not in the list is
+  never sent, a sector code in another format is still inside Curitiba, income 0 is null; `city_calendar` before and after 2026-12-31.
 - Contract snapshot updated on purpose; tools/list sizes printed by `test/contracts.test.ts`.

@@ -18,8 +18,8 @@ fail-closed parser), and two dated notes that need no request. 25 → 27 tools. 
   Polícia Militar company, Polícia Civil district and fire platoon areas covering a point. New output fields `areas`,
   `police_military`, `police_civil` and `fire`; `inside_curitiba` and `partial` now also describe the `safety` layers.
 - New `census_at_point`: the IBGE 2022 census sector of a point (residents, households, density, mean income of
-  household heads) and its neighbourhood's totals; sectors and totals under 20 occupied households are withheld
-  ([ADR 0009](docs/adr/0009-census-household-floor.md), proposed).
+  household heads) and its neighbourhood's totals; sectors under 20 occupied households are withheld and left out of
+  the totals, so they cannot be subtracted back ([ADR 0009](docs/adr/0009-census-household-floor.md), proposed).
 - New `city_calendar` (bundled, no network): the Prefeitura's 2026 holidays, optional days and closures (Decreto
   2.385/2025; schools follow their own calendar) and the IPTU 2026 general rule (secondary source); `expired: true`
   from 2027-01-01.
