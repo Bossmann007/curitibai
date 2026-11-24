@@ -1,7 +1,7 @@
 # Development
 
 ```sh
-scripts/verify   # no tracked carta-servicos.json, URBS export, events output or HTML capture, relative Markdown links resolve, npm ci, tsc --noEmit, eslint, vitest, build, stdio smoke test; npm audit reported separately
+scripts/verify   # no tracked carta-servicos.json, URBS export, events output or HTML capture, relative Markdown links resolve, npm ci, tsc --noEmit, eslint, vitest, build, package contents (npm pack --dry-run), stdio smoke test; npm audit reported separately
 ```
 
 `scripts/verify` is the required local check. The CI workflow `.github/workflows/verify.yml` is set to run it on every
@@ -42,6 +42,46 @@ also fails if git tracks anything in a folder named `events` (the collector's ou
 (`test/fixtures/events_synthetic/`: invented events in the site's markup, with a planted description, contacts, ticket
 and external link that must not be kept) and run the collector with a fake clock and a fake network. The guard
 must run at the top of a checkout (exit 2 elsewhere).
+
+## Release
+
+Only the owner publishes, by hand: `.github/workflows/publish.yml` runs only from "Run workflow" (never on a tag push
+or a push), on `main` or on a `v*` tag, and only when that commit is the one tagged `v<package.json version>`. Its
+`verify` job (no OIDC token) checks the tag, `server.json`'s version and that the package exists on npm, runs
+`scripts/verify`, writes the tarball's sha256 to the job summary and hands `dist/` on. Its `publish` job runs in the
+GitHub environment `release`, so it waits for the owner's approval: compare the sha256 in the summary first. It has
+the OIDC token but runs no `npm ci` and no tests; it checks the tag again, Node, npm, the package contents and that
+the tarball's sha256 is the one approved, validates `server.json` with the MCP Registry, runs `npm publish` (trusted
+publishing, so no npm token and automatic [provenance](https://docs.npmjs.com/trusted-publishers)), waits until npm
+serves the version, then runs `mcp-publisher publish` (GitHub OIDC, namespace `io.github.Bossmann007`). It skips
+`npm publish` when that version is already on npm, so a run whose MCP Registry step failed can be run again.
+`scripts/verify` checks the tarball (`scripts/check-pack.mjs`: allowlist, leftovers, secret-shaped lines, size) and
+that `server.json` is valid and has the same version as `package.json` (`test/serverJson.test.ts`). Why the
+environment: npm's trusted publisher names only the owner, repository, workflow file and environment, and a workflow
+runs from the ref it is started on, so without it a pushed branch with an edited `publish.yml` could publish. Keep
+`id-token` out of every other workflow (`test/workflows.test.ts` fails otherwise).
+
+Before the first run, once:
+
+1. GitHub, Settings, Environments, New environment `release`: Required reviewers = Enzo; Deployment branches and tags = Selected branches and tags, only `main` and `v*` (tag).
+2. Suggested: GitHub, Settings, Rules, a tag ruleset on `v*` so only the owner can create, move or delete those tags.
+
+First release (0.26.0), once:
+
+1. Merge the release PR, then tag its merge commit: `git tag v0.26.0 <merge commit> && git push origin v0.26.0`.
+2. In a clean clone of that tag, run `scripts/verify` (exit 0; it also builds `dist/`).
+3. Log in to npm with your account (2FA on): `npm login`.
+4. Publish the first version by hand: `npm publish --ignore-scripts --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists).
+5. On npmjs.com, package `curitibai-mcp`, Settings, Publishing access: "Require two-factor authentication and disallow tokens" (trusted publishing keeps working: [docs](https://docs.npmjs.com/trusted-publishers)).
+6. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on), compare the sha256 in the summary, approve `release`: it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
+7. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
+
+Every later release:
+
+1. Merge the release PR, tag its merge commit `vX.Y.Z` on `main` and push the tag.
+2. First time only, at most 2 days before step 4 (a new trusted publisher expires if its first publish does not happen within 2 days): on npmjs.com, package `curitibai-mcp`, Settings, Trusted publishing: GitHub Actions, owner `Bossmann007`, repository `curitibai`, workflow `publish.yml`, Environment name = `release`.
+3. First time only, in the same form, under "Allowed actions", also allow `npm publish` (new configurations allow only `npm stage publish`).
+4. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on), compare the sha256 in the summary, approve `release`; if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
 
 ## Scheduled workflows
 

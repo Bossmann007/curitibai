@@ -2,6 +2,35 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.26.0 - 2026-11-24
+
+Release preparation for npm and the MCP Registry. Nothing is published by this version; no tool behaviour, name,
+description, schema or output changed.
+
+- `package.json`: no longer `private`; `files` limits the package to `dist/`, `CHANGELOG.md` and
+  [docs/licences.md](docs/licences.md) (the data licences, including the ODbL notice of the bundled OpenStreetMap
+  extract in `dist/sources/osmBundled.js`), plus `package.json`, `README.md` and `LICENSE`, which npm always adds.
+  Added `mcpName` (`io.github.Bossmann007/curitibai`), `repository`, `homepage`, `bugs`, `keywords` and
+  `publishConfig.access: public`. The package name stays `curitibai-mcp`.
+- `server.json`: the MCP Registry entry (schema 2025-12-11), with the npm package as a stdio package and the two
+  optional, non-secret environment variables `CURITIBAI_DATA_DIR` and `CURITIBAI_REMOTE_DATA`.
+  `test/serverJson.test.ts` validates it against the vendored schema (`test/fixtures/mcp-registry/`) and checks that
+  its name, version and package match `package.json`.
+- `scripts/verify` installs with `npm ci --ignore-scripts` (no dependency install script runs) and runs
+  `scripts/check-pack.mjs` after the build: `npm pack --dry-run --json` must list only allowed
+  paths (no `data-local/`, tests, fixtures, `src/`, `.env*` or `*.local`, no `dist/` file without a `src/` module, no secret-shaped line), and the packed size, printed, must stay
+  under 250,000 bytes (0.26.0: about 179,000).
+- `.github/workflows/publish.yml`: started by hand only (`workflow_dispatch`), on the commit tagged
+  `v<version>`. npm trusted publishing (OIDC) and the MCP Registry with GitHub OIDC; no secret. The OIDC token is only
+  in the publish job, which runs no `npm ci` and no tests (it gets `dist/` from the verify job) and runs in the
+  GitHub environment `release` (the owner approves each run; only `main` and `v*`), after checking that the tarball's
+  sha256 is the one the verify job printed in its summary. Release steps in
+  [docs/development.md](docs/development.md#release); README has an [Install from npm](README.md#install-from-npm-after-the-first-release)
+  section for after the first release.
+- [Compared with the Curitiba App](docs/tools.md#compared-with-the-curitiba-app): the 156, Scheduling and Cartão
+  Transporte rows no longer say flatly that they need a login (the linked 2026 sources do not say so): "needs a
+  registration or login (owner's note; not confirmed in the linked sources); out of scope".
+
 ## 0.25.2 - 2026-11-23
 
 Docs only: no tool behaviour, name, description, schema or output changed.
