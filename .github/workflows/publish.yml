@@ -52,7 +52,7 @@ jobs:
           # it is saved, so a missing one only shows as ENEEDAUTH at publish time; this is the check that can run now.
           if ! out="$(npm view "$name" name 2>&1)"; then
             if grep -q E404 <<<"$out"; then
-              fail "$name is not on npm yet, so no trusted publisher can be configured for it. Publish the first version by hand (docs/development.md, Release), configure the trusted publisher on npmjs.com (workflow file publish.yml), then run this workflow again."
+              fail "$name is not on npm yet, so no trusted publisher can be configured for it. Publish the first version by hand (docs/development.md, Release), then run this workflow again."
             fi
             fail "npm view $name failed (not a 404; try again later): $out"
           fi
@@ -144,7 +144,7 @@ jobs:
           set -uo pipefail
           if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then
             if grep -qE 'ENEEDAUTH|E401|E403|E404|OIDC|trusted' npm-publish.log; then
-              echo "::error::npm refused the publish. Check the trusted publisher of curitibai-mcp on npmjs.com: GitHub Actions, owner Bossmann007, repository curitibai, workflow file publish.yml (exact, case-sensitive), no environment, and 'npm publish' enabled under Allowed actions (new configurations allow only 'npm stage publish'). See https://docs.npmjs.com/trusted-publishers"
+              echo "::error::npm refused the publish. Check the trusted publisher of curitibai-mcp on npmjs.com: GitHub Actions, owner Bossmann007, repository curitibai, workflow file publish.yml (exact, case-sensitive), no environment, and 'npm publish' enabled under Allowed actions (new configurations allow only 'npm stage publish'). A new configuration also expires if its first publish does not happen within 2 days. See https://docs.npmjs.com/trusted-publishers"
             fi
             exit 1
           fi

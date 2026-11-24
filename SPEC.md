@@ -19,8 +19,9 @@ a tarball that holds only what users need and a publish path that needs no store
 1. **`package.json`**: `private` removed; `files` = `dist/`, `CHANGELOG.md`, `docs/licences.md` (the ODbL notice for
    the bundled OSM extract, with the other data licences; `LICENSE` is Apache-2.0 only); `mcpName`
    `io.github.Bossmann007/curitibai`; `repository`, `homepage`, `bugs`, `keywords`; `publishConfig.access: public`.
-   `publishConfig.provenance` is **not** set: npm adds provenance automatically with trusted publishing, and the
-   setting would make the manual first publish from a laptop fail (provenance needs a supported CI). `engines`
+   `publishConfig.provenance` is **not** set: npm adds provenance automatically with trusted publishing
+   (https://docs.npmjs.com/trusted-publishers), and npm documents provenance only for publishes from CI, so the
+   setting could break the manual first publish from a laptop (not verified: no publish was run). `engines`
    unchanged.
 2. **`server.json`** (schema `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`): name =
    `mcpName`, description at most 100 characters, version = `package.json`, one npm stdio package, the environment
@@ -37,7 +38,8 @@ a tarball that holds only what users need and a publish path that needs no store
    only when the commit is the one tagged `v<version>`; actions pinned by SHA, `mcp-publisher` v1.8.1 checked with
    cosign as the registry docs show. Job `verify` (`contents: read` only): tag, `server.json` version, package exists
    on npm (a 404 says "publish the first version by hand"; other errors are shown as they are), `scripts/verify`,
-   `dist/` uploaded. Job `publish` (`id-token: write`, no `npm ci`, no tests): Node ≥ 22.14, npm ≥ 11.5.1, OIDC
+   `dist/` uploaded. The 0.26.0 run skips npm (published by hand first), so it needs no trusted publisher; that is
+   configured before the next release (it expires if unused for 2 days). Job `publish` (`id-token: write`, no `npm ci`, no tests): Node ≥ 22.14, npm ≥ 11.5.1, OIDC
    token, `check-pack`, `mcp-publisher validate`, `login github-oidc`, `npm publish --ignore-scripts` (skipped when
    the version is already on npm), wait until npm serves the version's `mcpName`, `mcp-publisher publish`. A refused
    `npm publish` prints which npmjs.com fields to check.

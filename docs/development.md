@@ -61,16 +61,16 @@ First release (0.26.0), once:
 1. Merge the release PR, then tag its merge commit: `git tag v0.26.0 <merge commit> && git push origin v0.26.0`.
 2. In a clean clone of that tag, run `scripts/verify` (exit 0; it also builds `dist/`).
 3. Log in to npm with your account (2FA on): `npm login`.
-4. Publish the first version by hand: `npm publish --access public` (npm's docs say a trusted publisher can only be configured for a package that exists: [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust)).
-5. On npmjs.com, package `curitibai-mcp`, Settings, Trusted publishing: GitHub Actions, owner `Bossmann007`, repository `curitibai`, workflow `publish.yml`, no environment.
-6. In the same form, under "Allowed actions", also allow `npm publish` (new configurations allow only `npm stage publish`).
-7. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on): it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry.
-8. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
+4. Publish the first version by hand: `npm publish --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists).
+5. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on): it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
+6. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
 
 Every later release:
 
 1. Merge the release PR, tag its merge commit `vX.Y.Z` on `main` and push the tag.
-2. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on); if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
+2. First time only, at most 2 days before step 3 (a new trusted publisher expires if its first publish does not happen within 2 days): on npmjs.com, package `curitibai-mcp`, Settings, Trusted publishing: GitHub Actions, owner `Bossmann007`, repository `curitibai`, workflow `publish.yml`, no environment.
+3. First time only, in the same form, under "Allowed actions", also allow `npm publish` (new configurations allow only `npm stage publish`).
+4. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on); if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
 
 ## Scheduled workflows
 
