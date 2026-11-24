@@ -63,8 +63,9 @@ in the brief); voter data of any kind; publishing; tags.
 
 ## Check
 
-- `scripts/verify` exits 0 (in a clone where tag `v0.26.1` exists; until the owner tags it, `check-release` reports
-  the missing previous tag, as ADR 0006 intends).
+- `scripts/verify` exits 0 in a clone without tags (CI's condition) and in a scratch clone (no remote) where
+  `v0.26.1` was tagged locally at 6543705; in a clone with the real tags, `check-release` stops at the missing
+  `v0.26.1` tag until the owner tags the merge of PR #37 (ADR 0006).
 - Tests: voting URL has no `num_eleitores`; voting record parsing; terminal 65-line `observacao` returned whole;
   cut marker at the cap; `name` filter; every alias reachable; `safety` layers, order, `partial` and why a layer is
   missing; census floor at 19/20 households, totals `where` with the floor, neighbourhood name not in the list is

@@ -47,8 +47,8 @@ const Neighbourhood = z.object({
   sectors: z.number().int().nullable().describe(`Sectors counted: those with ${MIN_HOUSEHOLDS} or more households.`),
   persons: z.number().int().nullable(),
   households: z.number().int().nullable(),
-  area_km2: z.number().nullable().describe("Sum of the sectors' areas, 2 decimals."),
-  density_per_km2: z.number().nullable().describe("persons / area_km2, 1 decimal."),
+  area_km2: z.number().nullable().describe("Sum of the counted sectors' areas (withheld sectors left out), 2 decimals."),
+  density_per_km2: z.number().nullable().describe("persons / area_km2 of the counted sectors, 1 decimal."),
 });
 
 export const censusAtPointOutput = z.object({

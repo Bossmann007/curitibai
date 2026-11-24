@@ -870,14 +870,14 @@
                       ]
                     },
                     "area_km2": {
-                      "description": "Sum of the sectors' areas, 2 decimals.",
+                      "description": "Sum of the counted sectors' areas (withheld sectors left out), 2 decimals.",
                       "type": [
                         "number",
                         "null"
                       ]
                     },
                     "density_per_km2": {
-                      "description": "persons / area_km2, 1 decimal.",
+                      "description": "persons / area_km2 of the counted sectors, 1 decimal.",
                       "type": [
                         "number",
                         "null"

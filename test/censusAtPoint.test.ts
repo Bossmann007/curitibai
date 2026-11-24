@@ -109,6 +109,11 @@ describe("census_at_point answers", () => {
     expect(out.note).not.toMatch(/boundary/);
   });
 
+  it("a neighbourhood with no sector at the floor (the server's answer: one row of nulls, 0 sectors) has no totals", async () => {
+    stubFetch(routes({}, { body: attrs([{ persons: null, households: null, area_km2: null, sectors: 0 }]) }));
+    expect((await census()).data).toMatchObject({ neighbourhood: null, partial: false });
+  });
+
   it("never sends a neighbourhood name it does not know", async () => {
     const calls = stubFetch(routes({ body: sector({ nm_bairro: "Bairro Inventado" }) }));
     const out = await census();
