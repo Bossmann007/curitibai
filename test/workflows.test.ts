@@ -100,7 +100,7 @@ describe("GitHub Actions workflows", () => {
     expect(publishJob).toMatch(/^ {4}environment: release$/m);
     expect(publishJob).toContain("tag_sha\" == \"$(git rev-parse HEAD)\"");
     expect(publishJob).toContain('[[ "$sha" == "$APPROVED_SHA256" ]]');
-    expect(publishJob).not.toMatch(/npm (ci|install|i|test)\b|scripts\/verify|vitest/);
+    expect(publishJob).not.toMatch(/npm (ci|install|i|add|update|up|exec|x|test)\b|\bnpx\b|corepack|scripts\/verify|vitest/);
     expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
     // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
     const at = (re: RegExp) => lines.findIndex((l) => re.test(l));
@@ -132,7 +132,7 @@ describe("GitHub Actions workflows", () => {
     expect(end).toBeGreaterThan(start);
     const section = doc.slice(start, end);
     expect(section).toContain(`First release (${version}), once.`);
-    const commands = (section.match(/`[^`\n]*\bgit (tag|push)\b[^`\n]*`/g) ?? []).join("\n");
+    const commands = section.split("`").filter((piece, i) => i % 2 === 1 && /\bgit (tag|push)\b/.test(piece)).join("\n");
     const tags = commands.match(/\bv\d+\.\d+\.\d+\b/g) ?? [];
     expect(tags.length).toBeGreaterThan(0);
     expect(new Set(tags)).toEqual(new Set([`v${version}`]));

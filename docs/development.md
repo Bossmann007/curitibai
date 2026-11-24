@@ -70,7 +70,11 @@ Before the first run, once:
 Approving a run (every release): approve `release` only when the run is on `main` or on a `v*` tag you pushed
 yourself, and the commit shown on the approval screen is the release commit (the merge commit you tagged). The
 sha256 in the summary only proves that the tarball did not change between the verify and publish jobs; it does not
-prove where it came from. The commit and the ref do.
+prove where it came from. The commit and the ref do. Never approve a run on tag `v0.26.0`: it carries the 0.26.0
+`publish.yml` without the 0.26.1 hardening, and the environment admits every `v*` tag. (npm 11.20.0 refuses to publish
+0.26.0 without `--tag` once 0.26.1 is on npm, `lib/commands/publish.js`; older npm may not, so do not rely on it.) Deleting that tag, or
+excluding it from the environment, is the owner's call; `scripts/check-release.mjs` expects the previous release to
+be tagged, so a deletion needs that check changed too.
 
 Accepted risk: the approval can also be given through the GitHub API
 ([review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run):

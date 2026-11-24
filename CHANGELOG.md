@@ -25,7 +25,7 @@ itself publishes nothing. No tool behaviour, name, description, schema or output
   notes the sha256, publishes that file (`npm publish ./curitibai-mcp-0.26.1.tgz --ignore-scripts --access public`) and
   runs `npm logout`; the workflow run afterwards cross-checks its summary sha256 against it. `test/workflows.test.ts`
   fails when the "First release" section is not the `package.json` version or its `git tag`/`git push` commands name
-  another tag. README's npm note says 0.26.1.
+  another tag. README's npm note says 0.26.1. "Approving a run": never approve a run on tag `v0.26.0`.
 
 ## 0.26.0 - 2026-11-24
 
