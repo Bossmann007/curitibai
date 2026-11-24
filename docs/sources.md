@@ -26,6 +26,7 @@
   - [`service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)](#service_areas_at_point-ippuc-geocuritiba-thematic-map-health-unit-areas-and-cras-territories-since-0230)
   - [`census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)](#census_at_point-ibge-2022-census-by-sector-via-ippuc-geocuritiba-since-0270)
   - [`city_calendar`: Decreto 2.385/2025 and IPTU 2026 notes (bundled, since 0.27.0)](#city_calendar-decreto-23852025-and-iptu-2026-notes-bundled-since-0270)
+  - [`city_service_guide`: guides and official links for services that need a login (bundled, since 0.28.0)](#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280)
   - [URBS transport layers on GeoCuritiba (evaluated 2026-11-24, not used by the bus tools)](#urbs-transport-layers-on-geocuritiba-evaluated-2026-11-24-not-used-by-the-bus-tools)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
   - [`guaira_events`: Centro Cultural Teatro Guaíra calendar (live)](#guaira_events-centro-cultural-teatro-guaíra-calendar-live)
@@ -1211,6 +1212,43 @@ changes (owner request, 2026-11-23: monthly and automatic).
   debit, first debit on 27 March). Marked `secondary_source: true`; facts only, the notes' text is not copied.
 - **Dates:** the data is of 2026 only; from 2027-01-01 (Curitiba time) the answer says `expired: true`. No network
   call, no error of its own.
+
+### `city_service_guide`: guides and official links for services that need a login (bundled, since 0.28.0)
+
+The steps are written by this project and bundled in `src/tools/cityServiceGuide.ts`. The server makes no request:
+it reads only the user's Carta copy (`carta-servicos.json`, as `city_services_search` does). Links, consent design and
+the host allowlist: [docs/tools.md](tools.md#city_service_guide-consent-and-links) and
+[ADR 0010](adr/0010-service-guides-consent-at-every-step.md).
+
+What was requested by hand on 2026-11-24 (curl, User-Agent `curitibai-dev-check`, from the developer's machine, to
+write and check the steps; a few requests per host, never by the server):
+
+- `dig` (A records) for `www`, `servicos`, `ecidadao`, `saudeja`, `156`, `central156`, `agendaonline`, `educacao`,
+  `www.urbs` and `urbs` under `curitiba.pr.gov.br`, plus `www.detran.pr.gov.br`, `detran.pr.gov.br` and
+  `www.gov.br`; `cidadao`, `e-cidadao`, `agenda`, `iptu` and `cartao.urbs` under `curitiba.pr.gov.br` do not
+  resolve. `dig NS curitiba.pr.gov.br`: the zone has its own name servers.
+- `GET /` (status only) on each host that resolved: `www.curitiba.pr.gov.br` 403, `www.urbs` and `urbs` 403,
+  `servicos.curitiba.pr.gov.br` 200 (one probe of `/`; that host's robots.txt is recorded as `Disallow: /` and it is
+  still never contacted by the server or used for content), `ecidadao` 302 to `/login` (which redirects to
+  `autenticacao-ecidadao.curitiba.pr.gov.br`; `/` there answered 200), `saudeja`, `156`, `agendaonline`, `educacao`
+  and `www.detran.pr.gov.br` 200, `detran.pr.gov.br` 302 to `www.detran.pr.gov.br`, `www.gov.br` 301 to `/pt-br`,
+  `central156` no answer.
+- The page title of `saudeja`, `156`, `agendaonline` and `educacao`, and the menu links of `educacao` ("Cadastro
+  Online" points to `cadastro-online.curitiba.pr.gov.br`, which answered 403). `robots.txt` of `saudeja`, `156`,
+  `agendaonline` and `educacao`: status 200 only, not read; `ecidadao`: 404.
+- `156.curitiba.pr.gov.br/Solicitacao/Abra-sua-solicitacao-servico-informacao-na-prefeitura-de-curitiba` and
+  `www.agendamento.detran.pr.gov.br/detran-agendamento/portal`: status 200.
+- Read once with a page fetcher: the home pages of `156` (e-Cidadão login, "Abrir Pedido"), `saudeja` (e-Cidadão login
+  with "CPF ou número do cartão SUS" and password), `agendaonline` (a script page; its services were not visible) and
+  `www.detran.pr.gov.br` (links to `www.agendamento.detran.pr.gov.br`). The Autorização Digital news page and
+  `www.urbs.curitiba.pr.gov.br` answered 403 and were not read.
+
+Not verified: which services the Agenda Online schedules; which Educação menu item is the creche-vacancy registration;
+what the URBS site offers for the Cartão Transporte; the Autorização Digital page's text (date and summary from the
+owner's brief). The guides say so or send the citizen to the official service page.
+
+Prior art (2026-11-24): `gh search repos "mcp server government services guide"` found nothing;
+`gh search repos "topic:mcp-server gov.br"` found only unrelated general projects. Decision: build.
 
 ### URBS transport layers on GeoCuritiba (evaluated 2026-11-24, not used by the bus tools)
 

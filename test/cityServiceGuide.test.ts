@@ -125,6 +125,20 @@ describe("guide invariants (every guide, with and without the Carta copy)", () =
     }
   });
 
+  it("one outward action per step: a step that opens a link has the citizen type nothing", async () => {
+    for (const o of await everyOutput()) {
+      for (const s of allSteps(o)) {
+        if (s.url !== null) expect(s.citizen_types_on_site, `${o.data.service} #${s.step}`).toEqual([]);
+      }
+    }
+    for (const g of Object.values(GUIDES)) {
+      for (const s of g.steps) {
+        const x = s as { link?: unknown; types?: unknown[] };
+        if (x.link) expect(x.types ?? []).toEqual([]);
+      }
+    }
+  });
+
   it("no URL outside the allowlist, and url_host matches the URL", async () => {
     for (const o of await everyOutput()) {
       for (const s of allSteps(o)) {

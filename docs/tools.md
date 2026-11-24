@@ -257,9 +257,9 @@ returns steps and official links; the citizen, or their assistant in their own b
   gives no Carta link (candidates are returned as data). Without a Carta copy, the Carta steps link to the catalog
   listing and `carta.message` says how to save the copy ([Local data files](local-data.md#finding-a-city-service-carta-de-serviços)).
 
-| Allowed host | Why it is official | How it was checked (2026-11-24, `curl` with User-Agent `curitibai-dev-check`, one request each, by hand; the server never contacts them) |
+| Allowed host | Why it is official | How it was checked (2026-11-24, by hand, a few requests per host; full list in [sources](sources.md#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280); the server never contacts them) |
 |---|---|---|
-| `*.curitiba.pr.gov.br` (any subdomain, except `obituarios.curitiba.pr.gov.br`) | The Prefeitura's DNS zone under `pr.gov.br` (`.gov.br` names are only registered to public bodies) | `dig NS curitiba.pr.gov.br`: the zone is delegated on its own name servers; each fixed link below answered from it |
+| `*.curitiba.pr.gov.br` (any subdomain, except `obituarios.curitiba.pr.gov.br`) | The Prefeitura's own DNS zone, `curitiba.pr.gov.br` (the Prefeitura's sites in this repo's sources are all in it) | `dig NS curitiba.pr.gov.br`: the zone is delegated on its own name servers; each fixed link below answered from it |
 | `www.detran.pr.gov.br` | Detran-PR's site (footer "DEPARTAMENTO DE TRÂNSITO DO PARANÁ - DETRAN/PR"; already recorded in [sources](sources.md)) | HTTP 200; `detran.pr.gov.br` redirects to it |
 | `www.agendamento.detran.pr.gov.br` | Detran-PR's scheduling portal, linked as "Agendar Atendimento" and "Portal de Serviços" from the Detran-PR home page | `/detran-agendamento/portal` HTTP 200 |
 | `www.gov.br` | The federal government portal | HTTP 301 to `/pt-br`; no fixed link uses it; allowed for Carta `online` links to federal services |
@@ -269,8 +269,8 @@ returns steps and official links; the citizen, or their assistant in their own b
 | `https://156.curitiba.pr.gov.br/` and its "Abrir Pedido" form `/Solicitacao/Abra-sua-solicitacao-servico-informacao-na-prefeitura-de-curitiba` | 200, title "Central de Atendimento 156"; "Entrar" and "Cadastrar" use the e-Cidadão login |
 | `https://saudeja.curitiba.pr.gov.br/` | 200, title "Saúde Já Curitiba - Prefeitura de Curitiba"; "o agendamento do primeiro atendimento na Unidade Municipal de Saúde"; access by e-Cidadão with "CPF ou número do cartão SUS" and password |
 | `https://agendaonline.curitiba.pr.gov.br/` | 200, title "Agenda Online Curitiba" (a script page: the services it schedules were not read) |
-| `https://educacao.curitiba.pr.gov.br/` | 200; its menu has "Cadastramento Escolar" and "Cadastro Online" (`cadastro-online.curitiba.pr.gov.br`, which answered 403 to curl and is not linked directly) |
-| `https://www.urbs.curitiba.pr.gov.br/` | Answers 403 to non-browser clients (as recorded in [sources](sources.md)); not read; on the allowed zone |
+| `https://educacao.curitiba.pr.gov.br/` | 200; its menu has "Cadastramento Escolar" and "Cadastro Online" (`cadastro-online.curitiba.pr.gov.br`, which answered 403 to curl and is not linked directly). Which one is the creche-vacancy registration was not verified; the step says to check the official service page |
+| `https://www.urbs.curitiba.pr.gov.br/` | Answers 403 to non-browser clients (as recorded in [sources](sources.md)); not read, so what it offers for the Cartão Transporte is not verified; on the allowed zone |
 | `https://www.detran.pr.gov.br/`, `https://www.agendamento.detran.pr.gov.br/detran-agendamento/portal` | Above |
 | `https://www.curitiba.pr.gov.br/servicos/` (Carta listing, fallback) | The existing `city_services_search` source; answers 403 to non-browser clients |
 | Autorização Digital news, `https://www.curitiba.pr.gov.br/noticias/prefeitura-de-curitiba-ganha-dois-premios-por-inovacoes-digitais-na-gestao-urbana/80104` (2025-10-26) | Given in the owner's brief; answers 403 to non-browser clients, so its text was not read here. Used only as the `delegation` source |

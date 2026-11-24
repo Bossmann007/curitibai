@@ -105,12 +105,16 @@ export const GUIDES = {
       },
       LOGIN_ECIDADAO,
       {
-        action: "Abrir o formulário \"Abrir Pedido\" e escrever o pedido junto com o cidadão.",
+        action: "Abrir o formulário \"Abrir Pedido\" do site da Central 156.",
+        consent: "Abrir o formulário \"Abrir Pedido\" em 156.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: "https://156.curitiba.pr.gov.br/Solicitacao/Abra-sua-solicitacao-servico-informacao-na-prefeitura-de-curitiba" },
+      },
+      {
+        action: "Escrever o pedido no formulário junto com o cidadão.",
         consent:
           "O cidadão escreve no formulário oficial a descrição do pedido e, se o site pedir, o endereço do local. " +
           "Revise o texto com ele antes de seguir.",
         types: ["descrição do pedido", "endereço do local, se o site pedir"],
-        link: { fixed: "https://156.curitiba.pr.gov.br/Solicitacao/Abra-sua-solicitacao-servico-informacao-na-prefeitura-de-curitiba" },
       },
       {
         action: "Enviar o pedido e anotar o protocolo.",
@@ -145,35 +149,41 @@ export const GUIDES = {
       FIRST_STEP,
       CARTA_PAGE,
       {
-        action: "Abrir o serviço online indicado pela página oficial e emitir a guia.",
-        consent: "Abrir o serviço online oficial do IPTU. O cidadão digita ali os dados do imóvel que o site pedir.",
-        types: ["dados do imóvel que o site pedir"],
+        action: "Abrir o serviço online indicado pela página oficial do serviço.",
+        consent: "Abrir o serviço online oficial no navegador do cidadão. Nada é digitado.",
         link: "carta_online",
+      },
+      {
+        action: "Emitir a guia no serviço online.",
+        consent: "O cidadão digita no site oficial os dados do imóvel que o site pedir e emite a guia. Só se ele confirmar.",
+        types: ["dados do imóvel que o site pedir"],
       },
       PAY,
     ],
   },
   cartao_transporte: {
     title: "Cartão Transporte: cartão e créditos",
-    what: "Cartão do transporte coletivo de Curitiba, administrado pela URBS.",
+    what: "Cartão do transporte coletivo de Curitiba. A página oficial do serviço diz onde fazer cada coisa.",
     carta: [["cartao", "transporte"]],
     steps: [
       FIRST_STEP,
       CARTA_PAGE,
       {
-        action: "Abrir o site oficial da URBS.",
-        consent:
-          "Abrir www.urbs.curitiba.pr.gov.br no navegador do cidadão. Se ele entrar ou comprar créditos, digita ali os " +
-          "dados que o site pedir.",
-        types: ["login e dados do cartão que o site pedir"],
+        action: "Abrir o site da URBS e procurar ali o Cartão Transporte.",
+        consent: "Abrir www.urbs.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
         link: { fixed: "https://www.urbs.curitiba.pr.gov.br/" },
+      },
+      {
+        action: "Entrar ou pedir o serviço do cartão no site oficial, se ele oferecer.",
+        consent: "O cidadão digita no site oficial o login e os dados do cartão que o site pedir. Só se ele confirmar.",
+        types: ["login e dados do cartão que o site pedir"],
       },
       PAY,
     ],
   },
   agenda_online: {
-    title: "Agenda Online: agendar atendimento presencial na Prefeitura",
-    what: "Agendamento online de atendimentos da Prefeitura.",
+    title: "Agenda Online: agendar atendimento na Prefeitura",
+    what: "Agendamento online da Prefeitura; os serviços que podem ser agendados aparecem no próprio site.",
     carta: [["agendamento"]],
     steps: [
       FIRST_STEP,
@@ -202,12 +212,16 @@ export const GUIDES = {
       FIRST_STEP,
       CARTA_PAGE,
       {
-        action: "Abrir o portal oficial da Educação e escolher \"Cadastro Online\" ou \"Cadastramento Escolar\".",
-        consent:
-          "Abrir educacao.curitiba.pr.gov.br no navegador do cidadão. No cadastro, ele digita os dados da criança e do " +
-          "responsável que o site pedir.",
-        types: ["dados da criança e do responsável que o site pedir"],
+        action:
+          "Abrir o portal oficial da Educação. O menu tem \"Cadastro Online\" e \"Cadastramento Escolar\"; confira na " +
+          "página oficial do serviço qual deles é o cadastro para vaga em creche.",
+        consent: "Abrir educacao.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
         link: { fixed: "https://educacao.curitiba.pr.gov.br/" },
+      },
+      {
+        action: "Preencher o cadastro no site oficial.",
+        consent: "O cidadão digita no site oficial os dados da criança e do responsável que o site pedir. Só se ele confirmar.",
+        types: ["dados da criança e do responsável que o site pedir"],
       },
       {
         action: "Enviar o cadastro e guardar o comprovante.",
@@ -228,9 +242,13 @@ export const GUIDES = {
       },
       {
         action: "Abrir o Portal de Serviços / Agendar Atendimento do Detran-PR.",
-        consent: "Abrir o portal de agendamento do Detran-PR. O cidadão entra e digita ali os dados que o portal pedir.",
-        types: ["login do portal e dados que ele pedir"],
+        consent: "Abrir o portal de agendamento do Detran-PR (www.agendamento.detran.pr.gov.br). Nada é digitado.",
         link: { fixed: "https://www.agendamento.detran.pr.gov.br/detran-agendamento/portal" },
+      },
+      {
+        action: "Entrar no portal e escolher o serviço ou o horário.",
+        consent: "O cidadão entra no portal e digita ali os dados que ele pedir. Só se ele confirmar.",
+        types: ["login do portal e dados que ele pedir"],
       },
       PAY,
     ],
