@@ -17,7 +17,7 @@ describe("server info", () => {
 });
 
 describe("tools/list", () => {
-  it("lists exactly the twenty-seven read-only tools with input and output schemas", async () => {
+  it("lists exactly the twenty-eight read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -29,6 +29,7 @@ describe("tools/list", () => {
       "city_calendar",
       "city_facilities_search",
       "city_points_search",
+      "city_service_guide",
       "city_services_search",
       "dataset_files",
       "detran_pr_info",

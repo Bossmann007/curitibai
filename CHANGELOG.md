@@ -2,6 +2,29 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.28.0 - 2026-11-24
+
+Route 2: the citizen's own assistant can help them use city services that need a login, only with their explicit
+authorization at every step (owner approval 2026-11-24). CuritibAI stays read-only. 27 → 28 tools. Publishes nothing.
+
+- New `city_service_guide`: numbered steps and official links for `156`, `saude_ja`, `iptu`, `cartao_transporte`,
+  `agenda_online`, `creche` and `detran`. Every step that leaves the conversation has `needs_consent: true` and a
+  plain-Portuguese `consent` line saying what will happen and what the citizen types on the official site. The first
+  step says not to ask for personal data in the conversation. `note` tells the assistant to go one step at a time,
+  ask first, stop without a yes, and never type passwords, CPF or payment data. The input is a guide id and a step
+  number only. The tool makes no network call, never logs in or submits, and never receives personal data.
+- Links are https on allowlisted official hosts only: subdomains of `curitiba.pr.gov.br` (not the obituary system),
+  `www.detran.pr.gov.br`, `www.agendamento.detran.pr.gov.br` and `www.gov.br`. Each was checked by hand on 2026-11-24
+  (docs/tools.md). Links from the user's Carta copy pass the same check, and only a unique match gives a link.
+  Without the copy, `carta.message` says how to save it.
+- Optional `open_step`: when the client supports MCP URL-mode elicitation, the server asks the client to show the link
+  and its host for the user's approval. Accept returns the link; decline or cancel return none and say to stop.
+  Without the capability, the link is returned with the instruction to ask in the conversation first.
+- The Prefeitura's Autorização Digital (e-Cidadão) is mentioned as information only.
+- [ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md); docs/tools.md (reference, allowlist, Curitiba
+  App rows 156, scheduling, IPTU, Cartão Transporte and creche), docs/privacy.md, docs/local-data.md. Handlers now
+  get a per-call context (`ToolContext`) with `elicitUrl`; existing tools ignore it.
+
 ## 0.27.1 - 2026-11-24
 
 Docs only: no code, test or behaviour change. Publishes nothing.

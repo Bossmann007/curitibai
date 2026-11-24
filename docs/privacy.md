@@ -35,6 +35,16 @@ behind it.
   memory only (10 minutes; 6 hours for the vaccination page and the GeoCuritiba layers, 15 minutes per ANA station; 1 hour
   for the Teatro Guaíra calendar, 6 hours for its event pages and 24 hours for its robots.txt; parsed result only) and is keyed by the request sent to
   the source.
+- **Services that need a login (`city_service_guide`, since 0.28.0; [ADR 0010](adr/0010-service-guides-consent-at-every-step.md)).**
+  What CuritibAI never touches: it never logs in, submits, pays, schedules or opens a page; never asks for, receives,
+  stores or logs a password, CPF, cartão SUS, card, address or any other personal data; and never fetches a page behind
+  a login (it makes no network call at all). Its input is a guide id and a step number only. It returns steps and
+  official links (https, allowlisted hosts only). Each step that leaves the conversation is marked `needs_consent`,
+  and the assistant is told to ask the user first, one step at a time, and never to type passwords or payment data.
+  With `open_step`, the server asks the user's client to show the link for approval (MCP URL-mode elicitation). The
+  client opens the page in the user's browser, and what the user types there goes only to the official site, never
+  through this server. The answer is only accept, decline or cancel. The Prefeitura's Autorização Digital (letting
+  another person or company act for the citizen in e-Cidadão) is only mentioned; CuritibAI plays no part in it.
 - **User position (`place_at_point` since 0.22.0, `service_areas_at_point` since 0.23.0, `census_at_point` since 0.27.0).** These are the only tools
   that send a position to a source, under the same rules. The point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
   `geocuritiba.ippuc.org.br` (in the query URL), kept as the in-memory cache key (6 hours, at most 500 points) and

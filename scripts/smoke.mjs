@@ -1,4 +1,5 @@
-// Starts the built server over stdio, calls tools/list, city_services_search on the synthetic catalog fixture, and
+// Starts the built server over stdio, calls tools/list, city_services_search on the synthetic catalog fixture,
+// city_service_guide's open_step fallback (a client with no elicitation capability), and
 // bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic URBS fixtures, and
 // city_facilities_search with "list types", useful_phones on a local copy and events_search with no copy. No network
 // needed: none of them fetches anything (CURITIBAI_REMOTE_DATA=0 turns the published copy of events and phones off).
@@ -10,7 +11,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parsePhonesPage } from "./fetch-events.mjs";
 
-const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "census_at_point", "city_calendar", "city_facilities_search", "city_points_search", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "guaira_events", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "place_at_point", "places_search", "procurement_search", "river_levels", "service_areas_at_point", "tax_reform_curitiba", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
+const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "census_at_point", "city_calendar", "city_facilities_search", "city_points_search", "city_service_guide", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "guaira_events", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "place_at_point", "places_search", "procurement_search", "river_levels", "service_areas_at_point", "tax_reform_curitiba", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
 // The URBS fixtures have no date in their names (scripts/check-no-catalog blocks dated files), so the data folder is a
 // temporary copy: the catalog fixture plus the URBS fixtures under the dated names the server looks for.
@@ -52,6 +53,8 @@ await client.connect(transport);
 const { tools } = await client.listTools();
 const names = tools.map((t) => t.name).sort();
 const cs = await client.callTool({ name: "city_services_search", arguments: { query: "ficticia", limit: 1 } });
+// The smoke client declares no elicitation capability, so open_step falls back to returning the link.
+const guide = await client.callTool({ name: "city_service_guide", arguments: { service: "saude_ja", open_step: 2 } });
 const bus = await client.callTool({ name: "bus_departures", arguments: { line_code: "901", day: "1" } });
 const near = await client.callTool({ name: "bus_stops_near", arguments: { near: { lat: -25.4, lon: -49.2 } } });
 const next = await client.callTool({
@@ -108,6 +111,14 @@ if (!noEvents.isError || !/"data_not_available"/.test(noEvents.content?.[0]?.tex
   console.error("smoke: events_search with no local copy and CURITIBAI_REMOTE_DATA=0 is not data_not_available");
   process.exit(1);
 }
+{
+  const open = guide.structuredContent?.data?.open_step;
+  if (guide.isError || open?.result !== "not_supported" || open?.url !== "https://saudeja.curitiba.pr.gov.br/") {
+    console.error(`smoke: city_service_guide open_step fallback wrong: ${JSON.stringify(guide).slice(0, 300)}`);
+    process.exit(1);
+  }
+}
+console.log("smoke: city_service_guide OK (open_step without elicitation support returns the link to ask about)");
 console.log("smoke: events_search OK (no local copy, remote reading off: data_not_available, no network)");
 console.log(`smoke: useful_phones OK (local copy, ${phones.structuredContent.data.total} match for "samu")`);
 console.log(`smoke: city_facilities_search OK (${facilityTypes.structuredContent.data.types.length} types listed, no network)`);

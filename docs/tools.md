@@ -1,6 +1,6 @@
 # Tools
 
-Every input, output and error of the 27 tools, how they compare with the Curitiba App, what is deferred, and the
+Every input, output and error of the 28 tools, how they compare with the Curitiba App, what is deferred, and the
 limits of each source. The short list of tools is in the [README](../README.md#tools-at-a-glance).
 
 - [Inputs, outputs and errors](#tool-reference)
@@ -8,6 +8,7 @@ limits of each source. The short list of tools is in the [README](../README.md#t
 - [`river_levels` data quality](#river_levels-data-quality)
 - [Which place tool](#which-place-tool)
 - [Notes moved out of the tool descriptions](#notes-moved-out-of-the-tool-descriptions)
+- [`city_service_guide` consent and links](#city_service_guide-consent-and-links)
 - [Compared with the Curitiba App](#compared-with-the-curitiba-app)
 - [Deferred](#deferred)
 - [Limits](#limits)
@@ -31,7 +32,7 @@ read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_no
 `column_not_found`, `column_not_allowed`, `filter_with_group_by_not_allowed` and `invalid_csv`. `detran_pr_info` makes no network call either: it returns
 `{data, source_url, checked_at, note}` from data bundled in the code, and `invalid_argument` when `plate_final` is
 given with `topic: "units"`. `city_calendar` makes no network call either: it returns `{data, source_url, source_urls,
-checked_at, note}` from dated 2026 data bundled in the code (no error of its own). `city_services_search` also makes no network call: it reads a catalog file you keep in
+checked_at, note}` from dated 2026 data bundled in the code (no error of its own). `city_service_guide` makes no network call either: it returns `{data, source_url, checked_at, license_note, note}` from guides bundled in the code plus links from your Carta copy when there is one; its only error is `invalid_argument`. `city_services_search` also makes no network call: it reads a catalog file you keep in
 `CURITIBAI_DATA_DIR` (see [Local data files](local-data.md)) and returns `{data, source_url, checked_at, license_note, note}`; its errors are
 `data_not_available` (no `CURITIBAI_DATA_DIR` or no `carta-servicos.json` in it), `invalid_data` (not UTF-8 JSON, the
 wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing the file's categories) for an unknown
@@ -71,6 +72,7 @@ wait in `note`.
 | `weather_alerts` | optional `when`: `today`, `upcoming` or `all` (default) | INMET's active warnings whose area includes Curitiba (IBGE 4106902): id, which INMET lists it is in (`listed_in`: `today`, `upcoming` or both), description, severity, start, end (as published, no time zone given), risks and instructions, and `count`. A warning listed identically in both lists is returned once. When none covers Curitiba, `count` is 0 and `note` says so. Polygons, area lists and icons are dropped | INMET warnings API (`GET apiprevmet3.inmet.gov.br/avisos/ativos`) |
 | `places_search` | `category` (one of `park`, `library`, `school`, `community_centre`, `townhall`, `bus_station`, `marketplace`, `police`, `fire_station`), optional `name` (2–100 chars; every word must appear in the name, accents and case ignored), `limit` ≤ 20 (default 10), `offset` | Public places in Curitiba mapped in OpenStreetMap: OSM type and id, name, category, address as tagged (`addr:street`, `housenumber`, `suburb`, `postcode`, `city`), lat/lon (a way's or relation's centre), `opening_hours` as tagged, `website` (http(s) without credentials only; dropped when the contact-data guard would mask any part of it), OSM link; `total`, `next_offset`, `attribution`, `osm_data_as_of`, `bundled`, `checked_at`. `police` and `fire_station` come from a list bundled once from OSM on 2026-11-21 (**no network call**; `note` warns after 180 days). For `police`, `note` also says the category is as tagged in OSM and includes Guarda Municipal, identification institutes and some non-police offices. **Not for emergencies: call 190 (Polícia Militar) or 193 (Corpo de Bombeiros).** No shops, offices, doctors, dentists, clinics or hospitals (use `health_units_search` for public health units) | OpenStreetMap via the Overpass API (`POST ovp.dresel.systems/api-sa/interpreter`); police and fire stations from the bundled copy (`src/sources/osmBundled.ts`, ODbL), ODbL |
 | `city_services_search` | optional `query` (2–100 chars; every word must appear in the title or summary, accents, case and punctuation ignored), optional `category` (one of the file's categories, exact), optional `online_only`, `limit` ≤ 20 (default 10), `offset` | Prefeitura de Curitiba services: numeric id, title, category, `summary` (the listing's short "O que é?" teaser as published, often cut off), `official_url` and `online_url` (or null); `total` and `next_offset`; with no `query`, `category` or `online_only`, also the `categories` with counts. Title matches come first, then by title. **No network call**; `checked_at` is the first date in the file's `captured`, and `note` says the catalog may be outdated once more than 180 days have passed since it | A local copy of the Carta de Serviços listing (`www.curitiba.pr.gov.br/servicos/`) that **you provide**: `carta-servicos.json` in `CURITIBAI_DATA_DIR`. Not shipped, not fetched |
+| `city_service_guide` | `service`: `156`, `saude_ja`, `iptu`, `cartao_transporte`, `agenda_online`, `creche` or `detran`; optional `open_step` (1–10) | A numbered guide (since v0.28): `title`, `what`, `steps` (each `step`, `action`, `needs_consent`, `consent` (one plain-Portuguese line on what will happen and what the citizen types there; null when the step stays in the conversation), `citizen_types_on_site` (what the citizen types on the official site, never in the conversation), `url`, `url_host`, `link_source` (`official_allowlist` or `carta_copy`)), `carta` (`status` `matched`, `ambiguous`, `no_match`, `not_available` or `invalid`, up to 3 `matches` with `title` and `official_url`, `message`; with no copy the message says how to save it), `delegation` (the Prefeitura's Autorização Digital, as information only) and `note` (the consent rule). With `open_step`: no `steps`; `open_step` (`step`, `result` `accepted`, `declined`, `cancelled`, `no_answer` or `not_supported`, and `url`/`url_host` only when accepted or not supported). Every link passes the [host allowlist](#city_service_guide-consent-and-links); the server never logs in, submits, stores or receives personal data, and makes no network call. Errors: `invalid_argument` (`open_step` out of range or on a step with no link) | Steps written from the official sites, checked 2026-11-24 (table below); Carta links from your local copy |
 | `bus_lines_search` | optional `query` (1–100 chars; every word must appear in the line name or code, accents, case and punctuation ignored), optional `category` (one of the file's categories, accents and case ignored), `limit` ≤ 50 (default 20), `offset` | URBS bus lines: `code`, `name`, `category`, `color`, `card_only` (SOMENTE_CARTAO: S true, N false, else null); `total` and `next_offset`; with no filter, also the `categories` with counts. An exact code comes first, then by name. **No network call**; `checked_at` is the file's date, and `note` warns once it is more than 30 days old | The newest `YYYY_MM_DD_linhas.json` in `CURITIBAI_DATA_DIR/urbs/`, which **you download** (see [Local data files](local-data.md#bus-lines-stops-timetables-and-points-of-interest-urbs-files-you-download)). Not shipped, not fetched |
 | `bus_line_stops` | `line_code` (case ignored), optional `itinerary_id` (one direction), `limit` ≤ 50 (default 50), `offset` | The line's `directions` (direction name, `itinerary_id`, stop count) and its stops in itinerary order: direction, `seq`, `stop_number`, `name` (masked as a guard, see "Privacy and safety"), `lat`/`lon` (decimal; null when empty), shelter `type` and URBS's `group`, as published | The newest `YYYY_MM_DD_pontosLinha.json`, same folder |
 | `bus_departures` | `line_code` and/or `stop_number` (at least one), optional `day` (URBS DIA code), optional `from`/`to` (HH:MM, inclusive, `from` ≤ `to`), `limit` ≤ 50 (default 20), `offset` | Published departure times, ordered by day, time, line and stop: `time`, `day` (the code), `day_type` (`weekday`, `saturday`, `sunday_or_holiday` for 1, 2, 3, **inferred from the data, not stated by URBS**; null for any other code), `line_code`, `stop_number`, `stop_name` (masked as a guard), `table` (TABELA) and `adapt` (ADAPT, the accessibility equipment), as published, and `after_midnight` (true when the row continues the previous evening's service past midnight). Not real-time | The newest `YYYY_MM_DD_tabelaLinha.json`, same folder |
@@ -226,6 +228,53 @@ listed here because the description no longer says them, and the table above doe
 - `tax_reform_curitiba`: Curitiba is IBGE 4106902 (PR); the rates come with the Receita app and base versions, and
   cClassTrib results with their reduction percentages.
 
+<a id="city_service_guide-consent-and-links"></a>
+
+## `city_service_guide` consent and links
+
+Since v0.28 ([ADR 0010](adr/0010-service-guides-consent-at-every-step.md)). The citizen's own assistant may help them
+use a city service that needs a login, only with their explicit authorization at every step. CuritibAI stays
+read-only: it never logs in, submits, opens a page, or stores or receives a credential, CPF or any personal data. It
+returns steps and official links; the citizen, or their assistant in their own browser with their approval, acts.
+
+- **Consent at every step.** Every step that leaves the conversation (opening a site, typing data, scheduling,
+  paying, sending) has `needs_consent: true` and a one-line `consent` text in plain Portuguese. The first step of every
+  guide stays in the conversation and tells the assistant not to ask for CPF, passwords, cards, addresses or other
+  personal data there. `note` tells the assistant: one step at a time, ask before each consent step, stop without a
+  yes, never type passwords, CPF or payment data. The input is a guide id and a step number only.
+- **`open_step`.** When the client declared the `elicitation.url` capability, the server sends an MCP URL-mode
+  elicitation (`elicitation/create`, `mode: "url"`, protocol 2025-11-25, `@modelcontextprotocol/sdk` 1.32.2): the
+  client shows the full URL and its host and opens it only after the user agrees (spec: clients MUST show the target
+  domain and gather consent before navigation, and MUST NOT pre-fetch it). The message is fixed server text (guide
+  title, step, host, the step's consent line), never text from the Carta copy. `accept` returns the link,
+  `decline`/`cancel` return no link and tell the assistant to stop, no answer in 5 minutes returns `no_answer` (no
+  link). A client without the capability gets `not_supported` with the link and the instruction to ask in the
+  conversation first. No form-mode elicitation is used, so nothing the user types reaches the server. The 2026-07-28
+  revision moved server requests into `InputRequiredResult` (multi round-trip requests); the SDK has no support for it
+  yet, so a client on that revision gets the same behaviour only after the SDK adds it (ADR 0010).
+- **Links.** A step link is https, with no credentials, no port and no punycode label, on one of the hosts below;
+  anything else (including a Carta `online` link to another host) is dropped, and a Carta match that is not unique
+  gives no Carta link (candidates are returned as data). Without a Carta copy, the Carta steps link to the catalog
+  listing and `carta.message` says how to save the copy ([Local data files](local-data.md#finding-a-city-service-carta-de-serviços)).
+
+| Allowed host | Why it is official | How it was checked (2026-11-24, `curl` with User-Agent `curitibai-dev-check`, one request each, by hand; the server never contacts them) |
+|---|---|---|
+| `*.curitiba.pr.gov.br` (any subdomain, except `obituarios.curitiba.pr.gov.br`) | The Prefeitura's DNS zone under `pr.gov.br` (`.gov.br` names are only registered to public bodies) | `dig NS curitiba.pr.gov.br`: the zone is delegated on its own name servers; each fixed link below answered from it |
+| `www.detran.pr.gov.br` | Detran-PR's site (footer "DEPARTAMENTO DE TRÂNSITO DO PARANÁ - DETRAN/PR"; already recorded in [sources](sources.md)) | HTTP 200; `detran.pr.gov.br` redirects to it |
+| `www.agendamento.detran.pr.gov.br` | Detran-PR's scheduling portal, linked as "Agendar Atendimento" and "Portal de Serviços" from the Detran-PR home page | `/detran-agendamento/portal` HTTP 200 |
+| `www.gov.br` | The federal government portal | HTTP 301 to `/pt-br`; no fixed link uses it; allowed for Carta `online` links to federal services |
+
+| Fixed link | Check |
+|---|---|
+| `https://156.curitiba.pr.gov.br/` and its "Abrir Pedido" form `/Solicitacao/Abra-sua-solicitacao-servico-informacao-na-prefeitura-de-curitiba` | 200, title "Central de Atendimento 156"; "Entrar" and "Cadastrar" use the e-Cidadão login |
+| `https://saudeja.curitiba.pr.gov.br/` | 200, title "Saúde Já Curitiba - Prefeitura de Curitiba"; "o agendamento do primeiro atendimento na Unidade Municipal de Saúde"; access by e-Cidadão with "CPF ou número do cartão SUS" and password |
+| `https://agendaonline.curitiba.pr.gov.br/` | 200, title "Agenda Online Curitiba" (a script page: the services it schedules were not read) |
+| `https://educacao.curitiba.pr.gov.br/` | 200; its menu has "Cadastramento Escolar" and "Cadastro Online" (`cadastro-online.curitiba.pr.gov.br`, which answered 403 to curl and is not linked directly) |
+| `https://www.urbs.curitiba.pr.gov.br/` | Answers 403 to non-browser clients (as recorded in [sources](sources.md)); not read; on the allowed zone |
+| `https://www.detran.pr.gov.br/`, `https://www.agendamento.detran.pr.gov.br/detran-agendamento/portal` | Above |
+| `https://www.curitiba.pr.gov.br/servicos/` (Carta listing, fallback) | The existing `city_services_search` source; answers 403 to non-browser clients |
+| Autorização Digital news, `https://www.curitiba.pr.gov.br/noticias/prefeitura-de-curitiba-ganha-dois-premios-por-inovacoes-digitais-na-gestao-urbana/80104` (2025-10-26) | Given in the owner's brief; answers 403 to non-browser clients, so its text was not read here. Used only as the `delegation` source |
+
 ## Compared with the Curitiba App
 
 The Prefeitura's official app is [Curitiba App](https://apps.apple.com/br/app/curitiba-app/id1447887852) (Prefeitura
@@ -252,12 +301,14 @@ Since March 2026 it is a single app for the Prefeitura's services with an AI ass
 Rows marked * are features the owner noted in the app itself; the App Store listing does not name them. Rows with a
 link name what the linked page says. The app itself was not tested here, so no row claims CuritibAI is better, and a
 feature missing from these sources may still be in the app ("entre outros").
-CuritibAI is a read-only assistant tool, not a replacement: anything that needs a login, a payment or a registration is
-out of scope by design.
+CuritibAI is a read-only assistant tool, not a replacement: it never logs in, pays or registers. Since v0.28,
+`city_service_guide` gives steps and official links for some of those services; the citizen acts, with consent at
+every step ([ADR 0010](adr/0010-service-guides-consent-at-every-step.md)).
 Compared on 2026-11-21 with the App Store listing above, not with the app itself; rows on cultural spaces, Defesa
 Civil, EstaR and real-time buses added on 2026-11-23 from the owner's research of that day; refreshed on 2026-11-23
 from the Prefeitura's news pages linked above (and the Bem Paraná reprint), read in a browser that day.
-IPTU row and the v0.27 extras updated on 2026-11-24.
+IPTU row and the v0.27 extras updated on 2026-11-24; the 156, scheduling, IPTU, Cartão Transporte and creche rows
+updated for v0.28 on 2026-11-24.
 
 | Curitiba App feature | CuritibAI | Why |
 |---|---|---|
@@ -266,15 +317,15 @@ IPTU row and the v0.27 extras updated on 2026-11-24.
 | Transport information ([transport, 2026-04-14](https://www.curitiba.pr.gov.br/noticias/curitiba-app-traz-inovacoes-na-area-do-transporte-e-facilita-vida-dos-passageiros/82605)) | ✓ | `next_buses_near` answers "next buses near me" in one call (published departures at the stops within a radius, soonest first); `bus_stops_near`, `bus_departures` and `bus_line_stops` give the stops, timetables and itineraries; all from the URBS files you download; no real-time positions. The app lets visitors see timetables and routes without a login ("Acessar como visitante"), suggests routes from origin to destination and keeps favourite routes; its functions that need a registration stay for logged-in users. CuritibAI has no favourites or origin-to-destination routing |
 | Health information | ✓ | Public health units (`health_units_search`), vaccination sites with hours and vaccines, by distance (`vaccination_sites_search`), and urgent-care points (`city_points_search`) |
 | Education information | ✓ | Municipal and state schools and CMEIs from the URBS points export (`city_points_search`); no enrolment |
-| Creche / student registration, Vale Creche ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311); [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | — | The app gives access to "cadastro online de alunos", Vale Creche and the "cadastro para vagas em creche". These are registrations for a person; out of scope (that they need a login is not confirmed in the sources) |
+| Creche / student registration, Vale Creche ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311); [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | guide + official link, citizen acts | Since v0.28 `city_service_guide` (`creche`): steps to the Educação portal's "Cadastro Online" / "Cadastramento Escolar" and the Carta page; the citizen registers, with consent at every step. Vale Creche not covered |
 | School calendar ([launch](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311)) | — | Not covered yet; whether it is published as open data was not checked |
-| IPTU payment ([award, 2026-08-11](https://www.curitiba.pr.gov.br/noticias/eduardo-pimentel-recebe-premio-de-prefeito-inovador-pela-criacao-do-curitiba-app/84518)) | partial | Paying is a property owner's transaction and stays out of scope; since v0.27 `city_calendar` (`topic: "iptu"`) gives the 2026 general rule (10% cash discount by 20 March, up to 10 instalments, how to pay), from a secondary source |
+| IPTU payment ([award, 2026-08-11](https://www.curitiba.pr.gov.br/noticias/eduardo-pimentel-recebe-premio-de-prefeito-inovador-pela-criacao-do-curitiba-app/84518)) | guide + official link, citizen acts | Since v0.28 `city_service_guide` (`iptu`): the official page and online service from your Carta copy; the owner pays at the bank, never through CuritibAI. `city_calendar` (`topic: "iptu"`, since v0.27) gives the 2026 general rule, from a secondary source |
 | Events * | ✓ | `events_search` over the Instituto Municipal de Turismo calendar (through the separate collector) |
 | Useful phones * | partial | `useful_phones` returns the 60 entries of the Instituto Municipal de Turismo's "Telefones Úteis" page (emergencies such as SAMU, Defesa Civil and Guarda Municipal, services, transport, radio taxis; through the separate collector). The app's own list was not compared, and that page has no Ouvidoria entry, so this is not claimed to match it |
-| 156 (requests and their protocols; [iBest](https://www.curitiba.pr.gov.br/noticias/curitiba-app-concorre-em-top-10-do-premio-ibest-2026-vote-ate-o-dia-22-de-novembro/85858)) | — | Opening and following 156 requests needs a registration or login (owner's note; not confirmed in the linked sources); out of scope. `local_csv_summary` can summarise the 156 open-data file you download |
-| Scheduling (agendamentos; Saúde Já, [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | — | Needs a registration or login (owner's note; not confirmed in the linked sources); out of scope |
+| 156 (requests and their protocols; [iBest](https://www.curitiba.pr.gov.br/noticias/curitiba-app-concorre-em-top-10-do-premio-ibest-2026-vote-ate-o-dia-22-de-novembro/85858)) | guide + official link, citizen acts | Since v0.28 `city_service_guide` (`156`): steps to the Central 156 site (e-Cidadão login) and its "Abrir Pedido" form; the citizen writes and sends the request. Following a protocol is not covered. `local_csv_summary` can summarise the 156 open-data file you download |
+| Scheduling (agendamentos; Saúde Já, [Bem Paraná](https://www.bemparana.com.br/noticias/parana/app-prefeitura-curitiba-unifica-servicos/)) | guide + official link, citizen acts | Since v0.28 `city_service_guide` (`saude_ja`, `agenda_online`): steps to the Saúde Já site (e-Cidadão login with CPF or cartão SUS, checked 2026-11-24) and the Agenda Online; the citizen schedules |
 | Curitiba Lê Digital ([new interface](https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129)) | — | A free reading platform in the app with more than 200 books (classics and local authors). Not covered: CuritibAI has no books; `city_points_search` and `places_search` list library locations only |
-| Cartão Transporte * (credit top-up; [transport](https://www.curitiba.pr.gov.br/noticias/curitiba-app-traz-inovacoes-na-area-do-transporte-e-facilita-vida-dos-passageiros/82605)) | — | Needs a registration or login (owner's note; not confirmed in the linked sources); out of scope |
+| Cartão Transporte * (credit top-up; [transport](https://www.curitiba.pr.gov.br/noticias/curitiba-app-traz-inovacoes-na-area-do-transporte-e-facilita-vida-dos-passageiros/82605)) | guide + official link, citizen acts | Since v0.28 `city_service_guide` (`cartao_transporte`): the Carta page and the URBS site; the citizen buys credits, never through CuritibAI |
 | Cultural spaces and attractions * | partial | `city_facilities_search` (since v0.20) covers IPPUC's Cultura layers: centros culturais, espaços expositivos de artes, memoriais, cinemas, espaços para espetáculos ao ar livre, the Gibiteca, museums, theatres and libraries, with hours as published. GeoCuritiba has no layer of tourist attractions (pontos turísticos); `informacoes turisticas` lists only the tourist information desks |
 | Defesa Civil alerts * | — | No public feed found (owner's research, 2026-11-23): the IDAP alert platform is restricted since June 2026 and SISDC-PR is for public bodies only. `weather_alerts` gives INMET's warnings; emergencies: Defesa Civil 199. The [launch page](https://www.curitiba.pr.gov.br/noticias/prefeitura-lanca-superapp-com-inteligencia-artificial-e-cerca-de-800-servicos-em-plataforma-unica/82311) names targeted alerts on health, mobility and Defesa Civil |
 | EstaR (parking) * | — | No open data found (owner's research, 2026-11-23), and www.urbs.curitiba.pr.gov.br answers 403 to non-browser clients |

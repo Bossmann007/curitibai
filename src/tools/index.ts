@@ -6,6 +6,7 @@ import { busLinesSearch } from "./busLinesSearch.js";
 import { busStopsNear } from "./busStopsNear.js";
 import { cityFacilitiesSearch } from "./cityFacilitiesSearch.js";
 import { cityPointsSearch } from "./cityPointsSearch.js";
+import { cityServiceGuide } from "./cityServiceGuide.js";
 import { cityServicesSearch } from "./cityServicesSearch.js";
 import { datasetFiles } from "./datasetFiles.js";
 import { detranPrInfo } from "./detranPrInfo.js";
@@ -36,6 +37,7 @@ export const tools = [
   weatherForecast,
   weatherAlerts,
   cityServicesSearch,
+  cityServiceGuide,
   placesSearch,
   busLinesSearch,
   busLineStops,

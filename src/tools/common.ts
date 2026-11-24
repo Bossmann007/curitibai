@@ -60,13 +60,22 @@ export const ErrorResult = z.object({
 });
 export type ErrorCode = z.infer<typeof ErrorResult>["error"];
 
+/** Answer of a URL-mode elicitation: the user's choice, "unsupported" (client lacks it) or "error" (no answer). */
+export type ElicitUrlAnswer = "accept" | "decline" | "cancel" | "unsupported" | "error";
+
+/** What a handler may ask of the client during a call. Built per call in server.ts. */
+export interface ToolContext {
+  /** Asks the user's client to show `url` and get consent before opening it (MCP URL-mode elicitation). */
+  elicitUrl(message: string, url: string): Promise<ElicitUrlAnswer>;
+}
+
 export interface ToolDef<I extends z.ZodRawShape, O extends z.ZodType> {
   name: string;
   title: string;
   description: string;
   inputSchema: I;
   outputSchema: O;
-  handler: (args: z.infer<z.ZodObject<I>>) => Promise<CallToolResult>;
+  handler: (args: z.infer<z.ZodObject<I>>, ctx?: ToolContext) => Promise<CallToolResult>;
   /** Overrides on top of READ_ONLY (e.g. openWorldHint: false for a tool with no network). */
   annotations?: Partial<ToolAnnotations>;
 }
