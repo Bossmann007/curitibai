@@ -2,6 +2,14 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.27.1 - 2026-11-24
+
+Docs only: no code, test or behaviour change. Publishes nothing.
+
+- [ADR 0009](docs/adr/0009-census-household-floor.md) is accepted: the owner decided on 2026-11-24 that the
+  `census_at_point` privacy floor stays at 20 occupied private households (29 of 3,190 sectors withheld at 0.27.0).
+  The "open owner question" wording is gone from the ADR; `SPEC.md` describes 0.27.1.
+
 ## 0.27.0 - 2026-11-24
 
 More of what a citizen asks, from the GeoCuritiba host the server already reads (same host gate, cache and
