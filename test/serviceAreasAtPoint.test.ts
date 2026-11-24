@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer } from "../src/sources/geocuritiba.js";
-import { serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
+import { OutOfTimeError } from "../src/hostGate.js";
+import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
+import { missingNote, serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
 import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and dates, the real fields and shapes of layers 19 and 5 as read on 2026-11-23).
@@ -14,7 +16,18 @@ const BAIRRO = attrs([{ nome: "BAIRRO TESTE", nm_regional: "REGIONAL TESTE" }]);
 const EMPTY = attrs([]);
 
 type AreaLayer = Extract<PointLayer, "bairro" | "health_area" | "cras_territory">;
-const key = (layer: AreaLayer) => `GET ${pointQueryUrl(layer, P)}`;
+type SafetyLayer = Extract<PointLayer, "bairro" | "pm_company" | "civil_district" | "fire_platoon">;
+const key = (layer: AreaLayer | SafetyLayer) => `GET ${pointQueryUrl(layer, P)}`;
+// Synthetic, with the real fields of layers 27, 25 and 41 as read on 2026-11-24.
+const PM = attrs([{ nm_batalhao: "99º Batalhão", sg_batalhao: "99º BPM", nm_companhia: "1ª Companhia", sg_companhia: "1ª CIA", data_atualizacao: "09/2025", fonte: "PMPR TESTE" }]);
+const CIVIL = attrs([{ nm_divisao: "Divisão Teste", nm_distrito: "99º Distrito Policial", sg_distrito: "99º DP", fonte: "PCPR TESTE" }]);
+const FIRE = attrs([{ batalhao: "Batalhão Teste", companhia: "Companhia Teste", pelotao: "Pelotão Teste", sigla: "9ª Pel. BM", fonte: "CBMPR TESTE" }]);
+function safetyRoutes(over: Partial<Record<SafetyLayer, Route>> = {}): Record<string, Route> {
+  const base: Record<SafetyLayer, Route> = { bairro: { body: BAIRRO }, pm_company: { body: PM }, civil_district: { body: CIVIL }, fire_platoon: { body: FIRE } };
+  const out: Record<string, Route> = {};
+  for (const layer of Object.keys(base) as SafetyLayer[]) out[key(layer)] = { contentType: JSON_TYPE, ...base[layer], ...over[layer] };
+  return out;
+}
 function routes(over: Partial<Record<AreaLayer, Route>> = {}): Record<string, Route> {
   const base: Record<AreaLayer, Route> = { bairro: { body: BAIRRO }, health_area: { body: HEALTH }, cras_territory: { body: CRAS } };
   const out: Record<string, Route> = {};
@@ -77,9 +90,13 @@ describe("service_areas_at_point answers", () => {
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
+      areas: "care",
       inside_curitiba: true,
       health_units: [{ name: "US TESTE", district: "DISTRITO TESTE", reference_date: "março/2022", source_agency: "SMS-PMC", approximate: null }],
       cras: [{ name: "CRAS TESTE", type: "CRAS", regional: "REGIONAL TESTE", reference_date: "MAR-2019", source_agency: "FAS", approximate: false }],
+      police_military: [],
+      police_civil: [],
+      fire: [],
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
@@ -168,6 +185,83 @@ describe("service_areas_at_point answers", () => {
   it("text fields are cleaned and masked like the other GeoCuritiba fields", async () => {
     stubFetch(routes({ health_area: { body: attrs([{ nome: "US‮ 33334444" }]) } }));
     expect((await areas()).data.health_units[0]?.name).toBe("US [masked]");
+  });
+});
+
+describe("service_areas_at_point areas: safety (v0.27.0)", () => {
+  it("asks fixed point queries on layers 27, 25 and 41 with the rounded point only", () => {
+    const layers: [Exclude<SafetyLayer, "bairro">, number, string][] = [
+      ["pm_company", 27, "nm_batalhao,sg_batalhao,nm_companhia,sg_companhia,data_atualizacao,fonte"],
+      ["civil_district", 25, "nm_divisao,nm_distrito,sg_distrito,fonte"],
+      ["fire_platoon", 41, "batalhao,companhia,pelotao,sigla,fonte"],
+    ];
+    for (const [layer, id, fields] of layers) {
+      const u = new URL(pointQueryUrl(layer, P));
+      expect(u.pathname.endsWith(`/Publico_Interno_GeoCuritiba_BaseTematica/MapServer/${id}/query`)).toBe(true);
+      expect(u.searchParams.get("geometry")).toBe("-49.2713,-25.4296");
+      expect(u.searchParams.get("outFields")).toBe(fields);
+    }
+  });
+
+  it("returns the police and fire areas in 3 requests (PM, civil, fire), no health or CRAS request", async () => {
+    const calls = stubFetch(safetyRoutes());
+    const res = await call({ ...AT, areas: "safety" });
+    const out = serviceAreasAtPointOutput.parse(res.structuredContent);
+    expect(out.data).toEqual({
+      lat: -25.4296,
+      lon: -49.2713,
+      areas: "safety",
+      inside_curitiba: true,
+      health_units: [],
+      cras: [],
+      police_military: [{ battalion: "99º Batalhão", battalion_code: "99º BPM", company: "1ª Companhia", company_code: "1ª CIA", reference_date: "09/2025", source_agency: "PMPR TESTE" }],
+      police_civil: [{ district: "99º Distrito Policial", district_code: "99º DP", division: "Divisão Teste", source_agency: "PCPR TESTE" }],
+      fire: [{ platoon: "Pelotão Teste", platoon_code: "9ª Pel. BM", company: "Companhia Teste", battalion: "Batalhão Teste", source_agency: "CBMPR TESTE" }],
+      partial: false,
+    });
+    expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (PMPR, PCPR e CBMPR)");
+    expect(out.note).toMatch(/Not for emergencies: call 190 \(police\) or 193 \(fire\)/);
+    expect(calls.map((c) => c.url)).toEqual([key("pm_company"), key("civil_district"), key("fire_platoon")].map((k) => k.slice(4)));
+    expect(JSON.stringify(res) + JSON.stringify(calls)).not.toMatch(/4296123|2713123/);
+  });
+
+  it("no PM area: the bairro layer decides; outside Curitiba nothing else is asked", async () => {
+    const calls = stubFetch(safetyRoutes({ pm_company: { body: EMPTY }, bairro: { body: EMPTY } }));
+    const out = await areas({ ...AT, areas: "safety" });
+    expect(out.data).toMatchObject({ inside_curitiba: false, police_military: [], police_civil: [], fire: [], partial: false });
+    expect(calls.map((c) => c.url)).toEqual([key("pm_company"), key("bairro")].map((k) => k.slice(4)));
+  });
+
+  it("a refusal on the Polícia Civil layer is partial (the fire layer is then not asked), never a failed call", async () => {
+    const calls = stubFetch(safetyRoutes({ civil_district: { body: '{"error":{"code":403}}' } }));
+    const out = await areas({ ...AT, areas: "safety" });
+    expect(out.data).toMatchObject({ partial: true, police_civil: [], fire: [] });
+    expect(out.data.police_military).toHaveLength(1);
+    expect(out.note).toMatch(/Partial: the Polícia Civil and fire layer could not be read now\. The source refused this server/);
+    expect(calls.map((c) => c.url)).not.toContain(key("fire_platoon").slice(4));
+  });
+
+  it("a failing fire layer alone is partial and keeps the other areas", async () => {
+    stubFetch(safetyRoutes({ fire_platoon: { status: 500 } }));
+    const out = await areas({ ...AT, areas: "safety" });
+    expect(out.data).toMatchObject({ partial: true, fire: [] });
+    expect(out.data.police_civil).toHaveLength(1);
+    expect(out.note).toMatch(/Partial: the fire layer could not be read now\. The host was busy or failing/);
+  });
+
+  it("a failing PM layer is source_unavailable", async () => {
+    stubFetch(safetyRoutes({ pm_company: { status: 500 } }));
+    expect(errorOf(await call({ ...AT, areas: "safety" }))).toMatchObject({ error: "source_unavailable" });
+  });
+
+  it("names why a later layer is missing: a refusal first, then the time budget, else a busy host", () => {
+    expect(missingNote([new OutOfTimeError(0)])).toMatch(/not asked: the call's time budget ran out/);
+    expect(missingNote([new OutOfTimeError(0), new SourceUnavailableError("x")])).toMatch(/busy or failing/);
+    expect(missingNote([new OutOfTimeError(0), new SourceRefusedError(403)])).toMatch(/refused this server/);
+  });
+
+  it("an unknown areas value is refused", async () => {
+    expect((await call({ ...AT, areas: "police" })).isError).toBe(true);
   });
 });
 

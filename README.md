@@ -19,9 +19,9 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 25 tools over public
-data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, places, events, weather, river levels and rain, Teatro Guaíra events,
-municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 27 tools over public
+data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, voting places, police and fire areas, census figures, places, events, weather, river levels and rain, Teatro Guaíra events,
+municipal holidays, municipal procurement, Detran-PR and the city's open-data portal. The server writes no files, needs no account and does not store or log queries.
 
 **Independent, unofficial project. It has no link with the Prefeitura Municipal de Curitiba and is not affiliated
 with, endorsed by or connected to it, URBS, the Ministério da Saúde, PNCP / the Ministério da Gestão e Inovação em
@@ -121,7 +121,7 @@ only the local file, as before 0.18.0, and make no network call.
 
 ## Tools at a glance
 
-All 25 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+All 27 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
 the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar; 24 hours for the Receita tax-reform data). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` and "Bundled" tools read data bundled in the code; both
 make no network call. "Nightly" tools read your local file when there is one, else the copy this project's
 nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turns it off). [Tool reference](docs/tools.md) has every input, output and error.
@@ -136,9 +136,11 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Health | `health_units_search` | Public-administration health units in Curitiba (CNES) | Live (Ministry of Health) |
 | Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Live (Imuniza Já page) |
 | City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |
-| City | `city_facilities_search` | Feiras, Ruas da Cidadania, ecopontos, libraries, cultural centres, cinemas, memorials, outdoor gyms and sport centres, public toilets, parks and conservation units, bike lanes and more, with days and hours as published | Live (IPPUC GeoCuritiba) |
+| City | `city_facilities_search` | Feiras, Ruas da Cidadania, ecopontos, libraries, cultural centres, cinemas, memorials, outdoor gyms and sport centres, public toilets, parks and conservation units, bike lanes, bus terminals (with their integrated lines), voting places (TRE-PR list) and more, with days and hours as published | Live (IPPUC GeoCuritiba) |
 | City | `place_at_point` | Neighbourhood, regional, zoning (code, name, law or decree, version) and nearest street of a point | Live (IPPUC GeoCuritiba) |
-| City | `service_areas_at_point` | Health unit area and CRAS territory of a point, with each area's reference date, and whether the point is inside Curitiba | Live (IPPUC GeoCuritiba) |
+| City | `service_areas_at_point` | Health unit area and CRAS territory of a point, or (`areas: safety`) its Polícia Militar company, Polícia Civil district and fire platoon areas, and whether the point is inside Curitiba | Live (IPPUC GeoCuritiba) |
+| City | `census_at_point` | IBGE 2022 census figures of a point's sector (residents, households, density, mean income of household heads; withheld under 20 households) and its neighbourhood's totals | Live (IPPUC GeoCuritiba) |
+| City | `city_calendar` | The Prefeitura's 2026 holidays, optional days and closures (Decreto 2.385/2025), and the IPTU 2026 general rule (secondary source) | Bundled (dated 2026) |
 | City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
 | City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Live (Overpass); police and fire stations Bundled |
 | City | `events_search` | Events from the Instituto Municipal de Turismo calendar | Nightly (GitHub `data` branch), or your local file |
@@ -165,7 +167,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 - **Local tools** read files you download yourself into `CURITIBAI_DATA_DIR`: the URBS daily exports (bus tools and
   `city_points_search`), a copy of the Carta de Serviços (`city_services_search`) and any CSV (`local_csv_summary`).
   The server never downloads these files. [Local data files](docs/local-data.md) has the steps.
-- **Bundled tools** (`detran_pr_info`, and the police and fire stations of `places_search`) use data taken once by
+- **Bundled tools** (`detran_pr_info`, `city_calendar`, and the police and fire stations of `places_search`) use data taken once by
   hand and shipped in the code; a code update refreshes it.
 
 ### Events and useful phones
@@ -181,13 +183,13 @@ schedule, the published files, how to turn it back on and how to run the collect
 ## Privacy notice
 
 - No user accounts; the server does not store or log queries. Search terms go only to the source they query, and
-  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page, the GeoCuritiba layers and the rounded points of `place_at_point` and `service_areas_at_point`; 15 minutes per ANA station;
+  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page, the GeoCuritiba layers and the rounded points of `place_at_point`, `service_areas_at_point` and `census_at_point`; 15 minutes per ANA station;
   1 hour for the Teatro Guaíra calendar, 6 hours for its event pages; 1 hour for the published events and phones copy).
   `events_search` and `useful_phones` never send search terms: they read a whole published file and filter it in the
   server.
   `guaira_events` sends no search term at all: it reads the whole calendar and filters it in the server.
   `city_facilities_search` never sends the user's position or neighbourhood: it reads a whole layer and filters it in
-  the server. `place_at_point` and `service_areas_at_point` send IPPUC only the point rounded to 4 decimals (about 11 m); that rounded point is the
+  the server. `place_at_point`, `service_areas_at_point` and `census_at_point` send IPPUC only the point rounded to 4 decimals (about 11 m); that rounded point is the
   only one cached and returned, and it is never logged or written. `river_levels` never sends the user's text or position: only bundled station codes and dates reach ANA.
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
   objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through ([details](docs/privacy.md#details)).

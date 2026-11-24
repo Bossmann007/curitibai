@@ -707,6 +707,439 @@
     }
   },
   {
+    "name": "census_at_point",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitude in decimal degrees, inside Curitiba (-25.7 to -25.3)."
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "The point rounded to 4 decimals (about 11 m): the only precision sent to the source."
+            },
+            "lon": {
+              "type": "number"
+            },
+            "census_year": {
+              "type": "number",
+              "const": 2022
+            },
+            "inside_curitiba": {
+              "type": "boolean",
+              "description": "False when no Curitiba census sector contains the point."
+            },
+            "sector": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "description": "IBGE census sector code (cd_setor, 15 digits).",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "persons": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Residents (v0001)."
+                    },
+                    "households": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Occupied private households (v0007)."
+                    },
+                    "density_per_km2": {
+                      "description": "Residents per km² as published (dens_pop_km2), 1 decimal.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "mean_income_brl": {
+                      "description": "Mean monthly nominal income (R$) of the household heads with income, in occupied permanent private households (renda_media); null when IBGE did not publish it.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "persons",
+                    "households",
+                    "density_per_km2",
+                    "mean_income_brl"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The sector containing the point; null when withheld or none."
+            },
+            "sector_withheld": {
+              "type": "boolean",
+              "description": "True when the sector has fewer than 20 occupied private households: its figures are not given."
+            },
+            "neighbourhood": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Neighbourhood as IBGE spells it (nm_bairro), e.g. \"Botiatuvinha\"."
+                    },
+                    "sectors": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Sectors counted: those with 20 or more households."
+                    },
+                    "persons": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "households": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "area_km2": {
+                      "description": "Sum of the counted sectors' areas (withheld sectors left out), 2 decimals.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "density_per_km2": {
+                      "description": "persons / area_km2 of the counted sectors, 1 decimal.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "sectors",
+                    "persons",
+                    "households",
+                    "area_km2",
+                    "density_per_km2"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Totals of the neighbourhood's sectors with 20 or more households, so a withheld sector cannot be subtracted back (no income: a mean of sector means is not the neighbourhood's); null when not read or none."
+            },
+            "partial": {
+              "type": "boolean",
+              "description": "True when the neighbourhood totals could not be read; `neighbourhood` is then null."
+            }
+          },
+          "required": [
+            "lat",
+            "lon",
+            "census_year",
+            "inside_curitiba",
+            "sector",
+            "sector_withheld",
+            "neighbourhood",
+            "partial"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "description": "When the server read the oldest answer used (cached for up to 6 hours)."
+        },
+        "license_note": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source",
+        "source_url",
+        "checked_at",
+        "license_note",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "city_calendar",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "description": "holidays (default): municipal administration holidays and closures of 2026; iptu: IPTU 2026 general rule.",
+          "type": "string",
+          "enum": [
+            "holidays",
+            "iptu"
+          ]
+        }
+      },
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "const": "holidays"
+                },
+                "year": {
+                  "type": "number",
+                  "const": 2026
+                },
+                "expired": {
+                  "type": "boolean",
+                  "description": "True after 2026-12-31 (Curitiba time): the values are of 2026 only."
+                },
+                "days": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "to": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "description": "Same as `from` for a single day."
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "national_holiday",
+                          "municipal_holiday",
+                          "optional_day",
+                          "no_office",
+                          "no_office_until_14h",
+                          "recess"
+                        ],
+                        "description": "national_holiday, municipal_holiday (religious, municipal law), optional_day (ponto facultativo), no_office (suspensão do expediente), no_office_until_14h, recess."
+                      },
+                      "past": {
+                        "type": "boolean",
+                        "description": "`to` is before today (Curitiba time)."
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "to",
+                      "name",
+                      "kind",
+                      "past"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "topic",
+                "year",
+                "expired",
+                "days"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "const": "iptu"
+                },
+                "year": {
+                  "type": "number",
+                  "const": 2026
+                },
+                "expired": {
+                  "type": "boolean",
+                  "description": "True after 2026-12-31 (Curitiba time): the values are of 2026 only."
+                },
+                "cash_discount_pct": {
+                  "type": "number"
+                },
+                "cash_due_date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "max_instalments": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "instalments": {
+                  "type": "string"
+                },
+                "automatic_debit_first_date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "payment": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "where_to_issue": {
+                  "type": "string"
+                },
+                "secondary_source": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Legisweb notes mirroring Prefeitura releases, not the Prefeitura itself."
+                }
+              },
+              "required": [
+                "topic",
+                "year",
+                "expired",
+                "cash_discount_pct",
+                "cash_due_date",
+                "max_instalments",
+                "instalments",
+                "automatic_debit_first_date",
+                "payment",
+                "where_to_issue",
+                "secondary_source"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "source_url",
+        "source_urls",
+        "checked_at",
+        "note"
+      ],
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "city_facilities_search",
     "inputSchema": {
       "type": "object",
@@ -719,6 +1152,12 @@
         },
         "bairro": {
           "description": "Neighbourhood name as published (e.g. \"Capão Raso\"); accents and case ignored, whole name.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "name": {
+          "description": "Keep only records whose name contains every word of this text (accents and case ignored); never sent.",
           "type": "string",
           "minLength": 2,
           "maxLength": 60
@@ -942,6 +1381,26 @@
                       "null"
                     ]
                   },
+                  "sections": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Voting places only: número de seções as published; null for other types."
+                  },
+                  "electoral_zone": {
+                    "description": "Voting places only: zona eleitoral as published, e.g. \"1ª\"; null for other types.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "lat": {
                     "type": [
                       "number",
@@ -981,6 +1440,8 @@
                   "updated",
                   "length_km",
                   "area",
+                  "sections",
+                  "electoral_zone",
                   "lat",
                   "lon",
                   "distance_m"
@@ -4173,6 +4634,14 @@
           "minimum": -180,
           "maximum": 180,
           "description": "Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."
+        },
+        "areas": {
+          "description": "\"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia Civil district and fire (Corpo de Bombeiros) platoon areas.",
+          "type": "string",
+          "enum": [
+            "care",
+            "safety"
+          ]
         }
       },
       "required": [
@@ -4194,9 +4663,17 @@
             "lon": {
               "type": "number"
             },
+            "areas": {
+              "type": "string",
+              "enum": [
+                "care",
+                "safety"
+              ],
+              "description": "Which areas were asked; the lists of the other group are empty."
+            },
             "inside_curitiba": {
               "type": "boolean",
-              "description": "True when a health unit area or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then the CRAS layer is not asked."
+              "description": "True when the first layer asked (health unit area, or Polícia Militar company for `safety`) or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
             },
             "health_units": {
               "type": "array",
@@ -4310,17 +4787,177 @@
               },
               "description": "CRAS territories containing the point (distinct, by name, at most 3; empty when none)."
             },
+            "police_military": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "battalion": {
+                    "description": "Battalion as published (`nm_batalhao`), e.g. \"12º Batalhão\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "battalion_code": {
+                    "description": "`sg_batalhao`, e.g. \"12º BPM\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "company": {
+                    "description": "Company as published (`nm_companhia`), e.g. \"1ª Companhia\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "company_code": {
+                    "description": "`sg_companhia`, e.g. \"1ª CIA\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "reference_date": {
+                    "description": "`data_atualizacao` as published, e.g. \"09/2025\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_agency": {
+                    "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "battalion",
+                  "battalion_code",
+                  "company",
+                  "company_code",
+                  "reference_date",
+                  "source_agency"
+                ],
+                "additionalProperties": false
+              },
+              "description": "`safety`: Polícia Militar company areas containing the point (at most 3)."
+            },
+            "police_civil": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "district": {
+                    "description": "Police district as published (`nm_distrito`), e.g. \"3º Distrito Policial\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "district_code": {
+                    "description": "`sg_distrito`, e.g. \"3º DP\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "division": {
+                    "description": "`nm_divisao`, e.g. \"Divisão Policial da Capital\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_agency": {
+                    "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "district",
+                  "district_code",
+                  "division",
+                  "source_agency"
+                ],
+                "additionalProperties": false
+              },
+              "description": "`safety`: Polícia Civil district areas containing the point (at most 3)."
+            },
+            "fire": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "platoon": {
+                    "description": "Fire platoon as published (`pelotao`), e.g. \"Pelotão de Bombeiro Central\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "platoon_code": {
+                    "description": "`sigla`, e.g. \"1ª Pel. BM\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "company": {
+                    "description": "`companhia`, e.g. \"3º Companhia de Bombeiros\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "battalion": {
+                    "description": "`batalhao`, e.g. \"1° Batalhão de Bombeiro Militar - Curitiba\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_agency": {
+                    "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "platoon",
+                  "platoon_code",
+                  "company",
+                  "battalion",
+                  "source_agency"
+                ],
+                "additionalProperties": false
+              },
+              "description": "`safety`: fire platoon areas containing the point (at most 3)."
+            },
             "partial": {
               "type": "boolean",
-              "description": "True when the CRAS layer could not be read; `cras` is then empty."
+              "description": "True when a later layer (CRAS; or Polícia Civil or fire) could not be read; its list is then empty."
             }
           },
           "required": [
             "lat",
             "lon",
+            "areas",
             "inside_curitiba",
             "health_units",
             "cras",
+            "police_military",
+            "police_civil",
+            "fire",
             "partial"
           ],
           "additionalProperties": false

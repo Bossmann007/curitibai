@@ -88,10 +88,13 @@ describe("type names", () => {
     expect(FACILITY_TYPES.some((t) => t.layerUrl.startsWith(UC) && /\/(2|3|4|7|8|10|11)$/.test(t.layerUrl))).toBe(false);
   });
 
-  it("does not guess an unknown type, and every type and alias is unique", () => {
+  it("does not guess an unknown type, and every type and alias is unique and reachable", () => {
     expect(resolveType("posto de gasolina")).toBeNull();
     const names = FACILITY_TYPES.flatMap((t) => [t.id, ...t.aliases]);
     expect(new Set(names).size).toBe(names.length);
+    // Input is folded (no accents, lower case) before matching: an alias written otherwise could never match.
+    for (const t of FACILITY_TYPES) for (const name of [t.id, ...t.aliases]) expect(resolveType(name)).toBe(t);
+    expect(names.filter((n) => n !== n.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase())).toEqual([]);
   });
 
   it("reads one fixed URL per layer: whole layer, WGS84, no user input", () => {
@@ -100,6 +103,59 @@ describe("type names", () => {
     expect(Object.fromEntries(u.searchParams)).toMatchObject({ where: "1=1", outSR: "4326", f: "json", returnGeometry: "true" });
     expect(u.searchParams.get("outFields")).not.toMatch(/indfiscal|dep_admin|site|coord_e/);
     expect(new URL(url("parque")).searchParams.get("returnCentroid")).toBe("true");
+  });
+});
+
+describe("v0.27.0 types: voting places and bus terminals", () => {
+  it("maps the names to BaseTematica layer 12 and Equipamentos layers 157 and 158", () => {
+    expect(type("onde votar").layerUrl).toBe(
+      "https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer/12",
+    );
+    expect(type("Locais de Votação").kind).toBe("voting");
+    expect(type("terminais").layerUrl.endsWith("/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer/157")).toBe(true);
+    expect(type("terminal metropolitano").layerUrl.endsWith("/MapServer/158")).toBe(true);
+  });
+
+  it("never asks for the number of voters or any voter field", () => {
+    const fields = new URL(url("local de votacao")).searchParams.get("outFields");
+    expect(fields).toBe("objectid,nome_local,endereco,bairro,regional,num_secoes,zona_eleitoral,data_alteracao");
+    expect(url("local de votacao")).not.toMatch(/eleitores|\*/);
+  });
+
+  it("reads a voting place: address, sections, zone, the DD/MM/YYYY date; a nameless record is skipped", () => {
+    const { facilities, skipped } = parseLayer(type("local de votacao"), fixture("geocuritiba/local_de_votacao_synthetic.json"));
+    expect(skipped).toBe(1);
+    expect(facilities[0]).toMatchObject({
+      name: "ESCOLA MUNICIPAL FICTICIA ALFA",
+      address: "R. Ficticia, 100",
+      bairro: "JUVEVÊ",
+      sections: 7,
+      electoral_zone: "1ª",
+      updated: "2026-08-31",
+      phones: [],
+      hours: [],
+    });
+    // 31/13/2026 is not a date.
+    expect(facilities[1]!.updated).toBeNull();
+  });
+
+  it("keeps a terminal's 65 lines of integrated lines whole", () => {
+    const [t] = parseLayer(type("terminal"), fixture("geocuritiba/terminal_synthetic.json")).facilities;
+    expect(t!.hours).toHaveLength(65);
+    expect(t!.hours.at(-1)).toBe("-161 - Linha Ficticia 61");
+    expect(t!.phones).toEqual(["156"]);
+  });
+
+  it("answers by bairro and name with the TRE-PR credit and the note that it cannot find a voter's own place", async () => {
+    stubFetch(route("local de votacao", "local_de_votacao_synthetic.json"));
+    const out = await search({ type: "local de votacao", bairro: "juveve" });
+    expect(out.data.items.map((i) => [i.name, i.sections])).toEqual([["ESCOLA MUNICIPAL FICTICIA ALFA", 7]]);
+    expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (TRE-PR)");
+    expect(out.note).toMatch(/cannot tell a voter their own place/);
+    expect(out.note).not.toMatch(/Phones keep/);
+    const byName = await search({ type: "local de votacao", name: "colegio beta" });
+    expect(byName.data.items.map((i) => i.name)).toEqual(["COLÉGIO ESTADUAL FICTICIO BETA"]);
+    expect((await search({ type: "local de votacao", name: "gama" })).data.total).toBe(0);
   });
 });
 
@@ -142,6 +198,8 @@ describe("parseLayer", () => {
       updated: "2024-02-20",
       length_km: null,
       area: null,
+      sections: null,
+      electoral_zone: null,
       lat: expect.closeTo(-25.39, 1),
       lon: expect.closeTo(-49.33, 1),
       paths: null,
@@ -166,7 +224,9 @@ describe("parseLayer", () => {
     expect(gama!.emails).toEqual([]);
     expect([gama!.lat, gama!.lon, gama!.updated]).toEqual([null, null, null]);
     expect(delta!.phones).toHaveLength(8);
+    // More lines than the cap: 29 lines and a last one saying how many were cut (never a silent cut).
     expect(delta!.hours).toHaveLength(30);
+    expect(delta!.hours.at(-1)).toMatch(/^\[\d+ more lines not shown: ask the 156\]$/);
     expect([delta!.lat, delta!.lon]).toEqual([null, null]);
   });
 
@@ -316,6 +376,14 @@ describe("city_facilities_search", () => {
   it("returns an empty layer as total 0 with no error", async () => {
     stubFetch({ [`GET ${url("gibiteca")}`]: { body: '{"spatialReference":{"wkid":4326},"features":[]}', contentType: JSON_TYPE } });
     expect((await search({ type: "gibiteca" })).data).toMatchObject({ type: "gibiteca", total: 0, items: [] });
+  });
+
+  it("filters by name (every word, accents and case ignored); a name with no letter or digit is refused", async () => {
+    const calls = stubFetch(route("feira", "feira.json"));
+    const out = await search({ type: "feira", name: "NOTURNA capão" });
+    expect(out.data.items.map((i) => i.name)).toEqual(["Feira Livre Noturna Capão Raso"]);
+    expect(calls.every((c) => !/noturna|capao/i.test(c.url))).toBe(true);
+    expect(errorOf(await call({ type: "feira", name: "--" }))).toMatchObject({ error: "invalid_argument" });
   });
 
   it("filters by bairro (accents and case ignored, whole name)", async () => {

@@ -1,4 +1,6 @@
 import { busDepartures } from "./busDepartures.js";
+import { censusAtPoint } from "./censusAtPoint.js";
+import { cityCalendar } from "./cityCalendar.js";
 import { busLineStops } from "./busLineStops.js";
 import { busLinesSearch } from "./busLinesSearch.js";
 import { busStopsNear } from "./busStopsNear.js";
@@ -50,4 +52,6 @@ export const tools = [
   taxReformCuritiba,
   placeAtPoint,
   serviceAreasAtPoint,
+  censusAtPoint,
+  cityCalendar,
 ] as const;

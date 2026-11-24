@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.27.0 - 2026-11-24
+
+More of what a citizen asks, from the GeoCuritiba host the server already reads (same host gate, cache and
+fail-closed parser), and two dated notes that need no request. 25 → 27 tools. Every source was re-checked on
+2026-11-24 before coding ([docs/sources.md](docs/sources.md)). Publishes nothing.
+
+- `city_facilities_search`: new types `local de votacao` (TRE-PR's 422 voting places via IPPUC, with `sections` and
+  `electoral_zone`; the number of voters is never asked for, and the note says the list cannot tell a voter their own
+  place), `terminal` and `terminal metropolitano` (the 23 bus terminals with their integrated lines). New optional
+  input `name` (every word in the name). New output fields `sections` and `electoral_zone` (null for other types).
+  Behaviour change: `hours` longer than its cap (30 lines; 80 for terminals) now ends with a line saying how many were
+  not shown, instead of a silent cut.
+- `service_areas_at_point`: new input `areas` (`care`, the default and the previous behaviour, or `safety`): the
+  Polícia Militar company, Polícia Civil district and fire platoon areas covering a point. New output fields `areas`,
+  `police_military`, `police_civil` and `fire`; `inside_curitiba` and `partial` now also describe the `safety` layers.
+- New `census_at_point`: the IBGE 2022 census sector of a point (residents, households, density, mean income of
+  household heads) and its neighbourhood's totals; sectors under 20 occupied households are withheld and left out of
+  the totals, so they cannot be subtracted back ([ADR 0009](docs/adr/0009-census-household-floor.md), proposed).
+- New `city_calendar` (bundled, no network): the Prefeitura's 2026 holidays, optional days and closures (Decreto
+  2.385/2025; schools follow their own calendar) and the IPTU 2026 general rule (secondary source); `expired: true`
+  from 2027-01-01.
+- The URBS transport layers on GeoCuritiba were compared with the URBS export: not used by the bus tools (no
+  timetable, no stop order, no update date); see [docs/sources.md](docs/sources.md#urbs-transport-layers-on-geocuritiba-evaluated-2026-11-24-not-used-by-the-bus-tools).
+- [docs/development.md](docs/development.md#release), first release step 6: if the hashes differ, do not run the
+  registry step; deprecate 0.26.1, investigate and publish the next version through the workflow. The release-docs
+  test pins the first release to 0.26.1 instead of the `package.json` version.
+
 ## 0.26.1 - 2026-11-24
 
 Hardening of the release path added in 0.26.0 (findings of the security review). 0.26.1 is the first version to

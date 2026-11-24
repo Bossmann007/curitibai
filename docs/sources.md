@@ -24,6 +24,9 @@
   - [`city_facilities_search`: IPPUC GeoCuritiba urban equipment, parks and bike lanes](#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes)
   - [`place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)](#place_at_point-ippuc-geocuritiba-cadastral-map-since-0220)
   - [`service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)](#service_areas_at_point-ippuc-geocuritiba-thematic-map-health-unit-areas-and-cras-territories-since-0230)
+  - [`census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)](#census_at_point-ibge-2022-census-by-sector-via-ippuc-geocuritiba-since-0270)
+  - [`city_calendar`: Decreto 2.385/2025 and IPTU 2026 notes (bundled, since 0.27.0)](#city_calendar-decreto-23852025-and-iptu-2026-notes-bundled-since-0270)
+  - [URBS transport layers on GeoCuritiba (evaluated 2026-11-24, not used by the bus tools)](#urbs-transport-layers-on-geocuritiba-evaluated-2026-11-24-not-used-by-the-bus-tools)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
   - [`guaira_events`: Centro Cultural Teatro Guaíra calendar (live)](#guaira_events-centro-cultural-teatro-guaíra-calendar-live)
   - [`local_csv_summary`: a file the user downloaded](#local_csv_summary-a-file-the-user-downloaded)
@@ -82,7 +85,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate. Rechecked 2026-11-24 21:00 UTC (404, IIS HTML page): since v0.27 also the thematic layers 12 (voting places, whole layer), 25, 27 and 41 (police and fire areas, point queries) and 43 (census sector, point query and one `outStatistics` query per neighbourhood), and the urban-equipment layers 157 and 158 (bus terminals) |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
@@ -94,6 +97,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the three fixed files `/Bossmann007/curitibai/data/events/events.json`, `/Bossmann007/curitibai/data/phones/phones.json` and `/Bossmann007/curitibai/data/phones/status.json` (v0.18.1), published by this project's own nightly workflow (below) |
 | `piloto-cbs.tributos.gov.br` (Receita Federal, pilot "calculadora de tributos do consumo") | 404 (reported in the v0.21.0 brief, 2026-11-23; no rules) | No restriction (RFC 9309). **Contacted** (v0.21, `tax_reform_curitiba`), only fixed `GET` routes under `/servico/calculadora-consumo/api/calculadora/dados-abertos/`, at most one request per 5 s |
 | `lp.curitiba.pr.gov.br` (Prefeitura, NFS-e page `/notanacional`) | Has a `Visit-time` 0400-0645 UTC rule (v0.21.0 brief, 2026-11-23) | **The server never contacts it**: `tax_reform_curitiba` carries a fixed, dated note read by hand |
+| `www.normasbrasil.com.br` (copy of Decreto 2.385/2025) | 404 (HTML "Página não encontrada", checked 2026-11-24 21:2x UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). Read by hand once (one page, `/norma/decreto-2385-2025-curitiba_486274.html`). **The server never contacts it**: `city_calendar` carries the dated list |
+| `www.legisweb.com.br` (Legisweb news, IPTU 2026 notes) | 200 (checked 2026-11-24 with curl): `User-Agent: *`, `Disallow:` (empty: everything allowed), `Crawl-delay: 10` | Allowed. Read by hand once (`/noticia/?id=32497` and `?id=32939`, 11 s apart). **The server never contacts it**: `city_calendar` carries the dated rule |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -1051,13 +1056,28 @@ changes (owner request, 2026-11-23: monthly and automatic).
   including its change to `museu` and `teatro`.
   Requests to the host on 2026-11-23: six layer descriptions, six field surveys and six live calls of the built tool
   (one per new type, one at a time), at most one request per 5 s.
+- **Bus terminals and voting places (since 0.27.0, read 2026-11-24):** urban-equipment layers 157 "Terminal Urbano"
+  (22 records) and 158 "Terminal Metropolitano" (1, Guadalupe) have the same fields as the other equipment layers;
+  every record had `divulgar_endereco` "Sim", `telefone` "156" (or none) and `dt_atualiz` from 2025-10-09 to
+  2026-09-16. Their `observacao` lists the integrated lines (Pinheirinho 65 lines, Guadalupe 51), so up to 80 lines are
+  kept for them; since 0.27.0 any longer text ends with a line saying how many were cut (before, a silent cut at 30).
+  The URBS service's own terminal layer (below) was not used: it has `indfiscal` and no update date.
+  Voting places: thematic layer 12 "Locais de Votação" (group Eleição; points; 422 records, all `fonte` "TRE-PR" and
+  `data_alteracao` "31/08/2026"; the whole layer is about 177 KB with geometry). Fields read: `nome_local`,
+  `endereco`, `bairro`, `regional`, `num_secoes`, `zona_eleitoral`, `data_alteracao`. **Never read:** `num_eleitores`
+  (number of voters per place), `codigo`, `cod_tre`, `cod_zona`, `nome_mapa`, `fonte`, `last_edited_date`; the
+  zone layer 13 is not used. The place names sampled were schools, colleges, faculties and clubs, no person. A point
+  query at -25.4284, -49.2733 returns nothing (points never intersect a point), so the whole layer is read and
+  filtered in the server (bairro, `name`, distance), as for the other types. The list cannot tell a voter their own
+  place (the note says so).
 - **Fixtures:** `test/fixtures/geocuritiba/feira.json`, `rua_da_cidadania.json`, `parques.json` and `ciclovia.json` are
   real records (4, 2, 3 and 4) trimmed to the fields the tool reads (plus geometry or centroid); they hold only institutional contacts ("156", landlines,
   curitiba.pr.gov.br addresses). `ecocidadao_synthetic.json` is **synthetic**, with planted cases: a mobile, a webmail
   address, a phone and an e-mail inside `observacao`, a bidi character in a name, an instruction-like line, an address
   marked not to be shown, a look-alike domain, a point outside Curitiba, 9 landlines and 40 hour lines.
   `centro_cultural_synthetic.json` (v0.20) is **synthetic**: one complete record, one with most fields missing and a
-  non-municipal e-mail, and one with no name.
+  non-municipal e-mail, and one with no name. `local_de_votacao_synthetic.json` and `terminal_synthetic.json` (v0.27)
+  are **synthetic** (invented names; an impossible date; a nameless record; a 65-line `observacao`).
 
 ### `place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)
 
@@ -1137,6 +1157,77 @@ changes (owner request, 2026-11-23: monthly and automatic).
 - **Why not in `place_at_point`:** that tool already makes up to 4 requests 5 s apart; two more would put the sixth
   at 25 s, past the 20 s budget, so it would come back partial wherever zoning layer 41 is empty (about 39% of the
   city), and every caller would wait 10 s more (SPEC v0.23.0).
+- **Police and fire areas (`areas: "safety"`, since 0.27.0; read 2026-11-24):** layers of the Segurança group, all
+  polygons with no description: 26 Polícia Militar - Área do Batalhão (5 areas), 27 Polícia Militar - Área da
+  Companhia (13: `nm_comando`, `sg_comando`, `nm_batalhao`, `sg_batalhao`, `nm_companhia`, `sg_companhia`, `fonte`
+  "POLÍCIA MILITAR DO PARANÁ, 2025", `data_atualizacao` "09/2025"), 25 Polícia Civil - Área Distrital (13: `tipo`,
+  `nm_divisao` "Divisão Policial da Capital", `nm_distrito`, `sg_distrito`, `fonte` "POLÍCIA CIVIL DO PARANÁ"), 21
+  Bombeiro - Área da Unidade (19 **statewide** battalions and independent companies; Curitiba is "1° Batalhão de
+  Bombeiro Militar - Curitiba"), 42 Bombeiro - Companhia (3) and 41 Bombeiro - Pelotão (9: `batalhao`, `companhia`,
+  `pelotao`, `sigla`, `fonte` "Corpo de Bombeiros Militar do Paraná, 2025"). Used: 27 (it carries the battalion of 26),
+  25 and 41 (it carries the company and battalion of 42 and 21). Not used: 21 (statewide), 26, 42, `tipo` ("ÁREA DE
+  ATUAÇÃO" everywhere), `bbm_cia_pel`, areas, perimeters. Example (-25.4284, -49.2733, Centro): 33º BPM Companhia
+  Única; 3º Distrito Policial; Pelotão de Bombeiro Central (1ª Pel. BM, 3º Companhia, 1° Batalhão). A cold `safety`
+  call took 16.0 s live (3 requests). Order: PM company first (its 13 areas cover Curitiba only; when empty the
+  bairro layer decides `inside_curitiba`), then the Polícia Civil district and the fire platoon, each failure
+  `partial`. An area says who covers the point, not where the nearest station is.
+
+### `census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)
+
+- **Source:** the same thematic service, group Censo Demográfico, read 2026-11-24: layer 43 "Setor Censitário - 2022"
+  (3,190 sectors, all `nm_mun` "Curitiba", all `situacao` "Urbana"; `supportsStatistics` true). Layers 44
+  "Densidade Populacional (IBGE 2022)" and 45 "Renda Média (IBGE 2022)" hold the same sectors with subsets of 43's
+  fields, so only 43 is read. Fields read: `cd_setor`, `nm_bairro`, `v0001` (residents), `v0007` (occupied private
+  households), `area_km2`, `dens_pop_km2`, `renda_media` (mean monthly nominal income of the household heads with
+  income in occupied permanent private households). **Never read:** `v0005` (mean residents per household), `v0006`
+  (share of imputed households), `nm_fcu`/`cd_fcu` (favela or community), the other codes and names.
+- **Privacy check (2026-11-24, all 3,190 sectors without geometry, 2 pages):** 21 sectors have fewer than 5 occupied
+  households, and there IBGE publishes no income (22 null `renda_media` in all); income appears from 6 households up;
+  one sector has `v0007 = 1` with `v0005 = 8.0`. 29 sectors have fewer than 20 households. Floor:
+  [ADR 0009](adr/0009-census-household-floor.md) (20 households for sector figures and for neighbourhood totals).
+- **Queries:** the sector at the rounded point (point query, like the other areas) and, for its neighbourhood, one
+  `where=nm_bairro='<name>' AND v0007 >= 20` query with `outStatistics` (sums of `v0001`, `v0007`, `area_km2` and
+  the count of sectors), so withheld sectors are not in the sums (checked live: Cidade Industrial de Curitiba, 285 of
+  290 sectors, 172,457 residents and 62,819 households, equal to the survey's sums over those 285). The name comes from the sector answer and must be one of the 75 IBGE names bundled in the code (IBGE
+  spells "Botiatuvinha" and "Tinguí"); any other name sends nothing. Example (-25.4284, -49.2733): sector
+  410690205010084, São Francisco, 231 residents, 129 households, 1,229.99 per km², R$ 4,583.33; São Francisco: 12
+  sectors, 5,008 residents, 2,395 households, 1.305 km² (the statistics query matched the sum of the 12 sectors read
+  in the survey). A cold call took 5.3 s live (2 requests).
+
+### `city_calendar`: Decreto 2.385/2025 and IPTU 2026 notes (bundled, since 0.27.0)
+
+- **Holidays:** Decreto 2.385/2025 (Diário Oficial do Município of 2025-11-11), read on 2026-11-24 at
+  <https://www.normasbrasil.com.br/norma/decreto-2385-2025-curitiba_486274.html> (robots.txt 404). Art. 1 lists 19
+  items for the municipal administration (direct, autarchic and foundational), keeping essential services open; art. 3
+  says the SME's schools follow their own school calendar. The text was copied by hand into
+  `src/tools/cityCalendar.ts` in its order. An official act (Lei 9.610/1998, art. 8, IV: not protected by copyright).
+  Not checked against the Diário Oficial itself (its index pages are on `www.curitiba.pr.gov.br`, 403 to robots); the
+  note says to confirm there.
+- **IPTU 2026:** two Legisweb notes that mirror Prefeitura releases, read on 2026-11-24 (robots.txt allows all,
+  `Crawl-delay: 10`; the two pages were read 11 s apart):
+  <https://www.legisweb.com.br/noticia/?id=32497> (2026-02-03: 10% cash discount kept, due 20 March, up to ten
+  instalments, about 990 thousand taxable units) and <https://www.legisweb.com.br/noticia/?id=32939> (2026-03-18:
+  instalments March to December on day 20; DAM at partner banks, cash machines or internet banking, PIX or automatic
+  debit, first debit on 27 March). Marked `secondary_source: true`; facts only, the notes' text is not copied.
+- **Dates:** the data is of 2026 only; from 2027-01-01 (Curitiba time) the answer says `expired: true`. No network
+  call, no error of its own.
+
+### URBS transport layers on GeoCuritiba (evaluated 2026-11-24, not used by the bus tools)
+
+- **Source:** <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/URBS_Transporte_Publico/MapServer>
+  (document title "URBS_Transporte_Coletivo", no description, no update date in the service or layer metadata):
+  layer 0 Terminal (23 points, with `indfiscal` and `dt_inauguracao`, no `dt_atualiz`), 1 Parada de Ônibus (7,249
+  points: `nome_ponto`, `num`, `lat`, `lon`, `tipo`), 2 Linha de Ônibus (665 polylines: `cod`, `nome_linha`,
+  `somente_cartao`, `categoria_servico`, `nome_cor`, `shp`).
+- **Compared with the URBS export of 2026-11-20** (the owner's local files): stops 7,249 against 7,248 distinct
+  `NUM` in `pontosLinha`; the first 2,000 GeoCuritiba stops (by `objectid`) were all in the export (the other
+  5,249 were not compared). Lines: 311 distinct codes against 309 (in the export only: X37, X43; on GeoCuritiba only:
+  370, 811, X50, X51).
+- **Not used:** GeoCuritiba has no timetable (`tabelaLinha`), no stop order per line and direction (`pontosLinha`
+  `SEQ`, `SENTIDO`, `ITINERARY_ID`) and no update date, so `bus_departures`, `bus_line_stops` and `next_buses_near`
+  still need the export, and freshness cannot be proven from the metadata. The terminals come from the
+  urban-equipment layers 157 and 158 instead (above). A v0.28 candidate: `bus_stops_near` reading the stop layer
+  (4 pages of 2,000, once per 6 hours) when no local export is present, with the lines per stop still from the export.
 
 ### `river_levels`: ANA telemetry (stations operated by IAT-PR)
 
