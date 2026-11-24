@@ -1,69 +1,46 @@
-# SPEC: v0.26.0 release preparation (npm and MCP Registry)
+# SPEC: v0.26.1 release path hardening
 
-Approved: Enzo 2026-11-24 ("segue com o curitibaai", roadmap step after v0.25; task brief "curitibai v0.26.0 —
-prepare publication to npm and the official MCP Registry"). Scope frozen: package metadata, `server.json`, a manual
-publish workflow, a package-contents check, release docs and one docs fix. **Nothing is published by this version**:
-no `npm publish`, no `mcp-publisher publish`, no npm login, no new secret, no tag push, no workflow run. The owner
-publishes later with his own npm account.
+Approved: Enzo 2026-11-24 (task brief "curitibai v0.26.1, small hardening of the release path merged in v0.26.0 (PR
+#36)": the Security Reviewer's low notes on head ef50166). Scope frozen: `publish.yml` publishes the checked tarball,
+release checklist in `docs/development.md`, version 0.26.1. **Nothing is published by this version**: no workflow
+run, no GitHub or npm setting changed, no tag pushed.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Make `curitibai-mcp` installable with `npx` and listed in the official MCP Registry once the owner publishes it, with
-a tarball that holds only what users need and a publish path that needs no stored token.
+The package that reaches npm is byte for byte the one whose sha256 was checked, and the release checklist states the
+GitHub settings and the approval rule that the human gate depends on, with its accepted risk.
 
 ## Changes
 
-1. **`package.json`**: `private` removed; `files` = `dist/`, `CHANGELOG.md`, `docs/licences.md` (the ODbL notice for
-   the bundled OSM extract, with the other data licences; `LICENSE` is Apache-2.0 only); `mcpName`
-   `io.github.Bossmann007/curitibai`; `repository`, `homepage`, `bugs`, `keywords`; `publishConfig.access: public`.
-   `publishConfig.provenance` is **not** set: npm adds provenance automatically with trusted publishing
-   (https://docs.npmjs.com/trusted-publishers), and npm documents provenance only for publishes from CI, so the
-   setting could break the manual first publish from a laptop (not verified: no publish was run). `engines`
-   unchanged.
-2. **`server.json`** (schema `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`): name =
-   `mcpName`, description at most 100 characters, version = `package.json`, one npm stdio package, the environment
-   variables `CURITIBAI_DATA_DIR` and `CURITIBAI_REMOTE_DATA` (optional, not secret).
-3. **`test/serverJson.test.ts`**: validates `server.json` with Ajv (draft-07 + formats) against the schema vendored in
-   `test/fixtures/mcp-registry/server.schema.json`, whose `$id` must equal `server.json`'s `$schema`; name, version,
-   identifier and repository agree with `package.json`. `ajv` 8.20.0 and `ajv-formats` 3.0.1 become pinned
-   devDependencies (already installed through the MCP SDK).
-4. **`scripts/check-pack.mjs`** (verify step after the build): `npm pack --dry-run --json` paths must match an
-   allowlist (`package.json`, `README.md`, `LICENSE`, `CHANGELOG.md`, `docs/licences.md`, `dist/**.js`), none may
-   be `data-local/`, test, fixture, `src/`, `.env*` or `*.local`, and no `dist/` file may lack a `src/` module (a leftover of an earlier build), no packed line may look like a secret (private keys, GitHub/npm/AWS/Google/Slack tokens, JWTs, URLs with credentials, `.env`-style secrets), and the packed size must be at most 250,000 bytes
-   (0.26.0: about 179,000; about 40% headroom). Unit tests in `test/checkPack.test.ts`. `scripts/verify` installs with
-   `npm ci --ignore-scripts` (no dependency install script runs; build, tests and smoke pass without them).
-5. **`.github/workflows/publish.yml`**: `workflow_dispatch` only, this repository only, on `main` or a `v*` tag, and
-   only when the commit is the one tagged `v<version>` (checked in both jobs); actions pinned by SHA, `mcp-publisher`
-   v1.8.1 checked with cosign as the registry docs show. Job `verify` (`contents: read` only): tag, `server.json`
-   version, package exists on npm (a 404 says "publish the first version by hand"; other errors are shown as they
-   are), `scripts/verify`, the tarball's sha256 in the job summary, `dist/` uploaded. Job `publish` runs in the GitHub
-   environment `release` (required reviewer: the owner; only `main` and `v*`), because npm's trusted publisher binds
-   only owner, repository, workflow file and environment, and a workflow runs from the dispatched ref: without the
-   environment, a pushed branch with an edited `publish.yml` could publish. It has `id-token: write`, no `npm ci`, no
-   tests: tag again, Node ≥ 22.14, npm ≥ 11.5.1, OIDC token, `check-pack`, tarball sha256 equal to the approved one
-   (file modes normalised first), `mcp-publisher validate`, `login github-oidc`, `npm publish --ignore-scripts`
-   (skipped when the version is already on npm), wait until npm serves the version's `mcpName`, `mcp-publisher
-   publish`. A refused `npm publish` prints which npmjs.com fields to check. The 0.26.0 run skips npm (published by
-   hand first), so it needs no trusted publisher; that is configured, with environment `release`, before the next
-   release (it expires if unused for 2 days). `test/workflows.test.ts` fails if `id-token` appears in any other job
-   or workflow, or the publish job loses `environment: release`.
-6. **Docs**: README "Install from npm (after the first release)"; `docs/development.md` "Release" (first release by
-   hand, then trusted publishing); CHANGELOG 0.26.0; the `docs/tools.md` login rows (156, Scheduling, Cartão
-   Transporte) say "needs a registration or login (owner's note; not confirmed in the linked sources); out of scope".
+1. **`.github/workflows/publish.yml`**, publish job: the preflight packs once (`npm pack --ignore-scripts`), compares
+   the sha256 with the verify job's, keeps the file and passes its name on (`steps.preflight.outputs.tarball`). The
+   npm step hashes that file again (steps ran in between) and runs `npm publish "./$TARBALL" --ignore-scripts`; it no
+   longer deletes the file and packs the tree again. npm 11.20.0 calls its OIDC exchange for any publish spec,
+   directory or tarball (`lib/commands/publish.js`, `await oidc(...)` after `pack`); the runner's npm is checked to be
+   11.5.1 or newer, its exact version is not pinned. `test/workflows.test.ts`: one `npm pack` in the publish job, no
+   `rm -f "$file"`, the tarball output, two sha256 checks, the second before `npm publish`.
+2. **`docs/development.md` "Release"**: environment `release` with "Allow administrators to bypass configured
+   protection rules" OFF and "Prevent self-review" OFF (Enzo starts the run and is the only reviewer); the `v*` tag
+   ruleset is required; "Approving a run": only on `main` or a `v*` tag Enzo pushed, at the release commit shown on the
+   approval screen, and the sha256 proves only that the artifact did not change between the two jobs; accepted risk:
+   any token of Enzo's with the `repo` scope can approve through the REST API, so the gate holds only if no agent holds
+   one (recommended: a separate reviewer account with a passkey, or fine-grained agent tokens without the deployments
+   and environments permissions); `npm logout` right after the first manual publish; not verified whether the MCP
+   Registry accepts a GitHub OIDC token whose `sub` is `environment:release`, which the login step shows before
+   `npm publish`.
+3. **Version** 0.26.1 in `package.json`, `package-lock.json` and `server.json`; CHANGELOG 0.26.1.
 
 ## Out of scope
 
-Publishing anything; changing `engines` (Node 22.12 and 24 results go in the PR body only); tool behaviour; staged
-publishing (`npm stage publish`) in the workflow; creating the `v0.26.0` tag.
+Publishing; running the workflow; changing GitHub or npm settings; tags; pinning the runner's npm version; tool
+behaviour.
 
 ## Check
 
-- `scripts/verify` exits 0 and prints the package size.
-- `test/serverJson.test.ts` fails when `server.json`'s version differs from `package.json` or its description is
-  over 100 characters (shown by editing and restoring).
-- The packed tarball installed in an empty folder runs `npx --no-install curitibai-mcp` and answers `tools/list` with
-  25 tools and version 0.26.0.
-- `actionlint` reports nothing on `publish.yml`.
+- `scripts/verify` exits 0.
+- `test/workflows.test.ts` fails on the 0.26.0 `publish.yml` (shown by running it against `git show v0.26.0:...`) and
+  passes on this one.
+- `publish.yml` parses as YAML; `actionlint` was not run (not installed on the dev machine).

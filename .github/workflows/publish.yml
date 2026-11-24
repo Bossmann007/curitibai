@@ -69,7 +69,8 @@ jobs:
         env:
           CURITIBAI_SKIP_AUDIT: "1"
 
-      # The owner compares this hash when approving the release environment; the publish job checks it is unchanged.
+      # The publish job checks that its tarball has this hash, so the artifact did not change between the jobs. The hash
+      # does not show where it came from: the owner approves only a run on main or on a v* tag the owner pushed, at the release commit.
       - id: pack
         name: Tarball sha256 (job summary)
         run: |
@@ -119,7 +120,8 @@ jobs:
           path: dist/
 
       # Everything that can fail runs before the first irreversible step (npm publish). No npm ci in this job.
-      - name: Preflight (release tag, Node, npm, OIDC token, package contents and hash)
+      - id: preflight
+        name: Preflight (release tag, Node, npm, OIDC token, package contents and hash)
         env:
           APPROVED_SHA256: ${{ needs.verify.outputs.tarball_sha256 }}
         run: |
@@ -137,11 +139,12 @@ jobs:
           [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]] || { echo "::error::No GitHub OIDC token: the job needs permissions id-token: write."; exit 1; }
           node scripts/check-pack.mjs
           chmod -R u=rwX,go=rX dist # the hash depends on file modes; artifacts do not keep them
+          # This tarball, not a new pack of the tree, is the one npm publish uploads.
           file="$(npm pack --ignore-scripts --silent)"
           sha="$(sha256sum "$file" | cut -d' ' -f1)"
-          rm -f "$file"
           [[ "$sha" == "$APPROVED_SHA256" ]] || { echo "::error::Tarball sha256 $sha differs from the verify job's $APPROVED_SHA256."; exit 1; }
-          echo "tarball sha256 $sha (same as the verify job)"
+          echo "tarball=$file" >> "$GITHUB_OUTPUT"
+          echo "tarball $file sha256 $sha (same as the verify job)"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -171,9 +174,15 @@ jobs:
 
       - name: Publish to npm (trusted publishing; provenance is added automatically)
         if: needs.verify.outputs.skip_npm != 'true'
+        env:
+          APPROVED_SHA256: ${{ needs.verify.outputs.tarball_sha256 }}
+          TARBALL: ${{ steps.preflight.outputs.tarball }}
         run: |
           set -uo pipefail
-          if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then
+          # Steps ran since the preflight: hash the file again right before uploading it.
+          sha="$(sha256sum "$TARBALL" | cut -d' ' -f1)" || exit 1
+          [[ "$sha" == "$APPROVED_SHA256" ]] || { echo "::error::$TARBALL sha256 $sha differs from the approved $APPROVED_SHA256."; exit 1; }
+          if ! npm publish "./$TARBALL" --ignore-scripts 2>&1 | tee npm-publish.log; then
             if grep -qE 'ENEEDAUTH|E401|E403|E404|OIDC|trusted' npm-publish.log; then
               echo "::error::npm refused the publish. Check the trusted publisher of curitibai-mcp on npmjs.com: GitHub Actions, owner Bossmann007, repository curitibai, workflow file publish.yml (exact, case-sensitive), environment release, and 'npm publish' enabled under Allowed actions (new configurations allow only 'npm stage publish'). A new configuration also expires if its first publish does not happen within 2 days. See https://docs.npmjs.com/trusted-publishers"
             fi

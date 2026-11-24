@@ -49,10 +49,11 @@ Only the owner publishes, by hand: `.github/workflows/publish.yml` runs only fro
 or a push), on `main` or on a `v*` tag, and only when that commit is the one tagged `v<package.json version>`. Its
 `verify` job (no OIDC token) checks the tag, `server.json`'s version and that the package exists on npm, runs
 `scripts/verify`, writes the tarball's sha256 to the job summary and hands `dist/` on. Its `publish` job runs in the
-GitHub environment `release`, so it waits for the owner's approval: compare the sha256 in the summary first. It has
-the OIDC token but runs no `npm ci` and no tests; it checks the tag again, Node, npm, the package contents and that
-the tarball's sha256 is the one approved, validates `server.json` with the MCP Registry, runs `npm publish` (trusted
-publishing, so no npm token and automatic [provenance](https://docs.npmjs.com/trusted-publishers)), waits until npm
+GitHub environment `release`, so it waits for the owner's approval (see "Approving a run" below). It has the OIDC
+token but runs no `npm ci` and no tests; it checks the tag again, Node, npm, the package contents and that the
+tarball's sha256 is the one the verify job printed, validates `server.json` with the MCP Registry, hashes that same
+tarball again and runs `npm publish` on that file (trusted publishing, so no npm token and automatic
+[provenance](https://docs.npmjs.com/trusted-publishers)), waits until npm
 serves the version, then runs `mcp-publisher publish` (GitHub OIDC, namespace `io.github.Bossmann007`). It skips
 `npm publish` when that version is already on npm, so a run whose MCP Registry step failed can be run again.
 `scripts/verify` checks the tarball (`scripts/check-pack.mjs`: allowlist, leftovers, secret-shaped lines, size) and
@@ -63,17 +64,34 @@ runs from the ref it is started on, so without it a pushed branch with an edited
 
 Before the first run, once:
 
-1. GitHub, Settings, Environments, New environment `release`: Required reviewers = Enzo; Deployment branches and tags = Selected branches and tags, only `main` and `v*` (tag).
-2. Suggested: GitHub, Settings, Rules, a tag ruleset on `v*` so only the owner can create, move or delete those tags.
+1. GitHub, Settings, Environments, New environment `release`: Required reviewers = Enzo; "Prevent self-review" OFF (Enzo both starts the run and is the only reviewer, so with it on nobody could approve); "Allow administrators to bypass configured protection rules" OFF (by default administrators can bypass the protection rules; [GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)); Deployment branches and tags = Selected branches and tags, only `main` and `v*` (tag).
+2. Required: GitHub, Settings, Rules, a tag ruleset on `v*` so only the owner can create, move or delete those tags. The environment trusts any `v*` tag, so without the ruleset anyone with write access could push a `v*` tag at another commit and start a run from it.
+
+Approving a run (every release): approve `release` only when the run is on `main` or on a `v*` tag you pushed
+yourself, and the commit shown on the approval screen is the release commit (the merge commit you tagged). The
+sha256 in the summary only proves that the tarball did not change between the verify and publish jobs; it does not
+prove where it came from. The commit and the ref do.
+
+Accepted risk: the approval can also be given through the GitHub API
+([review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run):
+"personal access tokens (classic) need the repo scope"), by any token of Enzo's with that scope. The human gate
+therefore holds only while no agent, script or bot holds such a token. Recommended: a separate reviewer account with
+a passkey as the required reviewer, or, for agents, fine-grained tokens without the deployments and environments
+permissions (that page names no fine-grained permission for the endpoint, so check the token's permissions list).
+
+Not verified: whether the MCP Registry accepts the GitHub OIDC login when the token's `sub` claim has the
+`environment:release` form (a job in an environment gets that form instead of the ref). The workflow logs in
+(`mcp-publisher login github-oidc`) before `npm publish`, so the first run shows a refusal before anything
+irreversible.
 
 First release (0.26.0), once:
 
 1. Merge the release PR, then tag its merge commit: `git tag v0.26.0 <merge commit> && git push origin v0.26.0`.
 2. In a clean clone of that tag, run `scripts/verify` (exit 0; it also builds `dist/`).
 3. Log in to npm with your account (2FA on): `npm login`.
-4. Publish the first version by hand: `npm publish --ignore-scripts --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists).
+4. Publish the first version by hand: `npm publish --ignore-scripts --access public` (npm's [npm trust](https://docs.npmjs.com/cli/v12/commands/npm-trust) page says a trusted publisher needs a package that already exists). Right after it, run `npm logout`, so no npm session token stays on the machine.
 5. On npmjs.com, package `curitibai-mcp`, Settings, Publishing access: "Require two-factor authentication and disallow tokens" (trusted publishing keeps working: [docs](https://docs.npmjs.com/trusted-publishers)).
-6. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on), compare the sha256 in the summary, approve `release`: it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
+6. Actions, `publish`, "Run workflow" on `main` (or on tag `v0.26.0` if `main` moved on), check the ref and the commit on the approval screen (see "Approving a run"), approve `release`: it skips npm (0.26.0 is there) and publishes `server.json` to the MCP Registry; no trusted publisher is needed yet.
 7. Check: `npm view curitibai-mcp version` and `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Bossmann007/curitibai"`.
 
 Every later release:
@@ -81,7 +99,7 @@ Every later release:
 1. Merge the release PR, tag its merge commit `vX.Y.Z` on `main` and push the tag.
 2. First time only, at most 2 days before step 4 (a new trusted publisher expires if its first publish does not happen within 2 days): on npmjs.com, package `curitibai-mcp`, Settings, Trusted publishing: GitHub Actions, owner `Bossmann007`, repository `curitibai`, workflow `publish.yml`, Environment name = `release`.
 3. First time only, in the same form, under "Allowed actions", also allow `npm publish` (new configurations allow only `npm stage publish`).
-4. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on), compare the sha256 in the summary, approve `release`; if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
+4. Actions, `publish`, "Run workflow" on `main` (or on the tag if `main` moved on), check the ref and the commit on the approval screen (see "Approving a run"), approve `release`; if the trusted publisher is wrong it fails and names the npmjs.com fields to check.
 
 ## Scheduled workflows
 

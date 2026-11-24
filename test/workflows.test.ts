@@ -104,10 +104,19 @@ describe("GitHub Actions workflows", () => {
     expect(lines).toContain("      MCP_PUBLISHER_VERSION: v1.8.1");
     // Order: verify, validate and log in before npm publish; npm publish before the registry publish.
     const at = (re: RegExp) => lines.findIndex((l) => re.test(l));
-    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish --ignore-scripts 2>&1/, /mcp-publisher publish$/].map(at);
+    const order = [/^ {6}- run: scripts\/verify$/, /mcp-publisher validate server\.json$/, /mcp-publisher login github-oidc$/, /npm publish "\.\/\$TARBALL" --ignore-scripts 2>&1/, /mcp-publisher publish$/].map(at);
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(["          if ! npm publish --ignore-scripts 2>&1 | tee npm-publish.log; then"]);
+    expect(lines.filter((l) => /\bnpm publish\b/.test(l) && !/echo/.test(l))).toEqual(['          if ! npm publish "./$TARBALL" --ignore-scripts 2>&1 | tee npm-publish.log; then']);
+    // npm publish uploads the tarball whose sha256 was checked (packed once, kept, hashed again just before), not a new
+    // pack of the tree.
+    expect(publishJob.match(/\bnpm pack\b/g)).toHaveLength(1);
+    expect(publishJob).not.toContain('rm -f "$file"');
+    expect(publishJob).toContain('echo "tarball=$file" >> "$GITHUB_OUTPUT"');
+    expect(publishJob).toContain("TARBALL: ${{ steps.preflight.outputs.tarball }}");
+    expect(publishJob.match(/\[\[ "\$sha" == "\$APPROVED_SHA256" \]\]/g)).toHaveLength(2);
+    const publishStep = publishJob.slice(publishJob.indexOf("- name: Publish to npm"));
+    expect(publishStep.indexOf('[[ "$sha" == "$APPROVED_SHA256" ]]')).toBeLessThan(publishStep.indexOf("npm publish"));
   });
 
   it("id-token only in the publish job of publish.yml, which runs in the release environment", () => {
