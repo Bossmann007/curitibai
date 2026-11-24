@@ -1,58 +1,70 @@
-# SPEC: v0.26.1 release path hardening
+# SPEC: v0.27.0 GeoCuritiba pack (voting places, police and fire areas, census, terminals) and dated city notes
 
-Approved: Enzo 2026-11-24 (task brief "curitibai v0.26.1, small hardening of the release path merged in v0.26.0 (PR
-#36)": the Security Reviewer's low notes on head ef50166). Review round on head fc7efab (Security Reviewer must-fix and
-lows) added items 3 and 4. Scope frozen: `publish.yml` publishes the checked tarball, release checklist in
-`docs/development.md`, version 0.26.1, which becomes the first release. **This change publishes nothing**: no workflow
-run, no GitHub or npm setting changed, no tag pushed.
+Approved: Enzo 2026-11-24 (task brief "curitibai v0.27.0": "segue com o curitibaai"; vision: everything a Curitiba
+citizen needs inside their own AI). Source survey: Research Desk, 2026-11-24; every source re-checked on 2026-11-24
+(21:00–21:30 UTC) before coding, see `docs/sources.md`. **This change publishes nothing**: no workflow run, no tag.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-The package that reaches npm is byte for byte the one whose sha256 was checked, and the release checklist states the
-GitHub settings and the approval rule that the human gate depends on, with its accepted risk.
+More of what a citizen asks, answered from the GeoCuritiba host the server already reads (same host gate, cache,
+parser and fail-closed rules), plus two dated notes that need no request.
 
 ## Changes
 
-1. **`.github/workflows/publish.yml`**, publish job: the preflight packs once (`npm pack --ignore-scripts`), compares
-   the sha256 with the verify job's, keeps the file and passes its name on (`steps.preflight.outputs.tarball`). The
-   npm step hashes that file again (steps ran in between) and runs `npm publish "./$TARBALL" --ignore-scripts`; it no
-   longer deletes the file and packs the tree again. npm 11.20.0 calls its OIDC exchange for any publish spec,
-   directory or tarball (`lib/commands/publish.js`, `await oidc(...)` after `pack`); the runner's npm must be 11.20.0 or
-   newer (item 3). `test/workflows.test.ts`: one `npm pack` in the publish job, no
-   `rm -f "$file"`, the tarball output, two sha256 checks, the second before `npm publish`.
-2. **`docs/development.md` "Release"**: environment `release` with "Allow administrators to bypass configured
-   protection rules" OFF and "Prevent self-review" OFF (Enzo starts the run and is the only reviewer); the `v*` tag
-   ruleset is required; "Approving a run": only on `main` or a `v*` tag Enzo pushed, at the release commit shown on the
-   approval screen, and the sha256 proves only that the artifact did not change between the two jobs; accepted risk:
-   any token of Enzo's with the `repo` scope can approve through the REST API, so the gate holds only if no agent holds
-   one (recommended: a separate reviewer account with a passkey, or fine-grained agent tokens without the deployments
-   and environments permissions); `npm logout` right after the first manual publish; not verified whether the MCP
-   Registry accepts a GitHub OIDC token whose `sub` is `environment:release`, which the login step shows before
-   `npm publish`.
-3. **npm floor**: the publish job's preflight requires npm 11.20.0 or newer, the npm bundled with Node 26.13.1
-   (https://nodejs.org/dist/index.json), which `.nvmrc` pins; the job never installs another npm
-   (`test/workflows.test.ts` forbids `npm ci|install|i|test` in it).
-4. **First release is 0.26.1**: tag `v0.26.0` (4d79ae3, merge of PR #36) lacks this hardening and is never
-   published. "First release (0.26.1)" tags the merge commit of PR #37; the manual publish packs once, notes the
-   sha256, publishes that file and runs `npm logout`; the run on tag `v0.26.1` afterwards compares its summary sha256
-   with the noted one (cross-check, not a gate: a Mac build may differ; before the manual publish the verify job stops
-   at the npm 404, so no summary hash exists yet). `test/workflows.test.ts` checks that the section names the
-   `package.json` version and that its `git tag`/`git push` commands name no other tag. README's npm note says 0.26.1.
-5. **Version** 0.26.1 in `package.json`, `package-lock.json` and `server.json`; CHANGELOG 0.26.1.
+1. **`city_facilities_search`** ([ADR 0005](docs/adr/0005-extend-a-tool-before-adding-one.md): same host, parser and
+   envelope):
+   - type `local de votacao` (BaseTematica layer 12, 422 places, TRE-PR list of 31/08/2026): name, address, bairro,
+     regional, `sections` (número de seções) and `electoral_zone`. Fixed `outFields` without `num_eleitores` (never
+     asked for, tested); the note says the list cannot tell a voter their own place (título / TRE-PR). `updated` is
+     `data_alteracao` (DD/MM/YYYY) as YYYY-MM-DD.
+   - types `terminal` (Equipamentos layer 157, 22 terminals) and `terminal metropolitano` (layer 158, 1), the same
+     equipment fields and guards as the other types; up to 80 lines of `observacao` (the integrated lines; Pinheirinho
+     has 65).
+   - any type: when `observacao` has more lines than the cap, the last line says how many were not shown (was a silent
+     cut at 30).
+   - new optional input `name`: every word must appear in the name, accents and case ignored; filtered in the server,
+     never sent.
+2. **`service_areas_at_point`**: new input `areas`, `care` (default; health unit and CRAS, unchanged) or `safety`:
+   Polícia Militar company area (layer 27: battalion and company), Polícia Civil district (layer 25) and Corpo de
+   Bombeiros platoon area (layer 41: platoon, company, battalion). `safety` asks layer 27 first; when it has nothing,
+   the bairro layer decides `inside_curitiba` (layer 21, statewide battalions, is not used). A failure of layer 25 or
+   41 is `partial`, never a failed call. The output gains `areas`, `police_military`, `police_civil` and `fire` (empty
+   when not asked).
+3. **`census_at_point`** (new tool: the answer shape and the privacy floor differ, ADR 0005): the IBGE 2022 census
+   sector containing the point (BaseTematica layer 43) with persons, occupied private households, density per km² and
+   mean monthly income of the household heads with income, and the neighbourhood totals (persons, households, area,
+   density) from one `outStatistics` query. Floor ([ADR 0009](docs/adr/0009-census-household-floor.md)): sector
+   figures only when the sector has at least 20 occupied private households (29 of 3,190 sectors have fewer), the
+   neighbourhood totals only at 20 or more; `v0005`, `v0006` and the favela/community name are never asked for. The
+   neighbourhood name sent in the `where` comes from the sector answer and must be one of the 75 IBGE names bundled in
+   the code. No neighbourhood income (a mean of sector means is not the neighbourhood mean).
+4. **`city_calendar`** (new tool, no network, data bundled like `detran_pr_info`): `topic` `holidays` (Decreto
+   2.385/2025: holidays, optional days and recess of the municipal administration in 2026; schools follow their own
+   calendar, art. 3) or `iptu` (IPTU 2026 general rule: 10% off in cash by 20 March, up to 10 instalments March to
+   December on day 20, DAM via bank, PIX or automatic debit; Legisweb mirrors of Prefeitura releases, marked as
+   secondary source). After 2026-12-31 (Curitiba time) the answer says `expired: true`.
+5. **URBS on GeoCuritiba**: only the terminals (item 1). Stops and lines stay on the user's URBS files: GeoCuritiba has
+   no timetable, no stop order per line and no update date. The PR body proposes how `bus_stops_near` could use it.
+6. **`docs/development.md`** "Approving a run", First release step 6: if the hashes differ, do not run the registry
+   step; `npm deprecate curitibai-mcp@0.26.1`, investigate the laptop, publish the next version through the workflow.
+   `test/workflows.test.ts` pins the first release to 0.26.1 (not the `package.json` version).
+7. **Docs and version**: `docs/tools.md` (reference rows, which place tool, Curitiba App rows), `docs/sources.md`,
+   README tool list, CHANGELOG 0.27.0, version 0.27.0 in `package.json`, `package-lock.json` and `server.json`; 25 →
+   27 tools; descriptions stay within 400 characters each and 9,600 in sum.
 
 ## Out of scope
 
-Publishing; running the workflow; changing GitHub or npm settings; tags; installing a different npm in the publish job; tool
-behaviour.
+Live URBS stops or lines in the bus tools (v0.28 candidate); OpenCEP, IBGE SIDRA, Guia de Serviços do Paraná (not
+in the brief); voter data of any kind; publishing; tags.
 
 ## Check
 
-- `scripts/verify` exits 0.
-- `test/workflows.test.ts` fails on the 0.26.0 `publish.yml` (shown by running it against `git show v0.26.0:...`) and
-  passes on this one.
-- The release-docs test fails on the fc7efab `docs/development.md` (first release 0.26.0) and when a `git push`
-  names `v0.26.0`.
-- `publish.yml` parses as YAML; `actionlint` was not run (not installed on the dev machine).
+- `scripts/verify` exits 0 (in a clone where tag `v0.26.1` exists; until the owner tags it, `check-release` reports
+  the missing previous tag, as ADR 0006 intends).
+- Tests: voting URL has no `num_eleitores`; voting record parsing; terminal 65-line `observacao` returned whole;
+  cut marker at the cap; `name` filter; `safety` layers, order and `partial`; census floor at 19/20 households,
+  neighbourhood name not in the list is never sent; `city_calendar` before and after 2026-12-31.
+- Contract snapshot updated on purpose; tools/list sizes printed by `test/contracts.test.ts`.

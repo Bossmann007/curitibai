@@ -12,6 +12,15 @@ export const BIKE_SERVICE_URL = `${SERVICES}/GeoCuritiba/CICLOVIA_dashboard/Feat
 /** SMMA's conservation units (Sistema Municipal de Unidades de Conservação), polygons; read on 2026-11-23. */
 export const CONSERVATION_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_Sistema_Municipal_de_Unidades_de_Conservacao/FeatureServer`;
 
+/** IPPUC's thematic map service (health unit areas, CRAS territories, voting places, police and fire areas, census), the GeoCuritiba/ folder: the root-level name answers 499. */
+export const THEMATIC_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer`;
+
+/** Credit of the voting places (TRE-PR's list as published by IPPUC), added in v0.27.0. */
+export const VOTING_CREDIT = "Fonte: IPPUC/GeoCuritiba (TRE-PR)";
+const VOTING_NOTE =
+  "Voting places as listed by TRE-PR (see `updated`); this list cannot tell a voter their own place: that is on the " +
+  "título de eleitor, the e-Título app or the TRE-PR site. No voter data is read.";
+
 /** Credit of the types added in v0.24.0 (sport and leisure by SMELJ, conservation units by SMMA). */
 export const SPORT_CONSERVATION_CREDIT = "Fonte: IPPUC/GeoCuritiba (SMELJ / SMMA)";
 const CONSERVATION_NOTE =
@@ -37,7 +46,7 @@ export const MAX_EMAILS = 3;
 const LAT_RANGE = [-25.7, -25.3] as const;
 const LON_RANGE = [-49.45, -49.15] as const;
 
-export type LayerKind = "facility" | "park" | "bike";
+export type LayerKind = "facility" | "park" | "bike" | "voting";
 
 export interface FacilityType {
   /** The canonical type name accepted by the tool (folded, Portuguese). */
@@ -55,6 +64,8 @@ export interface FacilityType {
   credit?: string;
   /** A sentence added to the result's note for this type. */
   note?: string;
+  /** Lines of `observacao` kept (default MAX_HOUR_LINES); a longer text ends with a line saying how many were cut. */
+  maxHourLines?: number;
 }
 
 const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
@@ -138,6 +149,20 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
   equipment("posto urbs", 156, "Posto de Atendimento URBS", ["posto de atendimento urbs", "urbs"]),
   equipment("informacoes turisticas", 162, "Posto de Informações Turísticas", ["posto de informacoes turisticas", "turismo"]),
+  // Bus terminals, added in v0.27.0 (read on 2026-11-24: 22 and 1 records). `observacao` lists the integrated lines
+  // (Pinheirinho: 65 lines), so up to 80 lines are kept.
+  { ...equipment("terminal", 157, "Terminal Urbano", ["terminais", "terminal urbano", "terminal de onibus", "terminais de onibus"]), maxHourLines: 80 },
+  { ...equipment("terminal metropolitano", 158, "Terminal Metropolitano", ["terminais metropolitanos", "guadalupe"]), maxHourLines: 80 },
+  // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
+  {
+    id: "local de votacao",
+    label: "Locais de Votação",
+    aliases: ["locais de votacao", "local de votação", "votacao", "secao eleitoral", "secoes eleitorais", "onde votar"],
+    kind: "voting",
+    layerUrl: `${THEMATIC_SERVICE_URL}/12`,
+    credit: VOTING_CREDIT,
+    note: VOTING_NOTE,
+  },
   {
     id: "parque",
     label: "Parques e Bosques",
@@ -183,6 +208,8 @@ const EQUIPMENT_FIELDS = [
 ].join(",");
 const PARK_FIELDS = "objectid,nome,ctba_bairro,ctba_regional,ctba_tipounidprotinteg_smuc,areaoficial";
 const BIKE_FIELDS = "objectid,nome,ctba_tipo_ciclovia,ctba_localizacao,ctba_bairro,ctba_regional,lenght_km,operacional";
+/** Voting places: the place, never `num_eleitores` (number of voters) nor any other field. */
+export const VOTING_FIELDS = "objectid,nome_local,endereco,bairro,regional,num_secoes,zona_eleitoral,data_alteracao";
 
 /**
  * The one fixed URL read for a type: the whole layer (where 1=1), fixed fields, WGS84 (outSR=4326). Nothing from the
@@ -191,8 +218,8 @@ const BIKE_FIELDS = "objectid,nome,ctba_tipo_ciclovia,ctba_localizacao,ctba_bair
  */
 export function layerQueryUrl(t: FacilityType): string {
   const p = new URLSearchParams({ where: "1=1" });
-  if (t.kind === "facility") {
-    p.set("outFields", EQUIPMENT_FIELDS);
+  if (t.kind === "facility" || t.kind === "voting") {
+    p.set("outFields", t.kind === "voting" ? VOTING_FIELDS : EQUIPMENT_FIELDS);
     p.set("returnGeometry", "true");
   } else if (t.kind === "park") {
     p.set("outFields", PARK_FIELDS);
@@ -262,6 +289,9 @@ export interface Facility {
   updated: string | null;
   length_km: number | null;
   area: string | null;
+  /** Voting places only: número de seções and zona eleitoral as published; null for other types. */
+  sections: number | null;
+  electoral_zone: string | null;
   /** A point, a park's centroid, or null. */
   lat: number | null;
   lon: number | null;
@@ -339,8 +369,11 @@ export function institutionalEmails(raw: unknown): string[] {
   return [...new Set(out)].slice(0, MAX_EMAILS);
 }
 
-/** `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). */
-function hourLines(raw: unknown): string[] {
+/**
+ * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
+ * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
+ */
+export function hourLines(raw: unknown, max: number = MAX_HOUR_LINES): string[] {
   const s = str(raw);
   if (s === null) return [];
   const lines: string[] = [];
@@ -348,14 +381,16 @@ function hourLines(raw: unknown): string[] {
     const t = cleanText(line, LINE_MAX);
     if (t !== "") lines.push(t);
   }
-  return lines.slice(0, MAX_HOUR_LINES);
+  if (lines.length <= max) return lines;
+  const kept = lines.slice(0, max - 1);
+  return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
 }
 
 function updated(v: unknown): string | null {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? dateInCuritiba(new Date(v)) : null;
 }
 
-function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null): Facility | null {
+function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, maxLines: number): Facility | null {
   const name = clean(a.nome_completo, NAME_MAX) ?? clean(a.nome, NAME_MAX);
   if (name === null) return null;
   // The publisher marks whether the address may be shown; anything but "Sim" hides the address and the position.
@@ -375,13 +410,50 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao),
+    hours: hourLines(a.observacao, maxLines),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email),
     updated: updated(a.dt_atualiz),
     length_km: null,
     area: null,
+    sections: null,
+    electoral_zone: null,
+    lat: at?.lat ?? null,
+    lon: at?.lon ?? null,
+    paths: null,
+  };
+}
+
+/** DD/MM/YYYY (data_alteracao) as YYYY-MM-DD; null when not a real date. */
+export function dayMonthYear(v: unknown): string | null {
+  const m = typeof v === "string" ? /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(v) : null;
+  if (!m) return null;
+  const iso = `${m[3]}-${m[2]}-${m[1]}`;
+  const d = new Date(`${iso}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : null;
+}
+
+function votingRecord(a: Record<string, unknown>, g: Record<string, unknown> | null): Facility | null {
+  const name = clean(a.nome_local, NAME_MAX);
+  if (name === null) return null;
+  const at = g ? inside(g.y, g.x) : null;
+  const n = a.num_secoes;
+  return {
+    name,
+    kind: null,
+    address: clean(a.endereco, ADDRESS_MAX),
+    bairro: clean(a.bairro, 60),
+    regional: clean(a.regional, 60),
+    hours: [],
+    open_periods: null,
+    phones: [],
+    emails: [],
+    updated: dayMonthYear(a.data_alteracao),
+    length_km: null,
+    area: null,
+    sections: typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null,
+    electoral_zone: clean(a.zona_eleitoral, 20),
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,
     paths: null,
@@ -405,6 +477,8 @@ function parkRecord(a: Record<string, unknown>, centroid: Record<string, unknown
     updated: null,
     length_km: null,
     area: clean(a.areaoficial, 40),
+    sections: null,
+    electoral_zone: null,
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,
     paths: null,
@@ -450,6 +524,8 @@ function bikeRecord(a: Record<string, unknown>, g: Record<string, unknown> | nul
     updated: null,
     length_km: typeof km === "number" && Number.isFinite(km) && km >= 0 ? Math.round(km * 1000) / 1000 : null,
     area: null,
+    sections: null,
+    electoral_zone: null,
     lat: first ? first[1] : null,
     lon: first ? first[0] : null,
     paths,
@@ -489,7 +565,15 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
     const geo = isObject(f) && isObject(f.geometry) ? f.geometry : null;
     const centroid = isObject(f) && isObject(f.centroid) ? f.centroid : null;
     const rec =
-      a === null ? null : t.kind === "facility" ? equipmentRecord(a, geo) : t.kind === "park" ? parkRecord(a, centroid) : bikeRecord(a, geo);
+      a === null
+        ? null
+        : t.kind === "facility"
+          ? equipmentRecord(a, geo, t.maxHourLines ?? MAX_HOUR_LINES)
+          : t.kind === "voting"
+            ? votingRecord(a, geo)
+            : t.kind === "park"
+              ? parkRecord(a, centroid)
+              : bikeRecord(a, geo);
     if (rec === null) skipped++;
     else facilities.push(rec);
   }
@@ -540,10 +624,17 @@ export const CADASTRAL_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritib
 /** Streets are looked for within this distance of the point. */
 export const STREET_RADIUS_M = 100;
 
-/** IPPUC's thematic map service (health unit areas, CRAS territories), the GeoCuritiba/ folder: the root-level name answers 499. */
-export const THEMATIC_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer`;
-
-export type PointLayer = "bairro" | "zoning_decree" | "zoning_law" | "street" | "health_area" | "cras_territory";
+export type PointLayer =
+  | "bairro"
+  | "zoning_decree"
+  | "zoning_law"
+  | "street"
+  | "health_area"
+  | "cras_territory"
+  | "pm_company"
+  | "civil_district"
+  | "fire_platoon"
+  | "census_sector";
 
 const ZONING_FIELDS = "sg_zona,nm_zona,legislacao,data_versao";
 /** Service, layer id and fixed fields, read from the services on 2026-11-23 (see docs/sources.md). */
@@ -554,6 +645,12 @@ export const POINT_LAYERS: Record<PointLayer, { service: string; id: number; fie
   street: { service: CADASTRAL_SERVICE_URL, id: 12, fields: "gtm_nm_logradouro" },
   health_area: { service: THEMATIC_SERVICE_URL, id: 19, fields: "nome,distrito,data,fonte,geometriaaproximada" },
   cras_territory: { service: THEMATIC_SERVICE_URL, id: 5, fields: "nome,tipo,regional,data,fonte,geometriaaproximada" },
+  // v0.27.0, read on 2026-11-24: Polícia Militar companies (13 areas), Polícia Civil districts (13), fire platoons (9).
+  pm_company: { service: THEMATIC_SERVICE_URL, id: 27, fields: "nm_batalhao,sg_batalhao,nm_companhia,sg_companhia,data_atualizacao,fonte" },
+  civil_district: { service: THEMATIC_SERVICE_URL, id: 25, fields: "nm_divisao,nm_distrito,sg_distrito,fonte" },
+  fire_platoon: { service: THEMATIC_SERVICE_URL, id: 41, fields: "batalhao,companhia,pelotao,sigla,fonte" },
+  // IBGE 2022 census sector (3,190 sectors): never v0005, v0006 (household-level averages) or nm_fcu.
+  census_sector: { service: THEMATIC_SERVICE_URL, id: 43, fields: "cd_setor,nm_bairro,v0001,v0007,area_km2,dens_pop_km2,renda_media" },
 };
 
 export interface Point {
@@ -675,5 +772,73 @@ export function getPointLayer(layer: PointLayer, p: Point, startBy?: number): Pr
     });
     if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
     return parsePointQuery(res.body, url, layer === "street");
+  }, startBy === undefined ? {} : { startBy })));
+}
+
+// ---- Census 2022 by sector (census_at_point, v0.27.0) ----
+
+/**
+ * The 75 neighbourhood names of the census layer (nm_bairro, IBGE spelling: "Botiatuvinha", "Tinguí"), read on
+ * 2026-11-24. Only a name in this list is ever sent in a `where`.
+ */
+export const CENSUS_BAIRROS: readonly string[] = [
+  "Abranches", "Ahú", "Alto Boqueirão", "Alto da Glória", "Alto da Rua XV", "Atuba", "Augusta", "Bacacheri",
+  "Bairro Alto", "Barreirinha", "Batel", "Bigorrilho", "Boa Vista", "Bom Retiro", "Boqueirão", "Botiatuvinha", "Cabral",
+  "Cachoeira", "Cajuru", "Campina do Siqueira", "Campo Comprido", "Campo de Santana", "Capão Raso", "Capão da Imbuia",
+  "Cascatinha", "Caximba", "Centro", "Centro Cívico", "Cidade Industrial de Curitiba", "Cristo Rei", "Fanny",
+  "Fazendinha", "Ganchinho", "Guabirotuba", "Guaíra", "Hauer", "Hugo Lange", "Jardim Botânico", "Jardim Social",
+  "Jardim das Américas", "Juvevê", "Lamenha Pequena", "Lindóia", "Mercês", "Mossunguê", "Novo Mundo", "Orleans",
+  "Parolin", "Pilarzinho", "Pinheirinho", "Portão", "Prado Velho", "Rebouças", "Riviera", "Santa Cândida",
+  "Santa Felicidade", "Santa Quitéria", "Santo Inácio", "Seminário", "São Braz", "São Francisco", "São João",
+  "São Lourenço", "São Miguel", "Sítio Cercado", "Taboão", "Tarumã", "Tatuquara", "Tinguí", "Uberaba", "Umbará",
+  "Vila Izabel", "Vista Alegre", "Xaxim", "Água Verde",
+];
+
+/** The census sector layer's statistics: sums of persons, occupied private households and area, and the sector count. */
+const CENSUS_STATISTICS = JSON.stringify([
+  { statisticType: "sum", onStatisticField: "v0001", outStatisticFieldName: "persons" },
+  { statisticType: "sum", onStatisticField: "v0007", outStatisticFieldName: "households" },
+  { statisticType: "sum", onStatisticField: "area_km2", outStatisticFieldName: "area_km2" },
+  { statisticType: "count", onStatisticField: "objectid", outStatisticFieldName: "sectors" },
+]);
+
+/** The neighbourhood totals query, or null when the name is not one of CENSUS_BAIRROS (then nothing is sent). */
+export function censusBairroUrl(name: string): string | null {
+  if (!CENSUS_BAIRROS.includes(name)) return null;
+  const q = new URLSearchParams({ where: `nm_bairro='${name.replace(/'/g, "''")}'`, outStatistics: CENSUS_STATISTICS, f: "json" });
+  return `${THEMATIC_SERVICE_URL}/${POINT_LAYERS.census_sector.id}/query?${q.toString()}`;
+}
+
+export interface CensusTotals {
+  persons: number | null;
+  households: number | null;
+  area_km2: number | null;
+  sectors: number | null;
+}
+
+const count = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
+
+/** One request per neighbourhood and cache period, through the same gate; null for a name not in the list. */
+export function getCensusBairro(name: string, startBy?: number): Promise<Cached<CensusTotals>> | null {
+  const url = censusBairroUrl(name);
+  if (url === null) return null;
+  return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
+    const res = await fetchText(url, {
+      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+      maxBytes: GEOCURITIBA_MAX_BYTES,
+      sameHostOnly: true,
+      redirectPathPrefix: "/server/rest/services",
+    });
+    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+    const rows = parsePointQuery(res.body, url, false);
+    if (rows.length !== 1) throw new SourceUnavailableError("no statistics");
+    const a = rows[0]!.attributes;
+    const area = a.area_km2;
+    return {
+      persons: count(a.persons),
+      households: count(a.households),
+      area_km2: typeof area === "number" && Number.isFinite(area) && area > 0 ? area : null,
+      sectors: count(a.sectors),
+    };
   }, startBy === undefined ? {} : { startBy })));
 }

@@ -1,0 +1,56 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome_local": "ESCOLA MUNICIPAL FICTICIA ALFA",
+    "endereco": "R. Ficticia, 100",
+    "bairro": "JUVEVÊ",
+    "regional": "REGIONAL MATRIZ",
+    "num_secoes": 7.0,
+    "zona_eleitoral": "1ª",
+    "data_alteracao": "31/08/2026"
+   },
+   "geometry": {
+    "x": -49.2635,
+    "y": -25.4134
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome_local": "COLÉGIO ESTADUAL FICTICIO BETA",
+    "endereco": "Av. Inventada, 2000",
+    "bairro": "CAMPO DE SANTANA",
+    "regional": "REGIONAL TATUQUARA",
+    "num_secoes": 12.0,
+    "zona_eleitoral": "175ª",
+    "data_alteracao": "31/13/2026"
+   },
+   "geometry": {
+    "x": -49.3413,
+    "y": -25.591
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 3,
+    "nome_local": " ",
+    "endereco": "R. Sem Nome, 1",
+    "bairro": "CENTRO",
+    "regional": "REGIONAL MATRIZ",
+    "num_secoes": 3.0,
+    "zona_eleitoral": "2ª",
+    "data_alteracao": "31/08/2026"
+   },
+   "geometry": {
+    "x": -49.27,
+    "y": -25.43
+   }
+  }
+ ]
+}

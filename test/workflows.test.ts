@@ -121,10 +121,11 @@ describe("GitHub Actions workflows", () => {
     expect(recheck).toBeLessThan(publishStep.indexOf("npm publish"));
   });
 
-  it("release docs: the first release is the package.json version, and its git tag/push commands name no other tag", () => {
-    // Tag v0.26.0 is the commit before the 0.26.1 hardening; the first release must not be published from it. When the
-    // first release is done and the version moves on, update or drop this section and this test together.
-    const version = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version as string;
+  it("release docs: the first release is 0.26.1, and its git tag/push commands name no other tag", () => {
+    // Tag v0.26.0 is the commit before the 0.26.1 hardening; the first release must not be published from it. The first
+    // release stays 0.26.1 while later versions are built (0.27.0 on): when it is done, update or drop this section and
+    // this test together.
+    const version = "0.26.1";
     const doc = readFileSync(new URL("../docs/development.md", import.meta.url), "utf8");
     const start = doc.indexOf("\nFirst release (");
     const end = doc.indexOf("\nEvery later release:", start);

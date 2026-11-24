@@ -1,0 +1,33 @@
+{
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Ficticio",
+    "nome_completo": "Terminal Ficticio",
+    "nome_rua": "AV. INVENTADA",
+    "num_pred": "1871",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Capão Raso",
+    "regional": "Pinheirinho",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Sim",
+    "func_24hr": "Não",
+    "telefone": "156",
+    "email": null,
+    "dt_atualiz": 1768780800000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 4h35 às 0h06\r\nLinhas integradas:\r\n-100 - Linha Ficticia 0\r\n-101 - Linha Ficticia 1\r\n-102 - Linha Ficticia 2\r\n-103 - Linha Ficticia 3\r\n-104 - Linha Ficticia 4\r\n-105 - Linha Ficticia 5\r\n-106 - Linha Ficticia 6\r\n-107 - Linha Ficticia 7\r\n-108 - Linha Ficticia 8\r\n-109 - Linha Ficticia 9\r\n-110 - Linha Ficticia 10\r\n-111 - Linha Ficticia 11\r\n-112 - Linha Ficticia 12\r\n-113 - Linha Ficticia 13\r\n-114 - Linha Ficticia 14\r\n-115 - Linha Ficticia 15\r\n-116 - Linha Ficticia 16\r\n-117 - Linha Ficticia 17\r\n-118 - Linha Ficticia 18\r\n-119 - Linha Ficticia 19\r\n-120 - Linha Ficticia 20\r\n-121 - Linha Ficticia 21\r\n-122 - Linha Ficticia 22\r\n-123 - Linha Ficticia 23\r\n-124 - Linha Ficticia 24\r\n-125 - Linha Ficticia 25\r\n-126 - Linha Ficticia 26\r\n-127 - Linha Ficticia 27\r\n-128 - Linha Ficticia 28\r\n-129 - Linha Ficticia 29\r\n-130 - Linha Ficticia 30\r\n-131 - Linha Ficticia 31\r\n-132 - Linha Ficticia 32\r\n-133 - Linha Ficticia 33\r\n-134 - Linha Ficticia 34\r\n-135 - Linha Ficticia 35\r\n-136 - Linha Ficticia 36\r\n-137 - Linha Ficticia 37\r\n-138 - Linha Ficticia 38\r\n-139 - Linha Ficticia 39\r\n-140 - Linha Ficticia 40\r\n-141 - Linha Ficticia 41\r\n-142 - Linha Ficticia 42\r\n-143 - Linha Ficticia 43\r\n-144 - Linha Ficticia 44\r\n-145 - Linha Ficticia 45\r\n-146 - Linha Ficticia 46\r\n-147 - Linha Ficticia 47\r\n-148 - Linha Ficticia 48\r\n-149 - Linha Ficticia 49\r\n-150 - Linha Ficticia 50\r\n-151 - Linha Ficticia 51\r\n-152 - Linha Ficticia 52\r\n-153 - Linha Ficticia 53\r\n-154 - Linha Ficticia 54\r\n-155 - Linha Ficticia 55\r\n-156 - Linha Ficticia 56\r\n-157 - Linha Ficticia 57\r\n-158 - Linha Ficticia 58\r\n-159 - Linha Ficticia 59\r\n-160 - Linha Ficticia 60\r\n-161 - Linha Ficticia 61"
+   },
+   "geometry": {
+    "x": -49.29,
+    "y": -25.5
+   }
+  }
+ ]
+}
