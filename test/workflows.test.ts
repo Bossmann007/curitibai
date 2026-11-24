@@ -116,7 +116,9 @@ describe("GitHub Actions workflows", () => {
     expect(publishJob).toContain("TARBALL: ${{ steps.preflight.outputs.tarball }}");
     expect(publishJob.match(/\[\[ "\$sha" == "\$APPROVED_SHA256" \]\]/g)).toHaveLength(2);
     const publishStep = publishJob.slice(publishJob.indexOf("- name: Publish to npm"));
-    expect(publishStep.indexOf('[[ "$sha" == "$APPROVED_SHA256" ]]')).toBeLessThan(publishStep.indexOf("npm publish"));
+    const recheck = publishStep.indexOf('[[ "$sha" == "$APPROVED_SHA256" ]]');
+    expect(recheck).toBeGreaterThan(0);
+    expect(recheck).toBeLessThan(publishStep.indexOf("npm publish"));
   });
 
   it("id-token only in the publish job of publish.yml, which runs in the release environment", () => {
