@@ -1,45 +1,45 @@
-# SPEC: v0.34.0 municipal school calendar 2026 as dated bundled data
+# SPEC: v0.35.0 coverage scoreboard and the 1.0 gate
 
-Approved: Enzo 2026-11-24 (he sent the PDF link; task brief "curitibai v0.34.0"). **This change publishes nothing**:
-no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-24 (task brief "curitibai v0.35.0", with his addition of the same day on usefulness and
+Curitiba scope). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-A citizen asks "when do classes start", "when is the July recess" or "is there class on <date>" for the municipal
-escolas, CMEIs or CMAEEs, and gets the answer from the Secretaria Municipal da Educação's own 2026 calendars, dated,
-with no network call. v0.33 found the calendars only as PDFs; the owner downloaded them once by hand
-(`mid-educacao.curitiba.pr.gov.br`, no robots.txt) and approved bundling the dates.
+The owner's 1.0 rule ("better than the Curitiba App, with every Prefeitura service and more", useful to the citizen,
+about Curitiba) becomes a gate a script counts, so each later version can show how far 1.0 is. Two lows from the v0.34
+review are fixed.
 
 ## Changes
 
-1. **Extraction, dev only** (`scripts/extract-school-calendar.py`, not in the package): reads the three local PDFs
-   with pdfplumber, maps each cell fill to the legend swatch and each shape to the legend shape of the same PDF,
-   asserts every month reads 1..N in its 2026 weekday column, every red cell is in the printed holiday list, and the
-   school days per month and total equal the printed "Letivos" and 199; fails otherwise. `--ts` writes the data file.
-2. **Data** (`src/tools/schoolCalendarData.ts`, generated): per unit the source URL, sha256, signing date, first and
-   last day with students, dated periods per legend kind (holidays with their printed names), school days per month
-   and total. The PDFs are not committed.
-3. **Tool** (`src/tools/cityCalendar.ts`, ADR 0005: no new tool): `city_calendar` `topic: "school"`, optional `unit`
-   and `date` (either one with no `topic` selects `school`); `on_date.school_day` from the rule the script checks; `expired` after 2026-12-31; the note says
-   municipal network only, state and private schools follow other calendars. Contract snapshot rewritten.
-4. **Docs and version**: docs/tools.md (`city_calendar` row; "School calendar" row covered for the municipal
-   network), docs/sources.md (mid-educacao row, how and when the PDFs were downloaded and read), README, CHANGELOG
-   0.34.0, version 0.34.0 in `package.json`, `package-lock.json`, `server.json`.
+1. **Scoreboard, dev only** (`scripts/coverage-report.mjs`, not in the package): reads (a) the Curitiba App table in
+   `docs/tools.md` (rows by status; an unknown status exits 2) and (b) the user's local `carta-servicos.json` when it
+   exists (`--carta`, else `CURITIBAI_DATA_DIR`). Each Carta service is data (narrow title rules, none when the title
+   asks the citizen to act), guide (`city_service_guide`'s own Carta queries, kept equal by a test) or none. Prints
+   counts and % per category, the 30 uncovered services with the highest usefulness score (3 everyday need, 2 other,
+   1 business-only or internal) and a JSON summary with aggregates only.
+2. **Gate** (`docs/roadmap-1.0.md`, permanent): every Curitiba App row covered (data, or guide + official link where a
+   login is needed; partial is not covered), every Carta service reachable (data or guide), the extras kept,
+   uncovered work ordered by usefulness, Curitiba scope only; the scoreboard command; no catalog content.
+3. **`city_calendar`** (`src/tools/cityCalendar.ts`): the school note says the quality evaluation Saturday counts as a
+   school day, inferred from the printed counts; `unit` or `date` with topic `holidays` or `iptu` returns
+   `invalid_argument` instead of being ignored. No schema or description change (contract snapshot unchanged).
+   `src/cache.ts` reads `Date.now()` at each call, so a test's fixed clock applies (a `bus_stops_near` test read the
+   real date after midnight in Curitiba).
+4. **Docs and version**: docs/tools.md (`city_calendar` row, link to the gate), README, CHANGELOG 0.35.0, version
+   0.35.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-State (SEED-PR) and private school calendars; the 2027 calendars; the escolas PDF's text-only notes (trimesters,
-semesters, EJA class council); any request by the server to SME hosts; committing the PDFs or their renders.
+New tools or guides to close the gate; committing any catalog content or a real catalog's numbers; a CI step that
+fails on the gate (an open gate is not an error).
 
 ## Check
 
-- `python3 -I scripts/extract-school-calendar.py escolas=… cmeis=… cmaees=…` exits 0 on the three PDFs (per-month
-  table in the PR body).
-- `test/cityCalendar.test.ts`: the TS rule recomputes each month's school days and the 199 total for all three units;
-  start, July recess, holiday name, Saturday evaluation, teachers-only and Dia do Professor days, null outside 2026,
-  `expired` from 2027, no network call.
-- `test/contracts.test.ts`: the rewritten snapshot; every description at most 400 characters, the sum at most 9,600.
-- `scripts/verify` exits 0 on the PR head.
+- `test/coverageReport.test.ts` (synthetic items only): guide terms equal `GUIDES[id].carta`; data, guide and none
+  classes, action words never data; usefulness score; table parsing against a sample and the real `docs/tools.md`;
+  unknown status fails; no title in the JSON summary; CLI with and without a copy, exit 2 on a bad catalog.
+- `test/cityCalendar.test.ts`: holidays and iptu with `unit` or `date` are `invalid_argument`; the school note.
+- `scripts/check-no-catalog` passes; `scripts/verify` exits 0 on the PR head.
