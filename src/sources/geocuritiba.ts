@@ -533,12 +533,11 @@ function bikeRecord(a: Record<string, unknown>, g: Record<string, unknown> | nul
 }
 
 /**
- * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84
- * feature set: an `error` object (ArcGIS sends errors with HTTP 200), `exceededTransferLimit`, a spatial reference
- * other than 4326, no `features` array, or 2,000 records or more. An `error` with code 401, 403, 498 or 499 is a final
- * refusal: the host is blocked for 10 minutes (blockHost). Records without a name are skipped and counted.
+ * The JSON object of an ArcGIS answer (f=json), or source_unavailable: not JSON, not an object, an `error` object
+ * (ArcGIS sends errors with HTTP 200; code 401/403, 498 invalid token or 499 token required is a final refusal and
+ * blocks the host for 10 minutes), or, with `wgs84`, a spatial reference other than 4326.
  */
-export function parseLayer(t: FacilityType, body: string, url: string = t.layerUrl): FacilityLayer {
+function arcgisAnswer(body: string, url: string, wgs84: boolean): Record<string, unknown> {
   let json: unknown;
   try {
     json = JSON.parse(body);
@@ -547,14 +546,24 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
   }
   if (!isObject(json)) throw new SourceUnavailableError("query error");
   if ("error" in json) {
-    // ArcGIS sends auth errors with HTTP 200: 401/403, 498 (invalid token), 499 (token required) are a final refusal.
     const code = isObject(json.error) ? json.error.code : undefined;
     if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
     throw new SourceUnavailableError("query error");
   }
-  if (json.exceededTransferLimit === true) throw new SourceUnavailableError("layer cut by the record limit");
   const sr = json.spatialReference;
-  if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  if (wgs84 && (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326))) throw new SourceUnavailableError("not WGS84");
+  return json;
+}
+
+/**
+ * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84
+ * feature set: an `error` object (ArcGIS sends errors with HTTP 200), `exceededTransferLimit`, a spatial reference
+ * other than 4326, no `features` array, or 2,000 records or more. An `error` with code 401, 403, 498 or 499 is a final
+ * refusal: the host is blocked for 10 minutes (blockHost). Records without a name are skipped and counted.
+ */
+export function parseLayer(t: FacilityType, body: string, url: string = t.layerUrl): FacilityLayer {
+  const json = arcgisAnswer(body, url, true);
+  if (json.exceededTransferLimit === true) throw new SourceUnavailableError("layer cut by the record limit");
   if (!Array.isArray(json.features) || json.features.length >= MAX_RECORDS) throw new SourceUnavailableError("no features");
   const facilities: Facility[] = [];
   let skipped = 0;
@@ -711,23 +720,8 @@ export interface PointFeature {
  * reference other than 4326 fails only when geometry was asked (answers without geometry carry none).
  */
 export function parsePointQuery(body: string, url: string, withGeometry: boolean): PointFeature[] {
-  let json: unknown;
-  try {
-    json = JSON.parse(body);
-  } catch {
-    throw new SourceUnavailableError("invalid JSON");
-  }
-  if (!isObject(json)) throw new SourceUnavailableError("query error");
-  if ("error" in json) {
-    const code = isObject(json.error) ? json.error.code : undefined;
-    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
-    throw new SourceUnavailableError("query error");
-  }
+  const json = arcgisAnswer(body, url, withGeometry);
   if (json.exceededTransferLimit === true) throw new SourceUnavailableError("answer cut by the record limit");
-  if (withGeometry) {
-    const sr = json.spatialReference;
-    if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
-  }
   if (!Array.isArray(json.features) || json.features.length >= MAX_RECORDS) throw new SourceUnavailableError("no features");
   const out: PointFeature[] = [];
   for (const f of json.features as unknown[]) {
@@ -889,20 +883,7 @@ export interface StopsPage {
  * only: on a short page it fails closed.
  */
 export function parseStopsPage(body: string, url: string): StopsPage {
-  let json: unknown;
-  try {
-    json = JSON.parse(body);
-  } catch {
-    throw new SourceUnavailableError("invalid JSON");
-  }
-  if (!isObject(json)) throw new SourceUnavailableError("query error");
-  if ("error" in json) {
-    const code = isObject(json.error) ? json.error.code : undefined;
-    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
-    throw new SourceUnavailableError("query error");
-  }
-  const sr = json.spatialReference;
-  if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  const json = arcgisAnswer(body, url, true);
   if (!Array.isArray(json.features) || json.features.length > URBS_STOPS_PAGE_SIZE) {
     throw new SourceUnavailableError("no features");
   }
