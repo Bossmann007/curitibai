@@ -308,6 +308,19 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
     }
   });
 
+  it("EstaR: a credential title and the guide's own Carta links skip notice, appeal and credential services too", () => {
+    expect(handWrittenFor("Credencial de idoso do EstaR - estacionamento regulamentado")).toBeUndefined();
+    const copy = buildCatalog(
+      carta([
+        { title: "EstaR - Estacionamento Regulamentado", slug: "estar-sintetico", id: 9201, online: null },
+        { title: "Recurso de multa sintética do EstaR - estacionamento regulamentado", slug: "estar-recurso", id: 9202, online: null },
+      ]),
+    );
+    const { info } = cartaFor(copy, GUIDES.estar);
+    expect(info.status).toBe("matched");
+    expect(info.matches.map((m) => m.official_url)).toEqual(["https://servicos.curitiba.pr.gov.br/estar-sintetico/9201"]);
+  });
+
   it("EstaR: the \"Est@R\" spelling routes too (queryWords splits it into \"est\" and \"r\")", () => {
     expect(handWrittenFor("Est@R - Estacionamento Regulamentado")).toBe("estar");
     expect(handWrittenFor("Est@R sintético")).toBeUndefined();

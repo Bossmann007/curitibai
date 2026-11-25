@@ -367,10 +367,10 @@ export const GUIDES = {
     // All three words: "estar" alone is a verb, and "estacionamento regulamentado" alone is also in titles of other
     // services (an appeal, a credential) that the generated guide serves better. "Est@R" splits into "est" and "r".
     carta: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento"]],
-    // This guide buys and activates time; a notice, appeal or fine is another service (since 0.38.1).
+    // This guide buys and activates time; a notice, appeal, fine or credential is another service (since 0.38.1).
     notFor: [
       "aviso", "avisos", "irregularidade", "irregularidades", "recurso", "recursos", "notificacao", "notificacoes",
-      "multa", "multas", "defesa",
+      "multa", "multas", "defesa", "credencial", "credenciais",
     ],
     fromWebSearchAt: GUIDES_0_38_CHECKED_AT,
     note:
@@ -527,13 +527,16 @@ const CARTA_HOW_TO =
   `browser and save the listing yourself as ${CATALOG_FILE} in the folder set by CURITIBAI_DATA_DIR (shape and steps: ` +
   "docs/local-data.md, \"Finding a city service\"). The server never downloads it.";
 
-/** Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words. */
-export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[]) {
+/**
+ * Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words, and
+ * none of its notFor words.
+ */
+export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[], notFor: readonly string[] = []) {
   const words = queries.map((q) => queryWords(q.join(" ")));
   return catalog.services
     .filter((s) => {
       const title = new Set(queryWords(s.title));
-      return words.some((ws) => ws.every((w) => title.has(w)));
+      return !notFor.some((w) => title.has(w)) && words.some((ws) => ws.every((w) => title.has(w)));
     })
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
 }
@@ -550,7 +553,7 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   // Each match's official_url passes the allowlist here (normalized), not only in the module that read the copy: a
   // match whose URL fails it is dropped. Ambiguity still counts every title match, so dropping one never turns two
   // candidates into a single confident link.
-  const all = matchCarta(catalog, guide.carta);
+  const all = matchCarta(catalog, guide.carta, guide.notFor);
   const found = all.flatMap((s) => {
     const official = allowedUrl(s.official_url);
     return official === null ? [] : [{ ...s, official_url: official }];

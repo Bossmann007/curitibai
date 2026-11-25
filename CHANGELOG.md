@@ -6,9 +6,11 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Review hardening of 0.37 and 0.38. 26 tools. Publishes nothing.
 
-- `city_service_guide` (`carta_id`): a Carta title with a notice, appeal or fine word (`aviso`, `irregularidade`,
-  `recurso`, `notificação`, `multa`, `defesa`, and their plurals) no longer gets the hand-written `estar` guide, which
-  buys and activates parking time; it gets the generated guide of that service.
+- `city_service_guide` (`carta_id`): a Carta title with a notice, appeal, fine or credential word (`aviso`,
+  `irregularidade`, `recurso`, `notificação`, `multa`, `defesa`, `credencial`, and their plurals) no longer gets the
+  hand-written `estar` guide, which buys and activates parking time; it gets the generated guide of that service.
+  With `service: "estar"`, such a title is no longer a Carta match either, so it neither makes the match ambiguous
+  nor becomes the guide's Carta link. `scripts/coverage-report.mjs` mirrors these words (`GUIDE_NOT_FOR`).
 - `estar`: the spelling "Est@R" (words `est`, `r`, `estacionamento`) also matches, for `carta_id` and for the guide's
   own Carta links. The install step says to install only an app named on the URBS EstaR page.
 - `le_digital`: the install step says to check in the store that the seller is the Prefeitura Municipal de Curitiba
