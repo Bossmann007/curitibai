@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.36.0 - 2026-11-25
+
+Citizen eval, phase A of the 1.0 roadmap. 26 tools. Publishes nothing.
+
+- New `test/eval/citizen-questions.json`: 114 invented citizen questions in Brazilian Portuguese (no personal data,
+  places only as public landmarks), each mapped to the tool, the arguments and the answer shape expected (status ok,
+  not_found, outside_curitiba, guide or an error code; fields present; the source or official link; for guides, the
+  consent steps). Every tool has at least 2 questions; 15 questions no tool answers yet are gaps by label (Lê Digital,
+  Defesa Civil alerts, EstaR, real-time buses, cultural spaces, useful phones, route planning, Vale Creche, other
+  cities), counted and not failed.
+- New `test/eval/citizenEval.test.ts` runs every question offline in `scripts/verify` (synthetic fixtures, one fixed
+  clock, requests stubbed); new dev-only `scripts/eval-summary.mjs` prints `citizen eval: answered 99 / 114; gaps 15:
+  ...` in `scripts/verify`. The citizen eval is described in `docs/roadmap-1.0.md`.
+- `scripts/coverage-report.mjs`: the JSON summary is described as "numbers per category" instead of "aggregates
+  only", since it keeps the Carta category labels. No behaviour change.
+
 ## 0.35.0 - 2026-11-25
 
 Coverage scoreboard and the 1.0 gate (owner approval 2026-11-24). 26 tools. Publishes nothing.

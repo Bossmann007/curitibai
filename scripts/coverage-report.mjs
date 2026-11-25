@@ -4,7 +4,7 @@
 // (b) the user's local Carta de Serviços copy (CURITIBAI_DATA_DIR/carta-servicos.json, the file city_services_search
 //     reads): each service is data (a tool answers it), guide (city_service_guide covers it) or none, by the title
 //     rules below. Absent copy: part (a) only.
-// Uncovered services are ranked by usefulness to a Curitiba citizen (usefulness below); their titles go to the terminal only; the JSON summary at the end holds aggregate numbers only.
+// Uncovered services are ranked by usefulness to a Curitiba citizen (usefulness below); their titles go to the terminal only; the JSON summary at the end holds numbers per category (category labels, counts, percentages), never a service title.
 // Usage: scripts/coverage-report.mjs [--tools <docs/tools.md>] [--carta <carta-servicos.json>]
 // Exit: 0 report printed, 2 an input could not be read or parsed (unknown table status, bad catalog shape, a --carta
 // file that does not exist; only the CURITIBAI_DATA_DIR copy may be absent).
@@ -220,7 +220,7 @@ export function cartaReport(items) {
   };
 }
 
-/** The JSON summary: aggregate numbers by category only, never a service title. */
+/** The JSON summary: numbers per category (labels, counts, percentages), never a service title. */
 export function summary(app, carta) {
   return {
     app: { ...app },
@@ -287,7 +287,7 @@ export function main(argv, env = process.env, out = console.log, err = console.e
       out(`Top ${TOP_UNCOVERED} uncovered services by usefulness to a citizen (3 everyday, 2 other, 1 business; local titles, terminal only):`);
       for (const u of carta.uncovered.slice(0, TOP_UNCOVERED)) out(`  ${u.usefulness} [${u.category}] ${u.title}`);
     }
-    out("JSON summary (aggregates only):");
+    out("JSON summary (numbers per category):");
     out(JSON.stringify(summary(app, carta), null, 2));
     return 0;
   } catch (e) {
