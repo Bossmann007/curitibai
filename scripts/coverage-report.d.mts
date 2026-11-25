@@ -49,4 +49,9 @@ export function appReport(rows: { feature: string; status: AppStatus }[]): AppRe
 export function cartaItems(json: unknown): { cat: string; title: string }[];
 export function cartaReport(items: { cat: string; title: string }[]): CartaReport;
 export function summary(app: AppReport, carta: CartaReport | null): { app: AppReport; carta: Omit<CartaReport, "uncovered"> | null };
-export function main(argv: string[], env?: Record<string, string | undefined>, out?: (line: string) => void): number;
+export function main(
+  argv: string[],
+  env?: Record<string, string | undefined>,
+  out?: (line: string) => void,
+  err?: (line: string) => void,
+): number;

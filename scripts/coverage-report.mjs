@@ -6,7 +6,8 @@
 //     rules below. Absent copy: part (a) only.
 // Uncovered services are ranked by usefulness to a Curitiba citizen (usefulness below); their titles go to the terminal only; the JSON summary at the end holds aggregate numbers only.
 // Usage: scripts/coverage-report.mjs [--tools <docs/tools.md>] [--carta <carta-servicos.json>]
-// Exit: 0 report printed, 2 an input could not be read or parsed (unknown table status, bad catalog shape).
+// Exit: 0 report printed, 2 an input could not be read or parsed (unknown table status, bad catalog shape, a --carta
+// file that does not exist; only the CURITIBAI_DATA_DIR copy may be absent).
 import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -223,27 +224,39 @@ export function cartaReport(items) {
 export function summary(app, carta) {
   return {
     app: { ...app },
-    carta: carta === null ? null : { ...carta, uncovered: undefined },
+    carta: carta === null ? null : Object.fromEntries(Object.entries(carta).filter(([k]) => k !== "uncovered")),
   };
 }
 
 function parseArgs(argv, env) {
-  const opts = { tools: join(fileURLToPath(new URL("..", import.meta.url)), "docs", "tools.md"), carta: null };
+  const opts = { tools: join(fileURLToPath(new URL("..", import.meta.url)), "docs", "tools.md"), carta: null, explicit: false };
   for (let i = 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]];
-    if ((flag !== "--tools" && flag !== "--carta") || value === undefined) throw new InputError(`usage: coverage-report.mjs [--tools <file>] [--carta <file>] (got "${flag}")`);
+    if ((flag !== "--tools" && flag !== "--carta") || value === undefined || value.startsWith("--")) {
+      throw new InputError(`usage: coverage-report.mjs [--tools <file>] [--carta <file>] (got "${flag}")`);
+    }
     opts[flag.slice(2)] = value;
   }
+  opts.explicit = opts.carta !== null;
   if (opts.carta === null && env.CURITIBAI_DATA_DIR) opts.carta = join(env.CURITIBAI_DATA_DIR, "carta-servicos.json");
   return opts;
 }
 
-function readCarta(path) {
+function readInput(path, what) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (e) {
+    throw new InputError(`cannot read ${what} (${e?.code ?? "error"})`);
+  }
+}
+
+/** Null when the CURITIBAI_DATA_DIR copy is absent (part (b) skipped); a missing --carta file is an error (exit 2). */
+function readCarta(path, explicit) {
   let text;
   try {
     text = readFileSync(path, "utf8");
   } catch (e) {
-    if (e?.code === "ENOENT") return null;
+    if (e?.code === "ENOENT" && !explicit) return null;
     throw new InputError(`cannot read the catalog (${e?.code ?? "error"})`);
   }
   try {
@@ -253,17 +266,17 @@ function readCarta(path) {
   }
 }
 
-export function main(argv, env = process.env, out = console.log) {
+export function main(argv, env = process.env, out = console.log, err = console.error) {
   try {
     const opts = parseArgs(argv, env);
-    const app = appReport(parseAppTable(readFileSync(opts.tools, "utf8")));
+    const app = appReport(parseAppTable(readInput(opts.tools, "the tools table")));
     out(`Curitiba App comparison (docs/tools.md): ${app.rows} rows, ${app.covered} covered (${app.covered_pct}%)`);
     out(`  data ${app.data} | guide ${app.guide} | partial ${app.partial} | none ${app.none} | extras ${app.extra}`);
     for (const f of app.not_covered) out(`  not covered: ${f}`);
-    const items = opts.carta === null ? null : readCarta(opts.carta);
+    const items = opts.carta === null ? null : readCarta(opts.carta, opts.explicit);
     let carta = null;
     if (items === null) {
-      out(opts.carta === null ? "Carta de Serviços: CURITIBAI_DATA_DIR not set and no --carta; part (b) skipped" : "Carta de Serviços: no local copy at the given path; part (b) skipped");
+      out(opts.carta === null ? "Carta de Serviços: CURITIBAI_DATA_DIR not set and no --carta; part (b) skipped" : "Carta de Serviços: no carta-servicos.json in CURITIBAI_DATA_DIR; part (b) skipped");
     } else {
       carta = cartaReport(items);
       out(`Carta de Serviços (local copy): ${carta.total} services, reachable ${carta.reachable_pct}%`);
@@ -278,8 +291,8 @@ export function main(argv, env = process.env, out = console.log) {
     out(JSON.stringify(summary(app, carta), null, 2));
     return 0;
   } catch (e) {
-    if (!(e instanceof InputError) && e?.code !== "ENOENT") throw e;
-    console.error(`coverage-report: FAIL: ${e instanceof InputError ? e.message : `cannot read ${e.path}`}`);
+    if (!(e instanceof InputError)) throw e;
+    err(`coverage-report: FAIL: ${e.message}`);
     return 2;
   }
 }

@@ -66,7 +66,8 @@ none is fixed by adding a rule and a test, not by changing the gate.
 
 The catalog itself is never committed (`scripts/check-no-catalog`); this page and the pull requests carry only
 aggregate numbers. Exit code: 0 when the report is printed (an open gate is not an error), 2 when an input cannot be
-read or the table has a status the script does not know.
+read (a `--carta` file that does not exist included; only the `CURITIBAI_DATA_DIR` copy may be absent) or the table
+has a status the script does not know.
 
 ## Where it stands
 

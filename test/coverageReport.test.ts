@@ -110,7 +110,9 @@ describe("coverage-report", () => {
       [1, "Credenciamento sintético de coleta"],
     ]);
     expect(carta.uncovered_by_usefulness).toEqual({ everyday: 3, other: 0, business_or_internal: 1 });
-    const json = JSON.stringify(summary(appReport(parseAppTable(TABLE)), carta));
+    const sum = summary(appReport(parseAppTable(TABLE)), carta);
+    expect(sum.carta && "uncovered" in sum.carta).toBe(false);
+    const json = JSON.stringify(sum);
     for (const { title } of ITEMS) expect(json).not.toContain(title);
   });
 
@@ -126,11 +128,15 @@ describe("coverage-report", () => {
       writeFileSync(tools, TABLE);
       const run = (argv: string[], env: Record<string, string> = {}) => {
         const lines: string[] = [];
-        return { code: main(argv, env, (l) => lines.push(l)), text: lines.join("\n") };
+        const errors: string[] = [];
+        return { code: main(argv, env, (l) => lines.push(l), (l) => errors.push(l)), text: lines.join("\n"), error: errors.join("\n") };
       };
       const absent = run(["--tools", tools], { CURITIBAI_DATA_DIR: dir });
       expect(absent.code).toBe(0);
-      expect(absent.text).toMatch(/no local copy at the given path; part \(b\) skipped/);
+      expect(absent.text).toMatch(/no carta-servicos.json in CURITIBAI_DATA_DIR; part \(b\) skipped/);
+      // A --carta path that does not exist is a mistake, not a skipped part.
+      const typo = run(["--tools", tools, "--carta", join(dir, "missing.json")]);
+      expect([typo.code, typo.error]).toEqual([2, "coverage-report: FAIL: cannot read the catalog (ENOENT)"]);
       expect(absent.text).toMatch(/"carta": null/);
 
       writeFileSync(join(dir, "carta-servicos.json"), JSON.stringify({ items: ITEMS }));
@@ -142,6 +148,8 @@ describe("coverage-report", () => {
       writeFileSync(join(dir, "bad.json"), "{");
       expect(run(["--tools", tools, "--carta", join(dir, "bad.json")]).code).toBe(2);
       expect(run(["--bogus", "x"]).code).toBe(2);
+      expect(run(["--carta", "--tools", tools]).code).toBe(2);
+      expect(run(["--tools", dir]).error).toBe("coverage-report: FAIL: cannot read the tools table (EISDIR)");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
