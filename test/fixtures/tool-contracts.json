@@ -1817,6 +1817,7 @@
       "type": "object",
       "properties": {
         "service": {
+          "description": "Which hand-written service guide. Give this or carta_id, not both.",
           "type": "string",
           "enum": [
             "156",
@@ -1826,8 +1827,13 @@
             "agenda_online",
             "creche",
             "detran"
-          ],
-          "description": "Which service guide."
+          ]
+        },
+        "carta_id": {
+          "description": "Numeric id of a Carta de Serviços service (the `id` from city_services_search), for a service with no hand-written guide: the guide is generated from the user's local Carta copy. A hand-written guide whose words match the service title is returned instead.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99999999
         },
         "open_step": {
           "description": "Ask the user's client to confirm opening this step's link (URL-mode elicitation); else returns the link.",
@@ -1836,9 +1842,6 @@
           "maximum": 10
         }
       },
-      "required": [
-        "service"
-      ],
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "outputSchema": {
@@ -1848,15 +1851,23 @@
           "type": "object",
           "properties": {
             "service": {
-              "type": "string",
-              "enum": [
-                "156",
-                "saude_ja",
-                "iptu",
-                "cartao_transporte",
-                "agenda_online",
-                "creche",
-                "detran"
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "156",
+                    "saude_ja",
+                    "iptu",
+                    "cartao_transporte",
+                    "agenda_online",
+                    "creche",
+                    "detran"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "const": "carta"
+                }
               ]
             },
             "title": {
@@ -1934,6 +1945,116 @@
                   "url",
                   "url_host",
                   "link_source"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "generated": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "const": "carta_copy"
+                },
+                "carta_id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "captured": {
+                  "type": "string"
+                },
+                "reviewed_by_hand": {
+                  "type": "boolean",
+                  "const": false
+                }
+              },
+              "required": [
+                "from",
+                "carta_id",
+                "captured",
+                "reviewed_by_hand"
+              ],
+              "additionalProperties": false
+            },
+            "carta_text": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "what": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "who": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "how": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "documents": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "channels": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cost": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "category",
+                "what",
+                "who",
+                "how",
+                "documents",
+                "channels",
+                "cost"
+              ],
+              "additionalProperties": false
+            },
+            "available_guides": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "service": {
+                    "type": "string",
+                    "enum": [
+                      "156",
+                      "saude_ja",
+                      "iptu",
+                      "cartao_transporte",
+                      "agenda_online",
+                      "creche",
+                      "detran"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "service",
+                  "title"
                 ],
                 "additionalProperties": false
               }

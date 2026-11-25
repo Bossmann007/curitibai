@@ -25,7 +25,7 @@ top=$(git rev-parse --show-toplevel 2>/dev/null) || fail2 "not a git checkout, c
 
 allowed="test/fixtures/carta_servicos_synthetic/carta-servicos.json"
 # sha256 of the synthetic fixture: update it in the same commit when the fixture changes on purpose.
-allowed_sha256="d290ab28a131eeb2673cd048787d8f4fdda44a3f372c4a1181a49d682b6e1e71"
+allowed_sha256="ddfe82e5a457e50ff66d641a873156c831d391ec3eef8d494d8d35cca9ecc577"
 
 sha256() {
   if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1

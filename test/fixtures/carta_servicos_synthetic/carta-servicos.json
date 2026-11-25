@@ -1,7 +1,7 @@
 {
  "source": "synthetic test fixture (invented services, not real catalog text)",
  "captured": "2026-11-19/20 synthetic",
- "count": 8,
+ "count": 9,
  "items": [
   {
    "cat": "Saúde",
@@ -57,7 +57,22 @@
    "title": "Licença sintética online",
    "what": "O que é? Pedido inventado feito pela internet...",
    "url": "https://servicos.curitiba.pr.gov.br/licenca-sintetica-online/9008",
-   "online": "https://exemplo-sintetico.curitiba.pr.gov.br/licenca"
+   "online": "https://exemplo-sintetico.curitiba.pr.gov.br/licenca",
+   "who": "Qualquer pessoa inventada para testes.",
+   "how": "Pedido sintético pelo site <b>de exemplo</b>: https://exemplo-sintetico.curitiba.pr.gov.br/licenca ou http://evil.example/x",
+   "documents": [
+    "Documento fictício A",
+    "Comprovante inventado B"
+   ],
+   "channels": "Central 156 e o site de exemplo.",
+   "cost": "Gratuito (texto sintético)."
+  },
+  {
+   "cat": "Imóvel e Construção",
+   "title": "IPTU inventado para teste",
+   "what": "O que é? Imposto inventado para testar a prioridade do guia escrito à mão...",
+   "url": "https://servicos.curitiba.pr.gov.br/iptu-inventado-para-teste/9009",
+   "online": null
   }
  ]
 }

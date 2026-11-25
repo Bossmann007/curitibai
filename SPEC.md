@@ -1,6 +1,6 @@
-# SPEC: v0.36.0 citizen eval
+# SPEC: v0.37.0 generated guides for every Carta service
 
-Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.36.0, phase A of docs/roadmap-1.0.md"). **This change publishes
+Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.37.0, phase C of docs/roadmap-1.0.md"). **This change publishes
 nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
@@ -8,48 +8,51 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Measure "useful to a Curitiba citizen" (the 1.0 gate, [docs/roadmap-1.0.md](docs/roadmap-1.0.md)) with a bank of
-realistic citizen questions that `scripts/verify` runs offline and that fails on any regression. Fix the v0.35 review
-Low on the scoreboard's wording.
+Gate 2 of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): every Carta de Serviços service reachable. When a citizen asks
+how to get a Prefeitura service with no hand-written guide, `city_service_guide` builds one from the user's local Carta
+copy (`CURITIBAI_DATA_DIR/carta-servicos.json`), with the same per-step consent markers as the hand-written guides
+([ADR 0012](docs/adr/0012-generated-carta-guides.md)).
 
 ## Changes
 
-1. **Question bank** (`test/eval/citizen-questions.json`): 114 questions in Brazilian Portuguese, invented, no
-   personal data, places only as public landmarks or coordinates the citizen gives. Each is
-   `{ id, question, tool, args, expect, tags? }`; `expect` is shape only: `status` (`ok`, `not_found`,
-   `outside_curitiba`, `guide`, `error` with `error` code), `fields` (paths present and non-empty) and `link` (path of
-   the https source or official link, `source_url` by default, `null` only for `local_csv_summary`). Every one of the
-   26 tools has at least 2 questions; ambiguous and outside-Curitiba questions are tagged. Questions no tool answers
-   have `tool: null` and a `gap` label (the Curitiba App gaps `le_digital`, `defesa_civil`, `estar`, `realtime_bus`,
-   `cultural_spaces`, `useful_phones`, plus `route_planning`, `vale_creche`, `other_city`).
-2. **Runner** (`test/eval/citizenEval.test.ts`, `test/eval/world.ts`, `test/eval/check.ts`): checks the bank (unique
-   ids, every tool twice, every App gap present), parses each `args` with its tool's input schema in strict mode,
-   calls the handler on fake timers at one fixed clock (2026-11-22 02:50, Curitiba) with a temporary data folder
-   (synthetic Carta, URBS, phones, events and CSV) and fetch stubbed per tool from the existing synthetic fixtures,
-   derives the status the same way for every question of a tool, and checks the structured result against the tool's
-   output schema. A guide answer needs a consent step with its text and an official link. `test/eval/check.test.ts`
-   tests the checker (an `ok` expectation fails on an empty list; missing field or link; outside-Curitiba vs other
-   errors; guide consent).
-3. **Summary** (`scripts/eval-summary.mjs`, dev only): `scripts/verify` prints `citizen eval: answered N / total;
-   gaps M: label n, ...` after vitest.
-4. **Scoreboard wording** (`scripts/coverage-report.mjs`, `docs/roadmap-1.0.md`): "aggregates only" becomes "numbers
-   per category" (the summary keeps Carta category labels). No behaviour change.
-5. **Docs and version**: the citizen eval section in `docs/roadmap-1.0.md`, CHANGELOG 0.36.0, version 0.36.0 in
-   `package.json`, `package-lock.json`, `server.json`.
-
-Why the shape differs from the brief: `expect` has no per-question "source link present" flag but a `link` path,
-because the tools put their link in different places (`place_at_point` per part, `local_csv_summary` none). The
-status is derived by the runner from each tool's answer list (`RESULT_PATH` in `test/eval/check.ts`), because the
-tools have no common status field.
+1. **Input** (`src/tools/cityServiceGuide.ts`): `service` becomes optional; new optional `carta_id` (integer, the `id`
+   of `city_services_search`). Exactly one of the two, else `invalid_argument`. Why not a new tool: same answer shape,
+   consent rule, allowlist and `open_step` ([ADR 0005](docs/adr/0005-extend-a-tool-before-adding-one.md)).
+2. **Priority**: when the service title has every word of a hand-written guide's Carta query (`handWrittenFor`), that
+   guide is returned, with a note and the requested service's own Carta links.
+3. **Generated guide** (`cartaGuideResult`, `generatedGuide`): fixed steps only: the first step in the conversation,
+   the official Carta page, the online service when its link passes `allowedUrl`, then login, data and documents,
+   send, pay, each "if the site asks" with `needs_consent` and a fixed consent text. `service` `carta`, `generated`
+   (`carta_id`, `captured`, `reviewed_by_hand: false`), `carta_text`, `checked_at` the copy's date, the Carta licence
+   note. The elicitation message names the Carta id and the host, never Carta text.
+4. **Untrusted text** (`cleanCartaText`): control and format characters removed; entities decoded, then tags and
+   `<`/`>` removed; Markdown links reduced to their text; link-like tokens (scheme, `www.`, bare host) that fail
+   `allowedUrl` become `[link removido]`; `cleanField` masks contact and CPF/CNPJ shapes and cuts at 300 code points
+   (title 120), never inside a link or a marker.
+5. **No copy / invalid copy / unknown id**: no steps; `carta.status` and `carta.message` (`CARTA_HOW_TO` when absent)
+   and `available_guides`; with `open_step`, `invalid_argument`. No network call, no new host.
+6. **Copy format** (`src/tools/cityServicesSearch.ts`): optional item fields `who`, `how`, `documents`, `channels`,
+   `cost` (string or list of strings; anything else ignored; kept raw up to 8,000 characters, cleaned on output).
+   `city_services_search` output unchanged. `OFFICIAL_URL` exported.
+7. **Scoreboard** (`scripts/coverage-report.mjs`): `classifyService(title, url)`; a service whose `url` matches
+   `GENERIC_GUIDE_URL` (equal to `OFFICIAL_URL`, test) and has no data rule or hand-written guide is guide via
+   `city_service_guide carta_id (generated)`, counted also as `guide_generated`; `reachable_without_generated_pct` and
+   the 30 most useful generated-only services (terminal only) keep the next hand-written guides visible.
+8. **Eval**: q115–q119 in `test/eval/citizen-questions.json` (synthetic ids 9008, 9005, 9004, 9009, 9008 with
+   `open_step`). The fixture gains the optional fields on 9008 and item 9009 ("IPTU inventado para teste"); its pin in
+   `scripts/check-no-catalog` is updated.
+9. **Docs and version**: `docs/tools.md` (row and the consent steps table), `docs/local-data.md`, `docs/privacy.md`,
+   `docs/sources.md`, `docs/roadmap-1.0.md`, README, ADR 0012, CHANGELOG 0.37.0, version 0.37.0 in `package.json`,
+   `package-lock.json`, `server.json`, tool contract snapshot.
 
 ## Out of scope
 
-New tools or guides to close a gap; live (network) runs of the bank; scoring an assistant's choice of tool (the bank
-fixes the tool and arguments; it checks the server's answers, not a model).
+New hand-written guides; reading full service pages (the copy stays a file the user saves by hand); any fetch of
+`www.curitiba.pr.gov.br` or `servicos.curitiba.pr.gov.br`.
 
 ## Check
 
-- `npx vitest run test/eval`: the bank checks, 99 questions answered offline with the expected shape, the checker
-  tests. A mutation (every guide step `needs_consent: false`) fails 7 guide questions.
-- `scripts/check-no-catalog` passes (the phones and events files exist only in the temporary folder);
-  `scripts/verify` exits 0 on the PR head and prints the summary line.
+- `npx vitest run test/cartaGuide.test.ts test/cityServiceGuide.test.ts test/eval`: generated guide shape, cleaning
+  cases, hand-written priority, no copy, hostile Carta text kept out of steps and elicitation, the guide invariants
+  over generated guides, the scoreboard rule equal to the tool's; `citizen eval: answered 104 / 119`.
+- `scripts/check-no-catalog` passes; `scripts/verify` exits 0 on the PR head.

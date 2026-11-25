@@ -2,8 +2,9 @@
 // Coverage scoreboard for the 1.0 gate (docs/roadmap-1.0.md). Dev only, not in the package; reads, never writes.
 // (a) the "Compared with the Curitiba App" table in docs/tools.md: rows by status (data, guide, partial, none, extra);
 // (b) the user's local Carta de Serviços copy (CURITIBAI_DATA_DIR/carta-servicos.json, the file city_services_search
-//     reads): each service is data (a tool answers it), guide (city_service_guide covers it) or none, by the title
-//     rules below. Absent copy: part (a) only.
+//     reads): each service is data (a tool answers it), guide (a hand-written city_service_guide guide, or the guide
+//     the tool generates from the copy, counted apart as guide_generated) or none, by the rules below. Absent copy:
+//     part (a) only.
 // Uncovered services are ranked by usefulness to a Curitiba citizen (usefulness below); their titles go to the terminal only; the JSON summary at the end holds numbers per category (category labels, counts, percentages), never a service title.
 // Usage: scripts/coverage-report.mjs [--tools <docs/tools.md>] [--carta <carta-servicos.json>]
 // Exit: 0 report printed, 2 an input could not be read or parsed (unknown table status, bad catalog shape, a --carta
@@ -29,6 +30,13 @@ export const GUIDE_TERMS = {
   creche: [["creche"], ["cadastramento", "escolar"]],
   detran: [["detran"]],
 };
+
+/**
+ * A service city_service_guide's generated guide reaches (carta_id, since 0.37.0): its official page is a Carta
+ * service page, the same pattern the tool accepts (OFFICIAL_URL in src/tools/cityServicesSearch.ts; a test keeps them
+ * equal) and every such page passes the tool's host allowlist.
+ */
+export const GENERIC_GUIDE_URL = /^https:\/\/servicos\.curitiba\.pr\.gov\.br\/[a-z0-9-]+\/(\d+)$/;
 
 /**
  * Title rules for "a tool answers it": every word of one term set, as whole title words. Narrow on purpose: a miss
@@ -65,6 +73,8 @@ export const ACTION_WORDS = new Set([
   "agendamento", "emissao", "licenca", "alvara", "autorizacao", "denuncia", "permissao", "cessao", "uso", "reserva",
   "locacao", "alteracao", "pagamento", "parcelamento", "isencao", "via",
 ]);
+
+export const GENERATED_VIA = "city_service_guide carta_id (generated)";
 
 const matches = (words, terms) => terms.some((t) => t.every((w) => words.has(w)));
 
@@ -104,8 +114,11 @@ export function usefulness(item) {
   return [...words].some((w) => EVERYDAY_WORDS.has(w)) ? 3 : 2;
 }
 
-/** Coverage of one Carta service from its title: data (with the tool), guide (with the guide id) or none. */
-export function classifyService(title) {
+/**
+ * Coverage of one Carta service: data (with the tool), guide (a hand-written guide's id, else the generated guide when
+ * its official URL is one the tool reaches) or none.
+ */
+export function classifyService(title, url) {
   const words = new Set(titleWords(title));
   if (![...words].some((w) => ACTION_WORDS.has(w))) {
     const rule = DATA_RULES.find((r) => matches(words, r.terms));
@@ -113,6 +126,7 @@ export function classifyService(title) {
   }
   const guide = Object.entries(GUIDE_TERMS).find(([, terms]) => matches(words, terms));
   if (guide) return { coverage: "guide", via: `city_service_guide ${guide[0]}` };
+  if (typeof url === "string" && GENERIC_GUIDE_URL.test(url)) return { coverage: "guide", via: GENERATED_VIA };
   return { coverage: "none", via: null };
 }
 
@@ -188,11 +202,16 @@ export function cartaItems(json) {
 export function cartaReport(items) {
   const byCat = new Map();
   const uncovered = [];
+  const generatedOnly = [];
   for (const item of items) {
-    const { coverage } = classifyService(item.title);
-    const c = byCat.get(item.cat) ?? { category: item.cat, total: 0, data: 0, guide: 0, none: 0 };
+    const { coverage, via } = classifyService(item.title, item.url);
+    const c = byCat.get(item.cat) ?? { category: item.cat, total: 0, data: 0, guide: 0, guide_generated: 0, none: 0 };
     c.total += 1;
     c[coverage] += 1;
+    if (via === GENERATED_VIA) {
+      c.guide_generated += 1;
+      generatedOnly.push({ category: item.cat, title: item.title, usefulness: usefulness(item) });
+    }
     byCat.set(item.cat, c);
     if (coverage === "none") uncovered.push({ category: item.cat, title: item.title, usefulness: usefulness(item) });
   }
@@ -201,22 +220,27 @@ export function cartaReport(items) {
     .sort((a, b) => b.none - a.none || a.category.localeCompare(b.category, "pt-BR"));
   const sum = (k) => categories.reduce((n, c) => n + c[k], 0);
   const total = items.length;
-  uncovered.sort(
-    (a, b) => b.usefulness - a.usefulness || a.category.localeCompare(b.category, "pt-BR") || a.title.localeCompare(b.title, "pt-BR"),
-  );
+  const byUsefulness = (a, b) =>
+    b.usefulness - a.usefulness || a.category.localeCompare(b.category, "pt-BR") || a.title.localeCompare(b.title, "pt-BR");
+  uncovered.sort(byUsefulness);
+  generatedOnly.sort(byUsefulness);
   const tier = (n) => uncovered.filter((u) => u.usefulness === n).length;
   return {
     total,
     data: sum("data"),
     guide: sum("guide"),
+    guide_generated: sum("guide_generated"),
     none: sum("none"),
     data_pct: pct(sum("data"), total),
     guide_pct: pct(sum("guide"), total),
+    guide_generated_pct: pct(sum("guide_generated"), total),
     none_pct: pct(sum("none"), total),
     reachable_pct: pct(sum("data") + sum("guide"), total),
+    reachable_without_generated_pct: pct(sum("data") + sum("guide") - sum("guide_generated"), total),
     uncovered_by_usefulness: { everyday: tier(3), other: tier(2), business_or_internal: tier(1) },
     categories,
     uncovered,
+    generated_only: generatedOnly,
   };
 }
 
@@ -224,7 +248,7 @@ export function cartaReport(items) {
 export function summary(app, carta) {
   return {
     app: { ...app },
-    carta: carta === null ? null : Object.fromEntries(Object.entries(carta).filter(([k]) => k !== "uncovered")),
+    carta: carta === null ? null : Object.fromEntries(Object.entries(carta).filter(([k]) => k !== "uncovered" && k !== "generated_only")),
   };
 }
 
@@ -280,12 +304,15 @@ export function main(argv, env = process.env, out = console.log, err = console.e
     } else {
       carta = cartaReport(items);
       out(`Carta de Serviços (local copy): ${carta.total} services, reachable ${carta.reachable_pct}%`);
-      out(`  data ${carta.data} (${carta.data_pct}%) | guide ${carta.guide} (${carta.guide_pct}%) | none ${carta.none} (${carta.none_pct}%)`);
-      for (const c of carta.categories) out(`  ${c.category}: ${c.total} | data ${c.data} | guide ${c.guide} | none ${c.none} | reachable ${c.reachable_pct}%`);
+      out(`  data ${carta.data} (${carta.data_pct}%) | guide ${carta.guide} (${carta.guide_pct}%; generated ${carta.guide_generated}) | none ${carta.none} (${carta.none_pct}%)`);
+      for (const c of carta.categories) out(`  ${c.category}: ${c.total} | data ${c.data} | guide ${c.guide} (generated ${c.guide_generated}) | none ${c.none} | reachable ${c.reachable_pct}%`);
       const t = carta.uncovered_by_usefulness;
       out(`  uncovered by usefulness: everyday ${t.everyday} | other ${t.other} | business or internal ${t.business_or_internal}`);
       out(`Top ${TOP_UNCOVERED} uncovered services by usefulness to a citizen (3 everyday, 2 other, 1 business; local titles, terminal only):`);
       for (const u of carta.uncovered.slice(0, TOP_UNCOVERED)) out(`  ${u.usefulness} [${u.category}] ${u.title}`);
+      out(`  reachable without generated guides ${carta.reachable_without_generated_pct}%`);
+      out(`Top ${TOP_UNCOVERED} services reached only by the generated guide, by usefulness (candidates for a hand-written guide; terminal only):`);
+      for (const u of carta.generated_only.slice(0, TOP_UNCOVERED)) out(`  ${u.usefulness} [${u.category}] ${u.title}`);
     }
     out("JSON summary (numbers per category):");
     out(JSON.stringify(summary(app, carta), null, 2));

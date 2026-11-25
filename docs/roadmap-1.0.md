@@ -47,7 +47,9 @@ A dev script, not in the package; it reads and never writes or fetches. It print
   are not.
 - **Part (b)**, only when your local Carta copy exists (the same `carta-servicos.json` that `city_services_search`
   reads, [Local data files](local-data.md)): each service classed data, guide or none, with counts and percentages
-  per category, the uncovered count per usefulness score, and the 30 most useful uncovered services. Those titles go
+  per category (since v0.37.0 also `guide_generated` and `reachable_without_generated_pct`), the uncovered count per
+  usefulness score, the 30 most useful uncovered services and the 30 most useful services only the generated guide
+  reaches. Those titles go
   to the terminal only.
 - **A JSON summary** with numbers per category (category labels, counts and percentages, no service title), safe to
   paste in a pull request.
@@ -55,13 +57,19 @@ A dev script, not in the package; it reads and never writes or fetches. It print
 How a service is classed, from the words of its title (accents and case ignored, whole words):
 
 - **guide:** the title has the words of one of `city_service_guide`'s Carta queries (the same match the tool uses;
-  a test keeps the script's copy equal to the tool's).
+  a test keeps the script's copy equal to the tool's), or, since v0.37.0, the service's `url` is a Carta service page
+  that the generated guide reaches (`city_service_guide` with `carta_id`, [ADR 0012](adr/0012-generated-carta-guides.md);
+  the same URL pattern as the tool, kept equal by a test). The second kind is also counted as `guide_generated`, in
+  total and per category, with `reachable_without_generated_pct` beside `reachable_pct`; the terminal lists the 30
+  most useful services reached only by the generated guide (candidates for a hand-written guide, titles terminal only).
 - **data:** the title matches one of the script's narrow rules (for example "vacina", "feira", "linhas de ônibus",
   "feriado") and has no word that asks the citizen to act (matrícula, inscrição, solicitação, agendamento, emissão,
   licença, segunda via and similar).
-- **none:** anything else.
+- **none:** anything else (with a valid copy, only an item whose `url` is not a Carta service page).
 
-The rules err toward none: the scoreboard can understate coverage, never overstate it. A service wrongly counted as
+The rules err toward none: the scoreboard can understate coverage, never overstate it. Since v0.37.0 every service of a
+valid copy is at least a generated guide, so reachable reads 100%; `reachable_without_generated_pct` is the number to
+watch for hand-written coverage. A service wrongly counted as
 none is fixed by adding a rule and a test, not by changing the gate.
 
 The catalog itself is never committed (`scripts/check-no-catalog`); this page and the pull requests carry only
@@ -98,3 +106,6 @@ assistant, useful phones and cultural spaces (partial); Curitiba Lê Digital, De
 buses (none). Part (b) depends on each owner's local Carta copy; run the scoreboard for the current numbers.
 At v0.36.0 the citizen eval answers 99 of 114 questions; 15 are gaps (Lê Digital, Defesa Civil alerts, EstaR and
 real-time buses 2 each, cultural spaces 2, useful phones 1, route planning 1, Vale Creche 1, other cities 2).
+At v0.37.0 (phase C) every service of a valid Carta copy is reachable through `city_service_guide`: a hand-written
+guide, or the guide generated from the copy (`carta_id`). The citizen eval answers 104 of 119 questions (5 new
+questions on generated guides); the 15 gaps are unchanged.

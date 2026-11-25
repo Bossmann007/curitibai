@@ -18,3 +18,4 @@ a new record that supersedes the old one; the old one stays, marked "Superseded 
 | [0009](0009-census-household-floor.md) | `census_at_point`: a floor of 20 occupied households per figure | Accepted |
 | [0010](0010-service-guides-consent-at-every-step.md) | `city_service_guide`: steps and official links for services that need a login; the citizen acts, with consent at every step | Accepted |
 | [0011](0011-one-place-facade.md) | `place_at_point`: one facade for place, service areas and census, one turn at the host gate per call | Accepted |
+| [0012](0012-generated-carta-guides.md) | `city_service_guide`: a guide generated from fixed steps for any service of the user's Carta copy; hand-written guides keep priority | Accepted |

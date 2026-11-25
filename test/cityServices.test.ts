@@ -46,9 +46,9 @@ async function call(args: Record<string, unknown>, dir: string = FIXTURE_DIR) {
 
 describe("catalog file", () => {
   it("builds ids from the official URL, categories with counts, and the capture date", () => {
-    expect(CATALOG.services.map((s) => s.id)).toEqual([9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008]);
+    expect(CATALOG.services.map((s) => s.id)).toEqual([9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009]);
     expect(CATALOG.categories).toEqual([
-      { name: "Imóvel e Construção", count: 3 },
+      { name: "Imóvel e Construção", count: 4 },
       { name: "Saúde", count: 3 },
       { name: "Serviços Funerários", count: 2 },
     ]);
@@ -110,7 +110,7 @@ describe("privacy guards", () => {
 describe("search", () => {
   it("with no filter returns all services and the categories", () => {
     const r = search({});
-    expect(r.data.total).toBe(8);
+    expect(r.data.total).toBe(9);
     expect(r.data.categories).toHaveLength(3);
     expect(r.checked_at).toBe("2026-11-19");
     expect(r.license_note).toContain("Prefeitura Municipal de Curitiba — Carta de Serviços");
@@ -163,7 +163,7 @@ describe("search", () => {
       offset = r.data.next_offset;
     }
     expect(seen.sort()).toEqual(CATALOG.services.map((s) => s.id));
-    expect(search({ offset: 100 }).data).toMatchObject({ total: 8, items: [], next_offset: null });
+    expect(search({ offset: 100 }).data).toMatchObject({ total: 9, items: [], next_offset: null });
   });
 
   it("warns after 180 days from the file's capture date, in Curitiba time", () => {
