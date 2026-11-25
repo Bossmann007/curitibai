@@ -24,8 +24,8 @@ Police stations with hours, phase B of the 1.0 roadmap. 27 tools. Publishes noth
   `places_search` for Polícia Militar units.
 - E-mails: the layers publish `pc.pr.gov.br`, `pf.gov.br` and `prf.gov.br` addresses; the e-mail allowlist
   (`curitiba.pr.gov.br` only) and the phone allowlist are unchanged, so `emails` is empty for every police record.
-- Descriptions: `places_search` now says to prefer it only for fire stations or when other place tools find nothing,
-  and points to `city_facilities_search` for delegacias with hours; `city_facilities_search` names delegacias, and its
+- Descriptions: `places_search` now says to prefer it only for fire and Polícia Militar stations or when other tools
+  find nothing, and points to `city_facilities_search` for delegacias; `city_facilities_search` names delegacias, and its
   `type` description names the four types and points to `places_search` for fire stations and Polícia Militar units
   (snapshot updated). `places_search` and its bundled OSM police list are unchanged otherwise.
 - No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
@@ -33,7 +33,8 @@ Police stations with hours, phase B of the 1.0 roadmap. 27 tools. Publishes noth
   [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
 - Citizen eval: new q127 ("Qual o endereço e o horário da delegacia do Tatuquara?") answered by
   `city_facilities_search` `delegacia` with `bairro`, on a synthetic fixture: the delegacia's name, address, hours,
-  phone and the note. 123 of 127 answered. The Curitiba App table has no row for these places and is unchanged.
+  phone and the note. q035 ("Onde ficam as delegacias de polícia em Curitiba?") moves from `places_search` to
+  `city_facilities_search` `delegacia`, the route the new descriptions give. 123 of 127 answered. The Curitiba App table has no row for these places and is unchanged.
 
 ## 0.48.0 - 2026-11-25
 

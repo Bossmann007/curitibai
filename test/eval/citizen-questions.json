@@ -33,7 +33,7 @@
   {"id":"q032","question":"Como agendo atendimento no Detran em Curitiba?","tool":"city_service_guide","args":{"service":"detran"},"expect":{"status":"guide","fields":["data.steps","data.title"]}},
   {"id":"q033","question":"Abre para mim o site do Saúde Já","tool":"city_service_guide","args":{"service":"saude_ja","open_step":2},"expect":{"status":"guide","fields":["data.open_step.url","data.title"]}},
   {"id":"q034","question":"Quais bibliotecas públicas tem em Curitiba?","tool":"places_search","args":{"category":"library"},"expect":{"status":"ok","fields":["data.places"]}},
-  {"id":"q035","question":"Onde ficam as delegacias de polícia em Curitiba?","tool":"places_search","args":{"category":"police"},"expect":{"status":"ok","fields":["data.places"]}},
+  {"id":"q035","question":"Onde ficam as delegacias de polícia em Curitiba?","tool":"city_facilities_search","args":{"type":"delegacia"},"expect":{"status":"ok","fields":["data.items.0.name","data.items.0.address","data.items.0.hours.1"]}},
   {"id":"q036","question":"Onde tem quartel do Corpo de Bombeiros em Curitiba?","tool":"places_search","args":{"category":"fire_station"},"expect":{"status":"ok","fields":["data.places"]}},
   {"id":"q037","question":"Tem uma biblioteca chamada Fulano de Tal em Curitiba?","tool":"places_search","args":{"category":"library","name":"fulano de tal"},"expect":{"status":"not_found"}},
   {"id":"q038","question":"Quais linhas de Ligeirão existem?","tool":"bus_lines_search","args":{"category":"ligeirao"},"expect":{"status":"ok","fields":["data.items"]}},

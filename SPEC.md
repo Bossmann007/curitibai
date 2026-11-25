@@ -50,12 +50,14 @@ as read on 2026-11-22 for `useful_phones` (no new read). No new host. Details:
 4. **Descriptions**: `city_facilities_search` names delegacias; its `type` description names the four types and
    points to `places_search` for fire stations and Polícia Militar units; `places_search` says to prefer it only for
    fire stations or when other place tools find nothing, and points to `city_facilities_search` for delegacias with
-   hours. Every description stays at most 400 characters. Tool contract snapshot updated.
+   hours. Every tool description stays at most 400 characters (`test/contracts.test.ts`). Tool contract snapshot
+   updated.
 5. **Eval**: q127 "Qual o endereço e o horário da delegacia do Tatuquara?" → `city_facilities_search` `{type:
    "delegacia", bairro: "tatuquara"}` (the record's name has no "Tatuquara"; its `bairro` does), synthetic fixture
    `test/fixtures/geocuritiba/delegacia_synthetic.json` (plus `policia_federal_synthetic.json`,
    `policia_rodoviaria_federal_synthetic.json` and `policia_cientifica_synthetic.json` for the unit tests). q035
-   stays on `places_search`.
+   ("Onde ficam as delegacias de polícia em Curitiba?") moves from `places_search` `police` to `city_facilities_search`
+   `{type: "delegacia"}`, the route the new descriptions give; three questions stay on `places_search`.
 6. **Docs and version**: README, docs/tools.md (row, which-tool rows, the `places_search` note), docs/sources.md
    (layers 143, 146, 147 and 145, the robots.txt recheck, every hand request, the dropped e-mails), docs/roadmap-1.0.md,
    CHANGELOG 0.49.0, version 0.49.0 in `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has
