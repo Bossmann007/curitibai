@@ -18,7 +18,9 @@ Guarda Municipal modules and regional núcleos, phase B of the 1.0 roadmap. 27 t
 - Every note for these types starts "Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists
   places, it does not dispatch help." 153 is in the layers' text; 153 and 190 are in the "Emergências" section of the
   Instituto Municipal de Turismo's "Telefones Úteis" page as read on 2026-11-22. The module note says a place with no
-  module may still be patrolled. A `telefone` of "153" is kept, as a three-digit public number. The `type`
+  module may still be patrolled and that a phone of 153 is the Guarda's emergency line, not the module's own (11
+  modules publish 153 as their `telefone`; it is kept, as a three-digit public number). The núcleo note says `bairro`
+  filters by where the núcleo is: the bairros it covers are only in its `hours`. The `type`
   description names the new types (snapshot updated).
 - No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
   Five hand requests to it that day (robots.txt, one whole-layer read and the metadata of each layer), recorded in

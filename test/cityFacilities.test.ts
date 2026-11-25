@@ -648,6 +648,8 @@ describe("city_facilities_search", () => {
     stubFetch(route("modulo da guarda", "modulo_da_guarda_synthetic.json"));
     const out = await search({ type: "modulo da guarda", name: "praca inventada" });
     expect(out.data.items[0]).toMatchObject({ phones: ["153"], hours: ["Emergência, ligue 153."] });
+    expect(out.note).toMatch(/A phone of 153 is the Guarda's emergency line, not the module's own/);
+    expect(out.note).toMatch(/an empty result is not a statement about the Guarda's presence/);
   });
 
   it("v0.48.0: a regional núcleo keeps operational and administrative hours and the bairros it covers", async () => {
@@ -669,6 +671,7 @@ describe("city_facilities_search", () => {
     });
     expect(out.note.startsWith("Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar).")).toBe(true);
     expect(out.note).toMatch(/Núcleo Regional da Defesa Social/);
+    expect(out.note).toMatch(/`bairro` filters by where the núcleo is, not by the bairros it covers/);
     expect(out.note).toMatch(/type `modulo da guarda`/);
   });
 

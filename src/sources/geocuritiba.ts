@@ -89,12 +89,14 @@ export const GUARD_EMERGENCY_NOTE =
   "Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists places, it does not dispatch help.";
 const GUARD_MODULE_NOTE =
   "The Guarda Municipal's modules as listed by IPPUC, hours as published (see `updated`); `open_periods.all_day` is " +
-  "the layer's 24-hour flag and `hours` the detail. A place with no module here may still be patrolled: no result " +
-  "says nothing about the Guarda's presence. The regional núcleos are type `nucleo da guarda`.";
+  "the layer's 24-hour flag and `hours` the detail. A phone of 153 is the Guarda's emergency line, not the " +
+  "module's own. A place with no module here may still be patrolled: an empty result is not a statement about the " +
+  "Guarda's presence. The regional núcleos are type `nucleo da guarda`.";
 const GUARD_NUCLEUS_NOTE =
   "The Guarda Municipal's regional núcleos, named Núcleo Regional da Defesa Social in the layer; operational and " +
-  "administrative hours and the bairros each one covers are in `hours` as published (see `updated`). The modules " +
-  "are type `modulo da guarda`.";
+  "administrative hours and the bairros each one covers are in `hours` as published (see `updated`). `bairro` " +
+  "filters by where the núcleo is, not by the bairros it covers: to find which núcleo covers a bairro, list them " +
+  "all and read the \"Bairros de abrangência\" line in `hours`. The modules are type `modulo da guarda`.";
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;

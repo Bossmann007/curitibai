@@ -37,12 +37,14 @@ page as read on 2026-11-22 for `useful_phones` (no new read). No new host. Detai
    No bare `guarda`, `guarda municipal` (module or núcleo), `seguranca`, `policia`, `modulo` or `nucleo` alias.
 2. **Notes**. Both types lead with "Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists
    places, it does not dispatch help." Modules: hours as published (see `updated`), `open_periods.all_day` is the
-   layer's 24-hour flag and `hours` the detail; a place with no module in this list may still be patrolled, so no
-   result is not a statement about the Guarda's presence; the regional núcleos are type `nucleo da guarda`. Núcleos:
+   layer's 24-hour flag and `hours` the detail; a place with no module in this list may still be patrolled, so an
+   empty result is not a statement about the Guarda's presence; the regional núcleos are type `nucleo da guarda`. Núcleos:
    named "Núcleo Regional da Defesa Social" in the layer; hours (operational and administrative) and the bairros each
-   covers are in `hours` as published; modules are type `modulo da guarda`. No counts (they go stale).
-3. **Descriptions**: the `type` description names the two types; within 400 characters. Tool contract snapshot
-   updated.
+   covers are in `hours` as published, and `bairro` filters by where the núcleo is, not by the bairros it covers (list
+   them all and read that line); modules are type `modulo da guarda`. A module phone of 153 is the Guarda's emergency
+   line, not the module's own. No counts (they go stale).
+3. **Descriptions**: the `type` description names the two types (the tool description is unchanged). Tool contract
+   snapshot updated.
 4. **Eval**: q126 "Tem módulo da Guarda Municipal no Parque Tanguá?" → `city_facilities_search` `{type: "modulo da
    guarda", name: "tangua"}`, synthetic fixture `test/fixtures/geocuritiba/modulo_da_guarda_synthetic.json` (plus
    `nucleo_da_guarda_synthetic.json` for the unit tests).
