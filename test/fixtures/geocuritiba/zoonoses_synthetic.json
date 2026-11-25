@@ -1,0 +1,28 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Centro de Controle de Zoonoses e Vetores Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "136",
+        "compl_end": "CEP: 81.000-136",
+        "divulgar_endereco": "Sim",
+        "bairro": "Cidade Industrial de Curitiba",
+        "regional": "CIC",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1360",
+        "email": "ccz.inventado@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1761102000000,
+        "observacao": "Atendimento:\r\n-Diariamente, das 8h às 12h e das 13h às 17h\r\nNos finais de semana e feriados o atendimento é em regime de plantão."
+      },
+      "geometry": { "x": -49.33, "y": -25.48 }
+    }
+  ]
+}

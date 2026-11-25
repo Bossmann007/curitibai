@@ -531,6 +531,83 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/referral .* is through the health units \(`unidade de saude`\)/);
   });
 
+  it.each([
+    ["Vigilância Sanitária", "vigilancia sanitaria", 167],
+    ["vigilancias sanitarias", "vigilancia sanitaria", 167],
+    ["Zoonoses", "zoonoses", 136],
+    ["Centro de Controle de Zoonoses", "zoonoses", 136],
+    ["CCZ", "zoonoses", 136],
+    ["Hospital Veterinário", "hospital veterinario", 112],
+    ["Hospital Veterinário Municipal", "hospital veterinario", 112],
+  ] as const)("v0.47.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.47.0: bare \"vigilancia\", \"veterinario\", \"animal\", \"pet\" and \"hospital\" are not types", () => {
+    for (const name of ["vigilancia", "veterinario", "veterinaria", "animal", "animais", "pet", "hospital"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+    expect(resolveType("hospital publico")).toMatchObject({ id: "hospital publico" });
+  });
+
+  it("v0.47.0: Vigilância Sanitária offices come back with hours as published, landlines and the SMS e-mail", async () => {
+    const calls = stubFetch(route("vigilancia sanitaria", "vigilancia_sanitaria_synthetic.json"));
+    const out = await search({ type: "vigilância sanitária", bairro: "batel" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/167`);
+    expect(out.data).toMatchObject({ type: "vigilancia sanitaria", label: "Vigilância Sanitária", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Vigilância Sanitária Inventada",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h às 18h", "Protocolo:", "-Telefone: [masked]"],
+      open_periods: { morning: true, afternoon: true, night: false, all_day: false },
+      phones: ["(41) 3333-1670", "(41) 3333-1671"],
+      emails: ["visa.inventada@sms.curitiba.pr.gov.br"],
+      updated: "2026-04-15",
+    });
+    expect(out.note).toMatch(/Vigilância Sanitária offices, one per regional, hours as published/);
+    expect(out.note).not.toMatch(/ouvidoria|192|CVV/);
+  });
+
+  it("v0.47.0: the zoonoses centre keeps the weekend and holiday text in `hours`", async () => {
+    stubFetch(route("zoonoses", "zoonoses_synthetic.json"));
+    const out = await search({ type: "ccz" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/136`);
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro de Controle de Zoonoses e Vetores Inventado",
+      hours: [
+        "Atendimento:",
+        "-Diariamente, das 8h às 12h e das 13h às 17h",
+        "Nos finais de semana e feriados o atendimento é em regime de plantão.",
+      ],
+      phones: ["(41) 3333-1360"],
+      emails: ["ccz.inventado@sms.curitiba.pr.gov.br"],
+    });
+    expect(out.note).toMatch(/including what the layer says about weekends and holidays/);
+    expect(out.note).toMatch(/type `hospital veterinario`/);
+  });
+
+  it("v0.47.0: the veterinary hospital has an address only; the note says nothing else is published and to ask the 156", async () => {
+    const calls = stubFetch(route("hospital veterinario", "hospital_veterinario_synthetic.json"));
+    const out = await search({ type: "hospital veterinario" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/112`);
+    expect(out.data).toMatchObject({ total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Hospital Veterinário Inventado",
+      address: "R. INVENTADA, 112 - Parque Inventado - CEP: 82.000-112",
+      bairro: "Taboão",
+      hours: [],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: false },
+      phones: [],
+      emails: [],
+      updated: "2024-12-18",
+    });
+    expect(out.note).toMatch(/address only: no hours, phone, services or who it serves/);
+    expect(out.note).toMatch(/mean not published, not closed/);
+    expect(out.note).toMatch(/ask the 156 before going/);
+    expect(out.note).not.toMatch(/free|gratuit/i);
+  });
+
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
     const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
     const out = await search({ type: "UBS", name: "caximba" });
