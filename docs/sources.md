@@ -1327,7 +1327,7 @@ each with a web fetch on 2026-11-25 (the server never contacts these hosts):
   Alerta", Anatel, modified 2025-11-17): alerts reach "celulares compatíveis, conectados às redes 4G ou 5G" as a pop-up
   on the screen; its rollout table lists "04/12/2024 | Sul e Sudeste | Todos os municípios | Sistema disponível".
   The parent page `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres` says it was
-  implanted for good in the South and Southeast in December 2024. Linked in step 3 (host `www.gov.br`, already allowed).
+  implanted for good in the South and Southeast in December 2024. Linked in step 4 (host `www.gov.br`, already allowed).
 - Not used (not verified on an official page that loaded): a WhatsApp sign-up number, the `CONSULTAR` and `SAIR`
   SMS commands and silent-mode behaviour, seen only in news results (Bem Paraná, Correio Braziliense, Olhar Digital).
   The Prefeitura's Defesa Civil news pages (`/noticias/defesa-civil-de-curitiba-alerta-para-fortes-chuvas-nesta-sexta-feira/84977`,

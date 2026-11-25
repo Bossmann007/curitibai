@@ -447,10 +447,11 @@ export const GUIDES = {
       "Guide note (defesa_civil): the SMS steps (CEP to 40199, free, a confirmation reply) come from the Paraná " +
       "government's service page on www.parana.pr.gov.br (read 2026-11-25), which is not on the link allowlist, so " +
       "those steps have no link. Commands to list or cancel a CEP and other sign-up channels were not verified and " +
-      "are left out. Step 3 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
+      "are left out. Step 4 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
       "Defesa Civil 199. ",
     steps: [
       FIRST_STEP,
+      CARTA_PAGE,
       {
         action:
           "Ver os avisos do INMET que cobrem Curitiba agora com a ferramenta weather_alerts (gravidade, evento, início " +
@@ -972,11 +973,12 @@ export async function cartaGuideResult(
 
 export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof cityServiceGuideOutput> = {
   name: "city_service_guide",
-  title: "Guide to a Curitiba service that needs a login",
+  title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links to use a city service that needs a login: a hand-written guide (service), or one " +
-    "generated from the user's local Carta copy for any Carta service (carta_id from city_services_search). Never " +
-    "logs in or submits. Ask the user before each needs_consent step; never type their passwords or payment data.",
+    "Steps and official links for a city service that needs a login or sign-up, or for Defesa Civil phone alerts: " +
+    "a hand-written guide (service), or one generated from the user's local Carta copy (carta_id from " +
+    "city_services_search). Never logs in, submits or sends. Ask the user before each needs_consent step; never " +
+    "type their passwords or payment data.",
   inputSchema: cityServiceGuideInput,
   outputSchema: cityServiceGuideOutput,
   handler: async (args, ctx) => {

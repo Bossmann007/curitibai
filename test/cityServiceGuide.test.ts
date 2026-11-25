@@ -361,15 +361,19 @@ describe("Defesa Civil alerts guide (since 0.39.0)", () => {
     expect(send[0]!.step).toBeGreaterThan(cep[0]!.step);
     expect(send[0]!.consent).toMatch(/Só se o cidadão confirmar/);
     expect(send[0]!.consent).toMatch(/o assistente nunca envia/);
-    // No step asks for the CEP in the conversation.
-    expect(steps.filter((s) => !s.needs_consent).every((s) => !/CEP/.test(s.action) || /não peça/i.test(s.action))).toBe(true);
+    // The CEP appears only in consent steps (typed in the SMS app), never in a step that stays in the conversation.
+    expect(steps.filter((s) => /CEP/.test(`${s.action} ${s.citizen_types_on_site.join(" ")}`)).every((s) => s.needs_consent)).toBe(true);
   });
 
   it("links only the Anatel page on www.gov.br and points to weather_alerts for INMET's warnings", async () => {
     const o = await guide();
-    expect(allSteps(o).filter((s) => s.url !== null).map((s) => s.url)).toEqual([
+    // Fixed links: only Anatel's page (the Carta step links the user's Carta copy or the Carta listing).
+    expect(allSteps(o).filter((s) => s.url !== null && s.link_source === "official_allowlist").map((s) => s.url)).toContain(
       "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta",
-    ]);
+    );
+    expect(new Set(allSteps(o).filter((s) => s.url !== null).map((s) => s.url_host))).toEqual(
+      new Set(["www.gov.br", "www.curitiba.pr.gov.br"]),
+    );
     expect(allSteps(o).some((s) => !s.needs_consent && /weather_alerts/.test(s.action))).toBe(true);
     expect(o.data.what).toMatch(/199/);
     expect(o.data.what).toMatch(/bairro/);

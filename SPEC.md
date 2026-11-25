@@ -24,22 +24,24 @@ listing with no warnings tool, an INMET REST wrapper for station data, NWS-only 
 ## Changes
 
 1. **Guide** (`src/tools/cityServiceGuide.ts`): `defesa_civil`. Steps: ask the citizen (no personal data in the
-   conversation); read INMET's warnings with `weather_alerts` (stays in the conversation); open the Anatel "Defesa
-   Civil Alerta" page on `www.gov.br` (cell broadcast: compatible phones on 4G or 5G in the risk area, no sign-up);
+   conversation); the Carta page (as `le_digital` and `estar`); read INMET's warnings with `weather_alerts` (stays in
+   the conversation); open the Anatel "Defesa Civil Alerta" page on `www.gov.br` (cell broadcast: compatible phones on 4G or 5G in the risk area, no sign-up);
    type the CEP in the phone's SMS app to 40199 (consent; nothing sent); send the SMS (consent; the citizen sends it,
    the assistant never sends anything). The CEP is never asked in the conversation and is not a tool input.
    Emergencies: Defesa Civil 199 (in `what`). `fromWebSearchAt` 2026-11-25; the `note` says the SMS steps come from
    the Paraná government's page (`www.parana.pr.gov.br`, not on the link allowlist, so no link), that list/cancel
    commands and other channels were not verified, and that no per-bairro alert feed exists here.
-2. **Links**: only `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta`
+2. **Links**: the Carta step, plus only `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta`
    (host `www.gov.br`, already in `EXACT_HOSTS`). `EXACT_HOSTS` and `ALLOWED_HOSTS` unchanged; no new network host.
 3. **Carta words**: `[["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]]`, mirrored in
    `scripts/coverage-report.mjs` `GUIDE_TERMS`.
-4. **`weather_alerts`**: its note also names INMET's warnings page and the `defesa_civil` guide.
-5. **Eval**: q102 and q103 move from the `defesa_civil` gap to the guide.
+4. **`weather_alerts`**: its note also names INMET's warnings page (`alertas2.inmet.gov.br`, text only, outside the
+   guide allowlist, as `weather_forecast` names `portal.inmet.gov.br`) and the `defesa_civil` guide.
+5. **Eval**: q102 ("is there an alert now") moves to `weather_alerts` (city-wide; no per-bairro feed), q103 ("how do
+   I receive alerts") to the guide. The tool title and description name sign-ups and phone alerts, not only logins.
 6. **Docs and version**: `docs/tools.md` (row, fixed-link table, comparison row "Defesa Civil alerts" covered by
    guide), `docs/sources.md`, `docs/roadmap-1.0.md`, README, CHANGELOG 0.39.0, version 0.39.0 in `package.json`,
-   `package-lock.json`, `server.json`, tool contract snapshot (the `service` enum).
+   `package-lock.json`, `server.json`, tool contract snapshot (the `service` enum, the tool title and description).
 
 ## Out of scope
 

@@ -173,6 +173,7 @@ describe("weather_alerts", () => {
     expect(out.data.note).toContain("may lag INMET by up to 10 minutes");
     expect(out.data.note).toContain("not an official alert service");
     expect(out.data.note).toContain("Defesa Civil (199)");
+    expect(out.data.note).toContain('city_service_guide with service "defesa_civil"');
   });
 
   it("accepts geocodes served as an array", () => {
