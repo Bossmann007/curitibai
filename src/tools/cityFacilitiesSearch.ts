@@ -41,7 +41,7 @@ export const cityFacilitiesSearchInput = {
         "\"banheiro publico\", \"parque\", \"estacao ecologica\", \"ciclovia\", \"ponto turistico\", \"unidade de saude\" " +
         "(or \"ubs\", \"posto de saude\"), \"upa\", \"hospital publico\", \"estabilizacao psiquiatrica\", \"caps\", " +
         "\"centro de especialidades medicas\", \"centro de especialidades odontologicas\" (or \"ceo\"), " +
-        "\"vigilancia sanitaria\", \"zoonoses\", \"hospital veterinario\". " +
+        "\"vigilancia sanitaria\", \"zoonoses\", \"hospital veterinario\", \"modulo da guarda\", \"nucleo da guarda\". " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z

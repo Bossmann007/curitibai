@@ -159,3 +159,9 @@ IPPUC's layers 167, 136 and 112 (10, 1 and 1 records), with hours as published. 
 its address only, so the answer says where it is and that how it works is not published (ask the 156). 18 Curitiba
 App rows, 16 covered (7 data, 9 guide). The citizen eval answers 121 of 125 questions; 4 are gaps (real-time buses 2,
 other cities 2).
+
+At v0.48.0 (phase B) `city_facilities_search` `modulo da guarda` and `nucleo da guarda` read IPPUC's layers 139 and
+138 (40 and 10 records), with hours as published and, for the núcleos, the bairros each covers; every answer starts
+with 153 (Guarda Municipal) or 190 (Polícia Militar) and says the tool does not dispatch help. 18 Curitiba App rows, 16
+covered (7 data, 9 guide). The citizen eval answers 122 of 126 questions; 4 are gaps (real-time buses 2, other
+cities 2).

@@ -1,0 +1,34 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Núcleo Regional da Defesa Social Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "138",
+        "compl_end": "CEP: 81.000-138",
+        "divulgar_endereco": "Sim",
+        "bairro": "Bacacheri",
+        "regional": "Boa Vista",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-1381 / 3333-1382",
+        "email": "nrgm.inventado@curitiba.pr.gov.br",
+        "dt_atualiz": 1775703600000,
+        "observacao": "Atendimento operacional:\r\n-Diariamente, 24 horas\r\nAtendimento administrativo:\r\n-2ª a 6ª feira, das 8h às 18h\r\nEmergência, ligue 153.\r\nBairros de abrangência: Bacacheri, Boa Vista e Taboão."
+      },
+      "geometry": {
+        "x": -49.235,
+        "y": -25.39
+      }
+    }
+  ]
+}

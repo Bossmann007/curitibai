@@ -81,6 +81,21 @@ const VET_HOSPITAL_NOTE =
   "closed. This tool cannot say who the hospital serves or what it costs: ask the 156 before going. The Centro de " +
   "Controle de Zoonoses e Vetores is type `zoonoses`.";
 
+/**
+ * Guarda Municipal modules and regional núcleos (v0.48.0): the first sentence of every note for these types. 153 is in
+ * the layers' text; 153 and 190 are in the "Emergências" section of the Turismo "Telefones Úteis" page (2026-11-22).
+ */
+export const GUARD_EMERGENCY_NOTE =
+  "Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists places, it does not dispatch help.";
+const GUARD_MODULE_NOTE =
+  "The Guarda Municipal's modules as listed by IPPUC, hours as published (see `updated`); `open_periods.all_day` is " +
+  "the layer's 24-hour flag and `hours` the detail. A place with no module here may still be patrolled: no result " +
+  "says nothing about the Guarda's presence. The regional núcleos are type `nucleo da guarda`.";
+const GUARD_NUCLEUS_NOTE =
+  "The Guarda Municipal's regional núcleos, named Núcleo Regional da Defesa Social in the layer; operational and " +
+  "administrative hours and the bairros each one covers are in `hours` as published (see `updated`). The modules " +
+  "are type `modulo da guarda`.";
+
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -265,6 +280,24 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "hospital veterinario municipal", "hospitais veterinarios",
     ]),
     note: VET_HOSPITAL_NOTE,
+  },
+  // Guarda Municipal modules and regional núcleos, added in v0.48.0 (read on 2026-11-25: 40 and 10 records). No bare
+  // "guarda", "guarda municipal" (module or núcleo), "seguranca", "policia", "modulo" or "nucleo" alias.
+  {
+    ...equipment("modulo da guarda", 139, "Módulo da Guarda Municipal", [
+      "modulos da guarda", "modulo da guarda municipal", "modulos da guarda municipal",
+    ]),
+    note: GUARD_MODULE_NOTE,
+    leadNote: GUARD_EMERGENCY_NOTE,
+  },
+  {
+    ...equipment("nucleo da guarda", 138, "Núcleo Regional da Guarda Municipal", [
+      "nucleos da guarda", "nucleo da guarda municipal", "nucleos da guarda municipal",
+      "nucleo regional da guarda municipal", "nucleos regionais da guarda municipal",
+      "nucleo regional da defesa social", "nucleos regionais da defesa social",
+    ]),
+    note: GUARD_NUCLEUS_NOTE,
+    leadNote: GUARD_EMERGENCY_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),

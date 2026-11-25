@@ -2,6 +2,31 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.48.0 - 2026-11-25
+
+Guarda Municipal modules and regional núcleos, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: two new `type`s read live from IPPUC's GeoCuritiba urban-equipment layers, with the same
+  fields, filters, host gate, cache and phone and e-mail allowlist as the other layers: `modulo da guarda` (aliases
+  `modulos da guarda`, `modulo da guarda municipal`, `modulos da guarda municipal`), layer 139 (40 modules when read
+  on 2026-11-25, most "Diariamente, 24 horas"); `nucleo da guarda` (aliases `nucleos da guarda`, `nucleo da guarda
+  municipal`, `nucleos da guarda municipal`, `nucleo regional da guarda municipal`, `nucleos regionais da guarda
+  municipal`, `nucleo regional da defesa social`, `nucleos regionais da defesa social`), layer 138 (10 regional
+  núcleos, named Núcleo Regional da Defesa Social in the layer, with operational and administrative hours and the
+  bairros each covers in `hours`). No bare `guarda`, `guarda municipal`, `seguranca`, `policia`, `modulo` or `nucleo`
+  alias.
+- Every note for these types starts "Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists
+  places, it does not dispatch help." 153 is in the layers' text; 153 and 190 are in the "Emergências" section of the
+  Instituto Municipal de Turismo's "Telefones Úteis" page as read on 2026-11-22. The module note says a place with no
+  module may still be patrolled. A `telefone` of "153" is kept, as a three-digit public number. The `type`
+  description names the new types (snapshot updated).
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
+  Five hand requests to it that day (robots.txt, one whole-layer read and the metadata of each layer), recorded in
+  [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
+- Citizen eval: new q126 ("Tem módulo da Guarda Municipal no Parque Tanguá?") answered by `city_facilities_search`
+  `modulo da guarda` with `name`, on a synthetic fixture: the module's address, hours, 24-hour flag and phone. 122 of
+  126 answered. The Curitiba App table has no row for these places and is unchanged.
+
 ## 0.47.0 - 2026-11-25
 
 Health surveillance, zoonoses and the municipal veterinary hospital, phase B of the 1.0 roadmap. 27 tools. Publishes

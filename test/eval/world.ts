@@ -41,6 +41,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   upa: "upa_synthetic.json",
   caps: "caps_synthetic.json",
   "hospital veterinario": "hospital_veterinario_synthetic.json",
+  "modulo da guarda": "modulo_da_guarda_synthetic.json",
 };
 
 /** Invented events (titles, places and addresses made up), dated around NOW. */
