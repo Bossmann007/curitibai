@@ -1,6 +1,6 @@
 // Starts the built server over stdio, calls tools/list, city_services_search on the synthetic catalog fixture,
 // city_service_guide's open_step fallback (a client with no elicitation capability), and
-// bus_departures, bus_stops_near, next_buses_near and city_points_search on the synthetic URBS fixtures, and
+// bus_departures, bus_stops_near, next_buses_near, bus_route_between and city_points_search on the synthetic URBS fixtures, and
 // city_facilities_search with "list types", useful_phones on a local copy and events_search with no copy. No network
 // needed: none of them fetches anything (CURITIBAI_REMOTE_DATA=0 turns the published copy of events and phones off).
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parsePhonesPage } from "./fetch-events.mjs";
 
-const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_stops_near", "city_calendar", "city_facilities_search", "city_points_search", "city_service_guide", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "guaira_events", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "place_at_point", "places_search", "procurement_search", "river_levels", "tax_reform_curitiba", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
+const expected = ["bus_departures", "bus_line_stops", "bus_lines_search", "bus_route_between", "bus_stops_near", "city_calendar", "city_facilities_search", "city_points_search", "city_service_guide", "city_services_search", "dataset_files", "detran_pr_info", "events_search", "guaira_events", "health_units_search", "local_csv_summary", "next_buses_near", "open_datasets_search", "place_at_point", "places_search", "procurement_search", "river_levels", "tax_reform_curitiba", "useful_phones", "vaccination_sites_search", "weather_alerts", "weather_forecast"];
 // Invented services only (test/fixtures/carta_servicos_synthetic); the real catalog is never part of this repo.
 // The URBS fixtures have no date in their names (scripts/check-no-catalog blocks dated files), so the data folder is a
 // temporary copy: the catalog fixture plus the URBS fixtures under the dated names the server looks for.
@@ -62,6 +62,11 @@ const next = await client.callTool({
   name: "next_buses_near",
   arguments: { near: { lat: -25.41, lon: -49.21 }, at: "06:30", day: "1" },
 });
+// Rodoferroviária to Parque Barigui (approximate public coordinates) on the synthetic line 903 (citizen eval q111).
+const route = await client.callTool({
+  name: "bus_route_between",
+  arguments: { from: { lat: -25.437, lon: -49.257 }, to: { lat: -25.422, lon: -49.308 } },
+});
 const pois = await client.callTool({ name: "city_points_search", arguments: { category: "feira" } });
 // "list types" makes no network call.
 const facilityTypes = await client.callTool({ name: "city_facilities_search", arguments: { type: "list types" } });
@@ -96,6 +101,10 @@ if (next.isError || !(next.structuredContent?.data?.total > 0)) {
   console.error("smoke: next_buses_near returned no departures from the synthetic URBS fixtures");
   process.exit(1);
 }
+if (route.isError || route.structuredContent?.data?.items?.[0]?.line_code !== "903") {
+  console.error("smoke: bus_route_between did not find the synthetic line 903 from the URBS fixtures");
+  process.exit(1);
+}
 if (pois.isError || !(pois.structuredContent?.data?.total > 0)) {
   console.error("smoke: city_points_search returned no points from the synthetic URBS fixture");
   process.exit(1);
@@ -124,6 +133,7 @@ console.log("smoke: events_search OK (no local copy, remote reading off: data_no
 console.log(`smoke: useful_phones OK (local copy, ${phones.structuredContent.data.total} match for "samu")`);
 console.log(`smoke: city_facilities_search OK (${facilityTypes.structuredContent.data.types.length} types listed, no network)`);
 console.log(`smoke: city_points_search OK (${pois.structuredContent.data.total} synthetic feiras)`);
+console.log(`smoke: bus_route_between OK (${route.structuredContent.data.total} synthetic direct line(s), first ${route.structuredContent.data.items[0].line_code})`);
 console.log(`smoke: next_buses_near OK (${next.structuredContent.data.total} synthetic departure(s) from 06:30 within 60 min)`);
 console.log(`smoke: bus_stops_near OK (${near.structuredContent.data.total} synthetic stop(s) within 400 m)`);
 console.log(`smoke: bus_departures OK (${bus.structuredContent.data.total} synthetic weekday departures of line 901)`);

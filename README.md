@@ -19,7 +19,7 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 26 tools over public
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 27 tools over public
 data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, voting places, police and fire areas, census figures, places, events, weather, river levels and rain, Teatro Guaíra events,
 municipal holidays, municipal procurement, Detran-PR, the city's open-data portal, and step-by-step guides with official links to city services that need a login (the citizen acts, with consent at every step). The server writes no files, needs no account and does not store or log queries.
 
@@ -125,7 +125,7 @@ An empty `CURITIBAI_REMOTE_DATA` (some MCP clients pass empty variables by defau
 
 ## Tools at a glance
 
-All 26 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+All 27 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
 the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar; 24 hours for the Receita tax-reform data). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` and "Bundled" tools read data bundled in the code; both
 make no network call. "Nightly" tools read your local file when there is one, else the copy this project's
 nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turns it off). [Tool reference](docs/tools.md) has every input, output and error.
@@ -137,6 +137,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Transport | `bus_departures` | Published departure times for a line, a stop or both | Local (URBS file) |
 | Transport | `bus_stops_near` | Stops near a point and the lines that serve each one | Local (URBS files); without them, stops only from GeoCuritiba (live) |
 | Transport | `next_buses_near` | The next published departures at the stops near a point | Local (URBS files) |
+| Transport | `bus_route_between` | Direct bus lines (no transfers) from stops near one point to stops near another | Local (URBS files) |
 | Health | `health_units_search` | Public-administration health units in Curitiba (CNES) | Live (Ministry of Health) |
 | Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Live (Imuniza Já page) |
 | City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |

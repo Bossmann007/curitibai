@@ -52,7 +52,7 @@ behind it.
   `geocuritiba.ippuc.org.br` (in the query URL), kept as the in-memory cache key (6 hours, at most 500 points) and
   returned. The full-precision position is never sent, cached, logged or written anywhere (the server writes no
   files and logs no request). A point outside the Curitiba box is refused before any request. Every other tool that
-  takes a position (`city_facilities_search`, `bus_stops_near`, `next_buses_near`, `city_points_search`,
+  takes a position (`city_facilities_search`, `bus_stops_near`, `next_buses_near`, `bus_route_between` (both points), `city_points_search`,
   `vaccination_sites_search`, `river_levels`) filters in the server and never sends it (`bus_stops_near` without the
   URBS export reads the whole GeoCuritiba stop layer with fixed queries, since 0.29.0; `CURITIBAI_REMOTE_DATA=0` keeps
   it local, since 0.30.0: it then answers `data_not_available` and makes no request).

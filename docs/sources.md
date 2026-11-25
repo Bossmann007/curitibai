@@ -506,6 +506,13 @@ An explicit `day` is the service day: its after-midnight rows are read, the next
 M4, 15 calls, 400 m around Praça Tiradentes, 08:00 weekday, 60 min): median 73 ms, first call 134 ms; reading and
 validating the three files is most of it.
 
+`bus_route_between` (0.41.0) reads the newest `pontosLinha` and `linhas`, groups the stops as `bus_stops_near` does,
+keeps the stops within `radius_m` of each point, and for each (line, ITINERARY_ID) looks for a stop near `from` with a
+lower `SEQ` than a different stop near `to` ([ADR 0013](adr/0013-direct-bus-lines-between-two-points.md)). Checked on
+the 2026-11-20 file on 2026-11-25: each ITINERARY_ID has one SENTIDO and one line code, no itinerary repeats a SEQ, and
+40 of 695 have gaps in SEQ (order unchanged). Measured with the built tool (Apple M4, 9 calls, Rodoferroviária to
+Parque Barigui, 500 m): median 31 ms.
+
 Each tool lists the names in `urbs/` (no file is opened to choose), takes the newest valid date for its own kind,
 and reads that one file through `src/localfs.ts` with the same rules as `city_services_search` (realpath inside the
 folder, regular file, read-only open, no symlink out), on every call, with a 20 MB cap. Rows are validated with zod
