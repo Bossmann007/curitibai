@@ -58,7 +58,8 @@ How a service is classed, from the words of its title (accents and case ignored,
   a test keeps the script's copy equal to the tool's), or, since v0.37.0, the service's `url` is a Carta service page
   that the generated guide reaches (`city_service_guide` with `carta_id`, [ADR 0012](adr/0012-generated-carta-guides.md);
   the same URL pattern as the tool, kept equal by a test). The second kind is also counted as `guide_generated`, in
-  total and per category, so the share of hand-written guides stays visible.
+  total and per category, with `reachable_without_generated_pct` beside `reachable_pct`; the terminal lists the 30
+  most useful services reached only by the generated guide (candidates for a hand-written guide, titles terminal only).
 - **data:** the title matches one of the script's narrow rules (for example "vacina", "feira", "linhas de ônibus",
   "feriado") and has no word that asks the citizen to act (matrícula, inscrição, solicitação, agendamento, emissão,
   licença, segunda via and similar).

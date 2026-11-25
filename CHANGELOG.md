@@ -13,14 +13,16 @@ Generated guides for every Carta service, phase C of the 1.0 roadmap. 26 tools. 
   `service` `carta`, `generated` (`carta_id`, `captured`, `reviewed_by_hand` false), `carta_text` (category, what, who,
   how, documents, channels, cost from the copy, cleaned: no HTML, only https links on allowed hosts, contact and
   CPF/CNPJ shapes masked, cut at 300 characters) and `checked_at` the copy's date. A hand-written guide whose Carta
-  words match the title keeps priority. With no copy, an invalid one or an unknown id: no steps, `carta` with the
-  reason (how to save the copy) and `available_guides`. The tool contract (input and output schema) changed:
+  words match the title keeps priority, with that service's own Carta links. With no copy, an invalid one or an unknown
+  id: no steps, `carta` with the reason (how to save the copy) and `available_guides` (`invalid_argument` with
+  `open_step`). The tool contract (input and output schema) changed:
   `test/fixtures/tool-contracts.json` rewritten. New [ADR 0012](docs/adr/0012-generated-carta-guides.md).
 - `carta-servicos.json` items may carry five optional fields (`who`, `how`, `documents`, `channels`, `cost`), read
   only by the generated guide; other values are ignored, so existing files stay valid. `city_services_search` is
   unchanged.
 - `scripts/coverage-report.mjs`: a service the generated guide reaches counts as guide, and also as `guide_generated`
-  (total, percentage and per category), so hand-written coverage stays visible.
+  (total, percentage and per category), with `reachable_without_generated_pct` and, in the terminal, the 30 most useful
+  services only the generated guide reaches, so hand-written coverage and the next guides to write stay visible.
 - Citizen eval: 5 questions on generated guides (rich fields, a bare item, an unsafe online link, hand-written
   priority, `open_step`); `answered 104 / 119`. The synthetic Carta fixture gains the optional fields on one item and
   one invented IPTU item (its pinned sha256 in `scripts/check-no-catalog` updated).

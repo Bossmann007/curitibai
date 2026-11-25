@@ -91,6 +91,18 @@ describe("generated guide from the Carta copy", () => {
     expect(bare.data.carta_text).toMatchObject({ what: null, who: null, how: null, documents: null, channels: null, cost: null });
   });
 
+  it("the \"O que é?\" label is dropped only as a whole label", async () => {
+    const cat = (what: string) =>
+      buildCatalog({ captured: "2026-11-20", count: 1, items: [{ cat: "T", title: "Serviço sintético", what, url: "https://servicos.curitiba.pr.gov.br/s/9802", online: null }] });
+    for (const [what, clean] of [
+      ["O que é? Texto inventado", "Texto inventado"],
+      ["O que existe no programa sintético", "O que existe no programa sintético"],
+      ["O que e\u0301 Texto inventado", "Texto inventado"],
+    ]) {
+      expect((await guide(9802, undefined, cat(what!))).data.carta_text!.what).toBe(clean);
+    }
+  });
+
   it("a hand-written guide whose words match the title keeps priority", async () => {
     expect(handWrittenFor("IPTU inventado para teste")).toBe("iptu");
     expect(handWrittenFor("Licença sintética online")).toBeUndefined();
@@ -98,8 +110,28 @@ describe("generated guide from the Carta copy", () => {
     expect(o.data.service).toBe("iptu");
     expect(o.data.generated).toBeUndefined();
     expect(o.data.carta_text).toBeUndefined();
-    expect(o.note).toMatch(/^carta_id 9009 is covered by the hand-written guide "iptu", returned instead\./);
+    expect(o.note).toMatch(/^carta_id 9009 is covered by the hand-written guide "iptu", returned instead/);
     expect(o.data.carta.status).toBe("matched");
+  });
+
+  it("priority keeps the requested service's own Carta page, even when the guide's words match several services", async () => {
+    const two = buildCatalog({
+      captured: "2026-11-20",
+      count: 2,
+      items: [
+        { cat: "T", title: "IPTU sintético: guia", what: "", url: "https://servicos.curitiba.pr.gov.br/iptu-a/9811", online: null },
+        { cat: "T", title: "Isenção sintética de IPTU", what: "", url: "https://servicos.curitiba.pr.gov.br/iptu-b/9812", online: "https://isencao.curitiba.pr.gov.br/x" },
+      ],
+    });
+    const o = await guide(9812, undefined, two);
+    expect(o.data.service).toBe("iptu");
+    expect(o.data.carta).toEqual({
+      status: "matched",
+      matches: [{ title: "Isenção sintética de IPTU", official_url: "https://servicos.curitiba.pr.gov.br/iptu-b/9812" }],
+      message: null,
+    });
+    expect(o.data.steps!.map((s) => s.url)).toContain("https://servicos.curitiba.pr.gov.br/iptu-b/9812");
+    expect(o.data.steps!.map((s) => s.url)).toContain("https://isencao.curitiba.pr.gov.br/x");
   });
 
   it("no copy, an invalid copy or an unknown id: no guide, the reason, and the hand-written guides", async () => {
@@ -114,6 +146,9 @@ describe("generated guide from the Carta copy", () => {
     const unknown = await guide(4242);
     expect(unknown.data.carta).toMatchObject({ status: "no_match", message: expect.stringContaining("city_services_search") });
     expect(unknown.data.available_guides).toHaveLength(GUIDE_IDS.length);
+    // open_step with no guide to open is an error, not a silent answer without open_step.
+    const res = await cartaGuideResult(4242, 2, CATALOG, undefined);
+    expect(res).toEqual({ ok: false, message: "No guide for carta_id 4242 (carta status no_match): call without open_step to see why." });
   });
 
   it("Carta text never becomes a step, an action, a consent text or the elicitation message", async () => {
@@ -175,7 +210,22 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     ["ftp://a.curitiba.pr.gov.br/x", LINK_REMOVED],
     ["linha\u0000um\u0007\ndois \u202Etr\u200Bês", "linha um dois três"],
     ["contato teste.sintetico@exemplo.invalid", `contato ${MASK}`],
+    ["veja _https://evil.example/login agora", `veja _${LINK_REMOVED} agora`],
+    ["veja _www.evil.example e 1www.evil.example", `veja _${LINK_REMOVED} e 1${LINK_REMOVED}`],
+    ["acesse evil.example/login ou pix-pague.com.", `acesse ${LINK_REMOVED} ou ${LINK_REMOVED}.`],
+    ["no 156.curitiba.pr.gov.br/x", "no https://156.curitiba.pr.gov.br/x"],
+    ["Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5", "Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5"],
   ])("%j → %j", (raw, clean) => expect(cleanCartaText(raw)).toBe(clean));
+
+  it("a cut never leaves half a link or half a marker", () => {
+    const pad = "a ".repeat(140);
+    expect(cleanCartaText(`${pad}https://servicos.curitiba.pr.gov.br/um-servico-de-nome-longo/12345 fim`)).toBe(`${pad.trimEnd()}…`);
+    for (let i = 0; i < 30; i++) {
+      const out = cleanCartaText(`${"b".repeat(i)} ${pad}https://evil.example/x https://servicos.curitiba.pr.gov.br/a/1 fim`);
+      const last = out.slice(0, -1).split(" ").pop()!;
+      expect(last === "removido]" || !/[[\]]|:\/\//.test(last), out).toBe(true);
+    }
+  });
 
   it("is capped, and every link it keeps passes the allowlist", () => {
     const long = cleanCartaText("palavra ".repeat(500));
@@ -238,6 +288,7 @@ describe("tool input and the scoreboard", () => {
       { cat: "T", title: "IPTU inventado para teste", url: "https://servicos.curitiba.pr.gov.br/i/9009" },
       { cat: "T", title: "Serviço sintético sem link" },
     ]);
-    expect(r).toMatchObject({ guide: 2, guide_generated: 1, none: 1, reachable_pct: 66.7 });
+    expect(r).toMatchObject({ guide: 2, guide_generated: 1, none: 1, reachable_pct: 66.7, reachable_without_generated_pct: 33.3 });
+    expect(r.generated_only).toEqual([{ category: "T", title: "Licença sintética online", usefulness: 2 }]);
   });
 });

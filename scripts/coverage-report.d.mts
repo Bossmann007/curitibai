@@ -33,9 +33,11 @@ export interface CartaReport {
   guide_generated_pct: number;
   none_pct: number;
   reachable_pct: number;
+  reachable_without_generated_pct: number;
   uncovered_by_usefulness: { everyday: number; other: number; business_or_internal: number };
   categories: CategoryCount[];
   uncovered: { category: string; title: string; usefulness: 1 | 2 | 3 }[];
+  generated_only: { category: string; title: string; usefulness: 1 | 2 | 3 }[];
 }
 export const TOP_UNCOVERED: number;
 export const GUIDE_TERMS: Record<string, string[][]>;
@@ -53,7 +55,7 @@ export function parseAppTable(markdown: string): { feature: string; status: AppS
 export function appReport(rows: { feature: string; status: AppStatus }[]): AppReport;
 export function cartaItems(json: unknown): { cat: string; title: string; url?: string }[];
 export function cartaReport(items: { cat: string; title: string; url?: string }[]): CartaReport;
-export function summary(app: AppReport, carta: CartaReport | null): { app: AppReport; carta: Omit<CartaReport, "uncovered"> | null };
+export function summary(app: AppReport, carta: CartaReport | null): { app: AppReport; carta: Omit<CartaReport, "uncovered" | "generated_only"> | null };
 export function main(
   argv: string[],
   env?: Record<string, string | undefined>,

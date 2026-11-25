@@ -17,7 +17,8 @@ That copy is text saved from a web page: untrusted.
   numeric id `city_services_search` returns), is given instead of `service`; exactly one of the two. The input stays
   an enum and integers, so no free text can carry personal data.
 - **Hand-written guides keep priority.** When the service title has every word of a hand-written guide's Carta query,
-  that guide is returned, with a note.
+  that guide is returned, with a note and the requested service's own Carta page and online link (not a search of the
+  copy by the guide's words, which can match several services).
 - **Fixed steps only.** Every generated guide has the same server-written steps: the first step in the conversation,
   the official Carta page, the online service when its link is allowed, then login, data and documents, sending and
   payment, each "if the site asks" and each with `needs_consent` and a fixed consent text. Carta text can never add,
@@ -25,14 +26,15 @@ That copy is text saved from a web page: untrusted.
 - **Carta text is quoted data.** It goes only to `title` (after a fixed prefix), `carta.matches` and `carta_text`
   (category, what, who, how, documents, channels, cost; the last five are new optional fields of the copy). Each field
   is cleaned: control and format characters removed, entities decoded and then tags and `<`/`>` removed, Markdown links
-  reduced to their text, every link-like token that is not an https link on an allowed host replaced by
-  "[link removido]", e-mail, phone and CPF/CNPJ shapes masked, cut at 300 code points (titles at 120).
+  reduced to their text, every link-like token (with a scheme, `www.`, or a bare host) that is not an https link on an
+  allowed host replaced by "[link removido]", e-mail, phone and CPF/CNPJ shapes masked, cut at 300 code points (titles at 120).
 - **Marked as generated.** `data.generated` holds the Carta id, the copy's capture date and `reviewed_by_hand: false`;
   `checked_at` is the copy's date; `license_note` attributes the text to the Prefeitura.
 - **No copy, no guide.** Without a copy (or with an invalid one, or an unknown id) the answer says why, how to save the
   copy, and lists the hand-written guides. The server never contacts `www.curitiba.pr.gov.br`.
 - **The scoreboard counts it apart.** `scripts/coverage-report.mjs` classes a service the generated guide reaches as
-  guide, and also counts it as `guide_generated`, so the share of hand-written guides stays visible.
+  guide, and also counts it as `guide_generated`, with the coverage without it and the most useful services that only
+  the generated guide reaches, so the share of hand-written guides and the next ones to write stay visible.
 
 ## Consequences
 

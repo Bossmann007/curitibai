@@ -19,23 +19,25 @@ copy (`CURITIBAI_DATA_DIR/carta-servicos.json`), with the same per-step consent 
    of `city_services_search`). Exactly one of the two, else `invalid_argument`. Why not a new tool: same answer shape,
    consent rule, allowlist and `open_step` ([ADR 0005](docs/adr/0005-extend-a-tool-before-adding-one.md)).
 2. **Priority**: when the service title has every word of a hand-written guide's Carta query (`handWrittenFor`), that
-   guide is returned, with a note.
+   guide is returned, with a note and the requested service's own Carta links.
 3. **Generated guide** (`cartaGuideResult`, `generatedGuide`): fixed steps only: the first step in the conversation,
    the official Carta page, the online service when its link passes `allowedUrl`, then login, data and documents,
    send, pay, each "if the site asks" with `needs_consent` and a fixed consent text. `service` `carta`, `generated`
    (`carta_id`, `captured`, `reviewed_by_hand: false`), `carta_text`, `checked_at` the copy's date, the Carta licence
    note. The elicitation message names the Carta id and the host, never Carta text.
 4. **Untrusted text** (`cleanCartaText`): control and format characters removed; entities decoded, then tags and
-   `<`/`>` removed; Markdown links reduced to their text; link-like tokens that fail `allowedUrl` become
-   `[link removido]`; `cleanField` masks contact and CPF/CNPJ shapes and cuts at 300 code points (title 120).
+   `<`/`>` removed; Markdown links reduced to their text; link-like tokens (scheme, `www.`, bare host) that fail
+   `allowedUrl` become `[link removido]`; `cleanField` masks contact and CPF/CNPJ shapes and cuts at 300 code points
+   (title 120), never inside a link or a marker.
 5. **No copy / invalid copy / unknown id**: no steps; `carta.status` and `carta.message` (`CARTA_HOW_TO` when absent)
-   and `available_guides`. No network call, no new host.
+   and `available_guides`; with `open_step`, `invalid_argument`. No network call, no new host.
 6. **Copy format** (`src/tools/cityServicesSearch.ts`): optional item fields `who`, `how`, `documents`, `channels`,
    `cost` (string or list of strings; anything else ignored; kept raw up to 8,000 characters, cleaned on output).
    `city_services_search` output unchanged. `OFFICIAL_URL` exported.
 7. **Scoreboard** (`scripts/coverage-report.mjs`): `classifyService(title, url)`; a service whose `url` matches
    `GENERIC_GUIDE_URL` (equal to `OFFICIAL_URL`, test) and has no data rule or hand-written guide is guide via
-   `city_service_guide carta_id (generated)`, counted also as `guide_generated`.
+   `city_service_guide carta_id (generated)`, counted also as `guide_generated`; `reachable_without_generated_pct` and
+   the 30 most useful generated-only services (terminal only) keep the next hand-written guides visible.
 8. **Eval**: q115–q119 in `test/eval/citizen-questions.json` (synthetic ids 9008, 9005, 9004, 9009, 9008 with
    `open_step`). The fixture gains the optional fields on 9008 and item 9009 ("IPTU inventado para teste"); its pin in
    `scripts/check-no-catalog` is updated.

@@ -575,9 +575,18 @@ export async function cityServiceGuideResult(
   catalog: Catalog | Error | null,
   ctx: ToolContext | undefined,
   notePrefix = "",
+  requested?: CartaService,
 ): Promise<Result> {
   const guide: GuideDef = GUIDES[id];
-  const { info, links } = cartaFor(catalog, guide);
+  // From carta_id: the service the user asked for gives the Carta links, not a search of the copy by the guide's words.
+  const page = requested === undefined ? null : allowedUrl(requested.official_url);
+  const { info, links } =
+    requested !== undefined && page !== null
+      ? {
+          info: { status: "matched" as const, matches: [{ title: cleanCartaText(requested.title, MAX_MATCH_TITLE), official_url: page }], message: null },
+          links: { page, online: requested.online_url === null ? null : allowedUrl(requested.online_url) },
+        }
+      : cartaFor(catalog, guide);
   const base: Base = { service: id, title: guide.title, what: guide.what, carta: info, delegation: DELEGATION_INFO };
   const envelope = { source_url: CITY_SERVICES_SOURCE_URL, checked_at: GUIDES_CHECKED_AT, license_note: LICENSE_NOTE };
   return answer(base, guide, `guia "${guide.title}"`, buildSteps(guide, links), envelope, openStep, ctx, notePrefix);
@@ -589,11 +598,22 @@ export async function cityServiceGuideResult(
 export const MAX_CARTA_FIELD = OBJECT_MAX_CHARS;
 /** Markdown link or image: its text is kept, its target goes through the URL check like any other link. */
 const MD_LINK = /!?\[([^\]]*)\]\(\s*([^)\s]*)[^)]*\)/g;
-/** A link-like token: scheme://..., www...., or a scheme that runs code or reaches the device (javascript:, data:...). */
-const URL_TOKEN = /\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>"'()[\]]+|\b(?:javascript|data|vbscript|file|mailto|tel|sms|blob):[^\s<>"']*/gi;
+/**
+ * A link-like token: scheme://..., www...., a scheme that runs code or reaches the device (javascript:, data:...), or a
+ * bare host (labels and a dot, then a path or a common top-level domain: "evil.example/x", "pix-pague.com"). Only a
+ * letter before it stops a match ("_https://..." and "1www..." are links to a Markdown renderer too).
+ */
+const URL_TOKEN = new RegExp(
+  [
+    String.raw`(?<!\p{L})(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>"'()[\]]+`,
+    String.raw`(?<!\p{L})(?:javascript|data|vbscript|file|mailto|tel|sms|blob):[^\s<>"']*`,
+    String.raw`(?<![\p{L}\p{N}@.-])(?:[a-z0-9-]+\.)+(?:[a-z]{2,24}\/[^\s<>"'()[\]]*|(?:com|net|org|br|info|biz|io|app|xyz|top|site|online|link|me|co|ly|gl|ru|cn)(?![\p{L}\p{N}-]|\.[\p{L}\p{N}]))`,
+  ].join("|"),
+  "giu",
+);
 export const LINK_REMOVED = "[link removido]";
 /** The site's own "O que é?" label at the start of `what`. */
-const WHAT_LABEL = /^\s*o\s+que\s+(?:é|e|são|sao)\s*\??\s*/iu;
+const WHAT_LABEL = /^\s*o\s+que\s+(?:é|e|são|sao)(?![\p{L}\p{N}\p{M}])\s*\??\s*/iu;
 
 /**
  * Carta text is untrusted (a file the user saved from a web page). Control characters become spaces and format
@@ -609,10 +629,15 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   t = t.replace(MD_LINK, (_m, text: string, url: string) => `${text} ${url}`);
   t = t.replace(URL_TOKEN, (tok) => {
     const link = tok.replace(/[.,;:!?]+$/, "");
-    const kept = allowedUrl(/^www\./i.test(link) ? `https://${link}` : link);
+    const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });
-  return cleanField(t, max);
+  const out = cleanField(t, max);
+  if (!out.endsWith("…")) return out;
+  // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
+  const body = out.slice(0, -1);
+  const last = /\S+$/.exec(body);
+  return last !== null && (last[0].includes("://") || last[0].includes("[")) ? `${body.slice(0, last.index).trimEnd()}…` : out;
 }
 
 const GENERATED_DATA: StepDef = {
@@ -656,7 +681,7 @@ const orNull = (raw: string | undefined) => {
 export function cartaText(s: CartaService): z.infer<typeof CartaText> {
   return {
     category: cleanCartaText(s.category, 100),
-    what: orNull(s.text.what.replace(WHAT_LABEL, "")),
+    what: orNull(s.text.what.normalize("NFC").replace(WHAT_LABEL, "")),
     ...(Object.fromEntries(CARTA_DETAIL_FIELDS.map((f) => [f, orNull(s.text[f])])) as Record<(typeof CARTA_DETAIL_FIELDS)[number], string | null>),
   };
 }
@@ -681,7 +706,10 @@ export async function cartaGuideResult(
   catalog: Catalog | Error | null,
   ctx: ToolContext | undefined,
 ): Promise<Result> {
-  const notGenerated = (status: CartaInfo["status"], message: string): Result => ({
+  const notGenerated = (status: CartaInfo["status"], message: string): Result =>
+    openStep !== undefined
+      ? { ok: false, message: `No guide for carta_id ${cartaId} (carta status ${status}): call without open_step to see why.` }
+      : {
     ok: true,
     payload: {
       data: {
@@ -697,7 +725,7 @@ export async function cartaGuideResult(
       license_note: LICENSE_NOTE,
       note: "No guide was generated for this carta_id; a guide in available_guides can be called with service. " + CONSENT_RULE,
     },
-  });
+  };
   if (catalog === null) return notGenerated("not_available", CARTA_HOW_TO);
   if (catalog instanceof Error) return notGenerated("invalid", catalog.message);
   const s = catalog.services.find((x) => x.id === cartaId);
@@ -706,7 +734,8 @@ export async function cartaGuideResult(
   }
   const hand = handWrittenFor(s.title);
   if (hand !== undefined) {
-    return cityServiceGuideResult(hand, openStep, catalog, ctx, `carta_id ${cartaId} is covered by the hand-written guide "${hand}", returned instead. `);
+    const prefix = `carta_id ${cartaId} is covered by the hand-written guide "${hand}", returned instead, with this service's Carta links. `;
+    return cityServiceGuideResult(hand, openStep, catalog, ctx, prefix, s);
   }
   const page = allowedUrl(s.official_url);
   if (page === null) return notGenerated("no_match", "This service's official link is not on the official-host allowlist; no guide is generated.");

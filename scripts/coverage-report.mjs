@@ -202,12 +202,16 @@ export function cartaItems(json) {
 export function cartaReport(items) {
   const byCat = new Map();
   const uncovered = [];
+  const generatedOnly = [];
   for (const item of items) {
     const { coverage, via } = classifyService(item.title, item.url);
     const c = byCat.get(item.cat) ?? { category: item.cat, total: 0, data: 0, guide: 0, guide_generated: 0, none: 0 };
     c.total += 1;
     c[coverage] += 1;
-    if (via === GENERATED_VIA) c.guide_generated += 1;
+    if (via === GENERATED_VIA) {
+      c.guide_generated += 1;
+      generatedOnly.push({ category: item.cat, title: item.title, usefulness: usefulness(item) });
+    }
     byCat.set(item.cat, c);
     if (coverage === "none") uncovered.push({ category: item.cat, title: item.title, usefulness: usefulness(item) });
   }
@@ -216,9 +220,10 @@ export function cartaReport(items) {
     .sort((a, b) => b.none - a.none || a.category.localeCompare(b.category, "pt-BR"));
   const sum = (k) => categories.reduce((n, c) => n + c[k], 0);
   const total = items.length;
-  uncovered.sort(
-    (a, b) => b.usefulness - a.usefulness || a.category.localeCompare(b.category, "pt-BR") || a.title.localeCompare(b.title, "pt-BR"),
-  );
+  const byUsefulness = (a, b) =>
+    b.usefulness - a.usefulness || a.category.localeCompare(b.category, "pt-BR") || a.title.localeCompare(b.title, "pt-BR");
+  uncovered.sort(byUsefulness);
+  generatedOnly.sort(byUsefulness);
   const tier = (n) => uncovered.filter((u) => u.usefulness === n).length;
   return {
     total,
@@ -231,9 +236,11 @@ export function cartaReport(items) {
     guide_generated_pct: pct(sum("guide_generated"), total),
     none_pct: pct(sum("none"), total),
     reachable_pct: pct(sum("data") + sum("guide"), total),
+    reachable_without_generated_pct: pct(sum("data") + sum("guide") - sum("guide_generated"), total),
     uncovered_by_usefulness: { everyday: tier(3), other: tier(2), business_or_internal: tier(1) },
     categories,
     uncovered,
+    generated_only: generatedOnly,
   };
 }
 
@@ -241,7 +248,7 @@ export function cartaReport(items) {
 export function summary(app, carta) {
   return {
     app: { ...app },
-    carta: carta === null ? null : Object.fromEntries(Object.entries(carta).filter(([k]) => k !== "uncovered")),
+    carta: carta === null ? null : Object.fromEntries(Object.entries(carta).filter(([k]) => k !== "uncovered" && k !== "generated_only")),
   };
 }
 
@@ -303,6 +310,9 @@ export function main(argv, env = process.env, out = console.log, err = console.e
       out(`  uncovered by usefulness: everyday ${t.everyday} | other ${t.other} | business or internal ${t.business_or_internal}`);
       out(`Top ${TOP_UNCOVERED} uncovered services by usefulness to a citizen (3 everyday, 2 other, 1 business; local titles, terminal only):`);
       for (const u of carta.uncovered.slice(0, TOP_UNCOVERED)) out(`  ${u.usefulness} [${u.category}] ${u.title}`);
+      out(`  reachable without generated guides ${carta.reachable_without_generated_pct}%`);
+      out(`Top ${TOP_UNCOVERED} services reached only by the generated guide, by usefulness (candidates for a hand-written guide; terminal only):`);
+      for (const u of carta.generated_only.slice(0, TOP_UNCOVERED)) out(`  ${u.usefulness} [${u.category}] ${u.title}`);
     }
     out("JSON summary (numbers per category):");
     out(JSON.stringify(summary(app, carta), null, 2));
