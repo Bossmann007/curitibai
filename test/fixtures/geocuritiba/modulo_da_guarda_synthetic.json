@@ -1,0 +1,84 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Parque Tanguá Fictício",
+        "nome_completo": "Módulo da Guarda Municipal Parque Tanguá Fictício",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "139",
+        "compl_end": "CEP: 82.000-139",
+        "divulgar_endereco": "Sim",
+        "bairro": "Taboão",
+        "regional": "Boa Vista",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-1390",
+        "email": "nrgm.inventado@curitiba.pr.gov.br",
+        "dt_atualiz": 1776049200000,
+        "observacao": "Emergência, ligue 153.\r\nAtendimento:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": {
+        "x": -49.282,
+        "y": -25.379
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Praça Inventada",
+        "nome_completo": "Módulo da Guarda Municipal Praça Inventada",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "1390",
+        "compl_end": "CEP: 80.000-139",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "153",
+        "email": "nrgm.inventado@curitiba.pr.gov.br",
+        "dt_atualiz": 1776049200000,
+        "observacao": "Emergência, ligue 153."
+      },
+      "geometry": {
+        "x": -49.271,
+        "y": -25.431
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 3,
+        "nome": "Base Inventada",
+        "nome_completo": "Módulo da Guarda Municipal Base Inventada",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "13",
+        "compl_end": "CEP: 80.000-013",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "153",
+        "email": "nrgm.inventado@curitiba.pr.gov.br",
+        "dt_atualiz": 1776049200000,
+        "observacao": "Emergência, ligue 153.\r\nAtendimento:\r\n-Diariamente, das 7h às 19h"
+      },
+      "geometry": {
+        "x": -49.268,
+        "y": -25.428
+      }
+    }
+  ]
+}

@@ -608,6 +608,73 @@ describe("city_facilities_search", () => {
     expect(out.note).not.toMatch(/free|gratuit/i);
   });
 
+  it.each([
+    ["Módulo da Guarda", "modulo da guarda", 139],
+    ["módulos da Guarda Municipal", "modulo da guarda", 139],
+    ["Núcleo da Guarda", "nucleo da guarda", 138],
+    ["Núcleo Regional da Guarda Municipal", "nucleo da guarda", 138],
+    ["Núcleo Regional da Defesa Social", "nucleo da guarda", 138],
+  ] as const)("v0.48.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.48.0: bare \"guarda\", \"guarda municipal\", \"seguranca\", \"policia\", \"modulo\" and \"nucleo\" are not types", () => {
+    for (const name of ["guarda", "guarda municipal", "seguranca", "segurança", "policia", "modulo", "nucleo", "defesa social"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it("v0.48.0: a Guarda module comes back with the 153 line in `hours`, the 24-hour flag and the 153/190 lead note", async () => {
+    const calls = stubFetch(route("modulo da guarda", "modulo_da_guarda_synthetic.json"));
+    const out = await search({ type: "modulo da guarda", name: "tanguá" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/139`);
+    expect(out.data).toMatchObject({ type: "modulo da guarda", label: "Módulo da Guarda Municipal", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Módulo da Guarda Municipal Parque Tanguá Fictício",
+      bairro: "Taboão",
+      hours: ["Emergência, ligue 153.", "Atendimento:", "-Diariamente, 24 horas"],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: true },
+      phones: ["(41) 3333-1390"],
+      emails: ["nrgm.inventado@curitiba.pr.gov.br"],
+      updated: "2026-04-13",
+    });
+    expect(out.note.startsWith("Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar). This tool lists places, it does not dispatch help.")).toBe(true);
+    expect(out.note).toMatch(/type `nucleo da guarda`/);
+    expect(out.note).not.toMatch(/192|SAMU|ouvidoria/);
+  });
+
+  it("v0.48.0: a module whose phone is 153 keeps it; a text with the 153 line only comes back as is", async () => {
+    stubFetch(route("modulo da guarda", "modulo_da_guarda_synthetic.json"));
+    const out = await search({ type: "modulo da guarda", name: "praca inventada" });
+    expect(out.data.items[0]).toMatchObject({ phones: ["153"], hours: ["Emergência, ligue 153."] });
+    expect(out.note).toMatch(/A phone of 153 is the Guarda's emergency line, not the module's own/);
+    expect(out.note).toMatch(/an empty result is not a statement about the Guarda's presence/);
+  });
+
+  it("v0.48.0: a regional núcleo keeps operational and administrative hours and the bairros it covers", async () => {
+    stubFetch(route("nucleo da guarda", "nucleo_da_guarda_synthetic.json"));
+    const out = await search({ type: "nucleo regional da defesa social" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/138`);
+    expect(out.data.items[0]).toMatchObject({
+      name: "Núcleo Regional da Defesa Social Inventado",
+      hours: [
+        "Atendimento operacional:",
+        "-Diariamente, 24 horas",
+        "Atendimento administrativo:",
+        "-2ª a 6ª feira, das 8h às 18h",
+        "Emergência, ligue 153.",
+        "Bairros de abrangência: Bacacheri, Boa Vista e Taboão.",
+      ],
+      phones: ["(41) 3333-1381", "(41) 3333-1382"],
+      updated: "2026-04-09",
+    });
+    expect(out.note.startsWith("Emergency: call 153 (Guarda Municipal) or 190 (Polícia Militar).")).toBe(true);
+    expect(out.note).toMatch(/Núcleo Regional da Defesa Social/);
+    expect(out.note).toMatch(/`bairro` filters by where the núcleo is, not by the bairros it covers/);
+    expect(out.note).toMatch(/type `modulo da guarda`/);
+  });
+
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
     const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
     const out = await search({ type: "UBS", name: "caximba" });
