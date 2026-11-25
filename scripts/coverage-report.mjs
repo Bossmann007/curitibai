@@ -30,7 +30,15 @@ export const GUIDE_TERMS = {
   creche: [["creche"], ["cadastramento", "escolar"]],
   detran: [["detran"]],
   le_digital: [["le", "digital"]],
-  estar: [["estar", "estacionamento", "regulamentado"]],
+  estar: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento"]],
+};
+
+/** city_service_guide's notFor words (GUIDES[id].notFor; a test keeps them equal): such a title skips that guide. */
+export const GUIDE_NOT_FOR = {
+  estar: [
+    "aviso", "avisos", "irregularidade", "irregularidades", "recurso", "recursos", "notificacao", "notificacoes",
+    "multa", "multas", "defesa", "credencial", "credenciais",
+  ],
 };
 
 /**
@@ -126,7 +134,9 @@ export function classifyService(title, url) {
     const rule = DATA_RULES.find((r) => matches(words, r.terms));
     if (rule) return { coverage: "data", via: rule.tool };
   }
-  const guide = Object.entries(GUIDE_TERMS).find(([, terms]) => matches(words, terms));
+  const guide = Object.entries(GUIDE_TERMS).find(
+    ([id, terms]) => !(GUIDE_NOT_FOR[id] ?? []).some((w) => words.has(w)) && matches(words, terms),
+  );
   if (guide) return { coverage: "guide", via: `city_service_guide ${guide[0]}` };
   if (typeof url === "string" && GENERIC_GUIDE_URL.test(url)) return { coverage: "guide", via: GENERATED_VIA };
   return { coverage: "none", via: null };

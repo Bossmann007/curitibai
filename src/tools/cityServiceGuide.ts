@@ -79,6 +79,8 @@ interface GuideDef {
   what: string;
   /** Alternative title queries for the Carta copy; every word of one query must be in the service title. */
   carta: string[][];
+  /** A Carta title with any of these words gets the generated guide instead (handWrittenFor; folded like the title). */
+  notFor?: string[];
   steps: StepDef[];
   /** Said before the consent rule in every answer of this guide: what was not verified and the fallback. */
   note?: string;
@@ -343,7 +345,8 @@ export const GUIDES = {
         link: { fixed: LE_DIGITAL_NEWS_URL },
       },
       {
-        action: "Instalar o Curitiba App pela loja oficial do celular (vendedor: Prefeitura Municipal de Curitiba).",
+        action:
+          "Instalar o Curitiba App pela loja oficial do celular; confira na loja que o vendedor é a Prefeitura Municipal de Curitiba.",
         consent: "O cidadão instala o Curitiba App por conta própria, na loja oficial do celular. Nada é digitado nesta etapa.",
       },
       APP_LOGIN("Curitiba App"),
@@ -362,8 +365,13 @@ export const GUIDES = {
       "placa, o local e o tempo. Horários, tempo máximo e valores: placas de sinalização da quadra e site da URBS; este " +
       "guia não traz números.",
     // All three words: "estar" alone is a verb, and "estacionamento regulamentado" alone is also in titles of other
-    // services (an appeal, a credential) that the generated guide serves better.
-    carta: [["estar", "estacionamento", "regulamentado"]],
+    // services (an appeal, a credential) that the generated guide serves better. "Est@R" splits into "est" and "r".
+    carta: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento"]],
+    // This guide buys and activates time; a notice, appeal, fine or credential is another service (since 0.38.1).
+    notFor: [
+      "aviso", "avisos", "irregularidade", "irregularidades", "recurso", "recursos", "notificacao", "notificacoes",
+      "multa", "multas", "defesa", "credencial", "credenciais",
+    ],
     fromWebSearchAt: GUIDES_0_38_CHECKED_AT,
     note:
       "Guide note (estar): the URBS EstaR page (step 3, www.urbs.curitiba.pr.gov.br/EstaR, title \"Est@R - URBS\" in " +
@@ -380,7 +388,9 @@ export const GUIDES = {
         link: { fixed: URBS_ESTAR_URL },
       },
       {
-        action: "Instalar um aplicativo credenciado pela URBS, ou ir a um ponto de venda credenciado.",
+        action:
+          "Instalar um aplicativo credenciado pela URBS, ou ir a um ponto de venda credenciado. Instale só um aplicativo " +
+          "citado na página do EstaR da URBS (passo 3): há aplicativos de estacionamento que não são credenciados.",
         consent:
           "O cidadão instala por conta própria, na loja oficial do celular, um aplicativo da lista da URBS (ou vai a um " +
           "ponto de venda credenciado). Nada é digitado nesta etapa.",
@@ -517,13 +527,16 @@ const CARTA_HOW_TO =
   `browser and save the listing yourself as ${CATALOG_FILE} in the folder set by CURITIBAI_DATA_DIR (shape and steps: ` +
   "docs/local-data.md, \"Finding a city service\"). The server never downloads it.";
 
-/** Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words. */
-export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[]) {
+/**
+ * Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words, and
+ * none of its notFor words.
+ */
+export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[], notFor: readonly string[] = []) {
   const words = queries.map((q) => queryWords(q.join(" ")));
   return catalog.services
     .filter((s) => {
       const title = new Set(queryWords(s.title));
-      return words.some((ws) => ws.every((w) => title.has(w)));
+      return !notFor.some((w) => title.has(w)) && words.some((ws) => ws.every((w) => title.has(w)));
     })
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
 }
@@ -540,7 +553,7 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   // Each match's official_url passes the allowlist here (normalized), not only in the module that read the copy: a
   // match whose URL fails it is dropped. Ambiguity still counts every title match, so dropping one never turns two
   // candidates into a single confident link.
-  const all = matchCarta(catalog, guide.carta);
+  const all = matchCarta(catalog, guide.carta, guide.notFor);
   const found = all.flatMap((s) => {
     const official = allowedUrl(s.official_url);
     return official === null ? [] : [{ ...s, official_url: official }];
@@ -774,9 +787,12 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   if (points.length > max) out = `${points.slice(0, max - 1).join("").trimEnd()}…`;
   if (!out.endsWith("…")) return out;
   // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
-  const body = out.slice(0, -1);
+  // The marker has a space, so its half ("[link removi") is found by its open "[", before the last-word check.
+  let body = out.slice(0, -1);
+  const open = /\[[^\]]*$/.exec(body);
+  if (open !== null) body = body.slice(0, open.index).trimEnd();
   const last = /\S+$/.exec(body);
-  return last !== null && (last[0].includes("://") || last[0].includes("[")) ? `${body.slice(0, last.index).trimEnd()}…` : out;
+  return last !== null && (last[0].includes("://") || last[0].includes("[")) ? `${body.slice(0, last.index).trimEnd()}…` : `${body}…`;
 }
 
 const GENERATED_DATA: StepDef = {
@@ -828,7 +844,11 @@ export function cartaText(s: CartaService): z.infer<typeof CartaText> {
 /** The hand-written guide whose Carta query words are all in this title (hand-written guides keep priority). */
 export function handWrittenFor(title: string): GuideId | undefined {
   const words = new Set(queryWords(title));
-  return GUIDE_IDS.find((id) => GUIDES[id].carta.some((q) => queryWords(q.join(" ")).every((w) => words.has(w))));
+  return GUIDE_IDS.find((id) => {
+    const guide: GuideDef = GUIDES[id];
+    if (guide.notFor?.some((w) => words.has(w))) return false;
+    return guide.carta.some((q) => queryWords(q.join(" ")).every((w) => words.has(w)));
+  });
 }
 
 /** Can the generated guide reach this service? Its official page must pass the allowlist (scripts/coverage-report.mjs mirrors this). */

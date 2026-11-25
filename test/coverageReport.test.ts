@@ -7,6 +7,7 @@ import {
   cartaItems,
   cartaReport,
   classifyService,
+  GUIDE_NOT_FOR,
   GUIDE_TERMS,
   main,
   parseAppTable,
@@ -46,6 +47,9 @@ const TABLE = `# Tools
 describe("coverage-report", () => {
   it("guide terms equal city_service_guide's Carta queries, for every guide", () => {
     expect(GUIDE_TERMS).toEqual(Object.fromEntries(Object.entries(GUIDES).map(([id, g]) => [id, g.carta])));
+    const notFor = Object.fromEntries(Object.entries(GUIDES).flatMap(([id, g]) => ("notFor" in g ? [[id, g.notFor]] : [])));
+    expect(GUIDE_NOT_FOR).toEqual(notFor);
+    expect(classifyService("Recurso de multa sintética do EstaR - estacionamento regulamentado").via).not.toBe("city_service_guide estar");
   });
 
   it("classifies by whole title words: data, guide, none; an action word is never data", () => {
