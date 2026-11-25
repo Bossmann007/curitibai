@@ -19,7 +19,7 @@
 
 # CuritibAI
 
-CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 28 tools over public
+CuritibAI is a read-only [MCP](https://modelcontextprotocol.io) server. It gives AI assistants 26 tools over public
 data about Curitiba (Brazil): buses, public health units, vaccination sites, city services, city facilities, voting places, police and fire areas, census figures, places, events, weather, river levels and rain, Teatro Guaíra events,
 municipal holidays, municipal procurement, Detran-PR, the city's open-data portal, and step-by-step guides with official links to city services that need a login (the citizen acts, with consent at every step). The server writes no files, needs no account and does not store or log queries.
 
@@ -119,12 +119,13 @@ lists the nearby stops without their lines from IPPUC's GeoCuritiba layer), and 
 leave it on; any other value stops the server at start with a configuration error) in the server's environment: `events_search` and
 `useful_phones` then read only the local file, as before 0.18.0, and `bus_stops_near` only the URBS export, as before
 0.29.0 (`data_not_available` without it); these three then make no network call. The live tools still ask their sources.
+An empty `CURITIBAI_REMOTE_DATA` (some MCP clients pass empty variables by default) also stops the server, with the configuration error on stderr: unset it, or set it to `0` or `1`.
 
 <a id="tools"></a>
 
 ## Tools at a glance
 
-All 28 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
+All 26 tools are read-only. "Live" tools ask the source on each call (cached in memory for 10 minutes; 6 hours for
 the vaccination page and the GeoCuritiba layers; 15 minutes per ANA station; 1 hour for the Teatro Guaíra calendar; 24 hours for the Receita tax-reform data). "Local" tools read a file you keep in `CURITIBAI_DATA_DIR` and "Bundled" tools read data bundled in the code; both
 make no network call. "Nightly" tools read your local file when there is one, else the copy this project's
 nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turns it off). [Tool reference](docs/tools.md) has every input, output and error.
@@ -141,9 +142,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |
 | City | `city_service_guide` | Steps and official links to use 156, Saúde Já, IPTU, Cartão Transporte, Agenda Online, creche or Detran-PR; the citizen acts, with consent at every step | Bundled, plus links from your Carta copy |
 | City | `city_facilities_search` | Feiras, Ruas da Cidadania, ecopontos, libraries, cultural centres, cinemas, memorials, outdoor gyms and sport centres, public toilets, parks and conservation units, bike lanes, bus terminals (with their integrated lines), voting places (TRE-PR list) and more, with days and hours as published | Live (IPPUC GeoCuritiba) |
-| City | `place_at_point` | Neighbourhood, regional, zoning (code, name, law or decree, version) and nearest street of a point | Live (IPPUC GeoCuritiba) |
-| City | `service_areas_at_point` | Health unit area and CRAS territory of a point, or (`areas: safety`) its Polícia Militar company, Polícia Civil district and fire platoon areas, and whether the point is inside Curitiba | Live (IPPUC GeoCuritiba) |
-| City | `census_at_point` | IBGE 2022 census figures of a point's sector (residents, households, density, mean income of household heads; withheld under 20 households) and its neighbourhood's totals | Live (IPPUC GeoCuritiba) |
+| City | `place_at_point` | One answer for a point (`include` picks the parts): neighbourhood, regional, zoning and nearest street; health unit and CRAS areas, or (`areas: safety`) Polícia Militar company, Polícia Civil district and fire platoon areas; IBGE 2022 census figures of its sector (withheld under 20 households) and neighbourhood | Live (IPPUC GeoCuritiba) |
 | City | `city_calendar` | The Prefeitura's 2026 holidays, optional days and closures (Decreto 2.385/2025), and the IPTU 2026 general rule (secondary source) | Bundled (dated 2026) |
 | City | `city_points_search` | Points open to the public: feiras, schools, libraries, health units and more | Local (URBS file) |
 | City | `places_search` | Parks, libraries, schools and other public places mapped in OpenStreetMap | Live (Overpass); police and fire stations Bundled |
@@ -187,13 +186,13 @@ schedule, the published files, how to turn it back on and how to run the collect
 ## Privacy notice
 
 - No user accounts; the server does not store or log queries. Search terms go only to the source they query, and
-  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page, the GeoCuritiba layers and the rounded points of `place_at_point`, `service_areas_at_point` and `census_at_point`; 15 minutes per ANA station;
+  the only copy is an in-memory cache entry (10 minutes; 6 hours for the vaccination page, the GeoCuritiba layers and the rounded points of `place_at_point`; 15 minutes per ANA station;
   1 hour for the Teatro Guaíra calendar, 6 hours for its event pages; 1 hour for the published events and phones copy).
   `events_search` and `useful_phones` never send search terms: they read a whole published file and filter it in the
   server.
   `guaira_events` sends no search term at all: it reads the whole calendar and filters it in the server.
   `city_facilities_search` never sends the user's position or neighbourhood: it reads a whole layer and filters it in
-  the server. `place_at_point`, `service_areas_at_point` and `census_at_point` send IPPUC only the point rounded to 4 decimals (about 11 m); that rounded point is the
+  the server. `place_at_point` sends IPPUC only the point rounded to 4 decimals (about 11 m); that rounded point is the
   only one cached and returned, and it is never logged or written. `river_levels` never sends the user's text or position: only bundled station codes and dates reach ANA.
 - Names of natural persons are dropped or withheld where the source's structure allows (suppliers, direct-award
   objects, private health units) and contact-shaped text is masked; a name can still, rarely, pass through ([details](docs/privacy.md#details)).

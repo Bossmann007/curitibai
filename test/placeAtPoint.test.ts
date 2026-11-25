@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CADASTRAL_SERVICE_URL, pointQueryUrl, roundPoint, type PointLayer } from "../src/sources/geocuritiba.js";
-import { placeAtPointOutput } from "../src/tools/placeAtPoint.js";
-import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
+import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and zones, the real fields and shapes of the layers as read on 2026-11-23).
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -43,7 +42,7 @@ afterEach(() => {
 async function call(args: Record<string, unknown>) {
   vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
   const client = await connectClient();
-  const pending = client.callTool({ name: "place_at_point", arguments: args });
+  const pending = client.callTool({ name: "place_at_point", arguments: { include: ["place"], ...args } });
   await vi.advanceTimersByTimeAsync(60_000);
   return pending;
 }
@@ -51,7 +50,7 @@ async function call(args: Record<string, unknown>) {
 async function place(args: Record<string, unknown> = AT) {
   const res = await call(args);
   expect(res.isError).toBeFalsy();
-  return placeAtPointOutput.parse(res.structuredContent);
+  return pointPart(res.structuredContent, "place");
 }
 
 describe("place_at_point query URLs", () => {
@@ -95,7 +94,7 @@ describe("place_at_point answers", () => {
   it("returns bairro, regional, zoning from layer 41 and the nearest street, with the rounded point only", async () => {
     const calls = stubFetch(routes());
     const res = await call(AT);
-    const out = placeAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "place");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
@@ -153,7 +152,7 @@ describe("place_at_point answers", () => {
     }));
     const out = await place();
     expect(out.data).toMatchObject({ bairro: "ALFA", regional: "R2", boundary: true });
-    expect(out.data.zoning.map((z) => z.code)).toEqual(["ZT-1", "ZT-3"]);
+    expect(out.data.zoning!.map((z) => z.code)).toEqual(["ZT-1", "ZT-3"]);
     expect(out.note).toMatch(/boundary/);
   });
 
@@ -231,7 +230,7 @@ describe("place_at_point errors", () => {
   it("a zoning failure after the bairro was read is partial; the street is not asked while the failure is remembered", async () => {
     const calls = stubFetch(routes({ zoning_decree: { status: 500 } }));
     const out = await place();
-    expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", zoning: [], nearest_street: null, partial: true });
+    expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", zoning: null, nearest_street: null, partial: true });
     expect(out.note).toMatch(/zoning/);
     expect(calls).toHaveLength(2);
   });

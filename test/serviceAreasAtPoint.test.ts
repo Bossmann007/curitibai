@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer } from "../src/sources/geocuritiba.js";
 import { OutOfTimeError } from "../src/hostGate.js";
 import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
-import { missingNote, serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
-import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
+import { missingNote } from "../src/tools/serviceAreasAtPoint.js";
+import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and dates, the real fields and shapes of layers 19 and 5 as read on 2026-11-23).
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -43,7 +43,7 @@ afterEach(() => {
 async function call(args: Record<string, unknown>) {
   vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
   const client = await connectClient();
-  const pending = client.callTool({ name: "service_areas_at_point", arguments: args });
+  const pending = client.callTool({ name: "place_at_point", arguments: { include: ["service_areas"], ...args } });
   await vi.advanceTimersByTimeAsync(60_000);
   return pending;
 }
@@ -51,7 +51,7 @@ async function call(args: Record<string, unknown>) {
 async function areas(args: Record<string, unknown> = AT) {
   const res = await call(args);
   expect(res.isError).toBeFalsy();
-  return serviceAreasAtPointOutput.parse(res.structuredContent);
+  return pointPart(res.structuredContent, "service_areas");
 }
 
 describe("service_areas_at_point query URLs", () => {
@@ -86,7 +86,7 @@ describe("service_areas_at_point answers", () => {
   it("returns the health unit and CRAS areas with their reference dates and the rounded point only", async () => {
     const calls = stubFetch(routes());
     const res = await call(AT);
-    const out = serviceAreasAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "service_areas");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
@@ -94,9 +94,9 @@ describe("service_areas_at_point answers", () => {
       inside_curitiba: true,
       health_units: [{ name: "US TESTE", district: "DISTRITO TESTE", reference_date: "março/2022", source_agency: "SMS-PMC", approximate: null }],
       cras: [{ name: "CRAS TESTE", type: "CRAS", regional: "REGIONAL TESTE", reference_date: "MAR-2019", source_agency: "FAS", approximate: false }],
-      police_military: [],
-      police_civil: [],
-      fire: [],
+      police_military: null,
+      police_civil: null,
+      fire: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
@@ -155,14 +155,14 @@ describe("service_areas_at_point answers", () => {
     stubFetch(routes({
       health_area: { body: attrs([{ nome: "A", geometriaaproximada: 1 }, { nome: "B", geometriaaproximada: 0 }, { nome: "C", geometriaaproximada: "1" }]) },
     }));
-    expect((await areas()).data.health_units.map((h) => h.approximate)).toEqual([true, false, null]);
+    expect((await areas()).data.health_units!.map((h) => h.approximate)).toEqual([true, false, null]);
   });
 
   it("a point on a boundary lists the areas distinct, sorted by name, at most 3, and says so", async () => {
     const u = (nome: string) => ({ nome, distrito: "D", data: "março/2022", fonte: "SMS-PMC" });
     stubFetch(routes({ health_area: { body: attrs([u("US ZETA"), u("US ALFA"), u("US ZETA"), u("US BETA"), u("US GAMA")]) } }));
     const out = await areas();
-    expect(out.data.health_units.map((h) => h.name)).toEqual(["US ALFA", "US BETA", "US GAMA"]);
+    expect(out.data.health_units!.map((h) => h.name)).toEqual(["US ALFA", "US BETA", "US GAMA"]);
     expect(out.note).toMatch(/boundary/);
   });
 
@@ -178,13 +178,13 @@ describe("service_areas_at_point answers", () => {
   it("a nameless row next to a named one is dropped and makes no boundary", async () => {
     stubFetch(routes({ cras_territory: { body: attrs([{ regional: "R" }, { nome: "CRAS TESTE", regional: "R" }]) } }));
     const out = await areas();
-    expect(out.data.cras.map((c) => c.name)).toEqual(["CRAS TESTE"]);
+    expect(out.data.cras!.map((c) => c.name)).toEqual(["CRAS TESTE"]);
     expect(out.note).not.toMatch(/boundary/);
   });
 
   it("text fields are cleaned and masked like the other GeoCuritiba fields", async () => {
     stubFetch(routes({ health_area: { body: attrs([{ nome: "US‮ 33334444" }]) } }));
-    expect((await areas()).data.health_units[0]?.name).toBe("US [masked]");
+    expect((await areas()).data.health_units![0]?.name).toBe("US [masked]");
   });
 });
 
@@ -206,14 +206,14 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("returns the police and fire areas in 3 requests (PM, civil, fire), no health or CRAS request", async () => {
     const calls = stubFetch(safetyRoutes());
     const res = await call({ ...AT, areas: "safety" });
-    const out = serviceAreasAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "service_areas");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
       areas: "safety",
       inside_curitiba: true,
-      health_units: [],
-      cras: [],
+      health_units: null,
+      cras: null,
       police_military: [{ battalion: "99º Batalhão", battalion_code: "99º BPM", company: "1ª Companhia", company_code: "1ª CIA", reference_date: "09/2025", source_agency: "PMPR TESTE" }],
       police_civil: [{ district: "99º Distrito Policial", district_code: "99º DP", division: "Divisão Teste", source_agency: "PCPR TESTE" }],
       fire: [{ platoon: "Pelotão Teste", platoon_code: "9ª Pel. BM", company: "Companhia Teste", battalion: "Batalhão Teste", source_agency: "CBMPR TESTE" }],
@@ -235,7 +235,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("a refusal on the Polícia Civil layer is partial (the fire layer is then not asked), never a failed call", async () => {
     const calls = stubFetch(safetyRoutes({ civil_district: { body: '{"error":{"code":403}}' } }));
     const out = await areas({ ...AT, areas: "safety" });
-    expect(out.data).toMatchObject({ partial: true, police_civil: [], fire: [] });
+    expect(out.data).toMatchObject({ partial: true, police_civil: null, fire: null });
     expect(out.data.police_military).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the Polícia Civil and fire layer could not be read now\. The source refused this server/);
     expect(calls.map((c) => c.url)).not.toContain(key("fire_platoon").slice(4));
@@ -244,7 +244,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("a failing fire layer alone is partial and keeps the other areas", async () => {
     stubFetch(safetyRoutes({ fire_platoon: { status: 500 } }));
     const out = await areas({ ...AT, areas: "safety" });
-    expect(out.data).toMatchObject({ partial: true, fire: [] });
+    expect(out.data).toMatchObject({ partial: true, fire: null });
     expect(out.data.police_civil).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the fire layer could not be read now\. The host was busy or failing/);
   });
@@ -310,8 +310,7 @@ describe("service_areas_at_point errors", () => {
   ])("a 499 in an HTTP 200 body on the %s layer blocks the host: place_at_point is not asked either", async (_, over, n) => {
     const calls = stubFetch(routes(over));
     expect(errorOf(await call(AT))).toMatchObject({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
-    const client = await connectClient();
-    expect(errorOf(await client.callTool({ name: "place_at_point", arguments: AT }))).toMatchObject({ error: "source_unavailable" });
+    expect(errorOf(await call({ ...AT, include: ["place"] }))).toMatchObject({ error: "source_unavailable" });
     expect(calls).toHaveLength(n);
   });
 
@@ -322,7 +321,7 @@ describe("service_areas_at_point errors", () => {
   ])("a CRAS layer failing with %s after the health layer was read is partial", async (_, r) => {
     stubFetch(routes({ cras_territory: r }));
     const out = await areas();
-    expect(out.data).toMatchObject({ cras: [], partial: true });
+    expect(out.data).toMatchObject({ cras: null, partial: true });
     expect(out.data.health_units).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the CRAS layer could not be read now/);
   });
@@ -330,7 +329,7 @@ describe("service_areas_at_point errors", () => {
   it("a refusal on the CRAS layer is partial and says the host is not asked for 10 minutes", async () => {
     stubFetch(routes({ cras_territory: { body: '{"error":{"code":499,"message":"Token Required"}}' } }));
     const out = await areas();
-    expect(out.data).toMatchObject({ cras: [], partial: true });
+    expect(out.data).toMatchObject({ cras: null, partial: true });
     expect(out.note).toMatch(/refused this server; it is not asked again for 10 minutes/);
   });
 });
@@ -355,10 +354,10 @@ describe("service_areas_at_point cache", () => {
     });
     vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
     const client = await connectClient();
-    const place = client.callTool({ name: "place_at_point", arguments: AT });
+    const place = client.callTool({ name: "place_at_point", arguments: { ...AT, include: ["place"] } });
     await vi.advanceTimersByTimeAsync(60_000);
     await place;
-    const pending = client.callTool({ name: "service_areas_at_point", arguments: AT });
+    const pending = client.callTool({ name: "place_at_point", arguments: { ...AT, include: ["service_areas"] } });
     await vi.advanceTimersByTimeAsync(60_000);
     expect((await pending).isError).toBeFalsy();
     expect(calls.filter((c) => c.url === key("bairro").slice(4))).toHaveLength(1);

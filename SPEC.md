@@ -1,58 +1,46 @@
-# SPEC: v0.31.0 quality round (v0.30 review follow-ups and a subtraction pass)
+# SPEC: v0.32.0 one place facade
 
-Approved: Enzo 2026-11-24 (task brief "curitibai v0.31.0": "seguimos com emode faz uma rodada de pstack"). **This change
-publishes nothing**: no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-24 (task brief "curitibai v0.32.0": "seguimos com emode", roadmap step "1.0 com fachada única de
+lugares"). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Close the findings left by the v0.30 reviews (PR #42), then remove code from `src/` without changing what any tool
-answers: A (follow-ups, version, this SPEC), then B (the subtraction pass). Together they stay under the 400-line size
-check, so they ship as one pull request.
+One tool answers "what is at this point": `place_at_point` gives the place, the service areas and the census of a
+Curitiba point, so a client calls one tool instead of three and tools/list gets smaller. Proposed in PR #43.
 
 ## Changes
 
-### A. Follow-ups
-
-1. **`CURITIBAI_REMOTE_DATA` fails closed** (`src/sources/publishedData.ts`, `src/server.ts`). `remoteDataSetting()`
-   is the one parser: `0`, `off`, `false`, `no` are off; `1`, `on`, `true`, `yes` are on (case and spaces ignored);
-   unset is on; any other value, empty included, is `null`. The server checks it at start and exits 1 with
-   `curitibai: configuration error: CURITIBAI_REMOTE_DATA must be ...` on `stderr` for `null`; it never echoes the
-   value. `remoteDataEnabled()` is true only for on, so an invalid value that reaches a tool (tests, in-process use)
-   keeps remote reading off.
-2. **`server.json`**: the `CURITIBAI_REMOTE_DATA` description names `bus_stops_near` and the accepted values.
-3. **Grammar** (`cartaFor` in `src/tools/cityServiceGuide.ts`): "1 of their links is not ... and is not listed".
-4. **`bus_stops_near` description unchanged**: the switch does not fit (369 of 400 characters; sum 9,593 of 9,600).
-5. **Docs and version**: README, docs/local-data.md, docs/tools.md, docs/sources.md, CHANGELOG 0.31.0, version 0.31.0
-   in `package.json`, `package-lock.json` and `server.json`, this SPEC.
-
-### B. Subtraction pass (behaviour-preserving)
-
-Each item deletes more than it adds and changes no tool name, schema, output or message:
-
-- `failFrom` takes an optional hint appended to its message, so `bus_stops_near` and `tax_reform_curitiba` stop
-  re-parsing the JSON text of a `failFrom` result (`failurePayload`, `withDisclaimer`).
-- GeoCuritiba: one request helper for the four identical `fetchText` calls and their "not JSON" check.
-- GeoCuritiba: one ArcGIS answer check (JSON, `error` with the host block, WGS84) for the three layer parsers.
-- One `isObject` in `src/text.ts` instead of four copies; imports of `mask.js` directly instead of through the
-  `pncp.ts` re-export.
-
-A larger change (one handler for the point tools, a place facade for 1.0) is a proposal in the pull request body only.
+1. **Facade** (`src/tools/placeAtPoint.ts`, [ADR 0011](docs/adr/0011-one-place-facade.md)). Input `lat`, `lon`,
+   `include?: ("place"|"service_areas"|"census")[]` (non-empty, default all), `areas?: "care"|"safety"|"all"`
+   (default `care`). Output `{data: {point, place, service_areas, census, partial}, notes, license_note}`; each part
+   is the old tool's `data` without the point, plus `source`, `source_url`, `checked_at`.
+2. **One turn at the host gate per call** (`pointReads` in `src/sources/geocuritiba.ts`): the parts' requests go one
+   at a time in the order asked, under one `startBy`. A part whose first request is cut, or fails while another
+   answers, is null, `partial` true, with a note; when no part answers, the call fails with the first error that is
+   not a budget cut (else the budget cut, `rate_limited`).
+3. **Removed from tools/list**: `service_areas_at_point`, `census_at_point`. Their code stays as the parts
+   (`serviceAreasAt`, `censusAt`); `MIN_HOUSEHOLDS` = 20 and the withholding are unchanged (ADR 0009).
+4. **Null, not empty, when not read**: the five area lists (group not asked, or layer not read) and `place.zoning`
+   (layer failed); empty means read and none covers the point.
+5. **Budget wording**: the place and care parts name a time-budget cut with `missingNote`, as safety and census did.
+6. **Docs and version**: README (tool table, empty `CURITIBAI_REMOTE_DATA` line), docs/tools.md, docs/privacy.md,
+   ADR 0011, CHANGELOG 0.32.0 (breaking), version 0.32.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-New tools; new behaviour; any change to `test/fixtures/tool-contracts.json`; publishing; tags.
+New layers or fields; changes to the host gate's limits; publishing; tags.
 
 ## Check
 
-- `test/publishedData.test.ts`: `remoteDataSetting()` for every accepted value, unset, and invalid values (empty,
-  `2`, `enabled`, `constructor`, `__proto__`); events and phones make no request for off words and invalid values,
-  and read the published copy for `true`, ` Yes `, `1`.
-- `test/busStopsNear.test.ts`: off words and invalid values give `data_not_available` with no request; unset reads
-  the layer.
-- `test/cityServiceGuide.test.ts`: two matches with one refused give the singular message.
-- `scripts/smoke.mjs`: the built server started with `CURITIBAI_REMOTE_DATA=maybe` exits 1 with the configuration
-  error.
-- `test/contracts.test.ts` passes with the snapshot unchanged; `scripts/verify` exits 0 on each PR head.
+- `test/placeFacade.test.ts`: each `include` combination asks only its layers, first layer of each part first; a cold
+  call reads every part's first layer and the budget cuts later layers (exact request order); a part past the budget
+  is null with `partial` and the note; a point outside Curitiba answers `inside_curitiba` false in every part; a
+  sector of 19 or 0 households stays withheld through the facade; every part failing is `source_unavailable`; with
+  `areas: "all"`, care failing gives null care lists and real safety lists, safety failing the reverse, both an error.
+- `test/placeAtPoint.test.ts`, `test/serviceAreasAtPoint.test.ts`, `test/censusAtPoint.test.ts`: the old behaviour
+  through `place_at_point` with one part in `include`.
+- `test/contracts.test.ts`: the rewritten snapshot; every description at most 400 characters, the sum at most 9,600.
+- `scripts/verify` exits 0 on the PR head.

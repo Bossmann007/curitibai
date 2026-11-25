@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
+import { placeAtPointOutput } from "../src/tools/placeAtPoint.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../src/server.js";
@@ -216,4 +217,16 @@ export async function connectClient(): Promise<Client> {
   await client.connect(clientTransport);
   await client.listTools(); // as real clients do; enables client-side outputSchema validation
   return client;
+}
+
+/**
+ * One part of a place_at_point answer (v0.32.0), shaped as the tool that answered it alone before: the rounded point in
+ * `data`, the part's own credit, and the answer's notes joined into `note`.
+ */
+export function pointPart<K extends "place" | "service_areas" | "census">(structured: unknown, part: K) {
+  const out = placeAtPointOutput.parse(structured);
+  const p = out.data[part] as NonNullable<(typeof out.data)[K]>;
+  expect(p, `${part} answered`).not.toBeNull();
+  const { source, source_url, checked_at, ...data } = p;
+  return { data: { ...out.data.point, ...data }, source, source_url, checked_at, note: out.notes.join(" "), partial: out.data.partial };
 }

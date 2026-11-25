@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.32.0 - 2026-11-24
+
+One place facade for 1.0 (owner approval 2026-11-24). 28 → 26 tools. Publishes nothing.
+
+- **Breaking:** `service_areas_at_point` and `census_at_point` are merged into `place_at_point` and leave tools/list.
+  `place_at_point` takes `include` (`place`, `service_areas`, `census`; default all three) and `areas` (`care`,
+  `safety`, or the new `all`), and returns `{data: {point, place, service_areas, census, partial}, notes,
+  license_note}`: each part has its old fields without the point, plus its own `source`, `source_url` and
+  `checked_at`. The old `note` strings are now `notes`, with the shared caveats once. The package was never
+  published, so no external client breaks; `test/fixtures/tool-contracts.json` was rewritten on purpose.
+- The parts' GeoCuritiba requests go one at a time per call (`pointReads`), first layer of each part first, under one
+  call budget ([ADR 0011](docs/adr/0011-one-place-facade.md)). A cold call with every part makes about 5 requests and is
+  `partial`; a part cut by the budget is null with a note, never a guess. When no part answers, the call fails as
+  the single tools did.
+- A list or zoning that was not read is now null, never empty: the five area lists of `service_areas` (null for a
+  group not asked, or a layer not read, also with `areas: "all"` when one group is not read) and `place.zoning`
+  when its layer could not be read. Empty still means the layer was read and nothing covers the point.
+- A later layer cut by the call's time budget now says so ("the call's time budget ran out") in the place and care
+  areas notes too; before, they said the host was busy or failing.
+- Privacy rules unchanged: only the rounded point is sent; census sectors under 20 households stay withheld
+  ([ADR 0009](docs/adr/0009-census-household-floor.md)).
+- tools/list: 116,799 → 115,691 characters; descriptions 9,593 → 8,842 of the 9,600 ceiling. The new description no
+  longer says "never logged", "not a certificate" or "untrusted data"; docs/tools.md lists them, and `notes` carries
+  the last two in every answer.
+- README: an empty `CURITIBAI_REMOTE_DATA` (some MCP clients pass empty variables) stops the server with the
+  configuration error on stderr; unset it or set `0` or `1`.
+
 ## 0.31.0 - 2026-11-24
 
 A quality round: the follow-ups from the v0.30 reviews and a pass that removes code without changing what the tools

@@ -47,8 +47,8 @@ behind it.
   another person or company act for the citizen in e-Cidadão) is only mentioned; CuritibAI plays no part in it.
   The links are public: consent is enforced by the citizen's client and assistant, not by withholding the URL, and a
   call without `open_step` returns every step with its link.
-- **User position (`place_at_point` since 0.22.0, `service_areas_at_point` since 0.23.0, `census_at_point` since 0.27.0).** These are the only tools
-  that send a position to a source, under the same rules. The point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
+- **User position (`place_at_point` since 0.22.0; its service areas since 0.23.0 and census since 0.27.0, separate tools
+  until 0.31.0).** It is the only tool that sends a position to a source, and every part follows the same rules. The point is rounded to 4 decimals (about 11 m) before anything else; only the rounded point is sent to
   `geocuritiba.ippuc.org.br` (in the query URL), kept as the in-memory cache key (6 hours, at most 500 points) and
   returned. The full-precision position is never sent, cached, logged or written anywhere (the server writes no
   files and logs no request). A point outside the Curitiba box is refused before any request. Every other tool that
@@ -60,7 +60,7 @@ behind it.
   `https://apidadosabertos.saude.gov.br`, `https://pncp.gov.br`, `https://apiprevmet3.inmet.gov.br`,
   `https://ovp.dresel.systems` and `https://imunizaja.curitiba.pr.gov.br` (one page, `/locaisvacinacao/`; redirects to
   any other host, or outside `/locaisvacinacao`, are refused) and `https://geocuritiba.ippuc.org.br` (fixed layer
-  queries under `/server/rest/services`, and the point queries of `place_at_point`, `service_areas_at_point` and `census_at_point` (since 0.24.0 `service_areas_at_point` also asks the cadastral bairro layer when no health area contains the point; since 0.27.0 `census_at_point` also sends one neighbourhood name taken from the source's answer and checked against 75 bundled names, never the user's text); redirects to any other host or outside that path are refused) and
+  queries under `/server/rest/services`, and the point queries of `place_at_point` (since 0.24.0 its service areas also ask the cadastral bairro layer when no health area contains the point; since 0.27.0 its census also sends one neighbourhood name taken from the source's answer and checked against 75 bundled names, never the user's text); redirects to any other host or outside that path are refused) and
   `https://telemetriaws1.ana.gov.br` (`/ServiceANA.asmx/DadosHidrometeorologicos` for bundled station codes; ANA documents
   plain http, but https answered with a valid certificate on 2026-11-22, so https is used; redirects to any other host
   or outside `/ServiceANA.asmx` are refused) and `https://www.teatroguaira.pr.gov.br` (robots.txt, the calendar pages
