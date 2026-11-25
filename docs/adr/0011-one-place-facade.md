@@ -24,7 +24,8 @@ yet, so merging them breaks no external user.
   than 10 s away.
 - A part whose first request is cut, or fails while another part answered, is null; `partial` is true and `notes`
   names the part and why (`missingNote`: refusal, time budget, or busy host). When no part answers, the call fails
-  with the error of the first part (`source_unavailable`, `rate_limited`), as the single tools did.
+  with the first error that is not a budget cut, else the budget cut (`source_unavailable`, `rate_limited`), as the
+  single tools did.
 - Privacy rules stay as they were: only the point rounded to 4 decimals is sent, cached and returned; census sectors
   under `MIN_HOUSEHOLDS` = 20 are withheld and left out of neighbourhood totals ([ADR 0009](0009-census-household-floor.md));
   no voter or household data.

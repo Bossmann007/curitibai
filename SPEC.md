@@ -19,7 +19,8 @@ Curitiba point, so a client calls one tool instead of three and tools/list gets 
    is the old tool's `data` without the point, plus `source`, `source_url`, `checked_at`.
 2. **One turn at the host gate per call** (`pointReads` in `src/sources/geocuritiba.ts`): the parts' requests go one
    at a time in the order asked, under one `startBy`. A part whose first request is cut, or fails while another
-   answers, is null, `partial` true, with a note; no part answered is the first part's error.
+   answers, is null, `partial` true, with a note; when no part answers, the call fails with the first error that is
+   not a budget cut (else the budget cut, `rate_limited`).
 3. **Removed from tools/list**: `service_areas_at_point`, `census_at_point`. Their code stays as the parts
    (`serviceAreasAt`, `censusAt`); `MIN_HOUSEHOLDS` = 20 and the withholding are unchanged (ADR 0009).
 4. **Budget wording**: the place and care parts name a time-budget cut with `missingNote`, as safety and census did.

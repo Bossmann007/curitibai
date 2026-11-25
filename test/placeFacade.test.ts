@@ -106,6 +106,14 @@ describe("place_at_point include", () => {
     expect(out.notes.join(" ")).toMatch(/reference_date/);
   });
 
+  it("areas all with the safety group failing keeps the care areas and still says all", async () => {
+    stubFetch({ ...routes(), [key("pm_company")]: { status: 500 } });
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({ areas: "all", health_units: [{ name: "US TESTE" }], police_military: [], partial: true });
+    expect(out.data.partial).toBe(true);
+    expect(out.notes.join(" ")).toMatch(/the service areas \(safety\) part was not read/);
+  });
+
   it.each([[{ include: [] }], [{ include: ["voters"] }], [{ areas: "everything" }]])("refuses %j", async (over) => {
     const calls = stubFetch({});
     expect((await callAll({ ...AT, ...over }))[0]!.isError).toBe(true);

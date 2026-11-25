@@ -267,7 +267,8 @@ export async function placeFacade(p: Point, include: readonly Part[], areas: "ca
   const answered = (part: Part) => jobs.flatMap((j, i) => (j.part === part && settled[i]!.status === "fulfilled" ? [settled[i]!.value] : []));
   const [place] = answered("place") as PlaceResult[];
   const [first, second] = answered("service_areas") as AreasResult[];
-  const areasResult = first && second ? mergeAreas(first, second) : first;
+  // With `areas: "all"` and one group not read, the answer still says "all": its empty lists were asked, not answered.
+  const areasResult = second ? mergeAreas(first!, second) : first && areas === "all" ? { ...first, data: { ...first.data, areas, partial: true } } : first;
   const [census] = answered("census") as CensusResult[];
   const parts = [place, areasResult, census].filter((r) => r !== undefined);
   const cut = jobs.flatMap((j, i) => {
