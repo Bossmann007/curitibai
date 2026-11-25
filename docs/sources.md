@@ -1083,8 +1083,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   `centro_cultural_synthetic.json` (v0.20) is **synthetic**: one complete record, one with most fields missing and a
   non-municipal e-mail, and one with no name. `local_de_votacao_synthetic.json` and `terminal_synthetic.json` (v0.27)
   are **synthetic** (invented names; an impossible date; a nameless record; a 65-line `observacao`).
-  `teatro_synthetic.json` (v0.40) holds the Teatro Ópera de Arame record of layer 55 as read on 2026-11-25 (a public
-  venue: address, periods, institutional landline; no `observacao`) and one invented theatre.
+  `teatro.json` (v0.40) holds the real Teatro Ópera de Arame record of layer 55 as read on 2026-11-25 (a public
+  venue: address, periods, institutional landline; no `observacao`) and one invented theatre ("Ficticio").
 
 #### `ponto turistico`: Linha Turismo stops (bundled, since 0.40.0)
 

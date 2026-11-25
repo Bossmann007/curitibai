@@ -36,7 +36,7 @@ Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): turn the Curitiba App row
    record that gives address, hours and phone; null for 7 streets, squares and neighbourhoods). No network call;
    `name` filter only; listed in `list types`. New optional output field `lookup`.
 2. **Eval:** q108 → `ponto turistico`; q109 → `teatro` + `name: "opera de arame"`, expecting `open_periods` and
-   `phones` (no source publishes its hours). New fixture `teatro_synthetic.json`. `cultural_spaces` leaves `APP_GAPS`.
+   `phones` (no source publishes its hours). New fixture `teatro.json` (the real Ópera de Arame record, one invented theatre). `cultural_spaces` leaves `APP_GAPS`.
 3. **Useful phones stays partial**, with the reason in docs/tools.md; q110 and q072 unchanged.
 4. **Docs and version:** docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, README, CHANGELOG 0.40.0, version
    0.40.0 in `package.json`, `package-lock.json`, `server.json`, tool contract snapshot.

@@ -106,7 +106,7 @@
   {"id":"q105","question":"Quanto custa uma hora de EstaR no Centro?","tool":"city_service_guide","args":{"service":"estar"},"expect":{"status":"guide","fields":["data.steps","data.title"]}},
   {"id":"q106","question":"Onde está o ônibus da linha 901 agora, em tempo real?","tool":null,"gap":"realtime_bus"},
   {"id":"q107","question":"Quanto tempo falta para o próximo ônibus chegar no ponto em frente ao Jardim Botânico?","tool":null,"gap":"realtime_bus"},
-  {"id":"q108","question":"Quais os pontos turísticos de Curitiba para visitar num fim de semana?","tool":"city_facilities_search","args":{"type":"ponto turistico"},"expect":{"status":"ok","fields":["data.items","data.items.1.lookup.type"]}},
+  {"id":"q108","question":"Quais os pontos turísticos de Curitiba para visitar num fim de semana?","tool":"city_facilities_search","args":{"type":"ponto turistico","limit":25},"expect":{"status":"ok","fields":["data.items","data.items.1.lookup.type"]}},
   {"id":"q109","question":"Qual o horário de visita da Ópera de Arame?","tool":"city_facilities_search","args":{"type":"teatro","name":"opera de arame"},"expect":{"status":"ok","fields":["data.items.0.open_periods","data.items.0.phones"]}},
   {"id":"q110","question":"Qual o telefone da Ouvidoria Geral do Município?","tool":null,"gap":"useful_phones"},
   {"id":"q111","question":"Qual ônibus eu pego para ir da Rodoferroviária até o Parque Barigui?","tool":null,"gap":"route_planning"},

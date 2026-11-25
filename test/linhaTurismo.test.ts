@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FACILITY_TYPES, isListRequest, resolveType } from "../src/sources/geocuritiba.js";
 import { isTourRequest, TOUR_ALIASES, TOUR_SOURCE_URL, TOUR_STOPS, TOUR_TYPE_ID } from "../src/sources/linhaTurismo.js";
+import { fold } from "../src/text.js";
 import { cityFacilitiesSearchOutput } from "../src/tools/cityFacilitiesSearch.js";
 import { connectClient, errorOf, stubFetch } from "./helpers.js";
 
@@ -21,6 +22,15 @@ describe("Linha Turismo stops (bundled)", () => {
       if (s.lookup !== null) expect(resolveType(s.lookup.type), `${s.name}: ${s.lookup.type}`).not.toBeNull();
     }
     expect(TOUR_STOPS.filter((s) => s.lookup !== null)).toHaveLength(18);
+  });
+
+  it("every lookup word is in the record name it was matched to (the tool's name filter would find it)", () => {
+    const norm = (x: string) => fold(x).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    for (const s of TOUR_STOPS) {
+      if (s.lookup === null) continue;
+      const hay = norm(s.lookup.matched);
+      for (const w of norm(s.lookup.name).split(" ")) expect(hay.includes(w), `${s.name}: ${w}`).toBe(true);
+    }
   });
 
   it("its names never collide with a GeoCuritiba type, alias or the list words", () => {
@@ -56,6 +66,19 @@ describe("city_facilities_search type \"ponto turistico\"", () => {
     const out = cityFacilitiesSearchOutput.parse(res.structuredContent);
     expect(out.data.total).toBe(1);
     expect(out.data.items[0]).toMatchObject({ name: "OPERA DE ARAME", lookup: { type: "teatro", name: "opera de arame" } });
+  });
+
+  it.each([
+    ["Mercado Municipal", "MERC.MUNICIPAL/RODOFERROVIARIA"],
+    ["Parque São Lourenço", "PQ.SAO LOURENCO (SENT.BARREIRINHA)"],
+    ["Unilivre", "UNIV.LIVRE DO MEIO AMBIENTE"],
+    ["Bosque João Paulo II", "BOSQUE DO PAPA"],
+    ["Pedreiras", "OPERA DE ARAME"],
+  ])("finds %s under its abbreviated stop name", async (name, stop) => {
+    stubFetch({});
+    const out = cityFacilitiesSearchOutput.parse((await call({ type: "ponto turistico", name })).structuredContent);
+    expect(out.data.items.map((i) => i.name)).toEqual([stop]);
+    expect(JSON.stringify(out)).not.toMatch(/"matched"/);
   });
 
   it("refuses bairro, near and radius_m, and a name with no letter or digit", async () => {
