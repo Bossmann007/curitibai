@@ -2,6 +2,26 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.40.0 - 2026-11-25
+
+Cultural spaces and attractions, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type` `ponto turistico` (aliases `pontos turisticos`, `ponto turistico`, `atracao
+  turistica`, `atracoes turisticas`, `linha turismo`, `linha de turismo`). It makes no network call and returns the 25
+  boarding points of the Prefeitura's Linha Turismo, as listed on `linhaturismo.curitiba.pr.gov.br/onde-embarcar`
+  (read 2026-11-25, bundled in `src/sources/linhaTurismo.ts`), in page order. Each item has the new optional output
+  field `lookup` (`{type, name}`, or null for streets, squares and neighbourhoods): the call to this same tool that
+  gives the place's address, hours as published and phone. It takes `name` only; `bairro`, `near` or `radius_m` is
+  `invalid_argument`. `list types` lists it last, with the page as its URL. The tool description names it (and
+  museums and theatres); the routing hint "Prefer this when..." was dropped to stay within 400 characters.
+- Tool contract: the `type` description and the item's `lookup` field (snapshot updated).
+- Curitiba App table: "Cultural spaces and attractions" is now ✓ (data). "Useful phones" stays partial: no public,
+  readable source gives a phone of the Ouvidoria-Geral do Município, so no line is labelled as the Ouvidoria.
+- Citizen eval: q108 (pontos turísticos) and q109 (Ópera de Arame: its periods and phone, since no source publishes
+  its visiting hours) move from gaps to `city_facilities_search`, with a synthetic `teatro` fixture. 112 of 119
+  answered; the `cultural_spaces` gap label is gone.
+- No new network host for the server, no new dependency; the link allowlist is unchanged.
+
 ## 0.39.1 - 2026-11-25
 
 Review hardening of 0.38.1 and 0.39.0. 26 tools. Publishes nothing.

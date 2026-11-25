@@ -418,7 +418,7 @@ describe("city_facilities_search", () => {
     const calls = stubFetch({});
     const out = await search({ type: "list types" });
     expect(out.data.types!.map((t) => t.type)).toContain("rua da cidadania");
-    expect(out.data.types).toHaveLength(FACILITY_TYPES.length);
+    expect(out.data.types).toHaveLength(FACILITY_TYPES.length + 1); // + "ponto turistico" (v0.40.0, bundled)
     expect(calls).toHaveLength(0);
   });
 

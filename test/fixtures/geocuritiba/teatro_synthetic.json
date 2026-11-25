@@ -1,0 +1,46 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Ópera de Arame",
+        "nome_completo": "Teatro Ópera de Arame",
+        "nome_rua": "R. JOÃO GAVA",
+        "num_pred": "920",
+        "compl_end": "Parque das Pedreiras",
+        "divulgar_endereco": "Sim",
+        "bairro": "Abranches",
+        "regional": "Boa Vista",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Sim",
+        "func_24hr": "Não",
+        "telefone": "(41) 3355-6072",
+        "email": null,
+        "dt_atualiz": 1759955693000,
+        "observacao": null
+      },
+      "geometry": { "x": -49.27617248, "y": -25.38459852 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Teatro Ficticio Gama",
+        "nome_completo": "Teatro Ficticio Gama",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "300",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "func_manha": "Não",
+        "func_tarde": "Sim",
+        "func_noite": "Sim",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-0303",
+        "observacao": "Terça a domingo, das 14h às 20h"
+      },
+      "geometry": { "x": -49.27, "y": -25.43 }
+    }
+  ]
+}
