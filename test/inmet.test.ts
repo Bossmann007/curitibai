@@ -136,7 +136,9 @@ describe("weather_alerts", () => {
     });
     expect(out.data.note).not.toMatch(/No active INMET warning/);
     // Since 0.39.0: INMET's warnings page and the guide to receive Defesa Civil alerts on the phone.
-    expect(out.data.note).toContain("https://alertas2.inmet.gov.br/");
+    // Since 0.39.1 the page is a plain host, no scheme: clients do not autolink a page this server never opened.
+    expect(out.data.note).toContain("avisos.inmet.gov.br");
+    expect(out.data.note).not.toMatch(/:\/\/|www\./);
     expect(out.data.note).toContain('city_service_guide with service "defesa_civil"');
   });
 

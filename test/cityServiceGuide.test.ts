@@ -326,6 +326,42 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
     expect(handWrittenFor("Est@R sintético")).toBeUndefined();
   });
 
+  it("routing needs a positive word or the bare title: synonyms of a notice or fine never reach a hand-written guide (since 0.39.1)", () => {
+    for (const title of [
+      "Regularização de pendência do EstaR - estacionamento regulamentado",
+      "Autuação do EstaR - estacionamento regulamentado",
+      "Penalidade do EstaR - estacionamento regulamentado",
+      "Vistoria da Defesa Civil - alerta de risco geológico",
+      "Defesa Civil: alerta de deslizamento - solicitar vistoria",
+    ]) {
+      expect(handWrittenFor(title), title).toBeUndefined();
+    }
+    expect(handWrittenFor("Compra de créditos do EstaR - estacionamento regulamentado")).toBe("estar");
+    expect(handWrittenFor("Ativação de tempo no EstaR - estacionamento regulamentado")).toBe("estar");
+    expect(handWrittenFor("Cadastro para receber alertas da Defesa Civil por SMS")).toBe("defesa_civil");
+    expect(handWrittenFor("Alertas Defesa Civil")).toBe("defesa_civil");
+    // The bare title in any order, with "de", "da", "do", "Curitiba" or "URBS" around it.
+    expect(handWrittenFor("Estacionamento Regulamentado - EstaR")).toBe("estar");
+    expect(handWrittenFor("EstaR - Estacionamento Regulamentado de Curitiba")).toBe("estar");
+    expect(handWrittenFor("Alertas da Defesa Civil de Curitiba")).toBe("defesa_civil");
+    expect(handWrittenFor("Defesa Civil de Curitiba - alerta de risco geológico")).toBeUndefined();
+    // The guide's own Carta match follows the same rule.
+    const copy = buildCatalog(
+      carta([
+        { title: "EstaR - Estacionamento Regulamentado", slug: "estar-sintetico", id: 9301, online: null },
+        { title: "Autuação do EstaR - estacionamento regulamentado", slug: "estar-autuacao", id: 9302, online: null },
+      ]),
+    );
+    expect(cartaFor(copy, GUIDES.estar).info.matches.map((m) => m.official_url)).toEqual([
+      "https://servicos.curitiba.pr.gov.br/estar-sintetico/9301",
+    ]);
+  });
+
+  it("EstaR: the Est@R group needs \"regulamentado\" too, so loose \"est\" and \"r\" words do not route (since 0.39.1)", () => {
+    expect(handWrittenFor("Comprar Cartão R$ estacionamento est")).toBeUndefined();
+    expect(handWrittenFor("Cartão R$ estacionamento est")).toBeUndefined();
+  });
+
   it("EstaR: the install step says to install only an app named on the URBS EstaR page", async () => {
     const o = await guide("estar");
     const install = allSteps(o).find((s) => /^Instalar um aplicativo credenciado/.test(s.action))!;
@@ -377,6 +413,20 @@ describe("Defesa Civil alerts guide (since 0.39.0)", () => {
     expect(allSteps(o).some((s) => !s.needs_consent && /weather_alerts/.test(s.action))).toBe(true);
     expect(o.data.what).toMatch(/199/);
     expect(o.data.what).toMatch(/bairro/);
+  });
+
+  it("a step of its own, just before the CEP step, links the gov.br sign-up service page (since 0.39.1)", async () => {
+    const o = await guide();
+    const steps = allSteps(o);
+    const cep = steps.find((s) => s.citizen_types_on_site.some((t) => /CEP/.test(t)))!;
+    const signup = steps.find((s) => s.step === cep.step - 1)!;
+    expect(signup.url).toBe("https://www.gov.br/pt-br/servicos/solicitar-cadastro-para-recebimento-de-avisos-e-alertas-de-desastres");
+    expect(signup.link_source).toBe("official_allowlist");
+    expect(signup.needs_consent).toBe(true);
+    expect(signup.consent).toMatch(/Abrir a página do serviço em www\.gov\.br/);
+    expect(signup.consent).toMatch(/Nada é digitado/);
+    expect(signup.citizen_types_on_site).toEqual([]);
+    expect(cep.url).toBeNull();
   });
 
   it("the note says the SMS steps have no link and what was not verified; the licence note says web search", async () => {

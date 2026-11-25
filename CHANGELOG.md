@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.39.1 - 2026-11-25
+
+Review hardening of 0.38.1 and 0.39.0. 26 tools. Publishes nothing.
+
+- `city_service_guide` routing by Carta title: a deny list leaks through synonyms ("autuação", "penalidade",
+  "vistoria"), so `estar` and `defesa_civil` now also need a positive word or the bare service title. `estar`: a
+  purchase or activation word (`compra`, `comprar`, `crédito`, `créditos`, `ativação`, `ativar`) or the bare
+  "EstaR - Estacionamento Regulamentado" (also spelled "Est@R"). `defesa_civil`: a subscription word (`cadastro`,
+  `sms`, `receber`, `recebimento`) or the bare "Alerta(s) Defesa Civil". A bare title matches in any order, with
+  "de", "da", "do", "Curitiba" or "URBS" around it. The deny words stay. Any other title
+  gets the generated guide of that service; the guides' own Carta links follow the same rule. The "Est@R" query also
+  needs `regulamentado`, since `est` and `r` are loose words. `scripts/coverage-report.mjs` mirrors the rule
+  (`GUIDE_NEEDS`); a test keeps it equal.
+- `defesa_civil`: a new step 5 opens the federal sign-up service page on `www.gov.br` ("Solicitar o recebimento de
+  avisos e alertas de riscos de desastres e eventos adversos, da Defesa Civil", read 2026-11-25), with consent and
+  nothing typed. It is its own step, so the CEP step still opens nothing; the SMS steps are now 6 and 7. Host already
+  allowed.
+- `weather_alerts`: the note names INMET's warnings portal as plain hosts with no scheme, so clients do not autolink a
+  page this server never read: `avisos.inmet.gov.br` (named by INMET in June 2026) and the older
+  `alertas2.inmet.gov.br`.
+- Cleaned Carta text: the glued-sentence exception ("internet.Com o protocolo") applies only to one plain word before
+  the dot and never to `www.`; "Pix-pague.Com", "pag2.Com", "pague.pix.Com" and "www.Com" become `[link removido]`. After a cut, the half-marker and
+  last-word checks repeat until neither applies, so dropping a word such as `removido]"https://...` never leaves
+  `[link` open. A seeded fuzz test (400 hostile inputs) checks the output never has `](` or `]:`, never ends inside a
+  marker and stays within the cap.
+- No new network host, no new dependency; the link allowlist is unchanged.
+
 ## 0.39.0 - 2026-11-25
 
 Defesa Civil alerts, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.

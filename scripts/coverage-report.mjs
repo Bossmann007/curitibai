@@ -30,7 +30,7 @@ export const GUIDE_TERMS = {
   creche: [["creche"], ["cadastramento", "escolar"]],
   detran: [["detran"]],
   le_digital: [["le", "digital"]],
-  estar: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento"]],
+  estar: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento", "regulamentado"]],
   defesa_civil: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
 };
 
@@ -41,6 +41,33 @@ export const GUIDE_NOT_FOR = {
     "multa", "multas", "defesa", "credencial", "credenciais",
   ],
 };
+
+/**
+ * city_service_guide's positive rule (GUIDES[id].needs; a test keeps them equal, since 0.39.1): the title also needs
+ * one of `words`, or its words are those of one of `bare` (any order, BARE_FILLER ignored).
+ */
+export const GUIDE_NEEDS = {
+  estar: {
+    words: ["compra", "comprar", "credito", "creditos", "ativacao", "ativar"],
+    bare: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento", "regulamentado"]],
+  },
+  defesa_civil: {
+    words: ["cadastro", "sms", "receber", "recebimento"],
+    bare: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
+  },
+};
+
+/** Words a bare title may have around it (BARE_FILLER in src/tools/cityServiceGuide.ts; a test keeps them equal). */
+export const BARE_FILLER = ["de", "da", "do", "curitiba", "urbs"];
+const bareKey = (words) => [...new Set(words.filter((w) => !BARE_FILLER.includes(w)))].sort().join(" ");
+
+/** The positive rule of one guide (GUIDE_NEEDS; true when the guide has none): a word, or a bare title in any order. */
+function needsMet(id, list, words) {
+  const needs = GUIDE_NEEDS[id];
+  if (needs === undefined) return true;
+  const key = bareKey(list);
+  return needs.words.some((w) => words.has(w)) || needs.bare.some((b) => bareKey(b) === key);
+}
 
 /**
  * A service city_service_guide's generated guide reaches (carta_id, since 0.37.0): its official page is a Carta
@@ -130,13 +157,15 @@ export function usefulness(item) {
  * its official URL is one the tool reaches) or none.
  */
 export function classifyService(title, url) {
-  const words = new Set(titleWords(title));
+  const list = titleWords(title);
+  const words = new Set(list);
   if (![...words].some((w) => ACTION_WORDS.has(w))) {
     const rule = DATA_RULES.find((r) => matches(words, r.terms));
     if (rule) return { coverage: "data", via: rule.tool };
   }
   const guide = Object.entries(GUIDE_TERMS).find(
-    ([id, terms]) => !(GUIDE_NOT_FOR[id] ?? []).some((w) => words.has(w)) && matches(words, terms),
+    ([id, terms]) =>
+      !(GUIDE_NOT_FOR[id] ?? []).some((w) => words.has(w)) && matches(words, terms) && needsMet(id, list, words),
   );
   if (guide) return { coverage: "guide", via: `city_service_guide ${guide[0]}` };
   if (typeof url === "string" && GENERIC_GUIDE_URL.test(url)) return { coverage: "guide", via: GENERATED_VIA };
