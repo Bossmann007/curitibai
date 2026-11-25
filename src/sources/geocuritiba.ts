@@ -600,6 +600,18 @@ export function clearGeoCuritibaCache(): void {
   gate.reset();
 }
 
+/** Body of one GET to the host, same host and path only on redirects; not JSON is source_unavailable. */
+async function fetchJsonText(url: string): Promise<string> {
+  const res = await fetchText(url, {
+    timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+    maxBytes: GEOCURITIBA_MAX_BYTES,
+    sameHostOnly: true,
+    redirectPathPrefix: "/server/rest/services",
+  });
+  if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+  return res.body;
+}
+
 /**
  * One GET of the type's fixed layer URL per cache period (6 hours), through the gate (5 s between requests to the host,
  * failures remembered); same host and path only on redirects. A cached layer makes no request and never waits.
@@ -607,14 +619,7 @@ export function clearGeoCuritibaCache(): void {
 export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>> {
   const url = layerQueryUrl(t);
   return cache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    return parseLayer(t, res.body, url);
+    return parseLayer(t, await fetchJsonText(url), url);
   }));
 }
 
@@ -765,14 +770,7 @@ export function cleanPointField(v: unknown, max: number): string | null {
 export function getPointLayer(layer: PointLayer, p: Point, startBy?: number): Promise<Cached<PointFeature[]>> {
   const url = pointQueryUrl(layer, p);
   return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    return parsePointQuery(res.body, url, layer === "street");
+    return parsePointQuery(await fetchJsonText(url), url, layer === "street");
   }, startBy === undefined ? {} : { startBy })));
 }
 
@@ -828,14 +826,7 @@ export function getCensusBairro(name: string, minHouseholds: number, startBy?: n
   const url = censusBairroUrl(name, minHouseholds);
   if (url === null) return null;
   return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    const rows = parsePointQuery(res.body, url, false);
+    const rows = parsePointQuery(await fetchJsonText(url), url, false);
     if (rows.length !== 1) throw new SourceUnavailableError("no statistics");
     const a = rows[0]!.attributes;
     const area = a.area_km2;
@@ -972,14 +963,7 @@ export function getUrbsStops(startBy?: number): Promise<Cached<UrbsStopsLayer>> 
     for (let page = 0; page < URBS_STOPS_MAX_PAGES; page++) {
       const url = urbsStopsPageUrl(page);
       const res = await stopPageCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-        const r = await fetchText(url, {
-          timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-          maxBytes: GEOCURITIBA_MAX_BYTES,
-          sameHostOnly: true,
-          redirectPathPrefix: "/server/rest/services",
-        });
-        if (!/json/i.test(r.contentType)) throw new SourceUnavailableError("not JSON");
-        return parseStopsPage(r.body, url);
+        return parseStopsPage(await fetchJsonText(url), url);
       }, startBy === undefined ? {} : { startBy }));
       if (fetchedAt === null || res.fetchedAt < fetchedAt) fetchedAt = res.fetchedAt;
       skipped += res.value.skipped;
