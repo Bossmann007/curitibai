@@ -76,7 +76,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `dadosabertos.curitiba.pr.gov.br` | 404 (HTML "not found" page, rechecked 2026-11-19) | No restriction (RFC 9309: a 4xx robots.txt means no rules). **Contacted.** |
 | `apidadosabertos.saude.gov.br` (Ministry of Health open-data API) | 404 (HTML "404 Not Found", checked 2026-11-19) | No restriction. **Contacted** (v0.2, `health_units_search`). |
 | `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309; rechecked 2026-11-22, 404 with the HTML page again after two connection resets). **Contacted** (v0.3, `procurement_search`, `/api/consulta`; since v0.19.1 also `/api/search` when `query` is set) |
-| `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
+| `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`; same answer on 2026-11-25) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
 | `ovp.dresel.systems` (Overpass API, OpenStreetMap, run by Christian Dresel) | 404, Apache HTML "Not Found" (checked 2026-11-21 03:26 UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). **Contacted** (v0.7, `places_search`, `POST /api-sa/interpreter` only) |
 | `overpass.private.coffee` (formerly `overpass.kumi.systems`) | 404 (checked 2026-11-21 02:43 UTC) | Allowed, and its terms allow "any project", but **it did not answer any Overpass request** from 02:44 to 03:20 UTC on 2026-11-21 (504 "server is probably too busy", then timeouts). Not used |
 | `overpass-api.de` (main Overpass instance, FOSSGIS) | 200 (checked 2026-11-21 02:42 UTC): `User-agent: *`, `Disallow: /api/`, `Disallow: /munin/`, `Disallow: /achavi/`. `z.` and `lz4.overpass-api.de` serve the same file | **Disallowed. Never contacted by the server.** One `/api/status` request was sent in the same curl run as the robots.txt check, before the file was read; it timed out with no bytes |
@@ -1315,6 +1315,32 @@ read and falls back to the Carta step and the Central 156. Used:
   `https://appgoblin.info/apps/br.org.curitiba.ici.appcuritiba` names the same publisher for package
   `br.org.curitiba.ici.appcuritiba`. The Lê Digital guide (step 4) asks the citizen to check the seller in the store;
   no store link is given.
+
+Defesa Civil alerts guide (`defesa_civil`, since 0.39.0, written 2026-11-25). Found by web search, then read once
+each with a web fetch on 2026-11-25 (the server never contacts these hosts):
+
+- `https://www.parana.pr.gov.br/servicos/Seguranca/Defesa-Civil/Receber-alertas-da-Defesa-Civil-por-SMS-ERrZ4PN6`
+  ("Receber alertas da Defesa Civil por SMS", Governo do Paraná): "Basta enviar SMS com o CEP da sua região para o
+  número 40199", "A Defesa Civil responde com mensagem de confirmação do seu cadastro", "Gratuito". Source of steps
+  4 and 5. Not linked: `www.parana.pr.gov.br` is not on the guide's link allowlist, and the allowlist was not widened.
+- `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta` ("Defesa Civil
+  Alerta", Anatel, modified 2025-11-17): alerts reach "celulares compatíveis, conectados às redes 4G ou 5G" as a pop-up
+  on the screen; its rollout table lists "04/12/2024 | Sul e Sudeste | Todos os municípios | Sistema disponível".
+  The parent page `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres` says it was
+  implanted for good in the South and Southeast in December 2024. Linked in step 3 (host `www.gov.br`, already allowed).
+- Not used (not verified on an official page that loaded): a WhatsApp sign-up number, the `CONSULTAR` and `SAIR`
+  SMS commands and silent-mode behaviour, seen only in news results (Bem Paraná, Correio Braziliense, Olhar Digital).
+  The Prefeitura's Defesa Civil news pages (`/noticias/defesa-civil-de-curitiba-alerta-para-fortes-chuvas-nesta-sexta-feira/84977`,
+  `/noticias/populacao-aprende-com-a-defesa-civil-de-curitiba-como-agir-em-extremos-climaticos/85650`) answered 403 to
+  the fetch and were not read.
+- INMET's warnings page `https://alertas2.inmet.gov.br/` (named in the `weather_alerts` note): named by INMET's own
+  news page in web search results; the connection was reset by the server on 2026-11-25 (curl and web fetch), so it
+  was not read. Its robots.txt could not be read either; the server never contacts it.
+
+Prior art for 0.39.0 (web search 2026-11-25, "INMET avisos alertas API MCP server"): no MCP server or library for
+INMET warnings, Alerta-AS or Defesa Civil alerts; a hosted INMET MCP listing covers stations, forecasts and imagery,
+not warnings; `Felipeandradee/INMET-API-REST` wraps station data. INMET's warnings are already read by
+`weather_alerts` (since 0.5). Decision: reuse `weather_alerts`, build the guide.
 
 Prior art (2026-11-24): `gh search repos "mcp server government services guide"` found nothing;
 `gh search repos "topic:mcp-server gov.br"` found only unrelated general projects. Decision: build.

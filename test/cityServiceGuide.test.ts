@@ -340,6 +340,56 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
   });
 });
 
+describe("Defesa Civil alerts guide (since 0.39.0)", () => {
+  async function guide() {
+    const res = await cityServiceGuideResult("defesa_civil", undefined, null, undefined);
+    if (!res.ok) throw new Error(res.message);
+    return cityServiceGuideOutput.parse(res.payload);
+  }
+
+  it("typing the CEP and sending the SMS to 40199 are two separate consent steps; the assistant never sends", async () => {
+    const o = await guide();
+    const steps = allSteps(o);
+    const cep = steps.filter((s) => s.citizen_types_on_site.some((t) => /CEP/.test(t)));
+    const send = steps.filter((s) => s.needs_consent && /envia o SMS/.test(s.consent ?? ""));
+    expect(cep).toHaveLength(1);
+    expect(send).toHaveLength(1);
+    expect(cep[0]!.needs_consent).toBe(true);
+    expect(cep[0]!.consent).toMatch(/40199/);
+    expect(cep[0]!.consent).toMatch(/Nada é enviado/);
+    expect(cep[0]!.consent).toMatch(/não nesta conversa/);
+    expect(send[0]!.step).toBeGreaterThan(cep[0]!.step);
+    expect(send[0]!.consent).toMatch(/Só se o cidadão confirmar/);
+    expect(send[0]!.consent).toMatch(/o assistente nunca envia/);
+    // No step asks for the CEP in the conversation.
+    expect(steps.filter((s) => !s.needs_consent).every((s) => !/CEP/.test(s.action) || /não peça/i.test(s.action))).toBe(true);
+  });
+
+  it("links only the Anatel page on www.gov.br and points to weather_alerts for INMET's warnings", async () => {
+    const o = await guide();
+    expect(allSteps(o).filter((s) => s.url !== null).map((s) => s.url)).toEqual([
+      "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta",
+    ]);
+    expect(allSteps(o).some((s) => !s.needs_consent && /weather_alerts/.test(s.action))).toBe(true);
+    expect(o.data.what).toMatch(/199/);
+    expect(o.data.what).toMatch(/bairro/);
+  });
+
+  it("the note says the SMS steps have no link and what was not verified; the licence note says web search", async () => {
+    const o = await guide();
+    expect(o.note).toMatch(/www\.parana\.pr\.gov\.br/);
+    expect(o.note).toMatch(/not verified/);
+    expect(o.checked_at).toBe("2026-11-25");
+    expect(o.license_note).toMatch(/from web search results/);
+  });
+
+  it("Carta words are narrow: Defesa Civil alerts, not any Defesa Civil or alert service", () => {
+    expect(handWrittenFor("Receber alertas da Defesa Civil")).toBe("defesa_civil");
+    expect(handWrittenFor("Vistoria da Defesa Civil sintética")).toBeUndefined();
+    expect(handWrittenFor("Alerta de dengue sintético")).toBeUndefined();
+  });
+});
+
 describe("Carta copy", () => {
   it("one match: the page and an allowlisted online link come from the copy", () => {
     const { info, links } = cartaFor(CATALOG, GUIDES.iptu);

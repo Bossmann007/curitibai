@@ -1828,7 +1828,8 @@
             "creche",
             "detran",
             "le_digital",
-            "estar"
+            "estar",
+            "defesa_civil"
           ]
         },
         "carta_id": {
@@ -1865,7 +1866,8 @@
                     "creche",
                     "detran",
                     "le_digital",
-                    "estar"
+                    "estar",
+                    "defesa_civil"
                   ]
                 },
                 {
@@ -2051,7 +2053,8 @@
                       "creche",
                       "detran",
                       "le_digital",
-                      "estar"
+                      "estar",
+                      "defesa_civil"
                     ]
                   },
                   "title": {

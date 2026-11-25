@@ -40,7 +40,9 @@ const SCOPE: Record<"today" | "upcoming" | "all", string> = {
 
 const ALERTS_NOTE =
   `Only warnings whose area lists Curitiba (IBGE ${CURITIBA_GEOCODE}) are returned; areas, polygons and icons are left out. ` +
-  "A warning listed identically in both of INMET's lists is returned once. Text is INMET's, unchanged.";
+  "A warning listed identically in both of INMET's lists is returned once. Text is INMET's, unchanged. " +
+  "INMET's warnings page: https://alertas2.inmet.gov.br/ (INMET). To receive Defesa Civil alerts on the phone: " +
+  'city_service_guide with service "defesa_civil".';
 
 /** Said with every "no warning" answer: the cache can hide a warning issued since, and this is not an alert service. */
 export const NO_WARNING_NOTE =

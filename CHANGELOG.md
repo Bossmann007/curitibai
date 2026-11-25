@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.39.0 - 2026-11-25
+
+Defesa Civil alerts, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.
+
+- `city_service_guide`: new hand-written guide `defesa_civil` (how to receive Defesa Civil alerts on the phone). It
+  points to `weather_alerts` for INMET's active warnings that cover Curitiba, links Anatel's Defesa Civil Alerta page
+  on `www.gov.br` (cell broadcast) and gives the SMS sign-up: typing the CEP in an SMS to 40199 and sending it are two
+  separate consent steps; the CEP is never asked in the conversation and the assistant never sends anything. The
+  SMS steps come from the Paraná government's page, which is not on the link allowlist, so they have no link; the
+  guide's `note` says so. Emergencies: Defesa Civil 199. Carta words `alerta`/`alertas` + `defesa` + `civil`, mirrored
+  in `scripts/coverage-report.mjs`. Tool contract: one new `service` value.
+- `weather_alerts`: `note` also names INMET's warnings page and the `defesa_civil` guide.
+- No new network host: INMET's API (`apiprevmet3.inmet.gov.br`) was already allowed; its robots.txt still answers 404
+  (2026-11-25). The link allowlist is unchanged.
+- Citizen eval: the two Defesa Civil questions are answered by the guide; `answered 110 / 119`, 9 gaps. Curitiba App
+  comparison: 14 of 18 rows covered.
+
 ## 0.38.1 - 2026-11-25
 
 Review hardening of 0.37 and 0.38. 26 tools. Publishes nothing.
