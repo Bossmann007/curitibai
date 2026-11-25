@@ -2127,7 +2127,8 @@
             "le_digital",
             "estar",
             "defesa_civil",
-            "vale_creche"
+            "vale_creche",
+            "ouvidoria"
           ]
         },
         "carta_id": {
@@ -2166,7 +2167,8 @@
                     "le_digital",
                     "estar",
                     "defesa_civil",
-                    "vale_creche"
+                    "vale_creche",
+                    "ouvidoria"
                   ]
                 },
                 {
@@ -2354,7 +2356,8 @@
                       "le_digital",
                       "estar",
                       "defesa_civil",
-                      "vale_creche"
+                      "vale_creche",
+                      "ouvidoria"
                     ]
                   },
                   "title": {

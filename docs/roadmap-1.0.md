@@ -92,8 +92,8 @@ landmarks. Each names the tool that should answer it, the arguments, and the sha
 Shape only, never exact text. `test/eval/citizenEval.test.ts` runs every question offline in `scripts/verify`
 (synthetic fixtures, one fixed clock, every request stubbed): the tool exists, the arguments pass its input schema
 with no unknown key, and the answer has the shape. A question no tool answers yet has `tool: null` and a `gap` label
-(`realtime_bus`, `useful_phones` for the Curitiba App rows not covered, and others;
-`le_digital` and `estar` until v0.38.0, `defesa_civil` until v0.39.0, `cultural_spaces` until v0.40.0, `route_planning` until v0.41.0, `vale_creche` until v0.42.0); gaps are counted, not failed. A question tagged
+(`realtime_bus` for the Curitiba App rows not covered, and others;
+`le_digital` and `estar` until v0.38.0, `defesa_civil` until v0.39.0, `cultural_spaces` until v0.40.0, `route_planning` until v0.41.0, `vale_creche` until v0.42.0, `useful_phones` until v0.43.0); gaps are counted, not failed. A question tagged
 `outside_curitiba` to a tool with no city check of its own (a bus stop or a feira near a point in São Paulo) expects
 `not_found`; `place_at_point` refuses such a point and expects `outside_curitiba`. `node scripts/eval-summary.mjs` prints the one-line count
 that `scripts/verify` shows. Closing a gap means a tool, its fixture and the question moved from `tool: null` to that
@@ -130,3 +130,10 @@ written from Lei municipal 16.492/2025: who the law is for, that the SME decides
 value and no promise, since whether the program is open in 2026 was not verified. The Curitiba App rows are unchanged
 (18, 15 covered). The citizen eval answers 116 of 121 questions (q112 moved from the gap, q121 asks it for a child of
 2); 5 are gaps (real-time buses 2, other cities 2, useful phones 1).
+At v0.43.0 (phase B) the Ouvidoria questions have a hand-written guide in `city_service_guide` (`ouvidoria`), written
+from the CGM's "Ouvidoria da CGM – Guia de uso" (2024): that guide publishes no phone for the Ouvidoria, so the answer
+is its channels (the Portal Curitiba Ouve, the CGM e-mail, a Central 156 protocol for the identified form), and no
+number is given as the Ouvidoria's. The Useful phones row becomes "guide + official link, citizen acts": 18 Curitiba
+App rows, 16 covered (7 data, 9 guide). The citizen eval answers 117 of 121 questions (q110 moved from the gap; q072,
+already answered by `useful_phones` with nothing found, now asks the guide); 4 are gaps (real-time buses 2, other
+cities 2).

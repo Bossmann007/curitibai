@@ -1,51 +1,58 @@
-# SPEC: v0.42.0 Vale-Creche guide
+# SPEC: v0.43.0 Ouvidoria guide
 
-Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.42.0, Vale-Creche in the creche guide: close the citizen-eval gap
-`vale_creche`"). **This change publishes nothing**: no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.43.0, a `city_service_guide` guide `ouvidoria` that closes the
+eval gap `useful_phones`"). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer citizen eval q112 "Como peço o Vale Creche?" (and "Como
-eu peço o Vale-Creche pro meu filho de 2 anos?") honestly, with a guide and official links, consent at every step
-([ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md)).
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer citizen eval q110 "Qual o telefone da Ouvidoria Geral do
+Município?" and q072 "Qual o telefone da Ouvidoria da Prefeitura?" honestly: the official guide publishes no phone for
+the Ouvidoria, so the answer is its channels, with official links and consent at every step
+([ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md)). Never a phone number given as the Ouvidoria's.
 
 ## Source (read 2026-11-25)
 
-Lei municipal nº 16.492 of 2025-03-11, Programa Voucher Educacional "Vale-Creche", the SME's PDF
-`https://mid-educacao.curitiba.pr.gov.br/2025/4/pdf/00517415.pdf` (robots.txt 404; official act, Lei 9.610/1998 art. 8
-IV). Used: arts. 1, 3, 4 and 6. Not verified: whether the program is open in 2026, its value, deadlines and how
-families are called. Details and two hand requests that broke the robots rules (deleted unread):
+"Ouvidoria da CGM – Guia de uso", the Prefeitura's PDF `https://mid.curitiba.pr.gov.br/2024/00446690.pdf` (4 pages,
+created 2024-05-10; robots.txt 404). An official document: facts and link only, in this project's own words. Used: the
+channels by subject (Portal Curitiba Ouve `https://www.curitiba.pr.gov.br/lei13460/`, e-mail
+`falecomacgm@curitiba.pr.gov.br`), the three forms (identified, confidential, anonymous), the Central 156 protocol for
+the identified form and the 30-day answer (Lei federal 13.460/2017). It names no phone for the Ouvidoria. The Curitiba
+Ouve link was not opened (`www.curitiba.pr.gov.br` is never contacted). Details:
 [docs/sources.md](docs/sources.md#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280).
 
 ## Changes
 
-1. **Guide** `vale_creche` (`src/tools/cityServiceGuide.ts`): ask the citizen (no personal data in the conversation);
-   explain the law without promising the voucher (0 to 3 years, on the waiting list, exceptional; the SME decides,
-   the family cannot choose voucher over place; no separate application in the law); the Carta page; the law's PDF;
-   the Educação portal; the `creche` guide for the waiting list; the law's priorities, private-school enrolment if
-   the SME offers the voucher, value set yearly by decree; the Central 156. No value, no deadline, no phone or e-mail.
-   A new guide id, not a variant of `creche`: same table, same consent steps, no ADR.
-2. **Envelope**: optional `GuideDef.fromDocument` (`checkedAt`, `licenseNote`) so the guide's `checked_at` and licence
-   note name the law, not "official sites checked 2026-11-24" nor "web search".
-3. **Carta routing**: `vale_creche` `[["vale", "creche"]]`; `creche` gets `notFor: ["vale"]`. Mirrored in
-   `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
-4. **Eval**: q112 → `city_service_guide` `vale_creche`; new q121 (child of 2); `vale_creche` gap gone.
-5. **Docs and version**: README, docs/tools.md (row, fixed-link table, creche row of the Curitiba App table),
-   docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.42.0, version 0.42.0 in `package.json`, `package-lock.json`,
-   `server.json`, tool contract snapshot (the `service` enum).
+1. **Guide** `ouvidoria` (`src/tools/cityServiceGuide.ts`), from the 2024 PDF (`fromDocument`, dated 2026-11-25):
+   ask the citizen (no personal data in the conversation); say that the guide publishes no phone and which channel
+   fits which subject; the Carta page; the Portal Curitiba Ouve (step 4; a denúncia can also be registered there);
+   the CGM e-mail as text the citizen sends from their own e-mail (step 5, consent, no link: the allowlist takes only
+   https); the three forms; the Central 156 for the identified form's protocol (step 7); the 30-day answer; the PDF
+   (step 9). The `note` says the source is from
+   2024 and the channels may have changed.
+2. **Carta routing**: `[["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"],
+   ["curitiba", "ouve"]]`, not the bare word (other offices have their own ouvidoria); `156` gets
+   `notFor: ["ouvidoria"]`. Mirrored in `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
+3. **Eval**: q072 and q110 → `city_service_guide` `ouvidoria`; the `useful_phones` gap is gone; a unit test keeps
+   `useful_phones` answering nothing for "ouvidoria" (what q072 pinned before).
+4. **Curitiba App table**: the "Useful phones" row becomes "guide + official link, citizen acts": its other phones
+   are data (`useful_phones`), and the Ouvidoria, the only reason it stayed partial at v0.40, now has the guide.
+5. **Docs and version**: README, docs/tools.md (row, fixed-link table, useful phones row), docs/sources.md (new hand
+   host row `mid.curitiba.pr.gov.br`), docs/roadmap-1.0.md, CHANGELOG 0.43.0, version 0.43.0 in `package.json`,
+   `package-lock.json`, `server.json`, tool contract snapshot (the `service` enum).
 
 ## Out of scope
 
-The voucher's value, deadlines or call lists; any request by the server; any new host; linking the SME 2026 page or
-the Carta detail page (not read).
+Any phone number for the Ouvidoria; opening the Curitiba Ouve page or any `www.curitiba.pr.gov.br` page; sending an
+e-mail or a form; other offices' ouvidorias (Saúde, URBS); any request by the server; any new host.
 
 ## Check
 
-- `npx vitest run test/cityServiceGuide.test.ts test/coverageReport.test.ts test/contracts.test.ts test/eval`: the
-  guide invariants, no value and no promise, the law and its date, the envelope, the links, Carta routing both ways.
-- `node scripts/eval-summary.mjs`: `answered 116 / 121`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
-  15 of 18 Curitiba App rows covered.
+- `npx vitest run test/cityServiceGuide.test.ts test/usefulPhones.test.ts test/coverageReport.test.ts
+  test/contracts.test.ts test/eval`: the guide invariants, no phone-shaped number, the e-mail as text, the links at
+  the step numbers the notes name, the envelope, Carta routing both ways.
+- `node scripts/eval-summary.mjs`: `answered 117 / 121`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
+  16 of 18 Curitiba App rows covered.
 - `scripts/verify` exits 0 on the PR head.

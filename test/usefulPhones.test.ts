@@ -48,6 +48,10 @@ describe("usefulPhonesResult", () => {
     expect(result("palavra inexistente").data).toEqual({ total: 0, skipped_rows: 0, items: [] });
   });
 
+  it("has no Ouvidoria entry: never labels another line as the Ouvidoria (city_service_guide ouvidoria since 0.43.0)", () => {
+    expect(result("ouvidoria").data).toEqual({ total: 0, skipped_rows: 0, items: [] });
+  });
+
   it("returns source URL, fetched_at, checked_at, stale and attribution, valid against the output schema", () => {
     const r = usefulPhonesOutput.parse(result("samu"));
     expect(r).toMatchObject({
