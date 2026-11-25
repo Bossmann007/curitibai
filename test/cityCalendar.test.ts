@@ -99,4 +99,24 @@ describe("city_calendar", () => {
     expect(data.units[0]?.on_date).toEqual({ date: "2026-07-20", school_day: false, kinds: ["recess"] });
     expect(calls).toHaveLength(0);
   });
+
+  it("holidays or iptu with unit or date: invalid_argument, not silently ignored", async () => {
+    const client = await connectClient();
+    for (const topic of ["holidays", "iptu"] as const) {
+      for (const extra of [{ unit: "escolas" }, { date: "2026-07-20" }]) {
+        const res = await client.callTool({ name: "city_calendar", arguments: { topic, ...extra } });
+        expect(res.isError, `${topic} ${JSON.stringify(extra)}`).toBe(true);
+        const [first] = res.content as { text: string }[];
+        expect(JSON.parse(first!.text)).toEqual({
+          error: "invalid_argument",
+          message: `unit and date apply to topic "school" only; leave them out for topic "${topic}".`,
+        });
+      }
+    }
+  });
+
+  it("school note: the evaluation Saturday counts as a school day, inferred from the printed counts", () => {
+    const out = cityCalendarOutput.parse(calendarResult("school", new Date("2026-11-24T12:00:00Z")));
+    expect(out.note).toMatch(/quality evaluation Saturday counts as a school day.*inferred from the printed per-month counts/);
+  });
 });

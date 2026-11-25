@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { dateInCuritiba } from "../sources/detran.js";
-import { ok, type ToolDef } from "./common.js";
+import { fail, ok, type ToolDef } from "./common.js";
 import { SCHOOL_CALENDAR_READ_AT, SCHOOL_CALENDARS } from "./schoolCalendarData.js";
 
 /** The only year bundled; after it ends (Curitiba time) the answer says `expired: true`. */
@@ -205,7 +205,8 @@ const IPTU_NOTE =
 const SCHOOL_NOTE =
   "Municipal network only, from the Secretaria Municipal da Educação's 2026 calendars (one PDF per unit type, signed " +
   "2025-10-30); state schools follow the Paraná state calendar and private schools their own. A school may adjust " +
-  "its dates: confirm with it. school_day is a rule fitted to the printed per-month counts, not printed itself. No " +
+  "its dates: confirm with it. school_day is a rule fitted to the printed per-month counts, not printed itself; the " +
+  "quality evaluation Saturday counts as a school day, which is also inferred from the printed per-month counts. No " +
   "Sábado de Integração com as Famílias is marked in the 2026 PDFs.";
 
 export function calendarResult(
@@ -285,6 +286,9 @@ export const cityCalendar: ToolDef<typeof cityCalendarInput, typeof cityCalendar
   handler: async (args) => {
     // `unit` and `date` belong to the school topic: with no topic they select it.
     const topic = args.topic ?? (args.unit || args.date ? "school" : "holidays");
+    if (topic !== "school" && (args.unit || args.date)) {
+      return fail("invalid_argument", `unit and date apply to topic "school" only; leave them out for topic "${topic}".`);
+    }
     return ok(calendarResult(topic, new Date(), { unit: args.unit, date: args.date }));
   },
 };

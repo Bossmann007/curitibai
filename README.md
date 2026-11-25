@@ -215,6 +215,8 @@ schedule, the published files, how to turn it back on and how to run the collect
 - [docs/sources.md](docs/sources.md): each source's format, terms and robots.txt.
 - [docs/development.md](docs/development.md): `scripts/verify`, CI and the test fixtures.
 - [docs/licences.md](docs/licences.md): licences of the code, the data and the test fixtures.
+- [docs/roadmap-1.0.md](docs/roadmap-1.0.md): the 1.0 gate (every Curitiba App row and Carta service covered) and
+  the coverage scoreboard.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each version.
 
 ## Contributing, security and removal requests

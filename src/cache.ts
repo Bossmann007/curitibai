@@ -21,7 +21,8 @@ export class TtlCache {
 
   constructor(
     private readonly ttlMs: number = CACHE_TTL_MS,
-    private readonly now: () => number = Date.now,
+    // Read Date.now at each call (not the function captured at load), so a test clock applies.
+    private readonly now: () => number = () => Date.now(),
     /** When set, at most this many entries are kept; the oldest stored is dropped first. */
     private readonly maxEntries?: number,
   ) {}

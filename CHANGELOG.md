@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.35.0 - 2026-11-25
+
+Coverage scoreboard and the 1.0 gate (owner approval 2026-11-24). 26 tools. Publishes nothing.
+
+- New `docs/roadmap-1.0.md`: 1.0 needs every Curitiba App row covered (a data tool, or a guide with the official link
+  where a login is needed), every Carta de Serviços service reachable (data or guide), the extras kept, uncovered
+  services worked on by usefulness to a Curitiba citizen, and Curitiba scope only.
+- New dev-only `scripts/coverage-report.mjs` (not in the package): counts the Curitiba App table by status and, when
+  your local `carta-servicos.json` exists, classes each service as data, guide or none per category, lists the 30 most
+  useful uncovered services in the terminal and prints a JSON summary with aggregate numbers only. Tested with
+  synthetic items; no catalog content is committed.
+- `city_calendar`: `unit` or `date` with topic `holidays` or `iptu` now returns `invalid_argument` instead of being
+  ignored. The school note says the quality evaluation Saturday counts as a school day, inferred from the printed
+  per-month counts.
+- Test fix: the in-memory cache reads the clock at each call instead of keeping the `Date.now` it saw at start, so a
+  test's fixed clock applies to `checked_at` (a `bus_stops_near` test failed after midnight in Curitiba).
+
 ## 0.34.0 - 2026-11-25
 
 Municipal school calendar 2026 (owner approval 2026-11-24). 26 tools. Publishes nothing.
