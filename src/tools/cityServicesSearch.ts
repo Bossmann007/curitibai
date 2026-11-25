@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { closeFile, FileTooLargeError, LocalFileError, openDataFile, readAllCapped } from "../localfs.js";
 import { dateInCuritiba } from "../sources/detran.js";
-import { MASK, maskObject } from "../sources/pncp.js";
+import { MASK, maskObject } from "../mask.js";
 import { fold } from "../text.js";
 import { fail, ok, type ToolDef } from "./common.js";
 

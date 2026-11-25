@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
-import { MASK } from "../src/sources/pncp.js";
+import { MASK } from "../src/mask.js";
 import { newestUrbsFile, parseUrbs, URBS_MAX_BYTES, URBS_SOURCE_URL, type UrbsKind } from "../src/sources/urbs.js";
 import { ADAPT_MISSING_NOTE, emptyFieldsNote } from "../src/tools/busCommon.js";
 import { afterMidnightRows, busDeparturesOutput } from "../src/tools/busDepartures.js";

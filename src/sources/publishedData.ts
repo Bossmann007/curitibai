@@ -16,8 +16,13 @@ export function publishedUrl(file: PublishedFile): string {
   return `${PUBLISHED_ORIGIN}${PUBLISHED_PATH_PREFIX}/${file}`;
 }
 
-/** `CURITIBAI_REMOTE_DATA=0` (or `off`) turns the published copy off: the tools then read only the local file. */
+/**
+ * `CURITIBAI_REMOTE_DATA` off (0, off, false, no) turns remote reading off: the tools then read only local files. Unset
+ * or on (1, on, true, yes) leaves it on. Any other value stops the server at start (src/server.ts).
+ */
 export const REMOTE_DATA_ENV = "CURITIBAI_REMOTE_DATA";
+export const REMOTE_DATA_INVALID =
+  `${REMOTE_DATA_ENV} must be 0, off, false or no (remote reading off) or 1, on, true or yes (on); leave it unset for on.`;
 /**
  * Scheduled time (UTC, HH:MM) of the nightly collection in .github/workflows/collect.yml. test/workflows.test.ts checks
  * that the cron and docs/local-data.md say the same; GitHub can start a scheduled run later.
@@ -29,9 +34,20 @@ export const NEXT_NIGHTLY_RUN =
 export const PUBLISHED_CACHE_TTL_MS = 60 * 60 * 1000;
 export const PUBLISHED_TIMEOUT_MS = 10_000;
 
+const REMOTE_DATA_VALUES = new Map([
+  ...["0", "off", "false", "no"].map((v) => [v, false] as const),
+  ...["1", "on", "true", "yes"].map((v) => [v, true] as const),
+]);
+
+/** true or false for an accepted value (case and spaces ignored), true when unset, null for any other value. */
+export function remoteDataSetting(): boolean | null {
+  const raw = process.env[REMOTE_DATA_ENV];
+  return raw === undefined ? true : (REMOTE_DATA_VALUES.get(raw.trim().toLowerCase()) ?? null);
+}
+
+/** Fails closed: a value that is not on keeps remote reading off. */
 export function remoteDataEnabled(): boolean {
-  const v = process.env[REMOTE_DATA_ENV]?.trim().toLowerCase();
-  return v !== "0" && v !== "off";
+  return remoteDataSetting() === true;
 }
 
 /** Where the answer came from. */

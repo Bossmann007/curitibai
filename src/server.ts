@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { tools } from "./tools/index.js";
+import { REMOTE_DATA_INVALID, remoteDataSetting } from "./sources/publishedData.js";
 import { READ_ONLY, type ElicitUrlAnswer, type ToolContext } from "./tools/common.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -69,6 +70,11 @@ export function createServer(): McpServer {
 }
 
 async function main(): Promise<void> {
+  if (remoteDataSetting() === null) {
+    process.stderr.write(`curitibai: configuration error: ${REMOTE_DATA_INVALID}\n`);
+    process.exitCode = 1; // not process.exit: it could drop the message before a piped stderr is written
+    return;
+  }
   const server = createServer();
   await server.connect(new StdioServerTransport());
 }

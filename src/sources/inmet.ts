@@ -1,5 +1,6 @@
 import { sharedCache, type Cached } from "../cache.js";
 import { fetchText, SourceUnavailableError } from "../http.js";
+import { isObject } from "../text.js";
 
 export const INMET_BASE = "https://apiprevmet3.inmet.gov.br";
 /** Curitiba's 7-digit IBGE code, as INMET uses it in forecast URLs and in each warning's `geocodes`. */
@@ -64,10 +65,6 @@ const PERIOD_KEYS: [string, PeriodName][] = [
   ["tarde", "afternoon"],
   ["noite", "night"],
 ];
-
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
 
 function period(name: PeriodName, r: Record<string, unknown>): ForecastPeriod {
   return {

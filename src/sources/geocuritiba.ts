@@ -2,7 +2,7 @@ import { TtlCache, type Cached } from "../cache.js";
 import { blockHost, fetchText, SourceUnavailableError } from "../http.js";
 import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
-import { fold } from "../text.js";
+import { fold, isObject } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
 
 /** IPPUC's GeoCuritiba ArcGIS REST services (anonymous GET; robots.txt 404 when checked on 2026-11-21). */
@@ -532,15 +532,12 @@ function bikeRecord(a: Record<string, unknown>, g: Record<string, unknown> | nul
   };
 }
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-
 /**
- * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84
- * feature set: an `error` object (ArcGIS sends errors with HTTP 200), `exceededTransferLimit`, a spatial reference
- * other than 4326, no `features` array, or 2,000 records or more. An `error` with code 401, 403, 498 or 499 is a final
- * refusal: the host is blocked for 10 minutes (blockHost). Records without a name are skipped and counted.
+ * The JSON object of an ArcGIS answer (f=json), or source_unavailable: not JSON, not an object, an `error` object
+ * (ArcGIS sends errors with HTTP 200; code 401/403, 498 invalid token or 499 token required is a final refusal and
+ * blocks the host for 10 minutes), or, with `wgs84`, a spatial reference other than 4326.
  */
-export function parseLayer(t: FacilityType, body: string, url: string = t.layerUrl): FacilityLayer {
+function arcgisAnswer(body: string, url: string, wgs84: boolean): Record<string, unknown> {
   let json: unknown;
   try {
     json = JSON.parse(body);
@@ -549,14 +546,24 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
   }
   if (!isObject(json)) throw new SourceUnavailableError("query error");
   if ("error" in json) {
-    // ArcGIS sends auth errors with HTTP 200: 401/403, 498 (invalid token), 499 (token required) are a final refusal.
     const code = isObject(json.error) ? json.error.code : undefined;
     if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
     throw new SourceUnavailableError("query error");
   }
-  if (json.exceededTransferLimit === true) throw new SourceUnavailableError("layer cut by the record limit");
   const sr = json.spatialReference;
-  if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  if (wgs84 && (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326))) throw new SourceUnavailableError("not WGS84");
+  return json;
+}
+
+/**
+ * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84
+ * feature set: an `error` object (ArcGIS sends errors with HTTP 200), `exceededTransferLimit`, a spatial reference
+ * other than 4326, no `features` array, or 2,000 records or more. An `error` with code 401, 403, 498 or 499 is a final
+ * refusal: the host is blocked for 10 minutes (blockHost). Records without a name are skipped and counted.
+ */
+export function parseLayer(t: FacilityType, body: string, url: string = t.layerUrl): FacilityLayer {
+  const json = arcgisAnswer(body, url, true);
+  if (json.exceededTransferLimit === true) throw new SourceUnavailableError("layer cut by the record limit");
   if (!Array.isArray(json.features) || json.features.length >= MAX_RECORDS) throw new SourceUnavailableError("no features");
   const facilities: Facility[] = [];
   let skipped = 0;
@@ -600,6 +607,18 @@ export function clearGeoCuritibaCache(): void {
   gate.reset();
 }
 
+/** Body of one GET to the host, same host and path only on redirects; not JSON is source_unavailable. */
+async function fetchJsonText(url: string): Promise<string> {
+  const res = await fetchText(url, {
+    timeoutMs: GEOCURITIBA_TIMEOUT_MS,
+    maxBytes: GEOCURITIBA_MAX_BYTES,
+    sameHostOnly: true,
+    redirectPathPrefix: "/server/rest/services",
+  });
+  if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
+  return res.body;
+}
+
 /**
  * One GET of the type's fixed layer URL per cache period (6 hours), through the gate (5 s between requests to the host,
  * failures remembered); same host and path only on redirects. A cached layer makes no request and never waits.
@@ -607,14 +626,7 @@ export function clearGeoCuritibaCache(): void {
 export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>> {
   const url = layerQueryUrl(t);
   return cache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    return parseLayer(t, res.body, url);
+    return parseLayer(t, await fetchJsonText(url), url);
   }));
 }
 
@@ -708,23 +720,8 @@ export interface PointFeature {
  * reference other than 4326 fails only when geometry was asked (answers without geometry carry none).
  */
 export function parsePointQuery(body: string, url: string, withGeometry: boolean): PointFeature[] {
-  let json: unknown;
-  try {
-    json = JSON.parse(body);
-  } catch {
-    throw new SourceUnavailableError("invalid JSON");
-  }
-  if (!isObject(json)) throw new SourceUnavailableError("query error");
-  if ("error" in json) {
-    const code = isObject(json.error) ? json.error.code : undefined;
-    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
-    throw new SourceUnavailableError("query error");
-  }
+  const json = arcgisAnswer(body, url, withGeometry);
   if (json.exceededTransferLimit === true) throw new SourceUnavailableError("answer cut by the record limit");
-  if (withGeometry) {
-    const sr = json.spatialReference;
-    if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
-  }
   if (!Array.isArray(json.features) || json.features.length >= MAX_RECORDS) throw new SourceUnavailableError("no features");
   const out: PointFeature[] = [];
   for (const f of json.features as unknown[]) {
@@ -765,14 +762,7 @@ export function cleanPointField(v: unknown, max: number): string | null {
 export function getPointLayer(layer: PointLayer, p: Point, startBy?: number): Promise<Cached<PointFeature[]>> {
   const url = pointQueryUrl(layer, p);
   return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    return parsePointQuery(res.body, url, layer === "street");
+    return parsePointQuery(await fetchJsonText(url), url, layer === "street");
   }, startBy === undefined ? {} : { startBy })));
 }
 
@@ -828,14 +818,7 @@ export function getCensusBairro(name: string, minHouseholds: number, startBy?: n
   const url = censusBairroUrl(name, minHouseholds);
   if (url === null) return null;
   return underOwnBudget(startBy, () => pointCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-    const res = await fetchText(url, {
-      timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-      maxBytes: GEOCURITIBA_MAX_BYTES,
-      sameHostOnly: true,
-      redirectPathPrefix: "/server/rest/services",
-    });
-    if (!/json/i.test(res.contentType)) throw new SourceUnavailableError("not JSON");
-    const rows = parsePointQuery(res.body, url, false);
+    const rows = parsePointQuery(await fetchJsonText(url), url, false);
     if (rows.length !== 1) throw new SourceUnavailableError("no statistics");
     const a = rows[0]!.attributes;
     const area = a.area_km2;
@@ -900,20 +883,7 @@ export interface StopsPage {
  * only: on a short page it fails closed.
  */
 export function parseStopsPage(body: string, url: string): StopsPage {
-  let json: unknown;
-  try {
-    json = JSON.parse(body);
-  } catch {
-    throw new SourceUnavailableError("invalid JSON");
-  }
-  if (!isObject(json)) throw new SourceUnavailableError("query error");
-  if ("error" in json) {
-    const code = isObject(json.error) ? json.error.code : undefined;
-    if (code === 401 || code === 403 || code === 498 || code === 499) blockHost(url, code);
-    throw new SourceUnavailableError("query error");
-  }
-  const sr = json.spatialReference;
-  if (!isObject(sr) || (sr.wkid !== 4326 && sr.latestWkid !== 4326)) throw new SourceUnavailableError("not WGS84");
+  const json = arcgisAnswer(body, url, true);
   if (!Array.isArray(json.features) || json.features.length > URBS_STOPS_PAGE_SIZE) {
     throw new SourceUnavailableError("no features");
   }
@@ -972,14 +942,7 @@ export function getUrbsStops(startBy?: number): Promise<Cached<UrbsStopsLayer>> 
     for (let page = 0; page < URBS_STOPS_MAX_PAGES; page++) {
       const url = urbsStopsPageUrl(page);
       const res = await stopPageCache.getOrLoad(`GET ${url}`, () => gate.run(async () => {
-        const r = await fetchText(url, {
-          timeoutMs: GEOCURITIBA_TIMEOUT_MS,
-          maxBytes: GEOCURITIBA_MAX_BYTES,
-          sameHostOnly: true,
-          redirectPathPrefix: "/server/rest/services",
-        });
-        if (!/json/i.test(r.contentType)) throw new SourceUnavailableError("not JSON");
-        return parseStopsPage(r.body, url);
+        return parseStopsPage(await fetchJsonText(url), url);
       }, startBy === undefined ? {} : { startBy }));
       if (fetchedAt === null || res.fetchedAt < fetchedAt) fetchedAt = res.fetchedAt;
       skipped += res.value.skipped;

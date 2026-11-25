@@ -1,7 +1,8 @@
 import { sharedCache, type Cached } from "../cache.js";
 import { fetchText, RateLimitedError, SourceUnavailableError } from "../http.js";
 import { OSM_BUNDLED_CHECKED_AT, OSM_BUNDLED_DATA_AS_OF, OSM_BUNDLED_ELEMENTS, OSM_BUNDLED_FETCHED_AT } from "./osmBundled.js";
-import { MASK, maskObject } from "./pncp.js";
+import { MASK, maskObject } from "../mask.js";
+import { isObject } from "../text.js";
 
 /**
  * Overpass instance run by dresel.systems, South America region (holds Brazil). Its robots.txt is 404; free, no API key,
@@ -90,10 +91,6 @@ export interface OverpassResult {
   /** Whether Curitiba's area came back (the `.cwb out ids;` line). */
   areaFound: boolean;
   elements: RawElement[];
-}
-
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 function finite(v: unknown): v is number {

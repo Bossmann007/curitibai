@@ -2,11 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isAllowedUrl, resetHostRefusals } from "../src/http.js";
 import { sharedCache } from "../src/cache.js";
+import { MASK, maskObject } from "../src/mask.js";
 import { CALL_START_BUDGET_MS, SOURCE_REFUSED_MESSAGE } from "../src/tools/common.js";
 import {
   CURITIBA_BODIES,
-  maskObject,
-  MASK,
   objectReturnable,
   OBJECT_WITHHELD_MODALITIES,
   parseContratacoes,

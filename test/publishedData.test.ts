@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parsePhonesPage } from "../scripts/fetch-events.mjs";
 import { ALLOWED_HOSTS } from "../src/config.js";
 import { DATA_DIR_ENV } from "../src/localfs.js";
-import { clearPublishedState, PUBLISHED_CACHE_TTL_MS, publishedUrl, REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
+import {
+  clearPublishedState,
+  PUBLISHED_CACHE_TTL_MS,
+  publishedUrl,
+  REMOTE_DATA_ENV,
+  remoteDataSetting,
+} from "../src/sources/publishedData.js";
 import { eventsSearchOutput } from "../src/tools/eventsSearch.js";
 import { PHONES_SOURCE_URL, usefulPhonesOutput } from "../src/tools/usefulPhones.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
@@ -54,7 +60,7 @@ describe("published nightly copy", () => {
   beforeEach(() => {
     dir = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-published-")));
     vi.stubEnv(DATA_DIR_ENV, dir);
-    vi.stubEnv(REMOTE_DATA_ENV, "");
+    vi.stubEnv(REMOTE_DATA_ENV, undefined);
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -133,13 +139,38 @@ describe("published nightly copy", () => {
     expect(calls).toEqual([]);
   });
 
-  it(`${REMOTE_DATA_ENV}=0 turns the published copy off: no request, data_not_available`, async () => {
-    for (const value of ["0", "off", " OFF "]) {
+  it(`${REMOTE_DATA_ENV} off, or any value that is not on, turns the published copy off: no request, data_not_available`, async () => {
+    for (const value of ["0", "off", " OFF ", "false", "No", "", "maybe", "constructor"]) {
       vi.stubEnv(REMOTE_DATA_ENV, value);
       const calls = stubFetch({});
       expect(errorOf(await events())).toMatchObject({ error: "data_not_available" });
       expect(errorOf(await phones())).toMatchObject({ error: "data_not_available" });
       expect(calls).toEqual([]);
+    }
+  });
+
+  it(`${REMOTE_DATA_ENV} accepts on and off words, case and spaces ignored; any other value is a configuration error`, () => {
+    for (const value of ["0", "off", "false", "no", " FALSE ", "Off"]) {
+      vi.stubEnv(REMOTE_DATA_ENV, value);
+      expect(remoteDataSetting(), value).toBe(false);
+    }
+    for (const value of [undefined, "1", "on", "true", "yes", " YES "]) {
+      vi.stubEnv(REMOTE_DATA_ENV, value);
+      expect(remoteDataSetting(), String(value)).toBe(true);
+    }
+    for (const value of ["", " ", "2", "enabled", "constructor", "__proto__"]) {
+      vi.stubEnv(REMOTE_DATA_ENV, value);
+      expect(remoteDataSetting(), value).toBeNull();
+    }
+  });
+
+  it(`${REMOTE_DATA_ENV} on (true, yes, 1) reads the published copy`, async () => {
+    for (const value of ["true", " Yes ", "1"]) {
+      vi.stubEnv(REMOTE_DATA_ENV, value);
+      clearPublishedState();
+      const calls = stubFetch({ [`GET ${EVENTS_URL}`]: json(eventsFile(new Date())) });
+      expect(eventsSearchOutput.parse((await events()).structuredContent).data.items.map((e) => e.id)).toEqual([1]);
+      expect(calls).toEqual([{ url: EVENTS_URL, method: "GET" }]);
     }
   });
 

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_DIR_ENV } from "../src/localfs.js";
-import { MASK } from "../src/sources/pncp.js";
+import { MASK } from "../src/mask.js";
 import { newestUrbsFile, URBS_SOURCE_URL } from "../src/sources/urbs.js";
 import { cityPointsSearchOutput, distanceM, FEIRA_NOTE, HEALTH_NOTE, mixedNote, POI_CATEGORIES } from "../src/tools/cityPointsSearch.js";
 import { connectClient, errorOf } from "./helpers.js";
