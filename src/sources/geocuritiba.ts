@@ -35,22 +35,21 @@ const HEALTH_UNIT_NOTE =
   "Ouvidoria's, not the unit's own. Only municipal health units: UPAs are type `upa`, public hospitals `hospital " +
   "publico`. Not for emergencies: call 192 (SAMU) or 193.";
 
-/** UPAs, public hospitals and psychiatric stabilisation (v0.45.0): every note starts with the emergency sentence. */
-const EMERGENCY_NOTE =
-  "Emergency: call 192 (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go. ";
+/** UPAs, public hospitals and psychiatric stabilisation (v0.45.0): the first sentence of every note for these types. */
+export const EMERGENCY_NOTE =
+  "Emergency: call 192 (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go.";
+const SMS_OUVIDORIA = "An ouvidoria@ e-mail is the SMS Ouvidoria's, not the unit's own.";
 const UPA_NOTE =
-  EMERGENCY_NOTE +
   "UPA hours are as published by the Secretaria Municipal da Saúde (see `updated`); `open_periods.all_day` is the " +
-  "layer's 24-hour flag and `hours` the detail (dental urgency hours differ). Check by the UPA's phone or the 156.";
+  "layer's 24-hour flag and `hours` the detail (dental urgency hours differ). Check by the UPA's phone or the 156. " +
+  `Public hospitals are type \`hospital publico\`. ${SMS_OUVIDORIA}`;
 const HOSPITAL_NOTE =
-  EMERGENCY_NOTE +
   "Public hospitals as listed by IPPUC (municipal, state, federal and military), not every hospital in Curitiba. The " +
   "24-hour and period flags and hours are uneven in this layer: `all_day` false or no hours does not mean closed or " +
-  "not open 24 hours, and being listed does not mean walk-in care. Check `updated` and call the hospital.";
+  `not open 24 hours, and being listed does not mean walk-in care. Check \`updated\` and call the hospital. ${SMS_OUVIDORIA}`;
 const PSYCHIATRIC_NOTE =
-  EMERGENCY_NOTE +
   "The Secretaria Municipal da Saúde's psychiatric stabilisation unit, hours as published (see `updated`). Check by " +
-  "its phone or the 156.";
+  `its phone or the 156. ${SMS_OUVIDORIA}`;
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -89,6 +88,8 @@ export interface FacilityType {
   credit?: string;
   /** A sentence added to the result's note for this type. */
   note?: string;
+  /** A sentence put first in the result's note, before the general one (the emergency types, v0.45.0). */
+  leadNote?: string;
   /** Lines of `observacao` kept (default MAX_HOUR_LINES); a longer text ends with a line saying how many were cut. */
   maxHourLines?: number;
 }
@@ -185,13 +186,15 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "upas", "unidade de pronto atendimento", "unidades de pronto atendimento", "pronto atendimento", "upa 24h", "upa 24 horas",
     ]),
     note: UPA_NOTE,
+    leadNote: EMERGENCY_NOTE,
   },
-  { ...equipment("hospital publico", 129, "Hospital (público)", ["hospitais publicos"]), note: HOSPITAL_NOTE },
+  { ...equipment("hospital publico", 129, "Hospital (público)", ["hospitais publicos"]), note: HOSPITAL_NOTE, leadNote: EMERGENCY_NOTE },
   {
     ...equipment("estabilizacao psiquiatrica", 131, "Unidade de Estabilização Psiquiátrica", [
       "unidade de estabilizacao psiquiatrica", "unidades de estabilizacao psiquiatrica",
     ]),
     note: PSYCHIATRIC_NOTE,
+    leadNote: EMERGENCY_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),

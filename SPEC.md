@@ -31,8 +31,9 @@ only, IPPUC cited, like the other GeoCuritiba layers). No new host. Details:
      the layer is one publisher's list of 10 public hospitals, not every hospital in Curitiba;
    - `estabilizacao psiquiatrica` (131), aliases `unidade de estabilizacao psiquiatrica`, `unidades de estabilizacao
      psiquiatrica`.
-   Each has a `note` that starts with the emergency sentence (192 SAMU or 193; this tool lists places, it does not
-   triage). UPA: `open_periods.all_day` is the layer's flag, `hours` the detail (dental urgency hours differ).
+   Each type's note starts with the emergency sentence (192 SAMU or 193; this tool lists places, it does not
+   triage), through a new optional `leadNote` put before the general note, and says an ouvidoria@ e-mail is the SMS
+   Ouvidoria's. UPA: `open_periods.all_day` is the layer's flag, `hours` the detail (dental urgency hours differ).
    Hospital: the flags and hours are uneven, so `all_day: false` or no hours does not mean closed or not 24 hours;
    being listed does not mean open to walk-ins; check `updated` and call the hospital. Psychiatric stabilisation: an
    SMS unit, check by phone or the 156.
@@ -40,7 +41,8 @@ only, IPPUC cited, like the other GeoCuritiba layers). No new host. Details:
    `hospital publico` instead of "no UPAs or hospitals". Descriptions within 400 characters. Tool contract snapshot
    updated.
 3. **Eval**: q123 "Qual UPA perto do Boqueirão funciona 24 horas?" → `city_facilities_search` `{type: "upa", near:
-   (a point in Boqueirão), radius_m: 3000}`, with the synthetic fixture `test/fixtures/geocuritiba/upa_synthetic.json`.
+   (a point in Boqueirão), radius_m: 3000}`, with the synthetic fixture `test/fixtures/geocuritiba/upa_synthetic.json`
+   (plus `hospital_publico_synthetic.json` and `estabilizacao_psiquiatrica_synthetic.json` for the unit tests).
 4. **Docs and version**: README, docs/tools.md, docs/sources.md (layers 130, 129, 131 and the robots.txt recheck),
    docs/roadmap-1.0.md, CHANGELOG 0.45.0, version 0.45.0 in `package.json`, `package-lock.json`, `server.json`.
 

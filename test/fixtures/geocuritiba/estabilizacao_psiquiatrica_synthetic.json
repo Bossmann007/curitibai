@@ -1,0 +1,28 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Casa Inventada",
+        "nome_completo": "Unidade de Estabilização Psiquiátrica Casa Inventada",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "131",
+        "compl_end": "CEP: 81.000-131",
+        "divulgar_endereco": "Sim",
+        "bairro": "Tatuquara",
+        "regional": "Tatuquara",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-0131",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776285366000,
+        "observacao": "Atendimento:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": { "x": -49.33, "y": -25.56 }
+    }
+  ]
+}

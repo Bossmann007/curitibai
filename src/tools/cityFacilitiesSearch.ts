@@ -39,7 +39,7 @@ export const cityFacilitiesSearchInput = {
       "Facility type in Portuguese, accents and case ignored: e.g. \"feira\", \"rua da cidadania\", \"ecoponto\", " +
         "\"biblioteca\", \"farol do saber\", \"centro cultural\", \"cinema\", \"academia ao ar livre\", \"velodromo\", " +
         "\"banheiro publico\", \"parque\", \"estacao ecologica\", \"ciclovia\", \"ponto turistico\", \"unidade de saude\" " +
-        "(or \"ubs\", \"posto de saude\"), \"upa\", \"hospital publico\". " +
+        "(or \"ubs\", \"posto de saude\"), \"upa\", \"hospital publico\", \"estabilizacao psiquiatrica\". " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z
@@ -292,7 +292,7 @@ export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; f
     source_url: t.layerUrl,
     checked_at: res.fetchedAt,
     license_note: FACILITIES_LICENSE_NOTE,
-    note: `${NOTE} ${extra.join(" ")}`,
+    note: [t.leadNote, NOTE, ...extra].filter(Boolean).join(" "),
   };
 }
 

@@ -14,15 +14,18 @@ UPAs and public hospitals with hours, phase B of the 1.0 roadmap. 27 tools. Publ
   the layer lists public hospitals only), layer 129 "Hospital (público)" (10 records, municipal, state, federal and
   military); `estabilizacao psiquiatrica` (aliases `unidade de estabilizacao psiquiatrica`, `unidades de
   estabilizacao psiquiatrica`), layer 131 (1 record). Every note of the three types starts with "Emergency: call 192
-  (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go." The `upa` note says
-  `open_periods.all_day` is the layer's 24-hour flag and `hours` the detail (dental urgency hours differ). Layer
+  (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go." (new optional
+  `leadNote` of a type, put before the general note) and says an ouvidoria@ e-mail is the SMS Ouvidoria's, not the
+  unit's own. The `upa` note says `open_periods.all_day` is the layer's 24-hour flag and `hours` the detail (dental
+  urgency hours differ), and that public hospitals are type `hospital publico`. Layer
   129's flags and hours are uneven (4 records with no hours, two last updated in 2016), so the `hospital publico`
   note says `all_day` false or no hours does not mean closed or not open 24 hours, that being listed does not mean
   walk-in care, and to check `updated` and call the hospital.
 - The `unidade de saude` note now names the `upa` and `hospital publico` types and says 192 (SAMU) or 193 instead of
   "no UPAs or hospitals" and "go to a UPA". `health_units_search` (CNES) is unchanged and its description now points
   UBS, UPAs and public hospitals to `city_facilities_search`; the `city_facilities_search` description names UPAs and
-  the `type` description names `upa` and `hospital publico` (snapshot updated, both within 400 characters).
+  the `type` description names `upa`, `hospital publico` and `estabilizacao psiquiatrica` (snapshot updated, both
+  within 400 characters).
 - No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
   Seven hand requests that day (robots.txt, and each layer's metadata and one whole-layer read), recorded in
   [docs/sources.md](docs/sources.md). The link allowlist is unchanged.

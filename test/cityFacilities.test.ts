@@ -377,14 +377,29 @@ describe("city_facilities_search", () => {
   });
 
   it.each(["upa", "hospital publico", "estabilizacao psiquiatrica"])(
-    "v0.45.0: the %s note says 192 (SAMU) or 193 and that the tool does not triage",
+    "v0.45.0: the %s note starts with 192 (SAMU) or 193 and that the tool does not triage",
     async (t) => {
-      stubFetch(route(t, t === "hospital publico" ? "hospital_publico_synthetic.json" : "upa_synthetic.json"));
+      stubFetch(route(t, `${t.replace(" ", "_")}_synthetic.json`));
       const out = await search({ type: t });
-      expect(out.note).toMatch(/Emergency: call 192 \(SAMU\) or 193/);
-      expect(out.note).toMatch(/lists places, it does not triage/);
+      expect(out.note.startsWith("Emergency: call 192 (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage")).toBe(true);
+      expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
     },
   );
+
+  it("v0.45.0: the psychiatric stabilisation unit comes back with its 24-hour flag and phone", async () => {
+    stubFetch(route("estabilizacao psiquiatrica", "estabilizacao_psiquiatrica_synthetic.json"));
+    const out = await search({ type: "Unidade de Estabilização Psiquiátrica" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/131`);
+    expect(out.data).toMatchObject({ total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Unidade de Estabilização Psiquiátrica Casa Inventada",
+      address: "R. INVENTADA, 131 - CEP: 81.000-131",
+      hours: ["Atendimento:", "-Diariamente, 24 horas"],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: true },
+      phones: ["(41) 3333-0131"],
+      updated: "2026-04-15",
+    });
+  });
 
   it("v0.45.0: the UPA near Boqueirão comes back with its 24-hour flag, hours as published and landline", async () => {
     const calls = stubFetch(route("upa", "upa_synthetic.json"));
