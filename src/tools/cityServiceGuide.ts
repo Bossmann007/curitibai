@@ -170,6 +170,15 @@ export const GUIDES_0_42_CHECKED_AT = "2026-11-25";
 /** Lei municipal 16.492 of 2025-03-11 (Programa Voucher Educacional "Vale-Creche"), the SME's PDF, read 2026-11-25. */
 export const VALE_CRECHE_LAW_URL = "https://mid-educacao.curitiba.pr.gov.br/2025/4/pdf/00517415.pdf";
 
+/** Date the Ouvidoria guide was written from the CGM's "Ouvidoria da CGM – Guia de uso" (since 0.43.0). */
+export const GUIDES_0_43_CHECKED_AT = "2026-11-25";
+/** "Ouvidoria da CGM – Guia de uso" (4 pages, created 2024-05-10), the Prefeitura's PDF, read 2026-11-25. */
+export const OUVIDORIA_GUIDE_URL = "https://mid.curitiba.pr.gov.br/2024/00446690.pdf";
+/** Portal Curitiba Ouve, as the 2024 CGM guide gives it; never opened by this project (docs/sources.md). */
+export const CURITIBA_OUVE_URL = "https://www.curitiba.pr.gov.br/lei13460/";
+/** The CGM's e-mail for denúncias, as the 2024 CGM guide gives it (an institutional address, not a person's). */
+export const CGM_EMAIL = "falecomacgm@curitiba.pr.gov.br";
+
 const OPEN_156: StepDef = {
   action: "Abrir o site oficial da Central 156.",
   consent: "Abrir 156.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
@@ -590,6 +599,81 @@ export const GUIDES = {
           "por decreto a cada ano. Se surgir vaga num CMEI, a criança passa para a vaga pública no fim do ano letivo.",
       },
       OPEN_156,
+    ],
+  },
+  ouvidoria: {
+    title: "Ouvidoria da Prefeitura (CGM): canais oficiais, sem telefone publicado",
+    what:
+      "Canais da Ouvidoria da Controladoria Geral do Município (CGM) para pedir informações, sugerir, reclamar, " +
+      "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
+      `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
+      "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria.",
+    // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
+    carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["curitiba", "ouve"]],
+    fromDocument: {
+      checkedAt: GUIDES_0_43_CHECKED_AT,
+      licenseNote:
+        `Guide written by this project on ${GUIDES_0_43_CHECKED_AT} from "Ouvidoria da CGM – Guia de uso" (the ` +
+        "Prefeitura's PDF, created 2024-05-10, step 9): facts and link only, in this project's own words. The Portal " +
+        "Curitiba Ouve address is the one that PDF gives; it was not opened here. Carta links come from your local " +
+        "copy of the Prefeitura's Carta de Serviços. ",
+    },
+    note:
+      "Guide note (ouvidoria): written from the CGM's \"Ouvidoria da CGM – Guia de uso\", dated 2024-05-10, read on " +
+      "2026-11-25; the channels may have changed since 2024. That guide publishes no phone number for the Ouvidoria. " +
+      "Never give a phone number as the Ouvidoria's: the Central 156 (step 7) is where that guide sends a citizen for " +
+      "a protocol, not the Ouvidoria's own line. The Portal Curitiba Ouve address (step 4) comes from that PDF and was " +
+      "not opened here. Not verified: whether the \"Ouvidoria da CGM\" is the same office a citizen may call the " +
+      "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). ",
+    steps: [
+      FIRST_STEP,
+      {
+        action:
+          "Explicar ao cidadão: o guia de uso da Ouvidoria da CGM (2024) não publica telefone da Ouvidoria; não dê " +
+          "nenhum número como sendo dela. Os canais dependem do assunto: serviços públicos (Saúde, Educação, Ação " +
+          "Social, Meio Ambiente e outros) vão ao Portal Curitiba Ouve; denúncias de atos ilícitos contra a Prefeitura " +
+          "(por exemplo fraude de empresa contratada) ou de conduta antiética de servidor vão ao e-mail da CGM.",
+      },
+      CARTA_PAGE,
+      {
+        action: "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos.",
+        consent:
+          "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
+          "de 2024 e não foi aberto pelo CuritibAI.",
+        link: { fixed: CURITIBA_OUVE_URL },
+      },
+      {
+        action:
+          `Para denunciar ato ilícito contra a Prefeitura ou conduta antiética de servidor: o cidadão escreve, do seu ` +
+          `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail.`,
+        consent:
+          `O cidadão escreve e envia a mensagem só no seu próprio programa de e-mail, para ${CGM_EMAIL}, não nesta ` +
+          "conversa. O assistente não escreve nem envia nada.",
+        types: [`texto da denúncia, só no e-mail do cidadão para ${CGM_EMAIL}`],
+      },
+      {
+        action:
+          "Dizer ao cidadão as três formas que o guia de 2024 descreve: identificada (cadastro no e-Cidadão e protocolo " +
+          "na Central 156), sigilosa (também com e-Cidadão, mas os dados pessoais de quem denuncia ficam em sigilo e a " +
+          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é apurada, mas sem resposta nem " +
+          "acompanhamento). Quem escolhe é o cidadão. No site, o guia mostra só as opções identificada e anônima.",
+      },
+      {
+        ...OPEN_156,
+        action:
+          "Para a forma identificada, o guia de 2024 pede um protocolo da Central 156: abrir o site oficial da Central " +
+          "156 (ou seguir o guia city_service_guide com service \"156\").",
+      },
+      {
+        action:
+          "Dizer ao cidadão o prazo que o guia de 2024 dá: a CGM tem 30 dias para responder (Lei federal " +
+          "13.460/2017), prorrogáveis por igual período quando informado. Não prometa prazo menor.",
+      },
+      {
+        action: "Abrir o guia de uso da Ouvidoria da CGM (PDF de 2024 da Prefeitura).",
+        consent: "Abrir o PDF em mid.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: OUVIDORIA_GUIDE_URL },
+      },
     ],
   },
 } as const satisfies Record<string, GuideDef>;
@@ -1110,11 +1194,10 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
   name: "city_service_guide",
   title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links for a city service that needs a login or sign-up, for Defesa Civil phone alerts, or " +
-    "for the Vale-Creche rules (no value, no promise): " +
-    "a hand-written guide (service), or one generated from the user's local Carta copy (carta_id from " +
-    "city_services_search). Never logs in, submits or sends. Ask the user before each needs_consent step; never " +
-    "type their passwords or payment data.",
+    "Steps and official links for a city service with a login or sign-up, Defesa Civil phone alerts, the " +
+    "Vale-Creche rules (no value, no promise) or the Ouvidoria's channels (no phone published): hand-written " +
+    "(service) or generated from the user's Carta copy (carta_id from city_services_search). Never logs in, submits " +
+    "or sends. Ask before each needs_consent step; never type passwords or payment data.",
   inputSchema: cityServiceGuideInput,
   outputSchema: cityServiceGuideOutput,
   handler: async (args, ctx) => {

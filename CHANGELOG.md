@@ -2,6 +2,32 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.43.0 - 2026-11-25
+
+Ouvidoria, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_service_guide`: new hand-written guide `ouvidoria`, written from the CGM's "Ouvidoria da CGM – Guia de uso"
+  (4 pages, created 2024-05-10), read on 2026-11-25 from the Prefeitura's PDF on `mid.curitiba.pr.gov.br` (robots.txt
+  404; an official document, facts and link only). That guide publishes no phone number for the Ouvidoria, so this
+  one says so and gives no number as the Ouvidoria's. Steps: the Carta page, the Portal Curitiba Ouve
+  (`www.curitiba.pr.gov.br/lei13460/`, public services; taken from the PDF, not opened), the CGM e-mail
+  `falecomacgm@curitiba.pr.gov.br` for illicit acts and unethical conduct (text the citizen sends from their own
+  e-mail, a consent step with no link), the identified, confidential and anonymous forms, the Central 156 for the
+  identified form's protocol, the 30-day answer (Lei federal 13.460/2017) and the PDF. Its `note` says the source is
+  from 2024 and the channels may have changed. Carta words: `ouvidoria` + `cgm`, `ouvidoria` + `controladoria` or
+  `curitiba` + `ouve` (not the bare word: other offices have their own ouvidoria), mirrored in
+  `scripts/coverage-report.mjs`.
+- The tool description names the Ouvidoria's channels. Tool contract: one new `service` value (snapshot updated).
+- No new network host; the link allowlist is unchanged (`mid.curitiba.pr.gov.br` and `www.curitiba.pr.gov.br` are in
+  the Prefeitura's zone). Two hand requests on 2026-11-25 (robots.txt and the PDF), recorded in
+  [docs/sources.md](docs/sources.md).
+- Citizen eval: q110 ("Qual o telefone da Ouvidoria Geral do Município?") moves from the `useful_phones` gap to the
+  guide, and q072 ("Qual o telefone da Ouvidoria da Prefeitura?") from `useful_phones` (nothing found) to the guide;
+  a unit test keeps `useful_phones` answering nothing for "ouvidoria". 117 of 121 answered; the `useful_phones` gap
+  label is gone. Curitiba App table: the Useful phones row becomes "guide + official link, citizen acts" (its other
+  phones are `useful_phones` data; the Ouvidoria was the only reason it stayed partial at v0.40): 16 of 18 rows
+  covered (7 data, 9 guide).
+
 ## 0.42.0 - 2026-11-25
 
 Vale-Creche, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

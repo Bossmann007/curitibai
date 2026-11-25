@@ -90,6 +90,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate. Rechecked 2026-11-24 21:00 UTC (404, IIS HTML page): since v0.27 also the thematic layers 12 (voting places, whole layer), 25, 27 and 41 (police and fire areas, point queries) and 43 (census sector, point query and one `outStatistics` query per neighbourhood), and the urban-equipment layers 157 and 158 (bus terminals) |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
+| `mid.curitiba.pr.gov.br` (Prefeitura file host: the CGM's "Ouvidoria da CGM – Guia de uso" PDF, since 0.43.0) | 404, IIS HTML "404 - File or directory not found." (checked 2026-11-25 21:55:04 UTC with curl, User-Agent `curitibai-mcp/0.43 (+https://github.com/Bossmann007/curitibai)`; the owner's research desk also read 404 the same day) | No robots.txt, so no restriction (RFC 9309, 2.3.1.3). **Never contacted by the server.** One PDF downloaded by hand once, 2026-11-25 21:55:08 UTC; `city_service_guide` (`ouvidoria`) links it ([how](#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280)) |
 | `www.curitiba.pr.gov.br` | 200 (robots.txt read on 2026-11-19): `User-agent: *`; disallows `/App`, `/bin`, `/Cache`, `/Imagem`, `/Include` and some extensions (`*.pdf`, `*.asp`, `*.jpg`, ...); `/dadosabertos/` and `/servicos/` are **not disallowed** | **The server never contacts this host**: on 2026-11-19 it was observed answering HTTP 403 to non-browser clients. `city_services_search` (v0.6) reads only a local copy of the `/servicos/` listing pages that you save yourself; no copy is in this repository |
 | `servicos.curitiba.pr.gov.br` (Carta de Serviços detail pages) | Checked 2026-11-19: `Disallow: /`; re-read 2026-11-25 21:28:40 UTC, same | **Disallowed. Never contacted by the server**; the local copy holds no detail-page content. One request by hand broke this rule by mistake on 2026-11-25 (`/vale-creche/994`, deleted unread, [details](#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280)). `city_services_search` returns these URLs (from the local file) only as links for people to open |
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
@@ -799,7 +800,8 @@ in the city's own categories. Built.
 - **Fails closed:** an unknown tag in the block, a number in another format (digits left over), an entry before the
   first heading, fewer than 20 or more than 500 entries, or a count outside 0.3x–3x of the previous file's: status
   `layout_changed`, the previous `phones/phones.json` is kept.
-- **Not covered:** the page has no Ouvidoria entry, and it was not compared with the Curitiba App's own list.
+- **Not covered:** the page has no Ouvidoria entry, and it was not compared with the Curitiba App's own list. Since
+  0.43.0 `city_service_guide` (`ouvidoria`) answers Ouvidoria questions with the CGM's channels, not a phone (below).
 
 ### Published nightly copy of the events and phones files (since 0.18.0)
 
@@ -1411,6 +1413,32 @@ machine (never by the server):
   that host is `Disallow: /`, re-read at the same time: `Request-rate: 1/5`, `Visit-time: 0400-0645`, `Disallow: /`,
   extension rules, `Allow: *.html`). Both files were deleted unread and neither page was requested again. The
   `educacao` robots.txt read at 21:28:40 UTC was the same as the row above.
+
+Ouvidoria guide (`ouvidoria`, since 0.43.0, written 2026-11-25). Requested by hand on 2026-11-25 with curl,
+User-Agent `curitibai-mcp/0.43 (+https://github.com/Bossmann007/curitibai)`, from the developer's machine (never by the
+server):
+
+- `https://mid.curitiba.pr.gov.br/robots.txt` at 21:55:04 UTC: 404, so no rule applies (RFC 9309, 2.3.1.3). Then
+  `https://mid.curitiba.pr.gov.br/2024/00446690.pdf` at 21:55:08 UTC: 200, `application/pdf`, 318,716 bytes, 4 pages,
+  created 2024-05-10 (Microsoft Word). It is "Ouvidoria da CGM – Guia de uso", from the Controladoria Geral do
+  Município (CGM). An official document: only facts and the link are used, in this project's own words. Used: the
+  Ouvidoria takes requests for information, suggestions, complaints, praise and denúncias; by subject, public
+  services (Saúde, Educação, Ação Social, Meio Ambiente and others) go to the Portal Curitiba Ouve
+  (`https://www.curitiba.pr.gov.br/lei13460/`) and illicit acts against the municipal administration or unethical
+  conduct of servants to `falecomacgm@curitiba.pr.gov.br` (an institutional address); the three forms (identified:
+  e-Cidadão account and a Central 156 protocol; confidential: e-Cidadão, personal data kept secret, the answer by the
+  registered e-mail; anonymous: no account, no answer or follow-up); the site steps show only the identified and
+  anonymous forms, as the PDF does; the CGM answers within 30 days (Lei federal 13.460/2017), extendable once when
+  announced. **The PDF gives no phone number for the Ouvidoria**; the guide says so and gives none. The PDF was
+  deleted after reading; it is not in the repository.
+- Not opened: the Portal Curitiba Ouve page (`www.curitiba.pr.gov.br`, which the project never contacts); its address
+  is the one the PDF gives, and the guide's consent for that step says it was not opened. Not verified: whether these
+  channels are unchanged since 2024, and whether the "Ouvidoria da CGM" is what a citizen calls the
+  "Ouvidoria-Geral do Município" (the PDF does not use that name).
+
+Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
+`fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
+Ouvidoria tool was made: the change is one guide entry in an existing table.
 
 Prior art for 0.42.0: the existing `city_service_guide` and its `creche` guide are reused (a new guide id in the same
 table, the same consent steps); no tool or library for Curitiba's Vale-Creche exists to adopt.

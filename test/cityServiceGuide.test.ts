@@ -189,6 +189,80 @@ describe("Vale-Creche guide (since 0.42.0)", () => {
   });
 });
 
+describe("Ouvidoria guide (since 0.43.0)", () => {
+  async function guide() {
+    const res = await cityServiceGuideResult("ouvidoria", undefined, null, undefined);
+    if (!res.ok) throw new Error(res.message);
+    return cityServiceGuideOutput.parse(res.payload);
+  }
+  const text = (o: Output) =>
+    [o.data.title, o.data.what, o.note, o.license_note, ...allSteps(o).map((s) => `${s.action} ${s.consent ?? ""} ${s.citizen_types_on_site.join(" ")}`)].join(" ");
+
+  it("says the 2024 guide publishes no phone and gives no phone-shaped number", async () => {
+    const o = await guide();
+    const t = text(o);
+    expect(o.data.what).toMatch(/não publica telefone da Ouvidoria/);
+    expect(allSteps(o)[1]!.action).toMatch(/não publica telefone da Ouvidoria; não dê nenhum número como sendo dela/);
+    expect(o.note).toMatch(/Never give a phone number as the Ouvidoria's/);
+    // Phone shapes: an area code, 0800, or a dash-separated or 8-9 digit local number. Law numbers and 156 are not phones.
+    expect(t).not.toMatch(/\(\d{2}\)|0800|\d{4,5}-\d{4}|\b\d{8,9}\b/);
+    expect(t).toMatch(/2024/);
+    expect(o.note).toMatch(/dated 2024-05-10/);
+    expect(o.note).toMatch(/may have changed since 2024/);
+  });
+
+  it("gives the CGM e-mail as text the citizen sends from their own e-mail, never a link", async () => {
+    const o = await guide();
+    const step = allSteps(o).find((s) => s.step === 5)!;
+    expect(step.action).toContain("falecomacgm@curitiba.pr.gov.br");
+    expect(step.needs_consent).toBe(true);
+    expect(step.url).toBeNull();
+    expect(step.citizen_types_on_site).toEqual(["texto da denúncia, só no e-mail do cidadão para falecomacgm@curitiba.pr.gov.br"]);
+    expect(o.data.what).toContain("falecomacgm@curitiba.pr.gov.br");
+    expect(allSteps(o).every((s) => s.url === null || s.url.startsWith("https://"))).toBe(true);
+  });
+
+  it("names the three forms and the 30-day answer from the 2024 guide", async () => {
+    const t = text(await guide());
+    expect(t).toMatch(/identificada \(cadastro no e-Cidadão e protocolo na Central 156\)/);
+    expect(t).toMatch(/sigilosa/);
+    expect(t).toMatch(/anônima \(sem cadastro/);
+    expect(t).toMatch(/30 dias para responder \(Lei federal 13\.460\/2017\)/);
+  });
+
+  it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {
+    const o = await guide();
+    const fixed = allSteps(o).filter((s) => s.link_source === "official_allowlist" && s.url !== CITY_SERVICES_SOURCE_URL);
+    expect(fixed.map((s) => s.url)).toEqual([
+      "https://www.curitiba.pr.gov.br/lei13460/",
+      "https://156.curitiba.pr.gov.br/",
+      "https://mid.curitiba.pr.gov.br/2024/00446690.pdf",
+    ]);
+    const at = (n: number) => allSteps(o).find((s) => s.step === n)!.url;
+    expect([at(4), at(7), at(9)]).toEqual(fixed.map((s) => s.url));
+    expect(o.note).toMatch(/Central 156 \(step 7\)/);
+    expect(o.note).toMatch(/\(step 4\) comes from that PDF and was not opened here/);
+    expect(o.license_note).toMatch(/created 2024-05-10, step 9/);
+    expect(allSteps(o).find((s) => s.step === 4)!.consent).toMatch(/não foi aberto pelo CuritibAI/);
+  });
+
+  it("the envelope names the 2024 PDF, not web search and not a law", async () => {
+    const o = await guide();
+    expect(o.checked_at).toBe("2026-11-25");
+    expect(o.license_note).toMatch(/from "Ouvidoria da CGM – Guia de uso"/);
+    expect(o.license_note).toMatch(/facts and link only/);
+    expect(o.license_note).not.toMatch(/web search|9\.610/);
+    expect(o.license_note).toMatch(/Unofficial; not affiliated/);
+  });
+
+  it("Carta words: the CGM's Ouvidoria or Curitiba Ouve get this guide; another office's ouvidoria does not", () => {
+    expect(handWrittenFor("Ouvidoria da CGM sintética")).toBe("ouvidoria");
+    expect(handWrittenFor("Ouvidoria da Controladoria Geral do Município")).toBe("ouvidoria");
+    expect(handWrittenFor("Curitiba Ouve")).toBe("ouvidoria");
+    expect(handWrittenFor("Ouvidoria da Saúde sintética")).toBeUndefined();
+  });
+});
+
 describe("guide invariants (every guide, with and without the Carta copy, and generated guides)", () => {
   it("every step that opens a link or has the citizen type data needs consent and says what happens", async () => {
     for (const o of await everyOutput()) {
