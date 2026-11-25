@@ -70,17 +70,16 @@ const PSYCHIATRIC_NOTE =
 
 /** Health surveillance, zoonoses and the veterinary hospital (v0.47.0): only what the layers publish. */
 const SANITARY_NOTE =
-  "The Secretaria Municipal da Saúde's Vigilância Sanitária offices, one per regional, hours as published (see " +
-  "`updated`). Call the office before going, or the 156.";
+  "The Secretaria Municipal da Saúde's Vigilância Sanitária offices, hours as published (see `updated`). Call the " +
+  "office before going, or the 156.";
 const ZOONOSES_NOTE =
-  "The Centro de Controle de Zoonoses e Vetores, hours as published (see `updated`), including what the layer says " +
-  "about weekends and holidays. Call before going, or the 156. The Hospital Veterinário Municipal is type " +
-  "`hospital veterinario`.";
+  "The Centro de Controle de Zoonoses e Vetores, hours as published (see `updated`). Call before going, or the 156. " +
+  "The Hospital Veterinário Municipal is type `hospital veterinario`.";
 const VET_HOSPITAL_NOTE =
-  "IPPUC's layer publishes the Hospital Veterinário Municipal's address only: no hours, phone, services or who it " +
-  "serves. Empty `hours` and all-false `open_periods` mean not published, not closed. This tool cannot say how the " +
-  "hospital works, who it serves or what it costs: ask the 156 before going. The Centro de Controle de Zoonoses e " +
-  "Vetores is type `zoonoses`.";
+  "When read on 2026-11-25, IPPUC's layer published the Hospital Veterinário Municipal's address only: no hours, " +
+  "phone, services or who it serves. Empty `hours` or `phones` and all-false `open_periods` mean not published, not " +
+  "closed. This tool cannot say who the hospital serves or what it costs: ask the 156 before going. The Centro de " +
+  "Controle de Zoonoses e Vetores is type `zoonoses`.";
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -257,7 +256,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   {
     ...equipment("zoonoses", 136, "Centro de Controle de Zoonoses e Vetores", [
       "centro de controle de zoonoses", "centro de controle de zoonoses e vetores", "controle de zoonoses",
-      "centro de zoonoses", "ccz",
+      "centro de zoonoses", "centros de zoonoses", "zoonose", "centro de zoonose", "ccz",
     ]),
     note: ZOONOSES_NOTE,
   },

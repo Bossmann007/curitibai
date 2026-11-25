@@ -537,6 +537,7 @@ describe("city_facilities_search", () => {
     ["Zoonoses", "zoonoses", 136],
     ["Centro de Controle de Zoonoses", "zoonoses", 136],
     ["CCZ", "zoonoses", 136],
+    ["centro de zoonose", "zoonoses", 136],
     ["Hospital Veterinário", "hospital veterinario", 112],
     ["Hospital Veterinário Municipal", "hospital veterinario", 112],
   ] as const)("v0.47.0: %s maps to %s (layer %i)", (input, id, layer) => {
@@ -564,7 +565,7 @@ describe("city_facilities_search", () => {
       emails: ["visa.inventada@sms.curitiba.pr.gov.br"],
       updated: "2026-04-15",
     });
-    expect(out.note).toMatch(/Vigilância Sanitária offices, one per regional, hours as published/);
+    expect(out.note).toMatch(/Vigilância Sanitária offices, hours as published/);
     expect(out.note).not.toMatch(/ouvidoria|192|CVV/);
   });
 
@@ -582,7 +583,6 @@ describe("city_facilities_search", () => {
       phones: ["(41) 3333-1360"],
       emails: ["ccz.inventado@sms.curitiba.pr.gov.br"],
     });
-    expect(out.note).toMatch(/including what the layer says about weekends and holidays/);
     expect(out.note).toMatch(/type `hospital veterinario`/);
   });
 
@@ -602,8 +602,8 @@ describe("city_facilities_search", () => {
       emails: [],
       updated: "2024-12-18",
     });
-    expect(out.note).toMatch(/address only: no hours, phone, services or who it serves/);
-    expect(out.note).toMatch(/mean not published, not closed/);
+    expect(out.note).toMatch(/When read on 2026-11-25, .* address only: no hours, phone, services or who it serves/);
+    expect(out.note).toMatch(/mean not published, not\s+closed/);
     expect(out.note).toMatch(/ask the 156 before going/);
     expect(out.note).not.toMatch(/free|gratuit/i);
   });

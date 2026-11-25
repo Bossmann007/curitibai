@@ -30,15 +30,16 @@ read: the Prefeitura's pages are on hosts this project never contacts. No new ho
    e-mail allowlist as the other urban-equipment layers:
    - `vigilancia sanitaria` (167), aliases `vigilancias sanitarias`, `vigilancia sanitaria municipal`;
    - `zoonoses` (136), aliases `centro de controle de zoonoses`, `centro de controle de zoonoses e vetores`,
-     `controle de zoonoses`, `centro de zoonoses`, `ccz`;
+     `controle de zoonoses`, `centro de zoonoses`, `centros de zoonoses`, `zoonose`, `centro de zoonose`, `ccz`;
    - `hospital veterinario` (112), aliases `hospital veterinario municipal`, `hospitais veterinarios`.
    No bare `vigilancia`, `veterinario`, `animal` or `pet` alias.
-2. **Notes**, only what the layers publish. `vigilancia sanitaria`: the SMS offices, one per regional, hours as
-   published (see `updated`); call the office or the 156 before going. `zoonoses`: hours as published, including what
-   the layer says about weekends and holidays; call or the 156; the veterinary hospital is type `hospital
-   veterinario`. `hospital veterinario`: the layer publishes the address only (no hours, phone, services or who it
-   serves); empty `hours` and all-false `open_periods` mean not published, not closed; the tool cannot say how the
-   hospital works, who it serves or what it costs: ask the 156; the zoonoses centre is type `zoonoses`.
+2. **Notes**, only what the layers publish, and nothing that goes stale if a record changes (no office count, no
+   restated hours). `vigilancia sanitaria`: the SMS offices, hours as published (see `updated`); call the office or
+   the 156 before going. `zoonoses`: hours as published; call or the 156; the veterinary hospital is type `hospital
+   veterinario`. `hospital veterinario`: when read on 2026-11-25 the layer published the address only (no hours,
+   phone, services or who it serves); empty `hours` or `phones` and all-false `open_periods` mean not published, not
+   closed; the tool cannot say who the hospital serves or what it costs: ask the 156; the zoonoses centre is type
+   `zoonoses`.
 3. **Descriptions**: the `type` description names the three types. Tool contract snapshot updated.
 4. **Eval**: q125 "Onde fica o Hospital Veterinário Municipal e como funciona?" → `city_facilities_search` `{type:
    "hospital veterinario"}`, synthetic fixture `test/fixtures/geocuritiba/hospital_veterinario_synthetic.json` (plus

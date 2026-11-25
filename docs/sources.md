@@ -1116,19 +1116,20 @@ changes (owner request, 2026-11-23: monthly and automatic).
     3212-1877 / 3212-5651": both kept); e-mails `visa.<office>@sms.curitiba.pr.gov.br` (kept by the e-mail
     allowlist). One record's `observacao` gives a "Protocolo" phone, which the text mask turns into "[masked]" as for
     every phone inside `hours`. The layer says nothing about what the offices do, so the note says only that hours are
-    as published and to call the office or the 156 before going.
+    as published and to call the office or the 156 before going (no office count, which can change).
   - 136: 1 record, the Centro de Controle de Zoonoses e Vetores de Curitiba (Cidade Industrial de Curitiba),
     "-Diariamente, das 8h às 12h e das 13h às 17h", "Nos finais de semana e feriados o atendimento é em regime de
     plantão.", "Também funciona o Centro de Referência para Animais em Situação de Risco.", landline,
     `ccz@sms.curitiba.pr.gov.br`, `dt_atualiz` 2025-10-22. Those lines come back in `hours` as published; the note
-    does not restate them.
+    does not restate them (it would go stale if the record changed).
   - 112: 1 record, the Hospital Veterinário Municipal (Parque Municipal São Francisco de Assis, Taboão), with the
     address only: `telefone`, `email` and `observacao` null and all four period flags "Não", `dt_atualiz` 2024-12-18.
     No readable official source says how the hospital works or who it serves: the Prefeitura's pages are on
     `www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br`, which this project never contacts (host table
-    above), so none was read. The note says the layer publishes the address only (no hours, phone, services or who it
-    serves), that empty `hours` and all-false `open_periods` mean not published, not closed, that the tool cannot say
-    how the hospital works, who it serves or what it costs, and to ask the 156 before going. It promises no free care.
+    above), so none was read. The note says that, when read on 2026-11-25, the layer published the address only (no
+    hours, phone, services or who it serves), that empty `hours` or `phones` and all-false `open_periods` mean not
+    published, not closed, that the tool cannot say who the hospital serves or what it costs, and to ask the 156
+    before going. It promises no free care.
   - No bare `vigilancia`, `veterinario`, `animal` or `pet` alias (they would promise more than these layers). Names
     are places and public homage; no staff or personal data is in the fields read. No new host:
     `geocuritiba.ippuc.org.br` was already contacted, through the same host gate. The link allowlist is unchanged.

@@ -12,15 +12,14 @@ nothing.
   (aliases `vigilancias sanitarias`, `vigilancia sanitaria municipal`), layer 167 (10 offices of the Secretaria
   Municipal da Saúde when read on 2026-11-25, one per regional, Monday to Friday 8h to 18h); `zoonoses` (aliases
   `centro de controle de zoonoses`, `centro de controle de zoonoses e vetores`, `controle de zoonoses`, `centro de
-  zoonoses`, `ccz`), layer 136 (1 record: the Centro de Controle de Zoonoses e Vetores, daily hours and a weekend and
-  holiday on-duty line, as published); `hospital veterinario` (aliases `hospital veterinario municipal`, `hospitais
+  zoonoses`, `centros de zoonoses`, `zoonose`, `centro de zoonose`, `ccz`), layer 136 (1 record: the Centro de
+  Controle de Zoonoses e Vetores, daily hours and a weekend and holiday on-duty line, as published); `hospital veterinario` (aliases `hospital veterinario municipal`, `hospitais
   veterinarios`), layer 112 (1 record: the Hospital Veterinário Municipal, address only). No bare `vigilancia`,
   `veterinario`, `animal` or `pet` alias.
-- Notes say only what the layers publish. `vigilancia sanitaria`: hours as published, call the office or the 156
-  before going. `zoonoses`: hours as published, including what the layer says about weekends and holidays. `hospital
-  veterinario`: the layer publishes the address only (no hours, phone, services or who it serves); empty `hours` and
-  all-false `open_periods` mean not published, not closed; the tool cannot say how the hospital works, who it serves
-  or what it costs: ask the 156. No free care is promised. The `type` description names the new types (snapshot
+- Notes say only what the layers publish. `vigilancia sanitaria` and `zoonoses`: hours as published, call before
+  going or the 156. `hospital veterinario`: when read on 2026-11-25 the layer published the address only (no hours,
+  phone, services or who it serves); empty `hours` or `phones` and all-false `open_periods` mean not published, not
+  closed; the tool cannot say who the hospital serves or what it costs: ask the 156. No free care is promised. The `type` description names the new types (snapshot
   updated).
 - No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
   Ten hand requests to it that day (robots.txt, three reads on a wrong path answered "Service not found", one
