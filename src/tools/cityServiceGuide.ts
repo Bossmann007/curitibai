@@ -81,6 +81,11 @@ interface GuideDef {
   carta: string[][];
   /** A Carta title with any of these words gets the generated guide instead (handWrittenFor; folded like the title). */
   notFor?: string[];
+  /**
+   * Positive rule (since 0.39.1): the title also needs one of `words`, or its words are exactly one of `bare` (folded,
+   * in order). A deny list leaks through synonyms ("autuação", "vistoria"); this names what the guide is for.
+   */
+  needs?: { words: string[]; bare: string[][] };
   steps: StepDef[];
   /** Said before the consent rule in every answer of this guide: what was not verified and the fallback. */
   note?: string;
@@ -145,6 +150,12 @@ export const LE_DIGITAL_NEWS_URL =
 export const GUIDES_0_39_CHECKED_AT = "2026-11-25";
 
 /** Anatel's page on Defesa Civil Alerta (cell broadcast), read on 2026-11-25 (docs/sources.md). */
+/**
+ * The federal sign-up service (Ministério da Integração e do Desenvolvimento Regional) on www.gov.br, read on
+ * 2026-11-25: SMS to 40199 with the CEP of the area, plus other channels (since 0.39.1).
+ */
+export const DEFESA_CIVIL_SIGNUP_URL =
+  "https://www.gov.br/pt-br/servicos/solicitar-cadastro-para-recebimento-de-avisos-e-alertas-de-desastres";
 export const DEFESA_CIVIL_ALERTA_URL =
   "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta";
 
@@ -372,13 +383,19 @@ export const GUIDES = {
       "placa, o local e o tempo. Horários, tempo máximo e valores: placas de sinalização da quadra e site da URBS; este " +
       "guia não traz números.",
     // All three words: "estar" alone is a verb, and "estacionamento regulamentado" alone is also in titles of other
-    // services (an appeal, a credential) that the generated guide serves better. "Est@R" splits into "est" and "r".
-    carta: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento"]],
+    // services (an appeal, a credential) that the generated guide serves better. "Est@R" splits into "est" and "r",
+    // loose words, so that group also needs "regulamentado" (since 0.39.1).
+    carta: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento", "regulamentado"]],
     // This guide buys and activates time; a notice, appeal, fine or credential is another service (since 0.38.1).
     notFor: [
       "aviso", "avisos", "irregularidade", "irregularidades", "recurso", "recursos", "notificacao", "notificacoes",
       "multa", "multas", "defesa", "credencial", "credenciais",
     ],
+    // ...and a purchase or activation word, or the bare service title (since 0.39.1).
+    needs: {
+      words: ["compra", "comprar", "credito", "creditos", "ativacao", "ativar"],
+      bare: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento", "regulamentado"]],
+    },
     fromWebSearchAt: GUIDES_0_38_CHECKED_AT,
     note:
       "Guide note (estar): the URBS EstaR page (step 3, www.urbs.curitiba.pr.gov.br/EstaR, title \"Est@R - URBS\" in " +
@@ -442,11 +459,20 @@ export const GUIDES = {
       "cadastrando o CEP no 40199, e pelo Defesa Civil Alerta (cell broadcast). O CuritibAI não tem alertas por " +
       "bairro nem envia alertas. Emergência: Defesa Civil 199.",
     carta: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
+    // A subscription word or the bare title: "Vistoria da Defesa Civil - alerta de risco" is another service (0.39.1).
+    needs: {
+      words: ["cadastro", "sms", "receber", "recebimento"],
+      bare: [
+        ["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"],
+        ["alerta", "da", "defesa", "civil"], ["alertas", "da", "defesa", "civil"],
+      ],
+    },
     fromWebSearchAt: GUIDES_0_39_CHECKED_AT,
     note:
       "Guide note (defesa_civil): the SMS steps (CEP to 40199, free, a confirmation reply) come from the Paraná " +
-      "government's service page on www.parana.pr.gov.br (read 2026-11-25), which is not on the link allowlist, so " +
-      "those steps have no link. Commands to list or cancel a CEP and other sign-up channels were not verified and " +
+      "government's service page on www.parana.pr.gov.br (read 2026-11-25), which is not on the link allowlist and " +
+      "is not linked; step 5 links the federal sign-up service on www.gov.br (read 2026-11-25), which gives the " +
+      "same SMS to 40199 with the CEP. Commands to list or cancel a CEP and other sign-up channels were not verified and " +
       "are left out. Step 4 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
       "Defesa Civil 199. ",
     steps: [
@@ -463,6 +489,16 @@ export const GUIDES = {
           "conectados às redes 4G ou 5G, na área de risco, sem cadastro.",
         consent: "Abrir a página da Anatel em www.gov.br no navegador do cidadão. Nada é digitado.",
         link: { fixed: DEFESA_CIVIL_ALERTA_URL },
+      },
+      {
+        // Its own step: a step that opens a link has the citizen type nothing (one outward action per step).
+        action:
+          "Abrir a página do serviço federal de cadastro para receber avisos e alertas de desastres da Defesa Civil " +
+          "(SMS, WhatsApp, Telegram) e ler os passos.",
+        consent:
+          "Abrir a página do serviço em www.gov.br (Ministério da Integração e do Desenvolvimento Regional) no " +
+          "navegador do cidadão. Nada é digitado.",
+        link: { fixed: DEFESA_CIVIL_SIGNUP_URL },
       },
       {
         action:
@@ -581,17 +617,27 @@ const CARTA_HOW_TO =
   `browser and save the listing yourself as ${CATALOG_FILE} in the folder set by CURITIBAI_DATA_DIR (shape and steps: ` +
   "docs/local-data.md, \"Finding a city service\"). The server never downloads it.";
 
+type GuideRule = Pick<GuideDef, "carta" | "notFor" | "needs">;
+
 /**
- * Services of the user's Carta copy whose title has every word of one of the guide's queries, as whole words, and
- * none of its notFor words.
+ * Does this Carta title route to the guide? Every word of one of its queries, as whole words; none of its notFor
+ * words; and, when it has `needs`, one of its words or exactly one of its bare titles. handWrittenFor, matchCarta and
+ * scripts/coverage-report.mjs (classifyService) use the same rule.
  */
-export function matchCarta(catalog: Catalog, queries: readonly (readonly string[])[], notFor: readonly string[] = []) {
-  const words = queries.map((q) => queryWords(q.join(" ")));
+export function titleRoutesTo(title: string, guide: GuideRule): boolean {
+  const list = queryWords(title);
+  const words = new Set(list);
+  if (guide.notFor?.some((w) => words.has(w))) return false;
+  if (!guide.carta.some((q) => queryWords(q.join(" ")).every((w) => words.has(w)))) return false;
+  if (guide.needs === undefined) return true;
+  const joined = list.join(" ");
+  return guide.needs.words.some((w) => words.has(w)) || guide.needs.bare.some((b) => queryWords(b.join(" ")).join(" ") === joined);
+}
+
+/** Services of the user's Carta copy whose title routes to the guide (titleRoutesTo). */
+export function matchCarta(catalog: Catalog, guide: GuideRule) {
   return catalog.services
-    .filter((s) => {
-      const title = new Set(queryWords(s.title));
-      return !notFor.some((w) => title.has(w)) && words.some((ws) => ws.every((w) => title.has(w)));
-    })
+    .filter((s) => titleRoutesTo(s.title, guide))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR") || a.id - b.id);
 }
 
@@ -607,7 +653,7 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
   // Each match's official_url passes the allowlist here (normalized), not only in the module that read the copy: a
   // match whose URL fails it is dropped. Ambiguity still counts every title match, so dropping one never turns two
   // candidates into a single confident link.
-  const all = matchCarta(catalog, guide.carta, guide.notFor);
+  const all = matchCarta(catalog, guide);
   const found = all.flatMap((s) => {
     const official = allowedUrl(s.official_url);
     return official === null ? [] : [{ ...s, official_url: official }];
@@ -808,6 +854,8 @@ const URL_TOKEN = new RegExp(
   "giu",
 );
 export const LINK_REMOVED = "[link removido]";
+/** A word, a period and a capitalized word with no space: "internet.Com". Not a scheme, "www.", hyphen or digit. */
+const GLUED_SENTENCE = /^\p{L}+\.\p{Lu}\p{Ll}+$/u;
 /** The site's own "O que é?" label at the start of `what`. */
 const WHAT_LABEL = /^\s*o\s+que\s+(?:é|e|são|sao)(?![\p{L}\p{N}\p{M}])\s*\??\s*/iu;
 
@@ -828,7 +876,9 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   t = t.replace(URL_TOKEN, (tok) => {
     const link = tok.replace(/[.,;:!?]+$/, "");
     // "internet.Com o protocolo": a sentence glued after a period, not a host (a host written so is not autolinked).
-    if (!/^(?:[a-z][a-z0-9+.-]*:|www\.)/i.test(link) && /\.[A-Z][a-z]+$/.test(link)) return tok;
+    // Only one plain word before the dot: a hyphen, a digit or another label ("pix-pague.Com", "pag2.Com",
+    // "pague.pix.Com") is host-shaped, so it is a link (since 0.39.1).
+    if (GLUED_SENTENCE.test(link)) return tok;
     const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });
@@ -842,11 +892,18 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   if (!out.endsWith("…")) return out;
   // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
   // The marker has a space, so its half ("[link removi") is found by its open "[", before the last-word check.
+  // Repeat until neither applies: dropping a last word such as `removido]"https://...` opens a "[link" again (0.39.1).
   let body = out.slice(0, -1);
-  const open = /\[[^\]]*$/.exec(body);
-  if (open !== null) body = body.slice(0, open.index).trimEnd();
-  const last = /\S+$/.exec(body);
-  return last !== null && (last[0].includes("://") || last[0].includes("[")) ? `${body.slice(0, last.index).trimEnd()}…` : `${body}…`;
+  for (;;) {
+    const open = /\[[^\]]*$/.exec(body);
+    if (open !== null) {
+      body = body.slice(0, open.index).trimEnd();
+      continue;
+    }
+    const last = /\S+$/.exec(body);
+    if (last === null || !(last[0].includes("://") || last[0].includes("["))) return `${body}…`;
+    body = body.slice(0, last.index).trimEnd();
+  }
 }
 
 const GENERATED_DATA: StepDef = {
@@ -897,12 +954,7 @@ export function cartaText(s: CartaService): z.infer<typeof CartaText> {
 
 /** The hand-written guide whose Carta query words are all in this title (hand-written guides keep priority). */
 export function handWrittenFor(title: string): GuideId | undefined {
-  const words = new Set(queryWords(title));
-  return GUIDE_IDS.find((id) => {
-    const guide: GuideDef = GUIDES[id];
-    if (guide.notFor?.some((w) => words.has(w))) return false;
-    return guide.carta.some((q) => queryWords(q.join(" ")).every((w) => words.has(w)));
-  });
+  return GUIDE_IDS.find((id) => titleRoutesTo(title, GUIDES[id]));
 }
 
 /** Can the generated guide reach this service? Its official page must pass the allowlist (scripts/coverage-report.mjs mirrors this). */

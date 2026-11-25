@@ -7,6 +7,7 @@ import {
   cartaItems,
   cartaReport,
   classifyService,
+  GUIDE_NEEDS,
   GUIDE_NOT_FOR,
   GUIDE_TERMS,
   main,
@@ -50,6 +51,11 @@ describe("coverage-report", () => {
     const notFor = Object.fromEntries(Object.entries(GUIDES).flatMap(([id, g]) => ("notFor" in g ? [[id, g.notFor]] : [])));
     expect(GUIDE_NOT_FOR).toEqual(notFor);
     expect(classifyService("Recurso de multa sintética do EstaR - estacionamento regulamentado").via).not.toBe("city_service_guide estar");
+    const needs = Object.fromEntries(Object.entries(GUIDES).flatMap(([id, g]) => ("needs" in g ? [[id, g.needs]] : [])));
+    expect(GUIDE_NEEDS).toEqual(needs);
+    expect(Object.keys(GUIDE_NEEDS).sort()).toEqual(["defesa_civil", "estar"]);
+    expect(classifyService("Autuação do EstaR - estacionamento regulamentado").via).not.toBe("city_service_guide estar");
+    expect(classifyService("EstaR - Estacionamento Regulamentado").via).toBe("city_service_guide estar");
   });
 
   it("classifies by whole title words: data, guide, none; an action word is never data", () => {

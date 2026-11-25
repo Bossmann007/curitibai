@@ -222,6 +222,11 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     ["acesse evil.example/login ou pix-pague.com.", `acesse ${LINK_REMOVED} ou ${LINK_REMOVED}.`],
     ["no 156.curitiba.pr.gov.br/x", "no https://156.curitiba.pr.gov.br/x"],
     ["Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5", "Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5"],
+    // Since 0.39.1: the glued-sentence exception is for a plain word only; a hyphen or digit is a host.
+    ["Pix-pague.Com", LINK_REMOVED],
+    ["acesse pix-pague.Com para pagar", `acesse ${LINK_REMOVED} para pagar`],
+    ["pag2.Com", LINK_REMOVED],
+    ["veja pague.pix.Com agora", `veja ${LINK_REMOVED} agora`],
   ])("%j → %j", (raw, clean) => expect(cleanCartaText(raw)).toBe(clean));
 
   it.each([
@@ -271,6 +276,41 @@ describe("cleanCartaText (untrusted Carta text)", () => {
       const out = cleanCartaText(`${"x".repeat(n)} https://evil.example/x fim`);
       expect(Array.from(out).length, out).toBeLessThanOrEqual(MAX_CARTA_FIELD);
       expect(out, out).not.toMatch(/\[[^\]]*$/);
+    }
+  });
+
+  it("never ends inside a marker after the last-word cut either (since 0.39.1)", () => {
+    // "[link removido]\"https://..." is one word holding "://" and the marker's "]": dropping it leaves "[link" open.
+    const raw = `${"x ".repeat(100)}javascript:a"https://servicos.curitiba.pr.gov.br/um-servico-longo/12345 fim`;
+    for (let max = 210; max <= 260; max++) {
+      const out = cleanCartaText(raw, max);
+      expect(out, `${max} ${out}`).not.toMatch(/\[[^\]]*$/);
+    }
+  });
+
+  it("fuzz: seeded hostile inputs never form a Markdown link or reference, never end inside a marker, stay capped", () => {
+    // mulberry32: a fixed seed, so every run checks the same inputs.
+    let seed = 0x39_01;
+    const rand = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const parts = [
+      "[", "]", "(", ")", ":", "://", "//", " ", " ", "x", "palavra", "é", "\u200b", "&#91;", "&#93;", "&colon;", "<a>",
+      "https://evil.example/x", "https://servicos.curitiba.pr.gov.br/a/1", "www.evil.example", "javascript:a", "\"",
+      "pix-pague.Com", "internet.Com", "evil.com", "11999998888", "a@b.com", "123.456.789-00", "[link removido]",
+    ];
+    for (let i = 0; i < 400; i++) {
+      const n = 5 + Math.floor(rand() * 120);
+      const raw = Array.from({ length: n }, () => parts[Math.floor(rand() * parts.length)]).join("");
+      const max = i % 2 === 0 ? MAX_CARTA_FIELD : 20 + Math.floor(rand() * 100);
+      const out = cleanCartaText(raw, max);
+      expect(out, raw).not.toContain("](");
+      expect(out, raw).not.toContain("]:");
+      expect(out, JSON.stringify([raw, max])).not.toMatch(/\[[^\]]*$/);
+      expect(Array.from(out).length, raw).toBeLessThanOrEqual(max);
     }
   });
 

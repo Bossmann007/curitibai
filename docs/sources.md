@@ -1321,21 +1321,31 @@ each with a web fetch on 2026-11-25 (the server never contacts these hosts):
 
 - `https://www.parana.pr.gov.br/servicos/Seguranca/Defesa-Civil/Receber-alertas-da-Defesa-Civil-por-SMS-ERrZ4PN6`
   ("Receber alertas da Defesa Civil por SMS", Governo do Paraná): "Basta enviar SMS com o CEP da sua região para o
-  número 40199", "A Defesa Civil responde com mensagem de confirmação do seu cadastro", "Gratuito". Source of steps
-  4 and 5. Not linked: `www.parana.pr.gov.br` is not on the guide's link allowlist, and the allowlist was not widened.
+  número 40199", "A Defesa Civil responde com mensagem de confirmação do seu cadastro", "Gratuito". Source of the
+  SMS steps (6 and 7 since 0.39.1). Not linked: `www.parana.pr.gov.br` is not on the guide's link allowlist, and the allowlist was not widened.
 - `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta` ("Defesa Civil
   Alerta", Anatel, modified 2025-11-17): alerts reach "celulares compatíveis, conectados às redes 4G ou 5G" as a pop-up
   on the screen; its rollout table lists "04/12/2024 | Sul e Sudeste | Todos os municípios | Sistema disponível".
   The parent page `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres` says it was
   implanted for good in the South and Southeast in December 2024. Linked in step 4 (host `www.gov.br`, already allowed).
+- `https://www.gov.br/pt-br/servicos/solicitar-cadastro-para-recebimento-de-avisos-e-alertas-de-desastres` (since
+  0.39.1; found by web search, read once with a web fetch on 2026-11-25): its title is "Solicitar o recebimento de
+  avisos e alertas de riscos de desastres e eventos adversos, da Defesa Civil", a service of the Ministério da
+  Integração e do Desenvolvimento Regional, modified 2025-12-15; SMS: "Envie mensagem para o número 40199, com o CEP
+  da área de interesse"; it also lists WhatsApp, Telegram and pay TV. Linked in step 5, a step of its own (host
+  `www.gov.br`, already allowed), so the CEP step still opens nothing.
 - Not used (not verified on an official page that loaded): a WhatsApp sign-up number, the `CONSULTAR` and `SAIR`
   SMS commands and silent-mode behaviour, seen only in news results (Bem Paraná, Correio Braziliense, Olhar Digital).
   The Prefeitura's Defesa Civil news pages (`/noticias/defesa-civil-de-curitiba-alerta-para-fortes-chuvas-nesta-sexta-feira/84977`,
   `/noticias/populacao-aprende-com-a-defesa-civil-de-curitiba-como-agir-em-extremos-climaticos/85650`) answered 403 to
   the fetch and were not read.
-- INMET's warnings page `https://alertas2.inmet.gov.br/` (named in the `weather_alerts` note): named by INMET's own
-  news page in web search results; the connection was reset by the server on 2026-11-25 (curl and web fetch), so it
-  was not read. Its robots.txt could not be read either; the server never contacts it.
+- INMET's warnings portal, named in the `weather_alerts` note as plain hosts with no scheme (since 0.39.1, so clients
+  do not autolink a page that was not read): `avisos.inmet.gov.br`, named as "o portal oficial de AVISOS" by INMET's
+  news "INMET aprimora interface de avisos meteorológicos"
+  (`https://portal.inmet.gov.br/noticias/inmet-aprimora-interface-de-avisos-meteorol%C3%B3gicos`, published
+  2026-06-09, read with a web fetch on 2026-11-25); and the older `alertas2.inmet.gov.br`, named in older INMET news in
+  web search results, whose connection was reset by the server on 2026-11-25 (curl and web fetch). Neither portal was
+  read; the server never contacts them.
 
 Prior art for 0.39.0 (web search 2026-11-25, "INMET avisos alertas API MCP server"): no MCP server or library for
 INMET warnings, Alerta-AS or Defesa Civil alerts; a hosted INMET MCP listing covers stations, forecasts and imagery,

@@ -42,6 +42,7 @@ export interface CartaReport {
 export const TOP_UNCOVERED: number;
 export const GUIDE_TERMS: Record<string, string[][]>;
 export const GUIDE_NOT_FOR: Record<string, string[]>;
+export const GUIDE_NEEDS: Record<string, { words: string[]; bare: string[][] }>;
 export const GENERIC_GUIDE_URL: RegExp;
 export const GENERATED_VIA: string;
 export const DATA_RULES: { tool: string; terms: string[][] }[];
