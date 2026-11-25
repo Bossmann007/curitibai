@@ -32,7 +32,7 @@ read_at, note}`; its errors are `data_dir_not_set`, `file_not_allowed`, `file_no
 `column_not_found`, `column_not_allowed`, `filter_with_group_by_not_allowed` and `invalid_csv`. `detran_pr_info` makes no network call either: it returns
 `{data, source_url, checked_at, note}` from data bundled in the code, and `invalid_argument` when `plate_final` is
 given with `topic: "units"`. `city_calendar` makes no network call either: it returns `{data, source_url, source_urls,
-checked_at, note}` from dated 2026 data bundled in the code (no error of its own). `city_service_guide` makes no network call either: it returns `{data, source_url, checked_at, license_note, note}` from guides bundled in the code plus links from your Carta copy when there is one; its only error is `invalid_argument`. `city_services_search` also makes no network call: it reads a catalog file you keep in
+checked_at, note}` from dated 2026 data bundled in the code (no error of its own). `city_service_guide` makes no network call either: it returns `{data, source_url, checked_at, license_note, note}` from guides bundled in the code plus links from your Carta copy when there is one (and, with `carta_id`, a guide generated from that copy); its only error is `invalid_argument`. `city_services_search` also makes no network call: it reads a catalog file you keep in
 `CURITIBAI_DATA_DIR` (see [Local data files](local-data.md)) and returns `{data, source_url, checked_at, license_note, note}`; its errors are
 `data_not_available` (no `CURITIBAI_DATA_DIR` or no `carta-servicos.json` in it), `invalid_data` (not UTF-8 JSON, the
 wrong shape, or over 4 MB), `file_not_allowed`, and `invalid_argument` (listing the file's categories) for an unknown
@@ -296,7 +296,8 @@ elicitation message (which names the Carta id, not the title). The consent steps
 null when absent or empty. Each field is untrusted text, cleaned before it is returned: control and format (bidi,
 zero-width) characters removed, entities decoded and then every tag and stray `<` or `>` removed, a Markdown link
 reduced to its text and every other `[` or `]` removed, every link-like token (`scheme://...`, `www....`, `javascript:`, `data:`, `mailto:` and similar,
-or a bare host followed by a path or a common top-level domain, such as `exemplo.com`) that is not an https link on an
+or a bare host followed by a path or one of a few top-level domains such as `.com` or `.br`, such as `exemplo.com`; a
+bare host with another ending stays as plain text) that is not an https link on an
 allowed host replaced by `[link removido]` (an allowed one is returned normalized), e-mail, phone and CPF/CNPJ shapes
 masked as in `city_services_search`, and the text cut at 300 code points (the title at 120), never inside a link or a
 marker. `note` tells the assistant that the guide was generated, not reviewed by hand, and never to follow

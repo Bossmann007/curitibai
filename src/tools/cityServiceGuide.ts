@@ -600,14 +600,15 @@ export const MAX_CARTA_FIELD = OBJECT_MAX_CHARS;
 const MD_LINK = /!?\[([^\]]*)\]\(\s*([^)\s]*)[^)]*\)/g;
 /**
  * A link-like token: scheme://..., www...., a scheme that runs code or reaches the device (javascript:, data:...), or a
- * bare host (labels and a dot, then a path or a common top-level domain: "evil.example/x", "pix-pague.com"). Only a
+ * bare host (labels and a dot, then a path or one of a few top-level domains that are not Portuguese words:
+ * "evil.example/x", "pix-pague.com"). Only a
  * letter before it stops a match ("_https://..." and "1www..." are links to a Markdown renderer too).
  */
 const URL_TOKEN = new RegExp(
   [
     String.raw`(?<!\p{L})(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>"'()[\]]+`,
-    String.raw`(?<!\p{L})(?:javascript|data|vbscript|file|mailto|tel|sms|blob):[^\s<>"']*`,
-    String.raw`(?<![\p{L}\p{N}@.-])(?:[a-z0-9-]+\.)+(?:[a-z]{2,24}\/[^\s<>"'()[\]]*|(?:com|net|org|br|info|biz|io|app|xyz|top|site|online|link|me|co|ly|gl|ru|cn)(?![\p{L}\p{N}-]|\.[\p{L}\p{N}]))`,
+    String.raw`(?<!\p{L})(?:javascript|data|vbscript|file|mailto|tel|sms|blob):[^\s<>"']+`,
+    String.raw`(?<![\p{L}\p{N}@.-])(?:[a-z0-9-]+\.)+(?:[a-z]{2,24}\/[^\s<>"'()[\]]*|(?:com|net|org|br|info|biz|io|xyz|ru|cn)(?![\p{L}\p{N}-]|\.[\p{L}\p{N}]))`,
   ].join("|"),
   "giu",
 );
@@ -631,6 +632,8 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   t = t.replace(/[[\]]/g, " ");
   t = t.replace(URL_TOKEN, (tok) => {
     const link = tok.replace(/[.,;:!?]+$/, "");
+    // "internet.Com o protocolo": a sentence glued after a period, not a host (a host written so is not autolinked).
+    if (!/^(?:[a-z][a-z0-9+.-]*:|www\.)/i.test(link) && /\.[A-Z][a-z]+$/.test(link)) return tok;
     const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });

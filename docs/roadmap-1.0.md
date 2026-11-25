@@ -47,7 +47,9 @@ A dev script, not in the package; it reads and never writes or fetches. It print
   are not.
 - **Part (b)**, only when your local Carta copy exists (the same `carta-servicos.json` that `city_services_search`
   reads, [Local data files](local-data.md)): each service classed data, guide or none, with counts and percentages
-  per category, the uncovered count per usefulness score, and the 30 most useful uncovered services. Those titles go
+  per category (since v0.37.0 also `guide_generated` and `reachable_without_generated_pct`), the uncovered count per
+  usefulness score, the 30 most useful uncovered services and the 30 most useful services only the generated guide
+  reaches. Those titles go
   to the terminal only.
 - **A JSON summary** with numbers per category (category labels, counts and percentages, no service title), safe to
   paste in a pull request.
@@ -65,7 +67,9 @@ How a service is classed, from the words of its title (accents and case ignored,
   licença, segunda via and similar).
 - **none:** anything else (with a valid copy, only an item whose `url` is not a Carta service page).
 
-The rules err toward none: the scoreboard can understate coverage, never overstate it. A service wrongly counted as
+The rules err toward none: the scoreboard can understate coverage, never overstate it. Since v0.37.0 every service of a
+valid copy is at least a generated guide, so reachable reads 100%; `reachable_without_generated_pct` is the number to
+watch for hand-written coverage. A service wrongly counted as
 none is fixed by adding a rule and a test, not by changing the gate.
 
 The catalog itself is never committed (`scripts/check-no-catalog`); this page and the pull requests carry only
