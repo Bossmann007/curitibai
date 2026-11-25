@@ -92,6 +92,11 @@ interface GuideDef {
   note?: string;
   /** Date this guide was written from web search results (its official pages not all read); else GUIDES_CHECKED_AT. */
   fromWebSearchAt?: string;
+  /**
+   * Envelope for a guide written from one official document it names (since 0.42.0); wins over fromWebSearchAt.
+   * `licenseNote` is said before the not-affiliated sentence.
+   */
+  fromDocument?: { checkedAt: string; licenseNote: string };
 }
 
 const FIRST_STEP: StepDef = {
@@ -159,6 +164,11 @@ export const DEFESA_CIVIL_SIGNUP_URL =
 /** Anatel's page on Defesa Civil Alerta (cell broadcast), read on 2026-11-25 (docs/sources.md). */
 export const DEFESA_CIVIL_ALERTA_URL =
   "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta";
+
+/** Date the Vale-Creche guide was written from Lei municipal 16.492 (since 0.42.0; see docs/tools.md). */
+export const GUIDES_0_42_CHECKED_AT = "2026-11-25";
+/** Lei municipal 16.492 of 2025-03-11 (Programa Voucher Educacional "Vale-Creche"), the SME's PDF, read 2026-11-25. */
+export const VALE_CRECHE_LAW_URL = "https://mid-educacao.curitiba.pr.gov.br/2025/4/pdf/00517415.pdf";
 
 const OPEN_156: StepDef = {
   action: "Abrir o site oficial da Central 156.",
@@ -292,6 +302,10 @@ export const GUIDES = {
     title: "Creche (CMEI): cadastro para vaga",
     what: "Cadastro para vaga em creche e cadastro escolar da rede municipal.",
     carta: [["creche"], ["cadastramento", "escolar"]],
+    // The voucher is another guide (since 0.42.0); "Vale-Creche" folds to the words "vale" and "creche". Words, not a
+    // phrase: a creche title with "vale" in another sense (a place name) would also go to vale_creche. Accepted: no
+    // such Carta title is known, and that guide sends the citizen back to this one for the waiting list.
+    notFor: ["vale"],
     steps: [
       FIRST_STEP,
       CARTA_PAGE,
@@ -513,6 +527,69 @@ export const GUIDES = {
           "O cidadão envia o SMS por conta própria, do próprio celular. Só se o cidadão confirmar; o assistente nunca " +
           "envia nada.",
       },
+    ],
+  },
+  vale_creche: {
+    title: "Vale-Creche: voucher para creche particular, decidido pela Prefeitura",
+    what:
+      "Programa Voucher Educacional \"Vale-Creche\" (Lei municipal 16.492, de 11 de março de 2025): em caráter " +
+      "excepcional, para crianças de 0 a 3 anos que estão na fila de espera da creche municipal, uma bolsa para estudar " +
+      "numa instituição particular até abrir vaga na rede pública. A família não escolhe entre o vale e a vaga: quem " +
+      "decide é a Secretaria Municipal da Educação (SME). O CuritibAI não sabe se o programa está aberto hoje nem o " +
+      "valor, e não promete o vale.",
+    carta: [["vale", "creche"]],
+    fromDocument: {
+      checkedAt: GUIDES_0_42_CHECKED_AT,
+      licenseNote:
+        `Guide written by this project on ${GUIDES_0_42_CHECKED_AT} from Lei municipal 16.492 of 2025-03-11 (the SME's ` +
+        "PDF, step 4), an official act not protected by copyright (Lei 9.610/1998, art. 8, IV). Whether the program " +
+        "runs today, its value and its deadlines were not verified (see note). Carta links come from your local copy " +
+        "of the Prefeitura's Carta de Serviços. ",
+    },
+    note:
+      "Guide note (vale_creche): written from Lei municipal 16.492 of 2025-03-11 (arts. 1, 3, 4 and 6), read on " +
+      "2026-11-25. Not verified here: whether the program is open in 2026, the voucher's value (set every year by " +
+      "decree), the age range and deadlines in force, and how families are called; a web search on 2026-11-25 listed " +
+      "an SME page titled \"2026 - Programa Vale - Creche\", which was not read. The law describes no separate " +
+      "application: the SME decides, from the waiting list. Never promise the voucher or state a value. If in doubt, " +
+      "use the Educação portal (step 5) or the Central 156 (step 8, or phone 156). ",
+    steps: [
+      FIRST_STEP,
+      {
+        action:
+          "Explicar ao cidadão, sem prometer o vale: pela Lei 16.492/2025, o Vale-Creche é para crianças de 0 a 3 anos " +
+          "que estão na fila de espera da creche municipal, em caráter excepcional. A família não escolhe entre o vale " +
+          "e a vaga: a Secretaria Municipal da Educação (SME) decide. A lei não descreve um pedido separado do vale.",
+      },
+      CARTA_PAGE,
+      {
+        action: "Abrir o texto da Lei 16.492/2025 (PDF da Secretaria Municipal da Educação).",
+        consent: "Abrir o PDF da lei em mid-educacao.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: VALE_CRECHE_LAW_URL },
+      },
+      {
+        action:
+          "Abrir o portal oficial da Educação e procurar ali \"Vale-Creche\": regras, prazos e valor deste ano estão " +
+          "nas páginas da SME.",
+        consent: "Abrir educacao.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: "https://educacao.curitiba.pr.gov.br/" },
+      },
+      {
+        action:
+          "Se a criança ainda não está na fila de espera, o primeiro passo é o cadastro para vaga em creche: siga o " +
+          "guia city_service_guide com service \"creche\". A lei dá prioridade às famílias cadastradas no sistema " +
+          "online da SME.",
+      },
+      {
+        action:
+          "Dizer ao cidadão como a lei escolhe: prioridade para famílias com renda mensal de até 3 salários mínimos " +
+          "estaduais, cadastradas no sistema online da SME e em maior vulnerabilidade social. Os critérios da SME são " +
+          "definidos por decreto, que não foi lido aqui e pode trazer outras regras: não diga ao cidadão que ele não " +
+          "tem direito. Se a SME oferecer o vale, " +
+          "a família escolhe a escola particular (com os atos regulatórios em dia) e faz a matrícula; o valor é fixado " +
+          "por decreto a cada ano. Se surgir vaga num CMEI, a criança passa para a vaga pública no fim do ano letivo.",
+      },
+      OPEN_156,
     ],
   },
 } as const satisfies Record<string, GuideDef>;
@@ -829,8 +906,11 @@ export async function cityServiceGuideResult(
   const base: Base = { service: id, title: guide.title, what: guide.what, carta: info, delegation: DELEGATION_INFO };
   const envelope = {
     source_url: CITY_SERVICES_SOURCE_URL,
-    checked_at: guide.fromWebSearchAt ?? GUIDES_CHECKED_AT,
-    license_note: guide.fromWebSearchAt === undefined ? LICENSE_NOTE : webSearchLicenseNote(guide.fromWebSearchAt),
+    checked_at: guide.fromDocument?.checkedAt ?? guide.fromWebSearchAt ?? GUIDES_CHECKED_AT,
+    license_note:
+      guide.fromDocument !== undefined
+        ? guide.fromDocument.licenseNote + NOT_AFFILIATED
+        : (guide.fromWebSearchAt === undefined ? LICENSE_NOTE : webSearchLicenseNote(guide.fromWebSearchAt)),
   };
   const note = notePrefix + (guide.note ?? "");
   return answer(base, guide, `guia "${guide.title}"`, buildSteps(guide, links), envelope, openStep, ctx, note);
@@ -1030,7 +1110,8 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
   name: "city_service_guide",
   title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links for a city service that needs a login or sign-up, or for Defesa Civil phone alerts: " +
+    "Steps and official links for a city service that needs a login or sign-up, for Defesa Civil phone alerts, or " +
+    "for the Vale-Creche rules (no value, no promise): " +
     "a hand-written guide (service), or one generated from the user's local Carta copy (carta_id from " +
     "city_services_search). Never logs in, submits or sends. Ask the user before each needs_consent step; never " +
     "type their passwords or payment data.",

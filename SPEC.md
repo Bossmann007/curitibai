@@ -1,53 +1,51 @@
-# SPEC: v0.41.0 Direct bus lines between two points
+# SPEC: v0.42.0 Vale-Creche guide
 
-Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.41.0, roadmap phase B: close the citizen-eval gap
-`route_planning`"). **This change publishes nothing**: no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.42.0, Vale-Creche in the creche guide: close the citizen-eval gap
+`vale_creche`"). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer citizen eval q111 "Qual ônibus eu pego para ir da
-Rodoferroviária até o Parque Barigui?" honestly from the data the bus tools already read.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer citizen eval q112 "Como peço o Vale Creche?" (and "Como
+eu peço o Vale-Creche pro meu filho de 2 anos?") honestly, with a guide and official links, consent at every step
+([ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md)).
 
-## What was missing (v0.40.0)
+## Source (read 2026-11-25)
 
-`bus_stops_near`, `next_buses_near` and `bus_line_stops` each answer part of the question, but no tool crossed the
-stops near two points or told which way a line runs. q111 was the `route_planning` gap.
-
-## Prior art and sources checked (2026-11-25)
-
-- In the repository: `stopsWithin`/`groupStops` (`src/tools/busStopsNear.ts`), `distanceM`, `loadUrbsOrFail`, the
-  bus envelope and notes (`src/tools/busCommon.ts`); reused, nothing copied.
-- Route planners with transfers and times (OpenTripPlanner, a GTFS feed, the URBS site): each needs a new host, a new
-  dependency or a source treated as disallowed; out of scope by the brief.
-- The real 2026-11-20 `pontosLinha` file: each ITINERARY_ID has one SENTIDO and one code, no itinerary repeats a SEQ,
-  40 of 695 have gaps in SEQ. So "boarding before alighting" can be read from SEQ inside one itinerary.
+Lei municipal nº 16.492 of 2025-03-11, Programa Voucher Educacional "Vale-Creche", the SME's PDF
+`https://mid-educacao.curitiba.pr.gov.br/2025/4/pdf/00517415.pdf` (robots.txt 404; official act, Lei 9.610/1998 art. 8
+IV). Used: arts. 1, 3, 4 and 6. Not verified: whether the program is open in 2026, its value, deadlines and how
+families are called. Details and two hand requests that broke the robots rules (deleted unread):
+[docs/sources.md](docs/sources.md#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280).
 
 ## Changes
 
-1. **`bus_route_between`** (`src/tools/busRouteBetween.ts`, [ADR 0013](docs/adr/0013-direct-bus-lines-between-two-points.md)):
-   `from`, `to`, `radius_m` (500 default, 1000 max), paging. Per line, the (board, alight) pair with the least
-   straight-line walking among itineraries where the board stop's SEQ is lower; `other_lines` for lines near both
-   ends in no such order. Direct lines only, not real-time. Missing file: `data_not_available`, no fallback.
-2. **Eval:** q111 → `bus_route_between`; new q120 (the way back); six invented rows of line 903 in the shared
-   synthetic `pontosLinha` fixture; `route_planning` gap gone.
-3. **Checks:** `test/busRouteBetween.test.ts`; `scripts/perf-bus-route-between.mjs` in `scripts/verify` (fails over
-   400 ms); smoke test calls the tool; tool contract snapshot.
-4. **Docs and version:** README, docs/tools.md (row, notes, Curitiba App transport row), docs/sources.md,
-   docs/local-data.md, docs/privacy.md, docs/roadmap-1.0.md, CONTRIBUTING, CHANGELOG 0.41.0, version 0.41.0 in
-   `package.json`, `package-lock.json`, `server.json`.
+1. **Guide** `vale_creche` (`src/tools/cityServiceGuide.ts`): ask the citizen (no personal data in the conversation);
+   explain the law without promising the voucher (0 to 3 years, on the waiting list, exceptional; the SME decides,
+   the family cannot choose voucher over place; no separate application in the law); the Carta page; the law's PDF;
+   the Educação portal; the `creche` guide for the waiting list; the law's priorities, private-school enrolment if
+   the SME offers the voucher, value set yearly by decree; the Central 156. No value, no deadline, no phone or e-mail.
+   A new guide id, not a variant of `creche`: same table, same consent steps, no ADR.
+2. **Envelope**: optional `GuideDef.fromDocument` (`checkedAt`, `licenseNote`) so the guide's `checked_at` and licence
+   note name the law, not "official sites checked 2026-11-24" nor "web search".
+3. **Carta routing**: `vale_creche` `[["vale", "creche"]]`; `creche` gets `notFor: ["vale"]`. Mirrored in
+   `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
+4. **Eval**: q112 → `city_service_guide` `vale_creche`; new q121 (child of 2); `vale_creche` gap gone.
+5. **Docs and version**: README, docs/tools.md (row, fixed-link table, creche row of the Curitiba App table),
+   docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.42.0, version 0.42.0 in `package.json`, `package-lock.json`,
+   `server.json`, tool contract snapshot (the `service` enum).
 
 ## Out of scope
 
-Transfers and integration terminals; times, fares and real-time positions; place-name input; any new host or
-dependency; the GeoCuritiba stop layer as a fallback (it has no lines per stop).
+The voucher's value, deadlines or call lists; any request by the server; any new host; linking the SME 2026 page or
+the Carta detail page (not read).
 
 ## Check
 
-- `npx vitest run test/busRouteBetween.test.ts test/contracts.test.ts test/tools.test.ts test/eval`.
-- `node scripts/eval-summary.mjs`: `answered 114 / 120`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
-  15 of 18 Curitiba App rows covered (7 data, 8 guide).
-- `node scripts/perf-bus-route-between.mjs`: median about 30 ms on 17,496 generated rows.
+- `npx vitest run test/cityServiceGuide.test.ts test/coverageReport.test.ts test/contracts.test.ts test/eval`: the
+  guide invariants, no value and no promise, the law and its date, the envelope, the links, Carta routing both ways.
+- `node scripts/eval-summary.mjs`: `answered 116 / 121`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
+  15 of 18 Curitiba App rows covered.
 - `scripts/verify` exits 0 on the PR head.
