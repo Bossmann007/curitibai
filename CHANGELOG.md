@@ -19,7 +19,7 @@ Police stations with hours, phase B of the 1.0 roadmap. 27 tools. Publishes noth
   Rodoviária Federal). This tool lists places, it does not file police reports." All three numbers are in the
   "Emergências" section of the Instituto Municipal de Turismo's "Telefones Úteis" page as read on 2026-11-22 (not read
   again). The `delegacia` note says being listed does not mean a unit takes reports from the public (call before
-  going), that the 24-hour flag and `hours` do not always agree, names the Polícia Civil do Paraná's Delegacia
+  going), that district delegacias are named by number (filter by `bairro`, not `name`), that the 24-hour flag and `hours` do not always agree, names the Polícia Civil do Paraná's Delegacia
   Eletrônica for online reports without a link (no Polícia Civil host is on the link allowlist) and points to
   `places_search` for Polícia Militar units.
 - E-mails: the layers publish `pc.pr.gov.br`, `pf.gov.br` and `prf.gov.br` addresses; the e-mail allowlist

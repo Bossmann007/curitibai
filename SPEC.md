@@ -40,7 +40,7 @@ as read on 2026-11-22 for `useful_phones` (no new read). No new host. Details:
 2. **Notes**. All four lead with "Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia
    Rodoviária Federal). This tool lists places, it does not file police reports." `delegacia`: layer 143 lists every
    Polícia Civil unit, not only delegacias; being listed does not mean a unit takes reports from the public, so call
-   before going; hours as published (see `updated`); `all_day` is the layer's flag and `hours` the detail, and they do
+   before going; district delegacias are named by number, so filter by `bairro`, not `name`; hours as published (see `updated`); `all_day` is the layer's flag and `hours` the detail, and they do
    not always agree; online reports: the Polícia Civil do Paraná's Delegacia Eletrônica, named without a link (no
    Polícia Civil host is on the link allowlist); Polícia Militar units are not in the list (`places_search`). The
    other three: hours as published, call before going (PRF: on a federal highway call 191; Polícia Científica: being
@@ -49,8 +49,8 @@ as read on 2026-11-22 for `useful_phones` (no new read). No new host. Details:
    are dropped by the `curitiba.pr.gov.br`-only allowlist, so `emails` is empty; docs say so.
 4. **Descriptions**: `city_facilities_search` names delegacias; its `type` description names the four types and
    points to `places_search` for fire stations and Polícia Militar units; `places_search` says to prefer it only for
-   fire stations or when other place tools find nothing, and points to `city_facilities_search` for delegacias with
-   hours. Every tool description stays at most 400 characters (`test/contracts.test.ts`). Tool contract snapshot
+   fire and Polícia Militar stations or when other tools find nothing, and points to `city_facilities_search` for
+   delegacias. Every tool description stays at most 400 characters (`test/contracts.test.ts`). Tool contract snapshot
    updated.
 5. **Eval**: q127 "Qual o endereço e o horário da delegacia do Tatuquara?" → `city_facilities_search` `{type:
    "delegacia", bairro: "tatuquara"}` (the record's name has no "Tatuquara"; its `bairro` does), synthetic fixture

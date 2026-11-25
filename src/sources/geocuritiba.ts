@@ -108,7 +108,8 @@ export const POLICE_EMERGENCY_NOTE =
 const POLICE_CIVIL_NOTE =
   "The Polícia Civil's units in Curitiba as listed by IPPUC: the district delegacias (Distrito Policial) and also " +
   "specialised delegacias, divisions and support units; being listed does not mean a unit takes reports from the " +
-  "public, so call before going. Hours as published (see `updated`); `open_periods.all_day` is the layer's 24-hour " +
+  "public, so call before going. The district delegacias are named by number (\"13º Distrito Policial\"), not by " +
+  "bairro: to find the one in a bairro, filter by `bairro`, not `name`. Hours as published (see `updated`); `open_periods.all_day` is the layer's 24-hour " +
   "flag and `hours` the detail, and they do not always agree. Online reports: the Polícia Civil do Paraná's " +
   "Delegacia Eletrônica (not linked by this tool). Polícia Militar units are not in this list (`places_search`, " +
   "category `police`, has some from OpenStreetMap).";

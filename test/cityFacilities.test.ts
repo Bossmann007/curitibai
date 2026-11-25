@@ -719,6 +719,13 @@ describe("city_facilities_search", () => {
     expect(out.note).not.toMatch(/https?:|192|SAMU/);
   });
 
+  it("v0.49.0: a delegacia is named by number, so `name` with a bairro finds nothing and the note says to use `bairro`", async () => {
+    stubFetch(route("delegacia", "delegacia_synthetic.json"));
+    const out = await search({ type: "delegacia", name: "tatuquara" });
+    expect(out.data.total).toBe(0);
+    expect(out.note).toMatch(/filter by `bairro`, not `name`/);
+  });
+
   it("v0.49.0: a unit whose 24-hour flag disagrees with its hours, and one with no hours, come back as published", async () => {
     stubFetch(route("delegacia", "delegacia_synthetic.json"));
     const out = await search({ type: "delegacias da policia civil" });
