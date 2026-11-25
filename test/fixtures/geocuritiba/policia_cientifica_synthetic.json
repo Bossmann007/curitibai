@@ -1,0 +1,34 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Unidade Inventada",
+        "nome_completo": "Unidade de Execução Técnico-Científica Inventada",
+        "nome_rua": "AV. INVENTADA",
+        "num_pred": "145",
+        "compl_end": "",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1450",
+        "email": null,
+        "dt_atualiz": 1757559600000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 12h e das 13h às 17h"
+      },
+      "geometry": {
+        "x": -49.27,
+        "y": -25.44
+      }
+    }
+  ]
+}

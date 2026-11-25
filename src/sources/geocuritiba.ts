@@ -98,6 +98,30 @@ const GUARD_NUCLEUS_NOTE =
   "filters by where the núcleo is, not by the bairros it covers: to find which núcleo covers a bairro, list them " +
   "all and read the \"Bairros de abrangência\" line in `hours`. The modules are type `modulo da guarda`.";
 
+/**
+ * Police units (v0.49.0): the first sentence of every note for these types. 190, 197 and 191 are in the "Emergências"
+ * section of the Turismo "Telefones Úteis" page (2026-11-22), labelled as here.
+ */
+export const POLICE_EMERGENCY_NOTE =
+  "Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia Rodoviária Federal). This tool lists " +
+  "places, it does not file police reports.";
+const POLICE_CIVIL_NOTE =
+  "The Polícia Civil's units in Curitiba as listed by IPPUC: the district delegacias (Distrito Policial) and also " +
+  "specialised delegacias, divisions and support units; being listed does not mean a unit takes reports from the " +
+  "public, so call before going. The district delegacias are named by number (\"13º Distrito Policial\"), not by " +
+  "bairro: to find the one in a bairro, filter by `bairro`, not `name`. Hours as published (see `updated`); `open_periods.all_day` is the layer's 24-hour " +
+  "flag and `hours` the detail, and they do not always agree. Online reports: the Polícia Civil do Paraná's " +
+  "Delegacia Eletrônica (not linked by this tool). Polícia Militar units are not in this list (`places_search`, " +
+  "category `police`, has some from OpenStreetMap).";
+const POLICE_FEDERAL_NOTE =
+  "The Polícia Federal's office in Curitiba as listed by IPPUC, hours as published (see `updated`); call before going.";
+const POLICE_HIGHWAY_NOTE =
+  "The Polícia Rodoviária Federal's office in Curitiba as listed by IPPUC, hours as published (see `updated`); call " +
+  "before going. On a federal highway, call 191.";
+const POLICE_SCIENTIFIC_NOTE =
+  "The Polícia Científica's units in Curitiba as listed by IPPUC, hours as published (see `updated`); being listed " +
+  "does not mean a unit serves the public at the desk, so call before going.";
+
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -300,6 +324,36 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     ]),
     note: GUARD_NUCLEUS_NOTE,
     leadNote: GUARD_EMERGENCY_NOTE,
+  },
+  // Police units, added in v0.49.0 (read on 2026-11-25: 49, 1, 1 and 3 records). No bare "policia", "pf", "dp" or
+  // "iml" alias; Polícia Militar units are not in these layers.
+  {
+    ...equipment("delegacia", 143, "Polícia Civil", [
+      "delegacias", "delegacia de policia", "delegacias de policia", "delegacia da policia civil",
+      "delegacias da policia civil", "policia civil", "distrito policial", "distritos policiais",
+    ]),
+    note: POLICE_CIVIL_NOTE,
+    leadNote: POLICE_EMERGENCY_NOTE,
+  },
+  {
+    ...equipment("policia federal", 146, "Polícia Federal", ["superintendencia da policia federal"]),
+    note: POLICE_FEDERAL_NOTE,
+    leadNote: POLICE_EMERGENCY_NOTE,
+  },
+  {
+    ...equipment("policia rodoviaria federal", 147, "Polícia Rodoviária Federal", [
+      "prf", "superintendencia da policia rodoviaria federal",
+    ]),
+    note: POLICE_HIGHWAY_NOTE,
+    leadNote: POLICE_EMERGENCY_NOTE,
+  },
+  {
+    ...equipment("policia cientifica", 145, "Polícia Científica", [
+      "policia cientifica do parana", "unidade de execucao tecnico cientifica",
+      "unidades de execucao tecnico cientifica",
+    ]),
+    note: POLICE_SCIENTIFIC_NOTE,
+    leadNote: POLICE_EMERGENCY_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),

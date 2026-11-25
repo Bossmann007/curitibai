@@ -1,0 +1,34 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Superintendência Inventada",
+        "nome_completo": "Superintendência Regional Rodoviária Inventada",
+        "nome_rua": "ROD. INVENTADA",
+        "num_pred": "147",
+        "compl_end": "",
+        "divulgar_endereco": "Sim",
+        "bairro": "Prado Velho",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1470",
+        "email": "inventado@prf.gov.br",
+        "dt_atualiz": 1706065200000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h"
+      },
+      "geometry": {
+        "x": -49.26,
+        "y": -25.45
+      }
+    }
+  ]
+}

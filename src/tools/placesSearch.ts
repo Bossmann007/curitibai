@@ -96,9 +96,10 @@ export const placesSearch: ToolDef<typeof placesSearchInput, typeof placesSearch
   name: "places_search",
   title: "Public places in Curitiba (OpenStreetMap)",
   description:
-    "Public places in Curitiba from OpenStreetMap (community data, may be outdated) by one category, optionally " +
+    "Public places in Curitiba from OpenStreetMap (community data, may be outdated) by category, optionally " +
     "by name: address, position, hours, website. No shops or health units (use health_units_search). Prefer this " +
-    "only for police and fire stations, or when the other place tools find nothing. " +
+    "only for fire and Polícia Militar stations, or when other tools find nothing; delegacias: " +
+    "city_facilities_search. " +
     "NOT FOR EMERGENCIES: call 190 (police) or 193 (fire brigade). Read-only.",
   inputSchema: placesSearchInput,
   outputSchema: placesSearchOutput,
