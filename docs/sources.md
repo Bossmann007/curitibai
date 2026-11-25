@@ -26,6 +26,7 @@
   - [`service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)](#service_areas_at_point-ippuc-geocuritiba-thematic-map-health-unit-areas-and-cras-territories-since-0230)
   - [`census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)](#census_at_point-ibge-2022-census-by-sector-via-ippuc-geocuritiba-since-0270)
   - [`city_calendar`: Decreto 2.385/2025 and IPTU 2026 notes (bundled, since 0.27.0)](#city_calendar-decreto-23852025-and-iptu-2026-notes-bundled-since-0270)
+  - [`city_calendar`: school calendars 2026 (bundled, since 0.34.0)](#city_calendar-school-calendars-2026-bundled-since-0340)
   - [`city_service_guide`: guides and official links for services that need a login (bundled, since 0.28.0)](#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280)
   - [URBS transport layers on GeoCuritiba (evaluated 2026-11-24, not used by the bus tools)](#urbs-transport-layers-on-geocuritiba-evaluated-2026-11-24-not-used-by-the-bus-tools)
   - [`river_levels`: ANA telemetry (stations operated by IAT-PR)](#river_levels-ana-telemetry-stations-operated-by-iat-pr)
@@ -94,7 +95,8 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does (run by the user or, since v0.18, by the nightly GitHub workflow), 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
-| `educacao.curitiba.pr.gov.br` (Secretaria Municipal da Educação, SME) | 200, `text/plain`, read 2026-11-25 02:01:10 UTC (inside its own Visit-time) with User-Agent `curitibai-mcp/0.33 (+https://github.com/Bossmann007/curitibai)`. One group, `User-agent: *`: `Request-rate: 1/5`, `Visit-time: 0200-0600` (UT), disallows `/App_Browsers`, `/App_Themes`, `/bin`, `/Cache`, `/Imagem`, `/Include` and `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; allows `*.aspx`, `*.html`, `*.htm`. The owner's research desk read it on 2026-11-23 and named the same `Request-rate`, `Visit-time` and `*.pdf` lines | Pages allowed only 02:00–06:00 UTC, one request per 5 s. **Never contacted by the server or a collector.** Read by hand for v0.33 (school calendar), three requests on 2026-11-25: `/robots.txt` at 02:01:10 UTC, `/` at 02:01:16 UTC and `/evento/calendarios-do-ano-letivo-2026/18401/4180` at 02:01:35 UTC. The 2026 calendar page has no dates, only links to three PDFs, and the 2027 calendars are one PDF; all are on `mid-educacao.curitiba.pr.gov.br` (robots.txt not read, never contacted). `*.pdf` is disallowed, so no school calendar tool ([Compared with the Curitiba App](tools.md#compared-with-the-curitiba-app)) |
+| `educacao.curitiba.pr.gov.br` (Secretaria Municipal da Educação, SME) | 200, `text/plain`, read 2026-11-25 02:01:10 UTC (inside its own Visit-time) with User-Agent `curitibai-mcp/0.33 (+https://github.com/Bossmann007/curitibai)`. One group, `User-agent: *`: `Request-rate: 1/5`, `Visit-time: 0200-0600` (UT), disallows `/App_Browsers`, `/App_Themes`, `/bin`, `/Cache`, `/Imagem`, `/Include` and `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; allows `*.aspx`, `*.html`, `*.htm`. The owner's research desk read it on 2026-11-23 and named the same `Request-rate`, `Visit-time` and `*.pdf` lines | Pages allowed only 02:00–06:00 UTC, one request per 5 s. **Never contacted by the server or a collector.** Read by hand for v0.33 (school calendar), three requests on 2026-11-25: `/robots.txt` at 02:01:10 UTC, `/` at 02:01:16 UTC and `/evento/calendarios-do-ano-letivo-2026/18401/4180` at 02:01:35 UTC. The 2026 calendar page has no dates, only links to three PDFs, and the 2027 calendars are one PDF; all are on `mid-educacao.curitiba.pr.gov.br`. `*.pdf` is disallowed here, so v0.33 built no tool; v0.34 reads the 2026 PDFs from that other host (next row) |
+| `mid-educacao.curitiba.pr.gov.br` (SME file host: the school calendar PDFs) | 404 (reported by the owner's assistant, who downloaded the PDFs on 2026-11-25; not checked from this project) | No robots.txt, so no restriction (RFC 9309, 2.3.1.3). **Never contacted by the server.** Three PDFs downloaded by hand once on 2026-11-25, 02:16–02:18 UTC, inside the Visit-time of the page that links them; `city_calendar` carries the dates read from them ([how](#city_calendar-school-calendars-2026-bundled-since-0340)) |
 | `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
 | `raw.githubusercontent.com` (GitHub raw file host; this repository's `data` branch) | 404, `text/plain` "404: Not Found" (checked 2026-11-22 06:55 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.18, `events_search` and `useful_phones`), only for the three fixed files `/Bossmann007/curitibai/data/events/events.json`, `/Bossmann007/curitibai/data/phones/phones.json` and `/Bossmann007/curitibai/data/phones/status.json` (v0.18.1), published by this project's own nightly workflow (below) |
 | `piloto-cbs.tributos.gov.br` (Receita Federal, pilot "calculadora de tributos do consumo") | 404 (reported in the v0.21.0 brief, 2026-11-23; no rules) | No restriction (RFC 9309). **Contacted** (v0.21, `tax_reform_curitiba`), only fixed `GET` routes under `/servico/calculadora-consumo/api/calculadora/dados-abertos/`, at most one request per 5 s |
@@ -1217,6 +1219,40 @@ Since 0.32.0 this is the `census` part of `place_at_point` ([ADR 0011](adr/0011-
   debit, first debit on 27 March). Marked `secondary_source: true`; facts only, the notes' text is not copied.
 - **Dates:** the data is of 2026 only; from 2027-01-01 (Curitiba time) the answer says `expired: true`. No network
   call, no error of its own.
+
+### `city_calendar`: school calendars 2026 (bundled, since 0.34.0)
+
+- **Source:** the Secretaria Municipal da Educação's page "Calendários do ano letivo 2026"
+  (<https://educacao.curitiba.pr.gov.br/evento/calendarios-do-ano-letivo-2026/18401/4180>, read in its robots.txt
+  Visit-time for v0.33) links three one-page PDFs, each signed "Curitiba, 30 de outubro de 2025":
+
+  | Unit | PDF | sha256 |
+  |---|---|---|
+  | `escolas` ("Calendário 2026_ESCOLAS") | <https://mid-educacao.curitiba.pr.gov.br/2025/12/pdf/00522557.pdf> | `dd08e4ac591ef2ac96908c9a9fbcff4b99d042fa3c316b680846e7b348ecfe05` |
+  | `cmeis` ("Calendário 2026_CMEIs") | <https://mid-educacao.curitiba.pr.gov.br/2025/12/pdf/00522558.pdf> | `1402ddb5c0cb5250c0ea1aa285fb144a2fd7d6a058f9638574a10322bd906e79` |
+  | `cmaees` ("Calendário 2026_CMAEEs") | <https://mid-educacao.curitiba.pr.gov.br/2025/12/pdf/00522559.pdf> | `3641c77ea7b678a58c164a1fde340c92e903f54a4f856cf08cfb0571692f478e` |
+
+  The CMAEE file is byte-identical to `.../2026/1/pdf/00522625.pdf`, linked from the same host.
+- **How and when:** the owner approved this on 2026-11-24. The owner's assistant downloaded the three PDFs once on
+  2026-11-25, 02:16–02:18 UTC (2026-11-24 in Curitiba: `checked_at` is that date), with an honest User-Agent; `mid-educacao.curitiba.pr.gov.br` has no robots.txt
+  ([robots.txt findings](#robotstxt-findings)). The PDFs are not committed. `scripts/extract-school-calendar.py`
+  (dev only, Python with pdfplumber, not in the package) reads them locally and writes
+  `src/tools/schoolCalendarData.ts`: only the dates, holiday names, counts, URL and sha256 (facts of an official act).
+- **What the PDF says and how it is read:** the meaning is in cell colours and drawn shapes. The script matches each
+  cell fill to a legend swatch of the same PDF and each shape (triangle, diamond, circle, hexagon) to the legend shape
+  of the same geometry, and stops on anything unmatched. One exception, reported in its output: the escolas PDF
+  paints its "Conselho de Classe Anos Iniciais e Anos Finais" cells in a 50% tint of that legend swatch; a colour is
+  accepted as a tint only when it is the tint of exactly one swatch. No cell carries the "Sábado de Integração com as
+  Famílias" fill in any of the three PDFs, so no such Saturday is listed. The "Semana de Estudos Pedagógicos" diamond
+  marks two single days (2026-02-21 and 2026-08-01), not a week. The printed holiday lists also name
+  2026-03-29 (Aniversário de Curitiba, a Sunday), which has no red cell, so it is not a period.
+- **School days:** the rule is not printed; it is fitted to the counts. A day with the triangle (início /
+  encerramento com crianças e estudantes) is a school day; otherwise Monday to Friday is a school day unless its fill
+  is férias, recesso, recessos (feriados), feriados, início/encerramento com professores or Dia do Professor; a
+  Saturday is a school day only with the Sábado de Integração or Avaliação dos Parâmetros fill. The script fails
+  unless the rule gives each month's printed "Letivos" and the printed total (199) for all three PDFs, and
+  `test/cityCalendar.test.ts` checks the bundled copy the same way.
+- **Dates:** 2026 only; from 2027-01-01 (Curitiba time) the answer says `expired: true`. No network call.
 
 ### `city_service_guide`: guides and official links for services that need a login (bundled, since 0.28.0)
 
