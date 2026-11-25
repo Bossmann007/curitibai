@@ -47,6 +47,23 @@ const HOSPITAL_NOTE =
   "Public hospitals as listed by IPPUC (municipal, state, federal and military), not every hospital in Curitiba. The " +
   "24-hour and period flags and hours are uneven in this layer: `all_day` false or no hours does not mean closed or " +
   `not open 24 hours, and being listed does not mean walk-in care. Check \`updated\` and call the hospital. ${SMS_OUVIDORIA}`;
+/** CAPS and psychiatric stabilisation (v0.46.0): after the emergency sentence, CVV 188 (read on cvv.org.br, 2026-11-25). */
+export const MENTAL_HEALTH_LEAD_NOTE = `${EMERGENCY_NOTE} Emotional support: CVV 188 (24 hours, free call).`;
+const CAPS_NOTE =
+  "CAPS hours are as published by the Secretaria Municipal da Saúde (see `updated`); `open_periods.all_day` is the " +
+  "layer's 24-hour flag and `hours` the detail. The nearest CAPS is not always the one that serves you: a CAPS " +
+  "Infantil is for children, and some list in `hours` the regionais they serve. Ask your health " +
+  `unit (\`unidade de saude\`) or call the CAPS. ${SMS_OUVIDORIA}`;
+const NOT_EMERGENCY = "Not for emergencies: call 192 (SAMU) or 193.";
+const MEDICAL_SPECIALTY_NOTE =
+  "Municipal and state specialty centres as listed by IPPUC, hours as published (see `updated`; some date from " +
+  "2022). Being listed does not mean walk-in care: check with your health unit (`unidade de saude`) whether you " +
+  "need a referral, and call the centre before going. " +
+  `${SMS_OUVIDORIA} ${NOT_EMERGENCY}`;
+const DENTAL_SPECIALTY_NOTE =
+  "Municipal dental specialty centres, hours as published (see `updated`). As the layer publishes, referral to a " +
+  "Centro de Especialidades Odontológicas is through the health units (`unidade de saude`): ask at yours. " +
+  `${SMS_OUVIDORIA} ${NOT_EMERGENCY}`;
 const PSYCHIATRIC_NOTE =
   "The Secretaria Municipal da Saúde's psychiatric stabilisation unit, hours as published (see `updated`). Check by " +
   `its phone or the 156. ${SMS_OUVIDORIA}`;
@@ -194,7 +211,26 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "unidade de estabilizacao psiquiatrica", "unidades de estabilizacao psiquiatrica",
     ]),
     note: PSYCHIATRIC_NOTE,
-    leadNote: EMERGENCY_NOTE,
+    leadNote: MENTAL_HEALTH_LEAD_NOTE,
+  },
+  // CAPS and specialty centres, added in v0.46.0 (read on 2026-11-25: 13, 10 and 2 records). The bare
+  // "centro de especialidades" stays unresolved (medical or dental); no "caps infantil" alias (no such filter).
+  {
+    ...equipment("caps", 135, "Centro de Atenção Psicossocial", ["centro de atencao psicossocial", "centros de atencao psicossocial"]),
+    note: CAPS_NOTE,
+    leadNote: MENTAL_HEALTH_LEAD_NOTE,
+  },
+  {
+    ...equipment("centro de especialidades medicas", 132, "Centro de Especialidades Médicas", [
+      "centros de especialidades medicas", "especialidades medicas",
+    ]),
+    note: MEDICAL_SPECIALTY_NOTE,
+  },
+  {
+    ...equipment("centro de especialidades odontologicas", 133, "Centro de Especialidades Odontológicas", [
+      "centros de especialidades odontologicas", "ceo", "especialidades odontologicas",
+    ]),
+    note: DENTAL_SPECIALTY_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),

@@ -1,0 +1,49 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Territorial Inventado",
+        "nome_completo": "Centro de Atenção Psicossocial Territorial Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "135",
+        "compl_end": "CEP: 80.000-135",
+        "divulgar_endereco": "Sim",
+        "bairro": "Rebouças",
+        "regional": "Matriz",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-1350 / 99999-1350",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1777906800000,
+        "observacao": "Atendimento CAPS Tipo III:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": { "x": -49.285, "y": -25.445 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Infantil Ficticio",
+        "nome_completo": "Centro de Atenção Psicossocial Infantil Ficticio",
+        "nome_rua": "R. FICTICIA",
+        "num_pred": "1351",
+        "divulgar_endereco": "Sim",
+        "bairro": "Bacacheri",
+        "regional": "Boa Vista",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1351",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776265200000,
+        "observacao": "Atendimento CAPS Tipo II:\r\n-2ª a 6ª feira, das 7h às 19h\r\nAtende as Regionais Inventada e Ficticia."
+      },
+      "geometry": { "x": -49.24, "y": -25.38 }
+    }
+  ]
+}

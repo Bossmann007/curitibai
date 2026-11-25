@@ -1,0 +1,48 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Centro de Especialidades Médicas Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "132",
+        "divulgar_endereco": "Sim",
+        "bairro": "Hauer",
+        "regional": "Boqueirão",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1320",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1781103600000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h às 19h\r\nEspecializada em cardiologia geral e dermatologia geral."
+      },
+      "geometry": { "x": -49.24, "y": -25.47 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Estadual Ficticio",
+        "nome_completo": "Centro Estadual Ficticio",
+        "nome_rua": "AV. FICTICIA",
+        "num_pred": "1321",
+        "divulgar_endereco": "Sim",
+        "bairro": "São Francisco",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1321",
+        "email": "ficticio@sesa.pr.gov.br",
+        "dt_atualiz": 1642604400000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h30 às 17h."
+      },
+      "geometry": { "x": -49.27, "y": -25.42 }
+    }
+  ]
+}

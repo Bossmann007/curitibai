@@ -2,6 +2,35 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.46.0 - 2026-11-25
+
+CAPS and specialty centres with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: three new `type`s read live from IPPUC's GeoCuritiba urban-equipment layers, with the
+  same fields, filters, host gate, cache and phone and e-mail allowlist as the other layers: `caps` (aliases `centro
+  de atencao psicossocial`, `centros de atencao psicossocial`), layer 135 "Centro de Atenção Psicossocial" (13 CAPS
+  when read on 2026-11-25, 9 of them "Diariamente, 24 horas", the others from 7h to 19h); `centro de especialidades
+  medicas` (aliases `centros de especialidades medicas`, `especialidades medicas`), layer 132 (10 municipal and state
+  centres, Monday to Friday); `centro de especialidades odontologicas` (aliases `centros de especialidades
+  odontologicas`, `ceo`, `especialidades odontologicas`), layer 133 (2 centres). The bare `centro de especialidades`
+  is not a type (medical or dental), and there is no `caps infantil` or `caps ad` alias (the tool has no such filter).
+- The `caps` note and the v0.45 `estabilizacao psiquiatrica` note now lead with the emergency sentence followed by
+  "Emotional support: CVV 188 (24 hours, free call)." (number read by hand on cvv.org.br; no link is returned). The
+  `caps` note says `open_periods.all_day` is the layer's 24-hour flag and that the nearest CAPS is not always the one
+  that serves you (a CAPS Infantil is for children; some list in `hours` the regionais they serve): ask your health
+  unit or call the CAPS. The medical specialty note says being listed does not mean walk-in care and to check with
+  the health unit whether a referral is needed (no record of layer 132 says how patients are referred); the dental
+  note says, as layer 133 publishes, that referral is through the health units. Both say not for emergencies (192 or
+  193) and that an ouvidoria@ e-mail is the SMS Ouvidoria's. The `type` description names the new types (snapshot
+  updated, within 400 characters).
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
+  Seven hand requests to it that day (robots.txt, and each layer's metadata and one whole-layer read) and two to
+  `cvv.org.br` (robots.txt, which allows `/`, and its home page), recorded in [docs/sources.md](docs/sources.md); the
+  server never contacts `cvv.org.br`. The link allowlist is unchanged.
+- Citizen eval: new q124 ("Onde fica o CAPS mais perto do Centro e qual o horário?") answered by
+  `city_facilities_search` `caps` with `near` a point in Centro, on a synthetic fixture. 120 of 124 answered. The
+  Curitiba App table's Health information row also names CAPS and specialty centres.
+
 ## 0.45.0 - 2026-11-25
 
 UPAs and public hospitals with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

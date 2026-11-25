@@ -1,4 +1,4 @@
-# SPEC: v0.45.0 UPAs and public hospitals with hours
+# SPEC: v0.46.0 CAPS and specialty centres with hours
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo.
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,52 +8,59 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Qual UPA perto do Boqueirão funciona 24 horas?" with
-the UPA's address, hours as published, 24-hour flag and phone. The tool lists places; it does not triage. Every
-answer for these types says: in an emergency call 192 (SAMU) or 193 (Bombeiros).
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Onde fica o CAPS mais perto do Centro e qual o
+horário?" with the CAPS's address, hours as published, 24-hour flag and phone, and give the hours of the municipal and
+state specialty centres (medical and dental). The tool lists places; it does not triage or say which CAPS serves a
+person. Every CAPS (and psychiatric stabilisation) answer starts with 192 (SAMU) or 193, then CVV 188.
 
 ## Source (read 2026-11-25)
 
-IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` layers 130 "Unidade de Pronto Atendimento"
-(9 records, all `func_24hr` "Sim", hours text "Diariamente, 24 horas"), 129 "Hospital (público)" (10 records; the
-`func_*` flags and hours text are uneven: some records have every flag "Não" and no text, two were last updated in
-2016) and 131 "Unidade de Estabilização Psiquiátrica" (1 record, 24 hours). robots.txt 404, no licence found (facts
-only, IPPUC cited, like the other GeoCuritiba layers). No new host. Details:
+IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` layers 135 "Centro de Atenção Psicossocial"
+(13 records: 9 with `func_24hr` "Sim" and "Diariamente, 24 horas", 4 from 7h to 19h; some say which regionais they
+serve), 132 "Centro de Especialidades Médicas" (10 records, municipal and state, Monday to Friday) and 133 "Centro de
+Especialidades Odontológicas" (2 records; one record says "O encaminhamento ao Centro de Especialidades Odontológicas
+se dá por meio das Unidades de Saúde."). robots.txt 404, no licence found (facts only, IPPUC cited, like the other
+GeoCuritiba layers). CVV 188 (emotional support, 24 hours, no call cost) read by hand on cvv.org.br (robots.txt
+allows `/`); the server never contacts it and no link is added. No new host. Details:
 [docs/sources.md](docs/sources.md#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes).
 
 ## Changes
 
 1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
    e-mail allowlist as the other urban-equipment layers:
-   - `upa` (130), aliases `upas`, `unidade de pronto atendimento`, `unidades de pronto atendimento`, `pronto
-     atendimento`, `upa 24h`, `upa 24 horas`;
-   - `hospital publico` (129), aliases `hospitais publicos`. The bare `hospital` stays unresolved:
-     the layer is one publisher's list of 10 public hospitals, not every hospital in Curitiba;
-   - `estabilizacao psiquiatrica` (131), aliases `unidade de estabilizacao psiquiatrica`, `unidades de estabilizacao
-     psiquiatrica`.
-   Each type's note starts with the emergency sentence (192 SAMU or 193; this tool lists places, it does not
-   triage), through a new optional `leadNote` put before the general note, and says an ouvidoria@ e-mail is the SMS
-   Ouvidoria's. UPA: `open_periods.all_day` is the layer's flag, `hours` the detail (dental urgency hours differ).
-   Hospital: the flags and hours are uneven, so `all_day: false` or no hours does not mean closed or not 24 hours;
-   being listed does not mean open to walk-ins; check `updated` and call the hospital. Psychiatric stabilisation: an
-   SMS unit, check by phone or the 156.
-2. **Cross-references**: the `unidade de saude` note and `health_units_search` description point to `upa` and
-   `hospital publico` instead of "no UPAs or hospitals". Descriptions within 400 characters. Tool contract snapshot
-   updated.
-3. **Eval**: q123 "Qual UPA perto do Boqueirão funciona 24 horas?" → `city_facilities_search` `{type: "upa", near:
-   (a point in Boqueirão), radius_m: 3000}`, with the synthetic fixture `test/fixtures/geocuritiba/upa_synthetic.json`
-   (plus `hospital_publico_synthetic.json` and `estabilizacao_psiquiatrica_synthetic.json` for the unit tests).
-4. **Docs and version**: README, docs/tools.md, docs/sources.md (layers 130, 129, 131 and the robots.txt recheck),
-   docs/roadmap-1.0.md, CHANGELOG 0.45.0, version 0.45.0 in `package.json`, `package-lock.json`, `server.json`.
+   - `caps` (135), aliases `centro de atencao psicossocial`, `centros de atencao psicossocial`;
+   - `centro de especialidades medicas` (132), aliases `centros de especialidades medicas`, `especialidades
+     medicas`;
+   - `centro de especialidades odontologicas` (133), aliases `centros de especialidades odontologicas`, `ceo`,
+     `especialidades odontologicas`.
+   The bare `centro de especialidades` stays unresolved (medical or dental). No alias that implies a filter the tool
+   does not apply (`caps infantil`, `caps ad`).
+2. **Notes**. `caps` and `estabilizacao psiquiatrica` lead with the v0.45 emergency sentence followed by "Emotional
+   support: CVV 188 (24 hours, free call)." CAPS: hours as published; `all_day` is the layer's flag; the nearest CAPS
+   is not always the one that serves you (CAPS Infantil are for children and adolescents, some list the regionais
+   they serve in `hours`): ask your health unit or call the CAPS. Medical specialty centres: municipal and state units
+   as listed by IPPUC, some last updated in 2022; access usually needs a referral, check with your health unit
+   (unidade de saude) and call before going. Dental: the layer says referral is through the health units. Both
+   specialty notes say not for emergencies, 192 or 193, and that an ouvidoria@ e-mail is the SMS Ouvidoria's.
+3. **Descriptions**: the `type` description names `caps` and the two specialty types; both descriptions within 400
+   characters. Tool contract snapshot updated.
+4. **Eval**: q124 "Onde fica o CAPS mais perto do Centro e qual o horário?" → `city_facilities_search` `{type:
+   "caps", near: (a point in Centro), radius_m: 3000}`, synthetic fixture `test/fixtures/geocuritiba/caps_synthetic.json`
+   (plus `centro_de_especialidades_medicas_synthetic.json` and `centro_de_especialidades_odontologicas_synthetic.json`
+   for the unit tests). On the real layer two CAPS are within 3 km of that point.
+5. **Docs and version**: README, docs/tools.md (row, which-tool row, Health information App row), docs/sources.md
+   (layers 135, 132, 133, the robots.txt recheck, the cvv.org.br hand read), docs/roadmap-1.0.md, CHANGELOG 0.46.0,
+   version 0.46.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-CAPS, specialty centres and other health layers; private hospitals; parsing hours into days or times; triage or
-"which place should I go to" advice; any new host.
+Which CAPS serves an address (regional areas); filtering CAPS by kind (infantil, AD); scheduling or referrals; other
+health layers; parsing hours into days or times; any new host or link.
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases, bare `hospital` not a
-  type, hours and flags returned as published, the emergency sentence in each of the three notes, q123 answered.
-- `node scripts/eval-summary.mjs`: `answered 119 / 123`.
+- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases, bare `centro de
+  especialidades` not a type, hours and flags as published, mobiles dropped, CVV 188 in the `caps` and
+  `estabilizacao psiquiatrica` notes after the emergency sentence, the referral sentences, q124 answered.
+- `node scripts/eval-summary.mjs`: `answered 120 / 124`.
 - `scripts/verify` exits 0 on the PR head.

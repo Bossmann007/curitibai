@@ -39,7 +39,8 @@ export const cityFacilitiesSearchInput = {
       "Facility type in Portuguese, accents and case ignored: e.g. \"feira\", \"rua da cidadania\", \"ecoponto\", " +
         "\"biblioteca\", \"farol do saber\", \"centro cultural\", \"cinema\", \"academia ao ar livre\", \"velodromo\", " +
         "\"banheiro publico\", \"parque\", \"estacao ecologica\", \"ciclovia\", \"ponto turistico\", \"unidade de saude\" " +
-        "(or \"ubs\", \"posto de saude\"), \"upa\", \"hospital publico\", \"estabilizacao psiquiatrica\". " +
+        "(or \"ubs\", \"posto de saude\"), \"upa\", \"hospital publico\", \"estabilizacao psiquiatrica\", \"caps\", " +
+        "\"centro de especialidades medicas\" (or \"odontologicas\"). " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z
