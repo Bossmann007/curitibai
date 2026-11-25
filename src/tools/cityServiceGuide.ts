@@ -604,15 +604,15 @@ export const GUIDES = {
     ],
   },
   ouvidoria: {
-    title: "Ouvidoria da Prefeitura (CGM): canais oficiais, sem telefone publicado",
+    title: "Ouvidoria da Prefeitura (CGM): canais oficiais, sem telefone no guia de 2024",
     what:
       "Canais da Ouvidoria da Controladoria Geral do Município (CGM) para pedir informações, sugerir, reclamar, " +
       "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria.",
-    // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's. "Ouvidoria
-    // Geral" is taken as the Prefeitura's (the note says that name was not verified against the CGM's).
-    carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral"], ["curitiba", "ouve"]],
+    // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
+    // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
+    carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"], ["curitiba", "ouve"]],
     fromDocument: {
       checkedAt: GUIDES_0_43_CHECKED_AT,
       licenseNote:
@@ -639,7 +639,10 @@ export const GUIDES = {
       },
       CARTA_PAGE,
       {
-        action: "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos.",
+        action:
+          "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
+          "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
+          "anexar fotos e documentos.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",
@@ -659,7 +662,8 @@ export const GUIDES = {
           "Dizer ao cidadão as três formas que o guia de 2024 descreve: identificada (cadastro no e-Cidadão e protocolo " +
           "na Central 156), sigilosa (também com e-Cidadão, mas os dados pessoais de quem denuncia ficam em sigilo e a " +
           "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é apurada, mas sem resposta nem " +
-          "acompanhamento). Quem escolhe é o cidadão. No site, o guia mostra só as opções identificada e anônima.",
+          "acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
+          "identificada e anônima.",
       },
       {
         ...OPEN_156,
@@ -1198,7 +1202,7 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
   title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
     "Steps and official links for a city service with a login or sign-up, Defesa Civil phone alerts, the " +
-    "Vale-Creche rules (no value, no promise) or the Ouvidoria's channels (no phone published): hand-written " +
+    "Vale-Creche rules (no value, no promise) or the Ouvidoria's channels (no phone in its 2024 guide): hand-written " +
     "(service) or generated from the user's Carta copy (carta_id from city_services_search). Never logs in, submits " +
     "or sends. Ask before each needs_consent step; never type passwords or payment data.",
   inputSchema: cityServiceGuideInput,

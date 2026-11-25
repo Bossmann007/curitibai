@@ -1427,8 +1427,9 @@ server):
   (`https://www.curitiba.pr.gov.br/lei13460/`) and illicit acts against the municipal administration or unethical
   conduct of servants to `falecomacgm@curitiba.pr.gov.br` (an institutional address); the three forms (identified:
   e-Cidadão account and a Central 156 protocol; confidential: e-Cidadão, personal data kept secret, the answer by the
-  registered e-mail; anonymous: no account, no answer or follow-up); the site steps show only the identified and
-  anonymous forms, as the PDF does; the CGM answers within 30 days (Lei federal 13.460/2017), extendable once when
+  registered e-mail; anonymous: no account, no answer or follow-up); a denúncia can also be registered on the
+  Curitiba Ouve site, where the citizen picks the identified or anonymous form (the only two the PDF's site steps
+  show) and may attach photos and documents; the CGM answers within 30 days (Lei federal 13.460/2017), extendable once when
   announced. **The PDF gives no phone number for the Ouvidoria**; the guide says so and gives none. The PDF was
   deleted after reading; it is not in the repository.
 - Not opened: the Portal Curitiba Ouve page (`www.curitiba.pr.gov.br`, which the project never contacts); its address

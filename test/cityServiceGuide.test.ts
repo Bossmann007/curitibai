@@ -244,6 +244,9 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(o.note).toMatch(/\(step 4\) comes from that PDF and was not opened here/);
     expect(o.license_note).toMatch(/created 2024-05-10, step 9/);
     expect(allSteps(o).find((s) => s.step === 4)!.consent).toMatch(/não foi aberto pelo CuritibAI/);
+    // A denúncia can also go through the site, where the citizen picks the form.
+    expect(allSteps(o).find((s) => s.step === 4)!.action).toMatch(/denúncia também pode ser registrada ali/);
+    expect(allSteps(o).find((s) => s.step === 6)!.action).toMatch(/No site Curitiba Ouve \(passo 4\)/);
   });
 
   it("the envelope names the 2024 PDF, not web search and not a law", async () => {
@@ -263,6 +266,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(handWrittenFor("Ouvidoria da CGM: denúncia com protocolo 156")).toBe("ouvidoria");
     expect(handWrittenFor("Central 156 sintética")).toBe("156");
     expect(handWrittenFor("Ouvidoria da Saúde sintética")).toBeUndefined();
+    expect(handWrittenFor("Ouvidoria Geral da Saúde sintética")).toBeUndefined();
   });
 });
 

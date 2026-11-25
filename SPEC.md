@@ -27,13 +27,14 @@ Ouve link was not opened (`www.curitiba.pr.gov.br` is never contacted). Details:
 
 1. **Guide** `ouvidoria` (`src/tools/cityServiceGuide.ts`), from the 2024 PDF (`fromDocument`, dated 2026-11-25):
    ask the citizen (no personal data in the conversation); say that the guide publishes no phone and which channel
-   fits which subject; the Carta page; the Portal Curitiba Ouve (step 4); the CGM e-mail as text the citizen sends from
-   their own e-mail (step 5, consent, no link: the allowlist takes only https); the three forms; the Central 156 for
-   the identified form's protocol (step 7); the 30-day answer; the PDF (step 9). The `note` says the source is from
+   fits which subject; the Carta page; the Portal Curitiba Ouve (step 4; a denúncia can also be registered there);
+   the CGM e-mail as text the citizen sends from their own e-mail (step 5, consent, no link: the allowlist takes only
+   https); the three forms; the Central 156 for the identified form's protocol (step 7); the 30-day answer; the PDF
+   (step 9). The `note` says the source is from
    2024 and the channels may have changed.
-2. **Carta routing**: `[["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral"], ["curitiba",
-   "ouve"]]`, not the bare word (other offices have their own ouvidoria); `156` gets `notFor: ["ouvidoria"]`. Mirrored
-   in `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
+2. **Carta routing**: `[["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"],
+   ["curitiba", "ouve"]]`, not the bare word (other offices have their own ouvidoria); `156` gets
+   `notFor: ["ouvidoria"]`. Mirrored in `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
 3. **Eval**: q072 and q110 → `city_service_guide` `ouvidoria`; the `useful_phones` gap is gone; a unit test keeps
    `useful_phones` answering nothing for "ouvidoria" (what q072 pinned before).
 4. **Curitiba App table**: the "Useful phones" row becomes "guide + official link, citizen acts": its other phones
