@@ -1201,9 +1201,9 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
   name: "city_service_guide",
   title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links for a city service with a login or sign-up, Defesa Civil phone alerts, the " +
-    "Vale-Creche rules (no value, no promise) or the Ouvidoria's channels (no phone in its 2024 guide): hand-written " +
-    "(service) or generated from the user's Carta copy (carta_id from city_services_search). Never logs in, submits " +
+    "Steps and official links for a city service with login or sign-up, Defesa Civil phone alerts, the " +
+    "Vale-Creche rules (no value, no promise) or the Ouvidoria's channels (2024 guide: no phone): " +
+    "hand-written (service) or generated from the user's Carta copy (carta_id from city_services_search). Never logs in, submits " +
     "or sends. Ask before each needs_consent step; never type passwords or payment data.",
   inputSchema: cityServiceGuideInput,
   outputSchema: cityServiceGuideOutput,
