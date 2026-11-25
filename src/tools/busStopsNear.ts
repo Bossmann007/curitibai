@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dateInCuritiba } from "../sources/detran.js";
 import { getUrbsStops, URBS_STOPS_LAYER_URL, type UrbsStopsLayer } from "../sources/geocuritiba.js";
 import { remoteDataEnabled, REMOTE_DATA_ENV } from "../sources/publishedData.js";
@@ -24,7 +23,7 @@ import { lineStops } from "./busLineStops.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { guardedSummary } from "./cityServicesSearch.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
-import { callStartBy, fail, failFrom, ok, type ErrorCode, type ToolDef } from "./common.js";
+import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 
 export const NEAR_RADIUS_DEFAULT_M = 400;
 export const NEAR_RADIUS_MAX_M = 2000;
@@ -238,20 +237,6 @@ export function busStopsNearLayerResult(layer: UrbsStopsLayer, args: BusStopsNea
   };
 }
 
-/** The error code and message of a `fail()` result; null when its text is not that JSON (the result is then kept as is). */
-export function failurePayload(failed: CallToolResult): { error: ErrorCode; message?: string } | null {
-  const first = failed.content[0];
-  if (first?.type !== "text") return null;
-  try {
-    const v: unknown = JSON.parse(first.text);
-    if (typeof v !== "object" || v === null || typeof (v as { error?: unknown }).error !== "string") return null;
-    const { error, message } = v as { error: ErrorCode; message?: unknown };
-    return typeof message === "string" ? { error, message } : { error };
-  } catch {
-    return null;
-  }
-}
-
 /** Without a local stops file: the GeoCuritiba layer (no line filter: it has no lines per stop). */
 async function fromLayer(args: BusStopsNearArgs) {
   if (!remoteDataEnabled()) {
@@ -270,9 +255,7 @@ async function fromLayer(args: BusStopsNearArgs) {
   try {
     return ok(busStopsNearLayerResult((await getUrbsStops(callStartBy())).value, args));
   } catch (err) {
-    const failed = failFrom(err);
-    const payload = failurePayload(failed);
-    return payload === null ? failed : fail(payload.error, [payload.message, LAYER_FAILED_HINT].filter(Boolean).join(" "));
+    return failFrom(err, LAYER_FAILED_HINT);
   }
 }
 

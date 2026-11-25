@@ -14,7 +14,7 @@ import {
 } from "../src/sources/geocuritiba.js";
 import { MASK } from "../src/sources/pncp.js";
 import { REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
-import { busStopsNearOutput, failurePayload } from "../src/tools/busStopsNear.js";
+import { busStopsNearOutput } from "../src/tools/busStopsNear.js";
 import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
 
 // Invented stops written into a temporary CURITIBAI_DATA_DIR/urbs/ at run time, in the real pontosLinha shape; the lines
@@ -305,7 +305,7 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     stubFetch(routes);
     const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
     expect(err.error).toBe("source_unavailable");
-    expect(err.message).toContain("pontosLinha");
+    expect(err.message).toMatch(/^Without the network, this tool works from the URBS export\. .*pontosLinha/);
   });
 
   it("line_code without the export is data_not_available, with no request", async () => {
@@ -331,17 +331,6 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("failurePayload keeps a failure whose text is not JSON instead of throwing", () => {
-    expect(failurePayload({ content: [{ type: "text", text: "not json" }], isError: true })).toBeNull();
-    expect(failurePayload({ content: [], isError: true })).toBeNull();
-    for (const text of ["5", '"x"', "[]", "{}", "null", '{"error":1}']) {
-      expect(failurePayload({ content: [{ type: "text", text }], isError: true })).toBeNull();
-    }
-    expect(failurePayload({ content: [{ type: "text", text: '{"error":"rate_limited","message":"m"}' }] })).toEqual({
-      error: "rate_limited",
-      message: "m",
-    });
-  });
 
   it("fails closed on a short page cut by the record limit, and on more pages than expected", async () => {
     const routes = layerRoutes();

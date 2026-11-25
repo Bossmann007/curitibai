@@ -22,7 +22,6 @@ import {
   type CodeItem,
 } from "../sources/receita.js";
 import { fold } from "../text.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { fail as baseFail, failFrom as baseFailFrom, ok, type ErrorCode, type ToolDef } from "./common.js";
 
 /** The reform's first year; earlier dates have no rate in the Receita base. */
@@ -146,15 +145,8 @@ function matcher(query: string): (i: CodeItem) => boolean {
 const older = (a: string, b: string) => (a < b ? a : b);
 
 /** Errors of this tool carry the disclaimer too, at the end of `message` (the error object has no other field). */
-function withDisclaimer(res: CallToolResult): CallToolResult {
-  const first = res.content[0];
-  if (first?.type !== "text") return res;
-  const e = JSON.parse(first.text) as { error: string; message?: string };
-  const message = e.message === undefined ? `${DISCLAIMER}.` : `${e.message} ${DISCLAIMER}.`;
-  return { ...res, content: [{ type: "text", text: JSON.stringify({ error: e.error, message }) }] };
-}
-const fail = (error: ErrorCode, message?: string) => withDisclaimer(baseFail(error, message));
-const failFrom = (err: unknown) => withDisclaimer(baseFailFrom(err));
+const fail = (error: ErrorCode, message?: string) => baseFail(error, [message, `${DISCLAIMER}.`].filter(Boolean).join(" "));
+const failFrom = (err: unknown) => baseFailFrom(err, `${DISCLAIMER}.`);
 
 export const taxReformCuritiba: ToolDef<typeof taxReformCuritibaInput, typeof taxReformCuritibaOutput> = {
   name: "tax_reform_curitiba",
