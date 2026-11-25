@@ -9,8 +9,8 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 ## Goal
 
 Close the findings left by the v0.30 reviews (PR #42), then remove code from `src/` without changing what any tool
-answers. Two pull requests, each under the 400-line size check: A (follow-ups, version, this SPEC) first, then B (the
-subtraction pass) stacked on A.
+answers: A (follow-ups, version, this SPEC), then B (the subtraction pass). Together they stay under the 400-line size
+check, so they ship as one pull request.
 
 ## Changes
 
@@ -35,10 +35,11 @@ Each item deletes more than it adds and changes no tool name, schema, output or 
 - `failFrom` takes an optional hint appended to its message, so `bus_stops_near` and `tax_reform_curitiba` stop
   re-parsing the JSON text of a `failFrom` result (`failurePayload`, `withDisclaimer`).
 - GeoCuritiba: one request helper for the four identical `fetchText` calls and their "not JSON" check.
-- Shared small helpers instead of copies (`isObject`, `str` where identical); imports of `mask.js` directly instead
-  of through the `pncp.ts` re-export.
+- GeoCuritiba: one ArcGIS answer check (JSON, `error` with the host block, WGS84) for the three layer parsers.
+- One `isObject` in `src/text.ts` instead of four copies; imports of `mask.js` directly instead of through the
+  `pncp.ts` re-export.
 
-A larger change (one handler for the point tools, a place facade for 1.0) is a proposal in the PR B body only.
+A larger change (one handler for the point tools, a place facade for 1.0) is a proposal in the pull request body only.
 
 ## Out of scope
 
