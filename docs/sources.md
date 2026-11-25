@@ -95,6 +95,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `www.urbs.curitiba.pr.gov.br` | 404 | Out of scope, same reason. Not contacted |
 | `www.detran.pr.gov.br` (Detran-PR) | 200 (checked 2026-11-19 with curl, User-Agent `curitibai-dev-check`): `User-agent: *`; disallows, among others, `/core/`, `/profiles/`, `/admin/`, `/search/`, four `/user/...` paths (register, password, login, logout), `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/celepar-captcha-audio/`, `/webservices/`, `/virada.html`. `/`, `/unidades`, `/Noticia/`, `/Pagina/` and `/servicos/` are **not disallowed** (no explicit Allow either) | Read by hand once for `detran_pr_info` (v0.4): the home page, `/unidades` and three `/Noticia/` pages. **The server never contacts it**: the data is bundled |
 | `turismo.curitiba.pr.gov.br` (Instituto Municipal de Turismo, events calendar) | 200, fetched once on 2026-11-21 with the collector's User-Agent (`text/plain`, no charset, Latin-1 comments, `Last-Modified: Tue, 08 Sep 2026`); its only group is `User-agent: *`, recorded in full under "Events" below | Allowed inside the visit hours. **The server never contacts it.** Only the separate collector `scripts/fetch-events.mjs` (v0.10) does (run by the user or, since v0.18, by the nightly GitHub workflow), 02:00–05:50 UTC, one request per 5 s, after comparing the whole robots.txt group with the recorded one on every run |
+| `linhaturismo.curitiba.pr.gov.br` (Prefeitura, Linha Turismo site) | 404 (checked 2026-11-25 05:14 UTC with curl, User-Agent `curitibai-mcp/0.10`) | No restriction (RFC 9309). **Never contacted by the server.** Read by hand once on 2026-11-25 for the bundled `ponto turistico` list of `city_facilities_search` ([how](#ponto-turistico-linha-turismo-stops-bundled-since-0400)) |
 | `educacao.curitiba.pr.gov.br` (Secretaria Municipal da Educação, SME) | 200, `text/plain`, read 2026-11-25 02:01:10 UTC (inside its own Visit-time) with User-Agent `curitibai-mcp/0.33 (+https://github.com/Bossmann007/curitibai)`. One group, `User-agent: *`: `Request-rate: 1/5`, `Visit-time: 0200-0600` (UT), disallows `/App_Browsers`, `/App_Themes`, `/bin`, `/Cache`, `/Imagem`, `/Include` and `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; allows `*.aspx`, `*.html`, `*.htm`. The owner's research desk read it on 2026-11-23 and named the same `Request-rate`, `Visit-time` and `*.pdf` lines | Pages allowed only 02:00–06:00 UTC, one request per 5 s. **Never contacted by the server or a collector.** Read by hand for v0.33 (school calendar), three requests on 2026-11-25: `/robots.txt` at 02:01:10 UTC, `/` at 02:01:16 UTC and `/evento/calendarios-do-ano-letivo-2026/18401/4180` at 02:01:35 UTC. The 2026 calendar page has no dates, only links to three PDFs, and the 2027 calendars are one PDF; all are on `mid-educacao.curitiba.pr.gov.br`. `*.pdf` is disallowed here, so v0.33 built no tool; v0.34 reads the 2026 PDFs from that other host (next row) |
 | `mid-educacao.curitiba.pr.gov.br` (SME file host: the school calendar PDFs) | 404 (reported by the owner's assistant, who downloaded the PDFs on 2026-11-25; not checked from this project) | No robots.txt, so no restriction (RFC 9309, 2.3.1.3). **Never contacted by the server.** Three PDFs downloaded by hand once on 2026-11-25, 02:16–02:18 UTC, inside the Visit-time of the page that links them; `city_calendar` carries the dates read from them ([how](#city_calendar-school-calendars-2026-bundled-since-0340)) |
 | `www.teatroguaira.pr.gov.br` (Centro Cultural Teatro Guaíra, Governo do Paraná, served by CELEPAR) | 200, `text/plain`, `Last-Modified: Fri, 20 Mar 2026 14:42:12 GMT`, fetched 2026-11-22 06:01 UTC with curl, User-Agent `curitibai-mcp/0.7`. One group, `User-agent: *` (Drupal default: allows CSS/JS/images under `/core/` and `/profiles/`, disallows `/core/`, `/profiles/`, `/README.txt`, `/web.config`, `/admin/`, `/comment/reply/`, `/filter/tips`, `/node/add/`, `/search/`, four `/user/...` paths, their `/index.php/` forms, `/print/`, `/external-print/`, `/noticias/aen/`, `/usuario/`, `/webservices/`); no `Crawl-delay`, no `Visit-time`, no `Request-rate` (full group in the `guaira_events` section) | `/calendario-eventos` and `/Evento/` allowed. **Contacted** (v0.17, `guaira_events`); robots.txt is re-read every 24 h by the server, which stops if the calendar becomes disallowed |
@@ -1082,6 +1083,34 @@ changes (owner request, 2026-11-23: monthly and automatic).
   `centro_cultural_synthetic.json` (v0.20) is **synthetic**: one complete record, one with most fields missing and a
   non-municipal e-mail, and one with no name. `local_de_votacao_synthetic.json` and `terminal_synthetic.json` (v0.27)
   are **synthetic** (invented names; an impossible date; a nameless record; a 65-line `observacao`).
+  `teatro.json` (v0.40) holds the real Teatro Ópera de Arame record of layer 55 as read on 2026-11-25 (a public
+  venue: address, periods, institutional landline; no `observacao`) and one invented theatre ("Ficticio").
+
+#### `ponto turistico`: Linha Turismo stops (bundled, since 0.40.0)
+
+- **Source:** <https://linhaturismo.curitiba.pr.gov.br/onde-embarcar>, the "Onde Embarcar" page of the Prefeitura's
+  Linha Turismo site (developed by the Instituto das Cidades Inteligentes). Its 25 boarding points, in page order, are
+  the bundled list `TOUR_STOPS` in `src/sources/linhaTurismo.ts`. The site's own attractions page
+  (`/atracoes-turisticas`, and the `POST /atracoes-turisticas/Listar` its script calls) answered "Nenhuma atração
+  turística foi encontrada" when read, so the boarding points are the official list used. No licence found; only the
+  stop names are kept (no description, image or audio).
+- **robots.txt:** `https://linhaturismo.curitiba.pr.gov.br/robots.txt` answered 404 on 2026-11-25 05:14 UTC (no
+  restriction, RFC 9309). **The server never contacts this host** (it is not in `ALLOWED_HOSTS`): the list is bundled.
+  Read by hand once on 2026-11-25, 05:15–05:18 UTC, with User-Agent `curitibai-mcp/0.10 (+https://github.com/Bossmann007/curitibai)`:
+  `/robots.txt`, `/atracoes-turisticas`, `/js/atracaoturistica/index.js`, `POST /atracoes-turisticas/Listar` (empty
+  form), `/` and `/onde-embarcar`.
+- **Lookups:** each stop's `lookup` (`{type, name}`) was matched by hand on 2026-11-25 to the record of that GeoCuritiba
+  layer (museu 54, teatro 55, memorial 53, mercado municipal 2, informações turísticas 162, parks) whose name contains
+  every word; 7 stops (Rua 24 Horas, Praça Tiradentes, Rua das Flores, Paço da Liberdade, Centro Cívico, Portal Italiano,
+  Santa Felicidade) have no record in those layers and keep `lookup: null`. "Bosque do Papa" points to the Memorial da
+  Imigração Polonesa, which the Instituto Municipal de Turismo's "Parques e Natureza" page
+  (`turismo.curitiba.pr.gov.br/conteudo/parques-e-natureza/2722`, read the same morning inside its Visit-time) places
+  in the Bosque João Paulo II. A test keeps every lookup type one the tool resolves.
+- **Not used:** that "Parques e Natureza" page and the "Guia de Museus e Memoriais" (`/conteudo/guia-de-museus-e-memoriais/2723`)
+  are prose; neither gives the Ópera de Arame's visiting hours, and GeoCuritiba gives only its periods
+  (`func_manha`, `func_tarde`, `func_noite`: yes) and phone. On 2026-11-25 05:14 UTC
+  `turismo.curitiba.pr.gov.br/robots.txt` answered 302 to `/Erro/404` (the events collector compares that file on
+  every run; not changed here).
 
 ### `place_at_point`: IPPUC GeoCuritiba cadastral map (since 0.22.0)
 

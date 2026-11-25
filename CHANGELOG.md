@@ -2,6 +2,28 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.40.0 - 2026-11-25
+
+Cultural spaces and attractions, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type` `ponto turistico` (aliases `pontos turisticos`, `atracao
+  turistica`, `atracoes turisticas`, `linha turismo`, `linha de turismo`). It makes no network call and returns the 25
+  boarding points of the Prefeitura's Linha Turismo, as listed on `linhaturismo.curitiba.pr.gov.br/onde-embarcar`
+  (read 2026-11-25, bundled in `src/sources/linhaTurismo.ts`), in page order. Each item has the new optional output
+  field `lookup` (`{type, name}`, or null for streets, squares and neighbourhoods): the call to this same tool that
+  gives the place's address, hours as published and phone. It takes `name` only (matched against the stop name, the place's full name where the page abbreviates it, and the
+  lookup name: "Mercado Municipal" finds "MERC.MUNICIPAL/RODOFERROVIARIA"); `bairro`, `near` or `radius_m` is
+  `invalid_argument`. `list types` lists it last, with the page as its URL. The tool description names it as bundled
+  Linha Turismo stops; its routing hint is now "Prefer this for hours or a phone" (shorter, to stay within 400
+  characters).
+- Tool contract: the `type` description and the item's `lookup` field (snapshot updated).
+- Curitiba App table: "Cultural spaces and attractions" is now ✓ (data). "Useful phones" stays partial: no public,
+  readable source gives a phone of the Ouvidoria-Geral do Município, so no line is labelled as the Ouvidoria.
+- Citizen eval: q108 (pontos turísticos) and q109 (Ópera de Arame: its periods and phone, since no source publishes
+  its visiting hours) move from gaps to `city_facilities_search`, with a `teatro` fixture (the real Ópera de Arame record and one invented theatre). 112 of 119
+  answered; the `cultural_spaces` gap label is gone.
+- No new network host for the server, no new dependency; the link allowlist is unchanged.
+
 ## 0.39.1 - 2026-11-25
 
 Review hardening of 0.38.1 and 0.39.0. 26 tools. Publishes nothing.

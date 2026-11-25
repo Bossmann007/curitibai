@@ -36,6 +36,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   "estacao ecologica": "estacao_ecologica_synthetic.json",
   "local de votacao": "local_de_votacao_synthetic.json",
   velodromo: "velodromo_synthetic.json",
+  teatro: "teatro.json",
 };
 
 /** Invented events (titles, places and addresses made up), dated around NOW. */
