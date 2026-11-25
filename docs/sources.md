@@ -1120,6 +1120,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
 
 ### `service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)
 
+Since 0.32.0 this is the `service_areas` part of `place_at_point` ([ADR 0011](adr/0011-one-place-facade.md)).
+
 - **Source:** IPPUC, GeoCuritiba ArcGIS REST, anonymous GET, `f=json`:
   <https://geocuritiba.ippuc.org.br/server/rest/services/GeoCuritiba/Publico_Interno_GeoCuritiba_BaseTematica/MapServer>
   (`currentVersion` 11.5, layers in EPSG 31982, `maxRecordCount` 2,000; checked 2026-11-23 with curl). The same name
@@ -1174,6 +1176,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   `partial`. An area says who covers the point, not where the nearest station is.
 
 ### `census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)
+
+Since 0.32.0 this is the `census` part of `place_at_point` ([ADR 0011](adr/0011-one-place-facade.md)).
 
 - **Source:** the same thematic service, group Censo Demográfico, read 2026-11-24: layer 43 "Setor Censitário - 2022"
   (3,190 sectors, all `nm_mun` "Curitiba", all `situacao` "Urbana"; `supportsStatistics` true). Layers 44
