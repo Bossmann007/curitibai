@@ -141,6 +141,13 @@ export const URBS_ESTAR_URL = "https://www.urbs.curitiba.pr.gov.br/EstaR";
 export const LE_DIGITAL_NEWS_URL =
   "https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129";
 
+/** Date the Defesa Civil alerts guide was written from web search results (since 0.39.0; see docs/tools.md). */
+export const GUIDES_0_39_CHECKED_AT = "2026-11-25";
+
+/** Anatel's page on Defesa Civil Alerta (cell broadcast), read on 2026-11-25 (docs/sources.md). */
+export const DEFESA_CIVIL_ALERTA_URL =
+  "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta";
+
 const OPEN_156: StepDef = {
   action: "Abrir o site oficial da Central 156.",
   consent: "Abrir 156.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
@@ -424,6 +431,53 @@ export const GUIDES = {
         action:
           "Aviso de irregularidade do EstaR: ver na página do EstaR da URBS (passo 3) como consultar e regularizar; se " +
           "não achar, abrir a Central 156 e perguntar ali.",
+      },
+    ],
+  },
+  defesa_civil: {
+    title: "Alertas da Defesa Civil e avisos de chuva e temporal no celular",
+    what:
+      "Os avisos meteorológicos oficiais do INMET que cobrem Curitiba (gravidade, evento, início e fim) vêm da " +
+      "ferramenta weather_alerts. Este guia diz como receber os alertas da Defesa Civil no celular: por SMS, " +
+      "cadastrando o CEP no 40199, e pelo Defesa Civil Alerta (cell broadcast). O CuritibAI não tem alertas por " +
+      "bairro nem envia alertas. Emergência: Defesa Civil 199.",
+    carta: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
+    fromWebSearchAt: GUIDES_0_39_CHECKED_AT,
+    note:
+      "Guide note (defesa_civil): the SMS steps (CEP to 40199, free, a confirmation reply) come from the Paraná " +
+      "government's service page on www.parana.pr.gov.br (read 2026-11-25), which is not on the link allowlist, so " +
+      "those steps have no link. Commands to list or cancel a CEP and other sign-up channels were not verified and " +
+      "are left out. Step 4 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
+      "Defesa Civil 199. ",
+    steps: [
+      FIRST_STEP,
+      CARTA_PAGE,
+      {
+        action:
+          "Ver os avisos do INMET que cobrem Curitiba agora com a ferramenta weather_alerts (gravidade, evento, início " +
+          "e fim) e mostrar ao cidadão o texto do INMET sem mudar.",
+      },
+      {
+        action:
+          "Abrir a página da Anatel sobre o Defesa Civil Alerta: o alerta aparece na tela dos celulares compatíveis, " +
+          "conectados às redes 4G ou 5G, na área de risco, sem cadastro.",
+        consent: "Abrir a página da Anatel em www.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: DEFESA_CIVIL_ALERTA_URL },
+      },
+      {
+        action:
+          "Para receber os alertas por SMS: o cidadão escreve, no aplicativo de mensagens do celular, um SMS para o " +
+          "número 40199 com o CEP da região (casa ou trabalho).",
+        consent:
+          "O cidadão digita o CEP só no aplicativo de mensagens do celular, num SMS para 40199, não nesta conversa. " +
+          "Nada é enviado nesta etapa.",
+        types: ["CEP da região, só no SMS para 40199"],
+      },
+      {
+        action: "Enviar o SMS ao 40199 e esperar a mensagem de confirmação da Defesa Civil. O serviço é gratuito.",
+        consent:
+          "O cidadão envia o SMS por conta própria, do próprio celular. Só se o cidadão confirmar; o assistente nunca " +
+          "envia nada.",
       },
     ],
   },
@@ -919,11 +973,12 @@ export async function cartaGuideResult(
 
 export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof cityServiceGuideOutput> = {
   name: "city_service_guide",
-  title: "Guide to a Curitiba service that needs a login",
+  title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links to use a city service that needs a login: a hand-written guide (service), or one " +
-    "generated from the user's local Carta copy for any Carta service (carta_id from city_services_search). Never " +
-    "logs in or submits. Ask the user before each needs_consent step; never type their passwords or payment data.",
+    "Steps and official links for a city service that needs a login or sign-up, or for Defesa Civil phone alerts: " +
+    "a hand-written guide (service), or one generated from the user's local Carta copy (carta_id from " +
+    "city_services_search). Never logs in, submits or sends. Ask the user before each needs_consent step; never " +
+    "type their passwords or payment data.",
   inputSchema: cityServiceGuideInput,
   outputSchema: cityServiceGuideOutput,
   handler: async (args, ctx) => {

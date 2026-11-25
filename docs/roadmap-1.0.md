@@ -92,8 +92,8 @@ landmarks. Each names the tool that should answer it, the arguments, and the sha
 Shape only, never exact text. `test/eval/citizenEval.test.ts` runs every question offline in `scripts/verify`
 (synthetic fixtures, one fixed clock, every request stubbed): the tool exists, the arguments pass its input schema
 with no unknown key, and the answer has the shape. A question no tool answers yet has `tool: null` and a `gap` label
-(`defesa_civil`, `realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows not covered, and others;
-`le_digital` and `estar` until v0.38.0); gaps are counted, not failed. A question tagged
+(`realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows not covered, and others;
+`le_digital` and `estar` until v0.38.0, `defesa_civil` until v0.39.0); gaps are counted, not failed. A question tagged
 `outside_curitiba` to a tool with no city check of its own (a bus stop or a feira near a point in São Paulo) expects
 `not_found`; `place_at_point` refuses such a point and expects `outside_curitiba`. `node scripts/eval-summary.mjs` prints the one-line count
 that `scripts/verify` shows. Closing a gap means a tool, its fixture and the question moved from `tool: null` to that
@@ -112,3 +112,7 @@ questions on generated guides); the 15 gaps are unchanged.
 At v0.38.0 (phase B) Curitiba Lê Digital and EstaR have hand-written guides (`le_digital`, `estar`): 18 Curitiba App
 rows, 13 covered (6 data, 7 guide). The citizen eval answers 108 of 119 questions; 11 are gaps (Defesa Civil alerts,
 real-time buses and cultural spaces 2 each, other cities 2, useful phones 1, route planning 1, Vale Creche 1).
+At v0.39.0 (phase B) Defesa Civil alerts are covered: `weather_alerts` (INMET) for the active warnings and the
+`defesa_civil` guide for receiving alerts on the phone: 18 Curitiba App rows, 14 covered (6 data, 8 guide). The
+citizen eval answers 110 of 119 questions; 9 are gaps (real-time buses and cultural spaces 2 each, other cities 2,
+useful phones 1, route planning 1, Vale Creche 1).

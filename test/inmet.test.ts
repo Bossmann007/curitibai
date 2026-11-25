@@ -135,6 +135,9 @@ describe("weather_alerts", () => {
       instructions: ["Instrucao ficticia 1 do aviso 900001. ", "Instrucao ficticia 2 do aviso 900001."],
     });
     expect(out.data.note).not.toMatch(/No active INMET warning/);
+    // Since 0.39.0: INMET's warnings page and the guide to receive Defesa Civil alerts on the phone.
+    expect(out.data.note).toContain("https://alertas2.inmet.gov.br/");
+    expect(out.data.note).toContain('city_service_guide with service "defesa_civil"');
   });
 
   it("drops polygons, area lists, geocodes and icons", async () => {
@@ -170,6 +173,7 @@ describe("weather_alerts", () => {
     expect(out.data.note).toContain("may lag INMET by up to 10 minutes");
     expect(out.data.note).toContain("not an official alert service");
     expect(out.data.note).toContain("Defesa Civil (199)");
+    expect(out.data.note).toContain('city_service_guide with service "defesa_civil"');
   });
 
   it("accepts geocodes served as an array", () => {
