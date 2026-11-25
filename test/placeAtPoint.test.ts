@@ -152,7 +152,7 @@ describe("place_at_point answers", () => {
     }));
     const out = await place();
     expect(out.data).toMatchObject({ bairro: "ALFA", regional: "R2", boundary: true });
-    expect(out.data.zoning.map((z) => z.code)).toEqual(["ZT-1", "ZT-3"]);
+    expect(out.data.zoning!.map((z) => z.code)).toEqual(["ZT-1", "ZT-3"]);
     expect(out.note).toMatch(/boundary/);
   });
 
@@ -230,7 +230,7 @@ describe("place_at_point errors", () => {
   it("a zoning failure after the bairro was read is partial; the street is not asked while the failure is remembered", async () => {
     const calls = stubFetch(routes({ zoning_decree: { status: 500 } }));
     const out = await place();
-    expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", zoning: [], nearest_street: null, partial: true });
+    expect(out.data).toMatchObject({ bairro: "BAIRRO TESTE", zoning: null, nearest_street: null, partial: true });
     expect(out.note).toMatch(/zoning/);
     expect(calls).toHaveLength(2);
   });

@@ -94,9 +94,9 @@ describe("service_areas_at_point answers", () => {
       inside_curitiba: true,
       health_units: [{ name: "US TESTE", district: "DISTRITO TESTE", reference_date: "março/2022", source_agency: "SMS-PMC", approximate: null }],
       cras: [{ name: "CRAS TESTE", type: "CRAS", regional: "REGIONAL TESTE", reference_date: "MAR-2019", source_agency: "FAS", approximate: false }],
-      police_military: [],
-      police_civil: [],
-      fire: [],
+      police_military: null,
+      police_civil: null,
+      fire: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
@@ -155,14 +155,14 @@ describe("service_areas_at_point answers", () => {
     stubFetch(routes({
       health_area: { body: attrs([{ nome: "A", geometriaaproximada: 1 }, { nome: "B", geometriaaproximada: 0 }, { nome: "C", geometriaaproximada: "1" }]) },
     }));
-    expect((await areas()).data.health_units.map((h) => h.approximate)).toEqual([true, false, null]);
+    expect((await areas()).data.health_units!.map((h) => h.approximate)).toEqual([true, false, null]);
   });
 
   it("a point on a boundary lists the areas distinct, sorted by name, at most 3, and says so", async () => {
     const u = (nome: string) => ({ nome, distrito: "D", data: "março/2022", fonte: "SMS-PMC" });
     stubFetch(routes({ health_area: { body: attrs([u("US ZETA"), u("US ALFA"), u("US ZETA"), u("US BETA"), u("US GAMA")]) } }));
     const out = await areas();
-    expect(out.data.health_units.map((h) => h.name)).toEqual(["US ALFA", "US BETA", "US GAMA"]);
+    expect(out.data.health_units!.map((h) => h.name)).toEqual(["US ALFA", "US BETA", "US GAMA"]);
     expect(out.note).toMatch(/boundary/);
   });
 
@@ -178,13 +178,13 @@ describe("service_areas_at_point answers", () => {
   it("a nameless row next to a named one is dropped and makes no boundary", async () => {
     stubFetch(routes({ cras_territory: { body: attrs([{ regional: "R" }, { nome: "CRAS TESTE", regional: "R" }]) } }));
     const out = await areas();
-    expect(out.data.cras.map((c) => c.name)).toEqual(["CRAS TESTE"]);
+    expect(out.data.cras!.map((c) => c.name)).toEqual(["CRAS TESTE"]);
     expect(out.note).not.toMatch(/boundary/);
   });
 
   it("text fields are cleaned and masked like the other GeoCuritiba fields", async () => {
     stubFetch(routes({ health_area: { body: attrs([{ nome: "US‮ 33334444" }]) } }));
-    expect((await areas()).data.health_units[0]?.name).toBe("US [masked]");
+    expect((await areas()).data.health_units![0]?.name).toBe("US [masked]");
   });
 });
 
@@ -212,8 +212,8 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
       lon: -49.2713,
       areas: "safety",
       inside_curitiba: true,
-      health_units: [],
-      cras: [],
+      health_units: null,
+      cras: null,
       police_military: [{ battalion: "99º Batalhão", battalion_code: "99º BPM", company: "1ª Companhia", company_code: "1ª CIA", reference_date: "09/2025", source_agency: "PMPR TESTE" }],
       police_civil: [{ district: "99º Distrito Policial", district_code: "99º DP", division: "Divisão Teste", source_agency: "PCPR TESTE" }],
       fire: [{ platoon: "Pelotão Teste", platoon_code: "9ª Pel. BM", company: "Companhia Teste", battalion: "Batalhão Teste", source_agency: "CBMPR TESTE" }],
@@ -235,7 +235,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("a refusal on the Polícia Civil layer is partial (the fire layer is then not asked), never a failed call", async () => {
     const calls = stubFetch(safetyRoutes({ civil_district: { body: '{"error":{"code":403}}' } }));
     const out = await areas({ ...AT, areas: "safety" });
-    expect(out.data).toMatchObject({ partial: true, police_civil: [], fire: [] });
+    expect(out.data).toMatchObject({ partial: true, police_civil: null, fire: null });
     expect(out.data.police_military).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the Polícia Civil and fire layer could not be read now\. The source refused this server/);
     expect(calls.map((c) => c.url)).not.toContain(key("fire_platoon").slice(4));
@@ -244,7 +244,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("a failing fire layer alone is partial and keeps the other areas", async () => {
     stubFetch(safetyRoutes({ fire_platoon: { status: 500 } }));
     const out = await areas({ ...AT, areas: "safety" });
-    expect(out.data).toMatchObject({ partial: true, fire: [] });
+    expect(out.data).toMatchObject({ partial: true, fire: null });
     expect(out.data.police_civil).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the fire layer could not be read now\. The host was busy or failing/);
   });
@@ -321,7 +321,7 @@ describe("service_areas_at_point errors", () => {
   ])("a CRAS layer failing with %s after the health layer was read is partial", async (_, r) => {
     stubFetch(routes({ cras_territory: r }));
     const out = await areas();
-    expect(out.data).toMatchObject({ cras: [], partial: true });
+    expect(out.data).toMatchObject({ cras: null, partial: true });
     expect(out.data.health_units).toHaveLength(1);
     expect(out.note).toMatch(/Partial: the CRAS layer could not be read now/);
   });
@@ -329,7 +329,7 @@ describe("service_areas_at_point errors", () => {
   it("a refusal on the CRAS layer is partial and says the host is not asked for 10 minutes", async () => {
     stubFetch(routes({ cras_territory: { body: '{"error":{"code":499,"message":"Token Required"}}' } }));
     const out = await areas();
-    expect(out.data).toMatchObject({ cras: [], partial: true });
+    expect(out.data).toMatchObject({ cras: null, partial: true });
     expect(out.note).toMatch(/refused this server; it is not asked again for 10 minutes/);
   });
 });

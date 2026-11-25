@@ -23,8 +23,10 @@ Curitiba point, so a client calls one tool instead of three and tools/list gets 
    not a budget cut (else the budget cut, `rate_limited`).
 3. **Removed from tools/list**: `service_areas_at_point`, `census_at_point`. Their code stays as the parts
    (`serviceAreasAt`, `censusAt`); `MIN_HOUSEHOLDS` = 20 and the withholding are unchanged (ADR 0009).
-4. **Budget wording**: the place and care parts name a time-budget cut with `missingNote`, as safety and census did.
-5. **Docs and version**: README (tool table, empty `CURITIBAI_REMOTE_DATA` line), docs/tools.md, docs/privacy.md,
+4. **Null, not empty, when not read**: the five area lists (group not asked, or layer not read) and `place.zoning`
+   (layer failed); empty means read and none covers the point.
+5. **Budget wording**: the place and care parts name a time-budget cut with `missingNote`, as safety and census did.
+6. **Docs and version**: README (tool table, empty `CURITIBAI_REMOTE_DATA` line), docs/tools.md, docs/privacy.md,
    ADR 0011, CHANGELOG 0.32.0 (breaking), version 0.32.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
@@ -36,7 +38,8 @@ New layers or fields; changes to the host gate's limits; publishing; tags.
 - `test/placeFacade.test.ts`: each `include` combination asks only its layers, first layer of each part first; a cold
   call reads every part's first layer and the budget cuts later layers (exact request order); a part past the budget
   is null with `partial` and the note; a point outside Curitiba answers `inside_curitiba` false in every part; a
-  sector of 19 or 0 households stays withheld through the facade; every part failing is `source_unavailable`.
+  sector of 19 or 0 households stays withheld through the facade; every part failing is `source_unavailable`; with
+  `areas: "all"`, care failing gives null care lists and real safety lists, safety failing the reverse, both an error.
 - `test/placeAtPoint.test.ts`, `test/serviceAreasAtPoint.test.ts`, `test/censusAtPoint.test.ts`: the old behaviour
   through `place_at_point` with one part in `include`.
 - `test/contracts.test.ts`: the rewritten snapshot; every description at most 400 characters, the sum at most 9,600.

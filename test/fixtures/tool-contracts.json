@@ -3754,55 +3754,62 @@
                       "description": "The point touches more than one neighbourhood; `bairro` is the first by name."
                     },
                     "zoning": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "description": "Zone code as published (sg_zona), e.g. \"ZR4\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "name": {
-                            "description": "Zone name as published (nm_zona).",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "law": {
-                            "description": "Law or decree as published (legislacao).",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "version": {
-                            "description": "Version date of the zoning map as published (data_versao), e.g. \"2020-08\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "layer": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991,
-                            "description": "41 (zoning with Decree 297/2026 areas) or 36 (zoning, Lei 15.511/2019) when 41 has nothing here."
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "description": "Zone code as published (sg_zona), e.g. \"ZR4\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "description": "Zone name as published (nm_zona).",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "law": {
+                                "description": "Law or decree as published (legislacao).",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "description": "Version date of the zoning map as published (data_versao), e.g. \"2020-08\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "layer": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "41 (zoning with Decree 297/2026 areas) or 36 (zoning, Lei 15.511/2019) when 41 has nothing here."
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name",
+                              "law",
+                              "version",
+                              "layer"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "code",
-                          "name",
-                          "law",
-                          "version",
-                          "layer"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "Zones containing the point (distinct, at most 5; two on a boundary)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read."
                     },
                     "nearest_street": {
                       "anyOf": [
@@ -3832,7 +3839,7 @@
                     },
                     "partial": {
                       "type": "boolean",
-                      "description": "True when the zoning or street layer could not be read; that part is empty or null."
+                      "description": "True when the zoning or street layer could not be read; that field is then null."
                     },
                     "source": {
                       "type": "string"
@@ -3880,283 +3887,318 @@
                         "safety",
                         "all"
                       ],
-                      "description": "Which areas were asked; the lists of a group not asked are empty."
+                      "description": "Which areas were asked."
                     },
                     "inside_curitiba": {
                       "type": "boolean",
                       "description": "True when the first layer asked (health unit area, or Polícia Militar company for `safety`) or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
                     },
                     "health_units": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "description": "Health unit (unidade de saúde) whose area covers the point, e.g. \"US MÃE CURITIBANA\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "district": {
-                            "description": "Sanitary district (distrito sanitário), e.g. \"MATRIZ\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "reference_date": {
-                            "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "source_agency": {
-                            "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "approximate": {
-                            "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
-                            "type": [
-                              "boolean",
-                              "null"
-                            ]
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "description": "Health unit (unidade de saúde) whose area covers the point, e.g. \"US MÃE CURITIBANA\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "district": {
+                                "description": "Sanitary district (distrito sanitário), e.g. \"MATRIZ\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reference_date": {
+                                "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source_agency": {
+                                "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approximate": {
+                                "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "district",
+                              "reference_date",
+                              "source_agency",
+                              "approximate"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "name",
-                          "district",
-                          "reference_date",
-                          "source_agency",
-                          "approximate"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "Health unit areas containing the point (distinct, by name, at most 3; empty when none)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`care`: health unit areas containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "cras": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "description": "CRAS whose territory covers the point, e.g. \"MATRIZ\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "type": {
-                            "description": "Type as published (`tipo`), e.g. \"CRAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "regional": {
-                            "description": "Regional (administrative region) as published (`regional`), e.g. \"MATRIZ\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "reference_date": {
-                            "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "source_agency": {
-                            "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "approximate": {
-                            "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
-                            "type": [
-                              "boolean",
-                              "null"
-                            ]
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "description": "CRAS whose territory covers the point, e.g. \"MATRIZ\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "type": {
+                                "description": "Type as published (`tipo`), e.g. \"CRAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "regional": {
+                                "description": "Regional (administrative region) as published (`regional`), e.g. \"MATRIZ\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reference_date": {
+                                "description": "The area's reference date as published (`data`), e.g. \"março/2022\" or \"MAR-2019\"; the area may have changed since.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source_agency": {
+                                "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "approximate": {
+                                "description": "`geometriaaproximada` as published: true when the area's outline is marked approximate; null when unset.",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "type",
+                              "regional",
+                              "reference_date",
+                              "source_agency",
+                              "approximate"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "name",
-                          "type",
-                          "regional",
-                          "reference_date",
-                          "source_agency",
-                          "approximate"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "CRAS territories containing the point (distinct, by name, at most 3; empty when none)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`care`: CRAS territories containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "police_military": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "battalion": {
-                            "description": "Battalion as published (`nm_batalhao`), e.g. \"12º Batalhão\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "battalion_code": {
-                            "description": "`sg_batalhao`, e.g. \"12º BPM\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "company": {
-                            "description": "Company as published (`nm_companhia`), e.g. \"1ª Companhia\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "company_code": {
-                            "description": "`sg_companhia`, e.g. \"1ª CIA\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "reference_date": {
-                            "description": "`data_atualizacao` as published, e.g. \"09/2025\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "source_agency": {
-                            "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "battalion": {
+                                "description": "Battalion as published (`nm_batalhao`), e.g. \"12º Batalhão\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "battalion_code": {
+                                "description": "`sg_batalhao`, e.g. \"12º BPM\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "company": {
+                                "description": "Company as published (`nm_companhia`), e.g. \"1ª Companhia\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "company_code": {
+                                "description": "`sg_companhia`, e.g. \"1ª CIA\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reference_date": {
+                                "description": "`data_atualizacao` as published, e.g. \"09/2025\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source_agency": {
+                                "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "battalion",
+                              "battalion_code",
+                              "company",
+                              "company_code",
+                              "reference_date",
+                              "source_agency"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "battalion",
-                          "battalion_code",
-                          "company",
-                          "company_code",
-                          "reference_date",
-                          "source_agency"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "`safety`: Polícia Militar company areas containing the point (at most 3)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`safety`: Polícia Militar company areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "police_civil": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "district": {
-                            "description": "Police district as published (`nm_distrito`), e.g. \"3º Distrito Policial\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "district_code": {
-                            "description": "`sg_distrito`, e.g. \"3º DP\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "division": {
-                            "description": "`nm_divisao`, e.g. \"Divisão Policial da Capital\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "source_agency": {
-                            "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "district": {
+                                "description": "Police district as published (`nm_distrito`), e.g. \"3º Distrito Policial\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "district_code": {
+                                "description": "`sg_distrito`, e.g. \"3º DP\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "division": {
+                                "description": "`nm_divisao`, e.g. \"Divisão Policial da Capital\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source_agency": {
+                                "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "district",
+                              "district_code",
+                              "division",
+                              "source_agency"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "district",
-                          "district_code",
-                          "division",
-                          "source_agency"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "`safety`: Polícia Civil district areas containing the point (at most 3)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`safety`: Polícia Civil district areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "fire": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "platoon": {
-                            "description": "Fire platoon as published (`pelotao`), e.g. \"Pelotão de Bombeiro Central\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "platoon_code": {
-                            "description": "`sigla`, e.g. \"1ª Pel. BM\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "company": {
-                            "description": "`companhia`, e.g. \"3º Companhia de Bombeiros\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "battalion": {
-                            "description": "`batalhao`, e.g. \"1° Batalhão de Bombeiro Militar - Curitiba\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "source_agency": {
-                            "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "platoon": {
+                                "description": "Fire platoon as published (`pelotao`), e.g. \"Pelotão de Bombeiro Central\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "platoon_code": {
+                                "description": "`sigla`, e.g. \"1ª Pel. BM\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "company": {
+                                "description": "`companhia`, e.g. \"3º Companhia de Bombeiros\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "battalion": {
+                                "description": "`batalhao`, e.g. \"1° Batalhão de Bombeiro Militar - Curitiba\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source_agency": {
+                                "description": "Agency named by the area (`fonte`), e.g. \"SMS-PMC\" or \"Fundação de Ação Social - FAS\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "platoon",
+                              "platoon_code",
+                              "company",
+                              "battalion",
+                              "source_agency"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "platoon",
-                          "platoon_code",
-                          "company",
-                          "battalion",
-                          "source_agency"
-                        ],
-                        "additionalProperties": false
-                      },
-                      "description": "`safety`: fire platoon areas containing the point (at most 3)."
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`safety`: fire platoon areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "partial": {
                       "type": "boolean",
-                      "description": "True when a later layer (CRAS; or Polícia Civil or fire) could not be read; its list is then empty."
+                      "description": "True when a layer of a group asked could not be read; its list is then null."
                     },
                     "source": {
                       "type": "string"

@@ -106,12 +106,31 @@ describe("place_at_point include", () => {
     expect(out.notes.join(" ")).toMatch(/reference_date/);
   });
 
-  it("areas all with the safety group failing keeps the care areas and still says all", async () => {
+  it("areas all with the safety group failing: care lists as read, safety lists null (not read), partial", async () => {
     stubFetch({ ...routes(), [key("pm_company")]: { status: 500 } });
     const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
-    expect(out.data.service_areas).toMatchObject({ areas: "all", health_units: [{ name: "US TESTE" }], police_military: [], partial: true });
+    // The failure is remembered by the host gate, so the CRAS layer after it is not read either: null, not empty.
+    expect(out.data.service_areas).toMatchObject({
+      areas: "all", health_units: [{ name: "US TESTE" }], cras: null, police_military: null, police_civil: null, fire: null, partial: true,
+    });
     expect(out.data.partial).toBe(true);
     expect(out.notes.join(" ")).toMatch(/the service areas \(safety\) part was not read/);
+  });
+
+  it("areas all with the care group failing: care lists null (not read), safety lists as read, partial", async () => {
+    stubFetch(routes());
+    await facade({ ...AT, include: ["service_areas"], areas: "safety" });
+    stubFetch({ ...routes(), [key("health_area")]: { status: 500 } });
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({
+      areas: "all", health_units: null, cras: null, police_military: [{ company: "1ª Companhia" }], police_civil: [{ district: "99º Distrito Policial" }], fire: [{ platoon: "Pelotão Teste" }], partial: true,
+    });
+    expect(out.notes.join(" ")).toMatch(/the service areas \(care\) part was not read/);
+  });
+
+  it("areas all with both groups failing is an error, as before", async () => {
+    stubFetch({ ...routes(), [key("health_area")]: { status: 500 } });
+    expect(errorOf((await callAll({ ...AT, include: ["service_areas"], areas: "all" }))[0]!)).toMatchObject({ error: "source_unavailable" });
   });
 
   it.each([[{ include: [] }], [{ include: ["voters"] }], [{ areas: "everything" }]])("refuses %j", async (over) => {

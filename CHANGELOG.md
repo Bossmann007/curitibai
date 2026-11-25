@@ -16,11 +16,14 @@ One place facade for 1.0 (owner approval 2026-11-24). 28 → 26 tools. Publishes
   call budget ([ADR 0011](docs/adr/0011-one-place-facade.md)). A cold call with every part makes about 5 requests and is
   `partial`; a part cut by the budget is null with a note, never a guess. When no part answers, the call fails as
   the single tools did.
+- A list or zoning that was not read is now null, never empty: the five area lists of `service_areas` (null for a
+  group not asked, or a layer not read, also with `areas: "all"` when one group is not read) and `place.zoning`
+  when its layer could not be read. Empty still means the layer was read and nothing covers the point.
 - A later layer cut by the call's time budget now says so ("the call's time budget ran out") in the place and care
   areas notes too; before, they said the host was busy or failing.
 - Privacy rules unchanged: only the rounded point is sent; census sectors under 20 households stay withheld
   ([ADR 0009](docs/adr/0009-census-household-floor.md)).
-- tools/list: 116,799 → 115,040 characters; descriptions 9,593 → 8,842 of the 9,600 ceiling. The new description no
+- tools/list: 116,799 → 115,691 characters; descriptions 9,593 → 8,842 of the 9,600 ceiling. The new description no
   longer says "never logged", "not a certificate" or "untrusted data"; docs/tools.md lists them, and `notes` carries
   the last two in every answer.
 - README: an empty `CURITIBAI_REMOTE_DATA` (some MCP clients pass empty variables) stops the server with the

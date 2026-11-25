@@ -52,12 +52,12 @@ const placeResult = z.object({
     bairro: z.string().nullable(),
     regional: z.string().nullable(),
     boundary: z.boolean().describe("The point touches more than one neighbourhood; `bairro` is the first by name."),
-    zoning: z.array(Zone).describe("Zones containing the point (distinct, at most 5; two on a boundary)."),
+    zoning: z.array(Zone).nullable().describe("Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read."),
     nearest_street: z
       .object({ name: z.string(), distance_m: z.number().int() })
       .nullable()
       .describe(`Nearest street line within ${STREET_RADIUS_M} m, straight-line distance; null when none.`),
-    partial: z.boolean().describe("True when the zoning or street layer could not be read; that part is empty or null."),
+    partial: z.boolean().describe("True when the zoning or street layer could not be read; that field is then null."),
   }),
   source: z.string(),
   source_url: z.string().url(),
@@ -127,7 +127,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
     missing.push(part);
     errors.push(err);
   };
-  let zoning: ZoneOut[] = [];
+  let zoning: ZoneOut[] | null = [];
   let street: { name: string; distance_m: number } | null = null;
   if (inside) {
     try {
@@ -141,6 +141,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
       }
     } catch (err) {
       failed("zoning", err);
+      zoning = null;
     }
     try {
       const s = await reads.layer("street");
@@ -153,7 +154,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
   const extra = [
     inside ? "" : "No Curitiba neighbourhood contains this point (it may be in a neighbouring city); nothing else was asked.",
     b.boundary ? "The point is on a neighbourhood boundary; `bairro` is the first by name." : "",
-    zoning.length > 1 ? "The point touches more than one zone (a boundary)." : "",
+    (zoning?.length ?? 0) > 1 ? "The point touches more than one zone (a boundary)." : "",
     missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now. ${missingNote(errors)}` : "",
   ].filter(Boolean);
   return {
@@ -267,7 +268,7 @@ export async function placeFacade(p: Point, include: readonly Part[], areas: "ca
   const answered = (part: Part) => jobs.flatMap((j, i) => (j.part === part && settled[i]!.status === "fulfilled" ? [settled[i]!.value] : []));
   const [place] = answered("place") as PlaceResult[];
   const [first, second] = answered("service_areas") as AreasResult[];
-  // With `areas: "all"` and one group not read, the answer still says "all": its empty lists were asked, not answered.
+  // With `areas: "all"` and one group not read, the answer still says "all"; that group's lists stay null (not read).
   const areasResult = second ? mergeAreas(first!, second) : first && areas === "all" ? { ...first, data: { ...first.data, areas, partial: true } } : first;
   const [census] = answered("census") as CensusResult[];
   const parts = [place, areasResult, census].filter((r) => r !== undefined);
