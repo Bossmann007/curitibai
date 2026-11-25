@@ -2,6 +2,39 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.49.0 - 2026-11-25
+
+Police stations with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: four new `type`s read live from IPPUC's GeoCuritiba urban-equipment layers, with the same
+  fields, filters, host gate, cache and phone and e-mail allowlist as the other layers: `delegacia` (aliases
+  `delegacias`, `delegacia de policia`, `delegacias de policia`, `delegacia da policia civil`, `delegacias da policia
+  civil`, `policia civil`, `distrito policial`, `distritos policiais`), layer 143 "Polícia Civil" (49 units when read
+  on 2026-11-25: the 13 district delegacias, specialised delegacias, the Centros Integrados de Atendimento ao Cidadão
+  and divisions and support units); `policia federal` (alias `superintendencia da policia federal`), layer 146 (1
+  record); `policia rodoviaria federal` (aliases `prf`, `superintendencia da policia rodoviaria federal`), layer 147 (1
+  record); `policia cientifica` (aliases `policia cientifica do parana`, `unidade de execucao tecnico cientifica`,
+  `unidades de execucao tecnico cientifica`), layer 145 (3 records). No bare `policia`, `pf`, `dp` or `iml` alias.
+- Every note for these types starts "Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia
+  Rodoviária Federal). This tool lists places, it does not file police reports." All three numbers are in the
+  "Emergências" section of the Instituto Municipal de Turismo's "Telefones Úteis" page as read on 2026-11-22 (not read
+  again). The `delegacia` note says being listed does not mean a unit takes reports from the public (call before
+  going), that the 24-hour flag and `hours` do not always agree, names the Polícia Civil do Paraná's Delegacia
+  Eletrônica for online reports without a link (no Polícia Civil host is on the link allowlist) and points to
+  `places_search` for Polícia Militar units.
+- E-mails: the layers publish `pc.pr.gov.br`, `pf.gov.br` and `prf.gov.br` addresses; the e-mail allowlist
+  (`curitiba.pr.gov.br` only) and the phone allowlist are unchanged, so `emails` is empty for every police record.
+- Descriptions: `places_search` now says to prefer it only for fire stations or when other place tools find nothing,
+  and points to `city_facilities_search` for delegacias with hours; `city_facilities_search` names delegacias, and its
+  `type` description names the four types and points to `places_search` for fire stations and Polícia Militar units
+  (snapshot updated). `places_search` and its bundled OSM police list are unchanged otherwise.
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
+  Nine hand requests to it that day (robots.txt, one whole-layer read and the metadata of each layer), recorded in
+  [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
+- Citizen eval: new q127 ("Qual o endereço e o horário da delegacia do Tatuquara?") answered by
+  `city_facilities_search` `delegacia` with `bairro`, on a synthetic fixture: the delegacia's name, address, hours,
+  phone and the note. 123 of 127 answered. The Curitiba App table has no row for these places and is unchanged.
+
 ## 0.48.0 - 2026-11-25
 
 Guarda Municipal modules and regional núcleos, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

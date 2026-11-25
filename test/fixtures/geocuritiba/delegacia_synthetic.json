@@ -1,0 +1,84 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "99º Distrito Policial da Capital",
+        "nome_completo": "Delegacia do 99º Distrito Policial da Capital",
+        "nome_rua": "R. INVENTADA DO SUL",
+        "num_pred": "1430",
+        "compl_end": "CEP: 81.000-143",
+        "divulgar_endereco": "Sim",
+        "bairro": "Tatuquara",
+        "regional": "Tatuquara",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1431",
+        "email": "dp99.inventado@pc.pr.gov.br",
+        "dt_atualiz": 1757559600000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h30 às 18h"
+      },
+      "geometry": {
+        "x": -49.32,
+        "y": -25.56
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Grupo Tático Inventado",
+        "nome_completo": "Grupo Tático Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "1432",
+        "compl_end": "",
+        "divulgar_endereco": "Sim",
+        "bairro": "Portão",
+        "regional": "Portão",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1432",
+        "email": "gti.inventado@pc.pr.gov.br",
+        "dt_atualiz": 1706151600000,
+        "observacao": "Emergência, ligue 190.\r\nAtendimento:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": {
+        "x": -49.29,
+        "y": -25.47
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 3,
+        "nome": "Serviço de Apoio Inventado",
+        "nome_completo": "Serviço de Apoio Inventado",
+        "nome_rua": "R. INVENTADA DO LESTE",
+        "num_pred": "1433",
+        "compl_end": "",
+        "divulgar_endereco": "Sim",
+        "bairro": "Hauer",
+        "regional": "Boqueirão",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1433",
+        "email": null,
+        "dt_atualiz": 1706151600000,
+        "observacao": null
+      },
+      "geometry": {
+        "x": -49.25,
+        "y": -25.48
+      }
+    }
+  ]
+}

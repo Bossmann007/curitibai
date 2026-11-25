@@ -675,6 +675,78 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/type `modulo da guarda`/);
   });
 
+  it.each([
+    ["Delegacia", "delegacia", 143],
+    ["delegacias de polícia", "delegacia", 143],
+    ["Polícia Civil", "delegacia", 143],
+    ["distrito policial", "delegacia", 143],
+    ["Polícia Federal", "policia federal", 146],
+    ["PRF", "policia rodoviaria federal", 147],
+    ["Polícia Rodoviária Federal", "policia rodoviaria federal", 147],
+    ["Polícia Científica", "policia cientifica", 145],
+  ] as const)("v0.49.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.49.0: bare \"policia\", \"pf\", \"dp\", \"iml\", \"policia militar\" and \"delegacia eletronica\" are not types", () => {
+    for (const name of ["policia", "polícia", "pf", "dp", "iml", "policia militar", "delegacia eletronica", "boletim de ocorrencia"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it("v0.49.0: a delegacia by bairro comes back with hours as published, institutional e-mail dropped, the 190/197/191 lead note", async () => {
+    const calls = stubFetch(route("delegacia", "delegacia_synthetic.json"));
+    const out = await search({ type: "delegacia", bairro: "tatuquara" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/143`);
+    expect(out.data).toMatchObject({ type: "delegacia", label: "Polícia Civil", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Delegacia do 99º Distrito Policial da Capital",
+      address: "R. INVENTADA DO SUL, 1430 - CEP: 81.000-143",
+      bairro: "Tatuquara",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 18h"],
+      open_periods: { morning: true, afternoon: true, night: false, all_day: false },
+      phones: ["(41) 3333-1431"],
+      emails: [],
+      updated: "2025-09-11",
+    });
+    expect(out.note.startsWith(
+      "Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia Rodoviária Federal). This tool lists places, it does not file police reports.",
+    )).toBe(true);
+    expect(out.note).toMatch(/being listed does not mean a unit takes reports from the public/);
+    expect(out.note).toMatch(/Delegacia Eletrônica \(not linked by this tool\)/);
+    expect(out.note).toMatch(/`places_search`/);
+    expect(out.note).not.toMatch(/https?:|192|SAMU/);
+  });
+
+  it("v0.49.0: a unit whose 24-hour flag disagrees with its hours, and one with no hours, come back as published", async () => {
+    stubFetch(route("delegacia", "delegacia_synthetic.json"));
+    const out = await search({ type: "delegacias da policia civil" });
+    expect(out.data.total).toBe(3);
+    const tatico = out.data.items.find((i: { name: string }) => i.name === "Grupo Tático Inventado");
+    expect(tatico).toMatchObject({
+      hours: ["Emergência, ligue 190.", "Atendimento:", "-Diariamente, 24 horas"],
+      open_periods: { all_day: false },
+    });
+    const apoio = out.data.items.find((i: { name: string }) => i.name === "Serviço de Apoio Inventado");
+    expect(apoio).toMatchObject({ hours: [], emails: [] });
+    expect(out.note).toMatch(/they do not always agree/);
+  });
+
+  it.each([
+    ["policia federal", "policia_federal_synthetic.json", 146, ["(41) 3333-1461", "(41) 3333-1460"], /Polícia Federal's office/],
+    ["policia rodoviaria federal", "policia_rodoviaria_federal_synthetic.json", 147, ["(41) 3333-1470"], /On a federal highway, call 191/],
+    ["policia cientifica", "policia_cientifica_synthetic.json", 145, ["(41) 3333-1450"], /does not mean a unit serves the public at the desk/],
+  ] as const)("v0.49.0: %s comes back with hours, phones, no e-mail and the lead note", async (type, file, layer, phones, noteRe) => {
+    stubFetch(route(type, file));
+    const out = await search({ type });
+    expect(out.source_url).toBe(`${EQUIPMENT}/${layer}`);
+    expect(out.data.items[0]).toMatchObject({ phones, emails: [] });
+    expect(out.data.items[0]?.hours[0]).toBe("Atendimento:");
+    expect(out.note.startsWith("Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191")).toBe(true);
+    expect(out.note).toMatch(noteRe);
+  });
+
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
     const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
     const out = await search({ type: "UBS", name: "caximba" });

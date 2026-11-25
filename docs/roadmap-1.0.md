@@ -165,3 +165,9 @@ At v0.48.0 (phase B) `city_facilities_search` `modulo da guarda` and `nucleo da 
 with 153 (Guarda Municipal) or 190 (Polícia Militar) and says the tool does not dispatch help. 18 Curitiba App rows, 16
 covered (7 data, 9 guide). The citizen eval answers 122 of 126 questions; 4 are gaps (real-time buses 2, other
 cities 2).
+
+At v0.49.0 (phase B) `city_facilities_search` `delegacia`, `policia federal`, `policia rodoviaria federal` and
+`policia cientifica` read IPPUC's layers 143, 146, 147 and 145 (49, 1, 1 and 3 records), with hours as published;
+every answer starts with 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia Rodoviária Federal) and says the
+tool does not file police reports. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 123 of
+127 questions; 4 are gaps (real-time buses 2, other cities 2).
