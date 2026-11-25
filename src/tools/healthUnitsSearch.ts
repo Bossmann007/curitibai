@@ -85,8 +85,9 @@ export const healthUnitsSearch: ToolDef<typeof healthUnitsSearchInput, typeof he
   name: "health_units_search",
   title: "Search Curitiba public health units (CNES)",
   description:
-    "Find active public-administration health units in Curitiba (Ministry of Health CNES open API) by name or " +
-    "unit type: CNES code, name, type, address, neighbourhood, CEP, phone, management sphere. Up to 20 s per call. " +
+    "Find active public-administration health units in Curitiba (Ministry of Health CNES API) by name or " +
+    "unit type: CNES code, name, type, address, neighbourhood, CEP, phone, management sphere. No hours: for " +
+    "municipal UBS, city_facilities_search \"unidade de saude\". Up to 20 s per call. " +
     "No position: for units near me use city_points_search with near; for vaccines, vaccination_sites_search. " +
     "Read-only.",
   inputSchema: healthUnitsSearchInput,

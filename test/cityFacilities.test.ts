@@ -344,6 +344,46 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/confirm with the 156/);
   });
 
+  const HEALTH_LAYER = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer/134";
+  it.each(["unidade de saúde", "UBS", "posto de saúde", "postos de saude", "unidade básica de saúde", "unidade basica", "unidades básicas"])(
+    "v0.44.0: %s maps to the health unit layer 134",
+    (input) => {
+      expect(resolveType(input)).toMatchObject({ id: "unidade de saude", label: "Unidade de Saúde", layerUrl: HEALTH_LAYER });
+    },
+  );
+
+  it("v0.44.0: bare \"saude\" or \"posto\" is not a type (no guess between health units, UPAs and URBS posts)", () => {
+    for (const name of ["saude", "posto", "us", "upa", "hospital"]) expect(resolveType(name)).toBeNull();
+  });
+
+  it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
+    const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
+    const out = await search({ type: "UBS", name: "caximba" });
+    expect(calls).toHaveLength(1);
+    expect(out.source).toBe("IPPUC / GeoCuritiba");
+    expect(out.source_url).toBe(HEALTH_LAYER);
+    expect(out.data).toMatchObject({ type: "unidade de saude", label: "Unidade de Saúde", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Unidade de Saúde Caximba Ficticia",
+      address: "ESTR. INVENTADA, 100 - CEP: 81.000-000",
+      bairro: "Caximba",
+      regional: "Tatuquara",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 7h às 17h", "Unidade equipada com Clínica Odontológica."],
+      open_periods: { morning: true, afternoon: true, night: false, all_day: false },
+      phones: ["(41) 3333-0134"],
+      emails: ["ouvidoria@sms.curitiba.pr.gov.br"],
+      updated: "2026-05-13",
+    });
+    expect(out.note).toMatch(/as published by the Secretaria Municipal da Saúde/);
+    expect(out.note).toMatch(/not a promise that the unit is closed or open/);
+    expect(out.note).toMatch(/192 \(SAMU\)/);
+    expect(out.note).toMatch(/`open_periods` are periods of the day, not days/);
+    expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
+    // A mobile in `telefone` is dropped, as on every layer.
+    const all = await search({ type: "unidade de saude" });
+    expect(all.data.items[1]).toMatchObject({ name: "Unidade de Saúde Vila Inventada", phones: [] });
+  });
+
   it("v0.24.0: a conservation layer reads the centroid and coded fields, says no update date is published", async () => {
     const calls = stubFetch(route("estacao ecologica", "estacao_ecologica_synthetic.json"));
     const out = await search({ type: "estação ecológica" });
