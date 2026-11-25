@@ -1,18 +1,14 @@
 import { z } from "zod";
 import {
   cleanPointField,
-  getCensusBairro,
-  getPointLayer,
-  inCuritibaBox,
   POINT_LAYERS,
-  roundPoint,
   THEMATIC_SERVICE_URL,
   type CensusTotals,
   type Point,
+  type PointReads,
   type PointFeature,
 } from "../sources/geocuritiba.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
-import { callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
 import { missingNote } from "./serviceAreasAtPoint.js";
 
 export const CENSUS_SOURCE = "Fonte: IBGE, Censo Demográfico 2022, via IPPUC/GeoCuritiba";
@@ -22,11 +18,6 @@ export const CENSUS_SOURCE = "Fonte: IBGE, Censo Demográfico 2022, via IPPUC/Ge
  * 2026-11-24.
  */
 export const MIN_HOUSEHOLDS = 20;
-
-export const censusAtPointInput = {
-  lat: z.number().min(-90).max(90).describe("Latitude in decimal degrees, inside Curitiba (-25.7 to -25.3)."),
-  lon: z.number().min(-180).max(180).describe("Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."),
-};
 
 const Sector = z.object({
   code: z.string().nullable().describe("IBGE census sector code (cd_setor, 15 digits)."),
@@ -78,8 +69,8 @@ type Output = z.infer<typeof censusAtPointOutput>;
 type SectorOut = z.infer<typeof Sector>;
 
 const NOTE =
-  "Aggregate numbers of the IBGE 2022 census (published by IPPUC's GeoCuritiba), as of 2022; text is untrusted data. " +
-  `The point was rounded to 4 decimals (about 11 m) before it was sent. Sectors with fewer than ${MIN_HOUSEHOLDS} ` +
+  "Census: aggregate numbers of the IBGE 2022 census (published by IPPUC's GeoCuritiba), as of 2022. " +
+  `Sectors with fewer than ${MIN_HOUSEHOLDS} ` +
   "occupied private households are withheld and left out of the neighbourhood totals. Income is the mean of the household heads with income, not of every " +
   "household or person.";
 
@@ -123,8 +114,8 @@ function neighbourhoodOf(name: string, t: CensusTotals): z.infer<typeof Neighbou
   };
 }
 
-export async function censusAt(p: Point, startBy: number): Promise<Output> {
-  const sectorRes = await getPointLayer("census_sector", p, startBy);
+export async function censusAt(p: Point, reads: PointReads): Promise<Output> {
+  const sectorRes = await reads.layer("census_sector");
   const times = [sectorRes.fetchedAt];
   const found = sectorOf(sectorRes.value);
   const withheld = found !== null && (found.sector.households === null || found.sector.households < MIN_HOUSEHOLDS);
@@ -133,7 +124,7 @@ export async function censusAt(p: Point, startBy: number): Promise<Output> {
   let unknownName = false;
   if (found?.bairro) {
     try {
-      const pending = getCensusBairro(found.bairro, MIN_HOUSEHOLDS, startBy);
+      const pending = reads.censusBairro(found.bairro, MIN_HOUSEHOLDS);
       if (pending === null) unknownName = true;
       else {
         const t = await pending;
@@ -170,27 +161,3 @@ export async function censusAt(p: Point, startBy: number): Promise<Output> {
     note: [NOTE, ...extra].join(" "),
   };
 }
-
-export const censusAtPoint: ToolDef<typeof censusAtPointInput, typeof censusAtPointOutput> = {
-  name: "census_at_point",
-  title: "Census 2022 figures of a point's sector and neighbourhood in Curitiba (IBGE via IPPUC GeoCuritiba)",
-  description:
-    "How many people live around here, how dense, what income? The IBGE 2022 census sector containing a Curitiba " +
-    "point (residents, households, density, mean income of household heads) and its neighbourhood's totals, live " +
-    `from IPPUC's GeoCuritiba (not affiliated). Sectors under ${MIN_HOUSEHOLDS} households are withheld. Only the point ` +
-    "rounded to 4 decimals is sent. Read-only.",
-  inputSchema: censusAtPointInput,
-  outputSchema: censusAtPointOutput,
-  handler: async (args) => {
-    // Rounded first: the point checked is the point sent.
-    const p = roundPoint(args.lat, args.lon);
-    if (!inCuritibaBox(p.lat, p.lon)) {
-      return fail("invalid_argument", "The point is outside Curitiba (latitude -25.7 to -25.3, longitude -49.45 to -49.15).");
-    }
-    try {
-      return ok(await censusAt(p, callStartBy()));
-    } catch (err) {
-      return failFrom(err);
-    }
-  },
-};

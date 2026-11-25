@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CENSUS_BAIRROS, censusBairroUrl, pointQueryUrl, roundPoint } from "../src/sources/geocuritiba.js";
-import { censusAtPointOutput } from "../src/tools/censusAtPoint.js";
-import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
+import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers with the real fields of BaseTematica layer 43 as read on 2026-11-24 (values invented).
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -28,7 +27,7 @@ afterEach(() => {
 async function call(args: Record<string, unknown>) {
   vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
   const client = await connectClient();
-  const pending = client.callTool({ name: "census_at_point", arguments: args });
+  const pending = client.callTool({ name: "place_at_point", arguments: { include: ["census"], ...args } });
   await vi.advanceTimersByTimeAsync(60_000);
   return pending;
 }
@@ -36,7 +35,7 @@ async function call(args: Record<string, unknown>) {
 async function census(args: Record<string, unknown> = AT) {
   const res = await call(args);
   expect(res.isError).toBeFalsy();
-  return censusAtPointOutput.parse(res.structuredContent);
+  return pointPart(res.structuredContent, "census");
 }
 
 describe("census_at_point query URLs", () => {
@@ -66,7 +65,7 @@ describe("census_at_point answers", () => {
   it("returns the sector and the neighbourhood totals in 2 requests, with the rounded point only", async () => {
     const calls = stubFetch(routes());
     const res = await call(AT);
-    const out = censusAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "census");
     expect(out.data).toEqual({
       lat: -25.4284,
       lon: -49.2733,

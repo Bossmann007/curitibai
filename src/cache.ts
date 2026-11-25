@@ -12,8 +12,8 @@ export interface Cached<T> {
 }
 
 /**
- * In-memory only. Keys are source URLs (plus form body), never full-precision user coordinates: place_at_point's and
- * service_areas_at_point's keys carry the point rounded to 4 decimals (about 11 m), the only precision they send.
+ * In-memory only. Keys are source URLs (plus form body), never full-precision user coordinates: place_at_point's keys
+ * carry the point rounded to 4 decimals (about 11 m), the only precision it sends.
  */
 export class TtlCache {
   private readonly entries = new Map<string, Entry<unknown>>();

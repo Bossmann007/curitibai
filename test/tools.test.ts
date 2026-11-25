@@ -17,7 +17,7 @@ describe("server info", () => {
 });
 
 describe("tools/list", () => {
-  it("lists exactly the twenty-eight read-only tools with input and output schemas", async () => {
+  it("lists exactly the twenty-six read-only tools with input and output schemas", async () => {
     const client = await connectClient();
     const { tools: listed } = await client.listTools();
     expect(listed.map((t) => t.name).sort()).toEqual([
@@ -25,7 +25,6 @@ describe("tools/list", () => {
       "bus_line_stops",
       "bus_lines_search",
       "bus_stops_near",
-      "census_at_point",
       "city_calendar",
       "city_facilities_search",
       "city_points_search",
@@ -43,7 +42,6 @@ describe("tools/list", () => {
       "places_search",
       "procurement_search",
       "river_levels",
-      "service_areas_at_point",
       "tax_reform_curitiba",
       "useful_phones",
       "vaccination_sites_search",

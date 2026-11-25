@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CADASTRAL_SERVICE_URL, pointQueryUrl, roundPoint, type PointLayer } from "../src/sources/geocuritiba.js";
-import { placeAtPointOutput } from "../src/tools/placeAtPoint.js";
-import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
+import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and zones, the real fields and shapes of the layers as read on 2026-11-23).
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -43,7 +42,7 @@ afterEach(() => {
 async function call(args: Record<string, unknown>) {
   vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
   const client = await connectClient();
-  const pending = client.callTool({ name: "place_at_point", arguments: args });
+  const pending = client.callTool({ name: "place_at_point", arguments: { include: ["place"], ...args } });
   await vi.advanceTimersByTimeAsync(60_000);
   return pending;
 }
@@ -51,7 +50,7 @@ async function call(args: Record<string, unknown>) {
 async function place(args: Record<string, unknown> = AT) {
   const res = await call(args);
   expect(res.isError).toBeFalsy();
-  return placeAtPointOutput.parse(res.structuredContent);
+  return pointPart(res.structuredContent, "place");
 }
 
 describe("place_at_point query URLs", () => {
@@ -95,7 +94,7 @@ describe("place_at_point answers", () => {
   it("returns bairro, regional, zoning from layer 41 and the nearest street, with the rounded point only", async () => {
     const calls = stubFetch(routes());
     const res = await call(AT);
-    const out = placeAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "place");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,

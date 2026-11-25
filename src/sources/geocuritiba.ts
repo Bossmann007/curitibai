@@ -630,7 +630,7 @@ export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>
   }));
 }
 
-// ---- Point queries: place_at_point (v0.22.0), service_areas_at_point (v0.23.0) ----
+// ---- Point queries: place_at_point (v0.22.0; service areas v0.23.0, one facade v0.32.0) ----
 
 /** IPPUC's cadastral map service (the GeoCuritiba/ folder: the root-level name answers 499 "Token Required"). */
 export const CADASTRAL_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer`;
@@ -766,7 +766,7 @@ export function getPointLayer(layer: PointLayer, p: Point, startBy?: number): Pr
   }, startBy === undefined ? {} : { startBy })));
 }
 
-// ---- Census 2022 by sector (census_at_point, v0.27.0) ----
+// ---- Census 2022 by sector (place_at_point census, v0.27.0) ----
 
 /**
  * The 75 neighbourhood names of the census layer (nm_bairro, IBGE spelling: "Botiatuvinha", "Tinguí"), read on
@@ -829,6 +829,31 @@ export function getCensusBairro(name: string, minHouseholds: number, startBy?: n
       sectors: count(a.sectors),
     };
   }, startBy === undefined ? {} : { startBy })));
+}
+
+/** One call's point reads (place_at_point, v0.32.0): its point, its time budget and its turn at the host gate. */
+export interface PointReads {
+  layer(layer: PointLayer): Promise<Cached<PointFeature[]>>;
+  /** Null for a neighbourhood name not in CENSUS_BAIRROS (nothing is sent). */
+  censusBairro(name: string, minHouseholds: number): Promise<Cached<CensusTotals>> | null;
+}
+
+/**
+ * Reads for one call: one request at a time, in the order the call's parts ask, so each request waits at most one gate
+ * interval (never past GEOCURITIBA_MAX_QUEUE_WAIT_MS) and the parts' first layers are asked before their later ones.
+ */
+export function pointReads(p: Point, startBy: number): PointReads {
+  let tail: Promise<unknown> = Promise.resolve();
+  const inTurn = <T>(read: () => Promise<T>): Promise<T> => {
+    const turn = tail.then(read, read);
+    tail = turn.catch(() => undefined);
+    return turn;
+  };
+  return {
+    layer: (layer) => inTurn(() => getPointLayer(layer, p, startBy)),
+    censusBairro: (name, minHouseholds) =>
+      censusBairroUrl(name, minHouseholds) === null ? null : inTurn(() => getCensusBairro(name, minHouseholds, startBy)!),
+  };
 }
 
 // ---- URBS bus stops on GeoCuritiba (bus_stops_near without the local export, v0.29.0) ----

@@ -1,5 +1,4 @@
 import { busDepartures } from "./busDepartures.js";
-import { censusAtPoint } from "./censusAtPoint.js";
 import { cityCalendar } from "./cityCalendar.js";
 import { busLineStops } from "./busLineStops.js";
 import { busLinesSearch } from "./busLinesSearch.js";
@@ -20,7 +19,6 @@ import { placeAtPoint } from "./placeAtPoint.js";
 import { placesSearch } from "./placesSearch.js";
 import { procurementSearch } from "./procurementSearch.js";
 import { riverLevels } from "./riverLevels.js";
-import { serviceAreasAtPoint } from "./serviceAreasAtPoint.js";
 import { taxReformCuritiba } from "./taxReformCuritiba.js";
 import { usefulPhones } from "./usefulPhones.js";
 import { vaccinationSitesSearch } from "./vaccinationSitesSearch.js";
@@ -53,7 +51,5 @@ export const tools = [
   guairaEvents,
   taxReformCuritiba,
   placeAtPoint,
-  serviceAreasAtPoint,
-  censusAtPoint,
   cityCalendar,
 ] as const;

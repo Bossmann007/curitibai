@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer } from "../src/sources/geocuritiba.js";
 import { OutOfTimeError } from "../src/hostGate.js";
 import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
-import { missingNote, serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
-import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";
+import { missingNote } from "../src/tools/serviceAreasAtPoint.js";
+import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and dates, the real fields and shapes of layers 19 and 5 as read on 2026-11-23).
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -43,7 +43,7 @@ afterEach(() => {
 async function call(args: Record<string, unknown>) {
   vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
   const client = await connectClient();
-  const pending = client.callTool({ name: "service_areas_at_point", arguments: args });
+  const pending = client.callTool({ name: "place_at_point", arguments: { include: ["service_areas"], ...args } });
   await vi.advanceTimersByTimeAsync(60_000);
   return pending;
 }
@@ -51,7 +51,7 @@ async function call(args: Record<string, unknown>) {
 async function areas(args: Record<string, unknown> = AT) {
   const res = await call(args);
   expect(res.isError).toBeFalsy();
-  return serviceAreasAtPointOutput.parse(res.structuredContent);
+  return pointPart(res.structuredContent, "service_areas");
 }
 
 describe("service_areas_at_point query URLs", () => {
@@ -86,7 +86,7 @@ describe("service_areas_at_point answers", () => {
   it("returns the health unit and CRAS areas with their reference dates and the rounded point only", async () => {
     const calls = stubFetch(routes());
     const res = await call(AT);
-    const out = serviceAreasAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "service_areas");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
@@ -206,7 +206,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("returns the police and fire areas in 3 requests (PM, civil, fire), no health or CRAS request", async () => {
     const calls = stubFetch(safetyRoutes());
     const res = await call({ ...AT, areas: "safety" });
-    const out = serviceAreasAtPointOutput.parse(res.structuredContent);
+    const out = pointPart(res.structuredContent, "service_areas");
     expect(out.data).toEqual({
       lat: -25.4296,
       lon: -49.2713,
@@ -310,8 +310,7 @@ describe("service_areas_at_point errors", () => {
   ])("a 499 in an HTTP 200 body on the %s layer blocks the host: place_at_point is not asked either", async (_, over, n) => {
     const calls = stubFetch(routes(over));
     expect(errorOf(await call(AT))).toMatchObject({ error: "source_unavailable", message: expect.stringMatching(/refused/) });
-    const client = await connectClient();
-    expect(errorOf(await client.callTool({ name: "place_at_point", arguments: AT }))).toMatchObject({ error: "source_unavailable" });
+    expect(errorOf(await call({ ...AT, include: ["place"] }))).toMatchObject({ error: "source_unavailable" });
     expect(calls).toHaveLength(n);
   });
 
@@ -355,10 +354,10 @@ describe("service_areas_at_point cache", () => {
     });
     vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
     const client = await connectClient();
-    const place = client.callTool({ name: "place_at_point", arguments: AT });
+    const place = client.callTool({ name: "place_at_point", arguments: { ...AT, include: ["place"] } });
     await vi.advanceTimersByTimeAsync(60_000);
     await place;
-    const pending = client.callTool({ name: "service_areas_at_point", arguments: AT });
+    const pending = client.callTool({ name: "place_at_point", arguments: { ...AT, include: ["service_areas"] } });
     await vi.advanceTimersByTimeAsync(60_000);
     expect((await pending).isError).toBeFalsy();
     expect(calls.filter((c) => c.url === key("bairro").slice(4))).toHaveLength(1);
