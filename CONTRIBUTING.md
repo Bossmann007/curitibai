@@ -9,7 +9,7 @@ Rode `scripts/verify`. Ele precisa terminar com `verify: OK` antes e depois da s
 catálogo, export da URBS, saída do coletor de eventos ou página HTML capturada entrou no git e que todo link relativo
 dos arquivos Markdown (README, `docs/` e estes guias) aponta para um arquivo e uma âncora que existem, e roda `npm ci`,
 `tsc --noEmit`, `eslint`, os testes (`vitest`), o build, um teste do servidor por stdio e os limites de tempo de
-`bus_stops_near` e `next_buses_near`. Os testes rodam sem rede: toda chamada é simulada.
+`bus_stops_near`, `next_buses_near` e `bus_route_between`. Os testes rodam sem rede: toda chamada é simulada.
 
 ## Regras
 

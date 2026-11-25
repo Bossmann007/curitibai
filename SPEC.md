@@ -1,55 +1,53 @@
-# SPEC: v0.40.0 Cultural spaces, attractions and useful phones
+# SPEC: v0.41.0 Direct bus lines between two points
 
-Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.40.0, phase B of docs/roadmap-1.0.md"). **This change publishes
-nothing**: no workflow run, no tag, no merge.
+Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.41.0, roadmap phase B: close the citizen-eval gap
+`route_planning`"). **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
 versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/adr/`.
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): turn the Curitiba App rows "Cultural spaces and attractions" and
-"Useful phones" from partial to covered where an honest source allows, reusing existing tools and sources first.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer citizen eval q111 "Qual ônibus eu pego para ir da
+Rodoferroviária até o Parque Barigui?" honestly from the data the bus tools already read.
 
-## What was missing (v0.39.1)
+## What was missing (v0.40.0)
 
-- **Cultural spaces and attractions:** `city_facilities_search` had IPPUC's Cultura layers with hours as published,
-  but no list of tourist attractions (GeoCuritiba has no such layer; `informacoes turisticas` is only the three
-  desks). Eval gaps q108 (pontos turísticos) and q109 (Ópera de Arame visiting hours).
-- **Useful phones:** `useful_phones` has the Instituto Municipal de Turismo's 60 entries, with no Ouvidoria; the
-  app's own list was never compared. Eval gap q110 (Ouvidoria Geral do Município).
+`bus_stops_near`, `next_buses_near` and `bus_line_stops` each answer part of the question, but no tool crossed the
+stops near two points or told which way a line runs. q111 was the `route_planning` gap.
 
 ## Prior art and sources checked (2026-11-25)
 
-- GeoCuritiba Equipamentos Urbanos (169 layers): Cultura group already used; Turismo group has only the desks and
-  craft fairs. Administration layers 12, 13, 16, 22: no Controladoria or Ouvidoria record.
-- URBS points export (`city_points_search`): no tourism category (hotels are excluded as private).
-- Linha Turismo site (robots.txt 404): `/atracoes-turisticas` lists nothing; `/onde-embarcar` lists 25 stops.
-- Instituto Municipal de Turismo pages (inside Visit-time): prose, no Ópera de Arame hours.
-- Central 156 site (robots.txt allows `/`): 156 and (41) 3074-6456, requests, information, denúncias, elogios; no
-  Ouvidoria-Geral phone. `www.curitiba.pr.gov.br`: 403 to non-browser clients (CGM and "fale aqui" pages unread).
+- In the repository: `stopsWithin`/`groupStops` (`src/tools/busStopsNear.ts`), `distanceM`, `loadUrbsOrFail`, the
+  bus envelope and notes (`src/tools/busCommon.ts`); reused, nothing copied.
+- Route planners with transfers and times (OpenTripPlanner, a GTFS feed, the URBS site): each needs a new host, a new
+  dependency or a source treated as disallowed; out of scope by the brief.
+- The real 2026-11-20 `pontosLinha` file: each ITINERARY_ID has one SENTIDO and one code, no itinerary repeats a SEQ,
+  40 of 695 have gaps in SEQ. So "boarding before alighting" can be read from SEQ inside one itinerary.
 
 ## Changes
 
-1. **`ponto turistico`** in `city_facilities_search`: the 25 Linha Turismo stops bundled in
-   `src/sources/linhaTurismo.ts` (`TOUR_STOPS`, page order), each with `lookup` (`{type, name}` of the GeoCuritiba
-   record that gives address, hours and phone; null for 7 streets, squares and neighbourhoods). No network call;
-   `name` filter only; listed in `list types`. New optional output field `lookup`.
-2. **Eval:** q108 → `ponto turistico`; q109 → `teatro` + `name: "opera de arame"`, expecting `open_periods` and
-   `phones` (no source publishes its hours). New fixture `teatro.json` (the real Ópera de Arame record, one invented theatre). `cultural_spaces` leaves `APP_GAPS`.
-3. **Useful phones stays partial**, with the reason in docs/tools.md; q110 and q072 unchanged.
-4. **Docs and version:** docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, README, CHANGELOG 0.40.0, version
-   0.40.0 in `package.json`, `package-lock.json`, `server.json`, tool contract snapshot.
+1. **`bus_route_between`** (`src/tools/busRouteBetween.ts`, [ADR 0013](docs/adr/0013-direct-bus-lines-between-two-points.md)):
+   `from`, `to`, `radius_m` (500 default, 1000 max), paging. Per line, the (board, alight) pair with the least
+   straight-line walking among itineraries where the board stop's SEQ is lower; `other_lines` for lines near both
+   ends in no such order. Direct lines only, not real-time. Missing file: `data_not_available`, no fallback.
+2. **Eval:** q111 → `bus_route_between`; new q120 (the way back); six invented rows of line 903 in the shared
+   synthetic `pontosLinha` fixture; `route_planning` gap gone.
+3. **Checks:** `test/busRouteBetween.test.ts`; `scripts/perf-bus-route-between.mjs` in `scripts/verify` (fails over
+   400 ms); smoke test calls the tool; tool contract snapshot.
+4. **Docs and version:** README, docs/tools.md (row, notes, Curitiba App transport row), docs/sources.md,
+   docs/local-data.md, docs/privacy.md, docs/roadmap-1.0.md, CONTRIBUTING, CHANGELOG 0.41.0, version 0.41.0 in
+   `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-Any request from the server to `linhaturismo.curitiba.pr.gov.br`; a collector for it; the Linha Turismo fare and
-timetable; an Ouvidoria phone without a readable official source; the turismo robots.txt redirect seen on 2026-11-25
-(collector unchanged).
+Transfers and integration terminals; times, fares and real-time positions; place-name input; any new host or
+dependency; the GeoCuritiba stop layer as a fallback (it has no lines per stop).
 
 ## Check
 
-- `npx vitest run test/linhaTurismo.test.ts test/cityFacilities.test.ts test/contracts.test.ts test/eval`.
-- `node scripts/eval-summary.mjs`: `answered 112 / 119`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
+- `npx vitest run test/busRouteBetween.test.ts test/contracts.test.ts test/tools.test.ts test/eval`.
+- `node scripts/eval-summary.mjs`: `answered 114 / 120`; `node scripts/coverage-report.mjs --tools docs/tools.md`:
   15 of 18 Curitiba App rows covered (7 data, 8 guide).
+- `node scripts/perf-bus-route-between.mjs`: median about 30 ms on 17,496 generated rows.
 - `scripts/verify` exits 0 on the PR head.

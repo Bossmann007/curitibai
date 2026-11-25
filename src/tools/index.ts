@@ -2,6 +2,7 @@ import { busDepartures } from "./busDepartures.js";
 import { cityCalendar } from "./cityCalendar.js";
 import { busLineStops } from "./busLineStops.js";
 import { busLinesSearch } from "./busLinesSearch.js";
+import { busRouteBetween } from "./busRouteBetween.js";
 import { busStopsNear } from "./busStopsNear.js";
 import { cityFacilitiesSearch } from "./cityFacilitiesSearch.js";
 import { cityPointsSearch } from "./cityPointsSearch.js";
@@ -42,6 +43,7 @@ export const tools = [
   busDepartures,
   busStopsNear,
   nextBusesNear,
+  busRouteBetween,
   cityPointsSearch,
   eventsSearch,
   vaccinationSitesSearch,

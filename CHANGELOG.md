@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.41.0 - 2026-11-25
+
+Route planning between two points, phase B of the 1.0 roadmap. 26 → 27 tools. Publishes nothing.
+
+- New tool `bus_route_between` ([ADR 0013](docs/adr/0013-direct-bus-lines-between-two-points.md)): `from` and `to`
+  (`{lat, lon}`), `radius_m` (default 500, at most 1000, at both ends), `limit` and `offset`. It lists the URBS lines
+  with an itinerary (same `ITINERARY_ID` in the stops file) that passes a stop near `from` before (lower `SEQ`) a
+  different stop near `to`: `line_code`, `line_name`, `direction` (SENTIDO), `itinerary_id`, `board` and `alight`
+  (`stop_number`, masked `stop_name`, straight-line `distance_m`) and `walk_m`, least walking first. Lines with an
+  itinerary that has stops near both ends but none in that order are named in `other_lines` (at most 50). When the
+  points are within twice the radius, `note` gives their straight-line distance. Direct lines only (no transfers or
+  terminals), not real-time; an empty list suggests a larger radius or a terminal. It reads the newest local
+  `pontosLinha` and `linhas` files: no network call, and a missing file is `data_not_available` as in
+  `next_buses_near` (no GeoCuritiba fallback, since that layer has no lines per stop). The two points are not sent,
+  cached, logged or returned.
+- On the real 2026-11-20 files (points from that day's URBS `pois` file), Rodoferroviária → Parque Barigui at 500 m
+  gives 979 TURISMO and the way back no line in order (979 in `other_lines`); at 1000 m, 979 and 464 one way, 464
+  back. About 31 ms per call (median, Apple M4).
+- `scripts/verify`: new timing guard `scripts/perf-bus-route-between.mjs` (17,496 generated stop rows, radius 1 km;
+  median about 30 ms, fails over 400 ms); the stdio smoke test calls the new tool. `groupStops` in
+  `src/tools/busStopsNear.ts` is now exported (no behaviour change).
+- Tool contract: the new tool's input and output schemas (snapshot updated).
+- Curitiba App table: the transport row now names the direct-line routing; still no favourites and no routing with
+  transfers.
+- Citizen eval: q111 (Rodoferroviária to Parque Barigui) moves from the `route_planning` gap to `bus_route_between`,
+  and new q120 asks the way back; the shared synthetic URBS fixture gains six invented rows of line 903 between two
+  stops placed near the two landmarks (coordinates from the URBS `pois` file, rounded to 3 decimals). 114 of 120 answered; the `route_planning` gap
+  label is gone.
+- No new network host for the server, no new dependency; the link allowlist is unchanged.
+
 ## 0.40.0 - 2026-11-25
 
 Cultural spaces and attractions, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.

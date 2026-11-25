@@ -103,7 +103,7 @@ ignored, so a file without them stays valid, and `city_services_search` does not
 
 ## Bus lines, stops, timetables and points of interest (URBS files you download)
 
-`bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near` and `city_points_search` read URBS's daily exports from the dataset "Transporte
+`bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near`, `bus_route_between` and `city_points_search` read URBS's daily exports from the dataset "Transporte
 Coletivo de Curitiba" (publisher URBS) of the Portal de Dados Abertos de Curitiba. **The server never downloads them**:
 their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automated access (see
 [docs/sources.md](sources.md)). A person downloads them in a browser:
@@ -114,7 +114,7 @@ their mirror, `dadosabertos.c3sl.ufpr.br`, is treated as disallowed for automate
    `bus_line_stops` and `bus_stops_near`), `YYYY_MM_DD_tabelaLinha.json.xz` (timetables, used by `bus_departures` and `next_buses_near`) and
    `YYYY_MM_DD_pois.json.xz` (points of interest, used by `city_points_search`). Save them into `urbs`; a tool only
    needs its own file (`bus_stops_near` needs both `pontosLinha` and `linhas`; `next_buses_near` needs those two and
-   `tabelaLinha`). Without `pontosLinha`, `bus_stops_near` lists the nearby stops from IPPUC's GeoCuritiba layer
+   `tabelaLinha`; `bus_route_between` needs `pontosLinha` and `linhas`). Without `pontosLinha`, `bus_stops_near` lists the nearby stops from IPPUC's GeoCuritiba layer
    instead (since 0.29.0), with no lines per stop, no `line_code` filter and no update date; `CURITIBAI_REMOTE_DATA=0`
    turns that off (since 0.30.0).
 3. Decompress them there: `xz -d ~/curitibai-data/urbs/*.json.xz` (this leaves `YYYY_MM_DD_linhas.json` and so on;

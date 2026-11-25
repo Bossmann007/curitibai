@@ -89,7 +89,7 @@ export interface Stop {
 }
 
 /** Rows grouped by stop NUM. Stops without coordinates in any row are left out (they cannot be placed). */
-function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
+export function groupStops(rows: readonly Ponto[]): Map<string, Stop> {
   const stops = new Map<string, Stop>();
   const pending = new Map<string, Map<string, { cod: string; sentido: string }>>(); // lines seen before a coordinate
   for (const r of rows) {

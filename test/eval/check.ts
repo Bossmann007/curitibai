@@ -45,6 +45,7 @@ export const RESULT_PATH: Record<string, string | string[]> = {
   bus_departures: "data.items",
   bus_stops_near: "data.items",
   next_buses_near: "data.items",
+  bus_route_between: "data.items",
   city_points_search: "data.items",
   city_facilities_search: ["data.items", "data.types"], // "list types" answers in data.types
   events_search: "data.items",
