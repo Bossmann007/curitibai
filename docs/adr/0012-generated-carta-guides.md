@@ -26,7 +26,7 @@ That copy is text saved from a web page: untrusted.
 - **Carta text is quoted data.** It goes only to `title` (after a fixed prefix), `carta.matches` and `carta_text`
   (category, what, who, how, documents, channels, cost; the last five are new optional fields of the copy). Each field
   is cleaned: control and format characters removed, entities decoded and then tags and `<`/`>` removed, Markdown links
-  reduced to their text, every link-like token (with a scheme, `www.`, or a bare host) that is not an https link on an
+  reduced to their text and other brackets removed, every link-like token (with a scheme, `www.`, or a bare host) that is not an https link on an
   allowed host replaced by "[link removido]", e-mail, phone and CPF/CNPJ shapes masked, cut at 300 code points (titles at 120).
 - **Marked as generated.** `data.generated` holds the Carta id, the copy's capture date and `reviewed_by_hand: false`;
   `checked_at` is the copy's date; `license_note` attributes the text to the Prefeitura.

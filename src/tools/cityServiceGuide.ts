@@ -618,7 +618,7 @@ const WHAT_LABEL = /^\s*o\s+que\s+(?:é|e|são|sao)(?![\p{L}\p{N}\p{M}])\s*\??\s
 /**
  * Carta text is untrusted (a file the user saved from a web page). Control characters become spaces and format
  * characters (bidi, zero width) are removed; entities are decoded and then every tag and stray "<" or ">" removed; a
- * Markdown link keeps its text; every link-like token that is not an https link on an allowed host becomes
+ * Markdown link keeps its text and every other "[" or "]" is removed; every link-like token that is not an https link on an allowed host becomes
  * "[link removido]" (an allowed one is emitted normalized); then cleanField collapses whitespace, masks e-mail, phone
  * and CPF/CNPJ shapes and cuts at `max` code points.
  */
@@ -627,6 +627,8 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   t = decodeEntities(t).replace(/\p{Cc}/gu, " ").replace(/\p{Cf}/gu, "");
   t = t.replace(/<[^>]*>/g, " ").replace(/[<>]/g, " ");
   t = t.replace(MD_LINK, (_m, text: string, url: string) => `${text} ${url}`);
+  // No bracket survives, so no Markdown link (nested, reference-style) can form again; markers are added after this.
+  t = t.replace(/[[\]]/g, " ");
   t = t.replace(URL_TOKEN, (tok) => {
     const link = tok.replace(/[.,;:!?]+$/, "");
     const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);

@@ -295,7 +295,7 @@ elicitation message (which names the Carta id, not the title). The consent steps
 `documents`, `channels` and `cost` ([Local data files](local-data.md#finding-a-city-service-carta-de-serviços)), each
 null when absent or empty. Each field is untrusted text, cleaned before it is returned: control and format (bidi,
 zero-width) characters removed, entities decoded and then every tag and stray `<` or `>` removed, a Markdown link
-reduced to its text, every link-like token (`scheme://...`, `www....`, `javascript:`, `data:`, `mailto:` and similar,
+reduced to its text and every other `[` or `]` removed, every link-like token (`scheme://...`, `www....`, `javascript:`, `data:`, `mailto:` and similar,
 or a bare host followed by a path or a common top-level domain, such as `exemplo.com`) that is not an https link on an
 allowed host replaced by `[link removido]` (an allowed one is returned normalized), e-mail, phone and CPF/CNPJ shapes
 masked as in `city_services_search`, and the text cut at 300 code points (the title at 120), never inside a link or a
