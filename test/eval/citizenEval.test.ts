@@ -28,7 +28,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Runs the handler on fake timers, advancing in 1 s steps until it settles (the host gates space requests 5 s apart). */
+/**
+ * Runs the handler with the clock fixed at NOW. Only Date, setTimeout and clearTimeout are fake: file reads and other
+ * real I/O progress on the real event loop (setImmediate stays real), so the loop yields to it first, and moves fake
+ * time to the next timer only when one is pending (the host gates space requests 5 s apart). No fixed tick budget: a
+ * slow disk under a loaded suite only takes longer, bounded by the test timeout.
+ */
 async function run(tool: (typeof tools)[number], args: Record<string, unknown>): Promise<CallToolResult> {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
   vi.setSystemTime(NOW);
@@ -38,8 +43,10 @@ async function run(tool: (typeof tools)[number], args: Record<string, unknown>):
   const call = (tool.handler as (a: unknown) => Promise<CallToolResult>)(parsed).finally(() => {
     settled = true;
   });
-  for (let i = 0; i < 120 && !settled; i++) await vi.advanceTimersByTimeAsync(1_000);
-  if (!settled) throw new Error(`${tool.name} did not settle within 120 fake seconds`);
+  while (!settled) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    if (!settled && vi.getTimerCount() > 0) await vi.advanceTimersToNextTimerAsync();
+  }
   return call;
 }
 
