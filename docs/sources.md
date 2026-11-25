@@ -1023,7 +1023,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
   "das 7h às 17h" 6, "das 8h às 17h" 1, "das 7h às 22h" 1), then notes such as "Unidade equipada com Clínica
   Odontológica."; no Saturday hours are published. `telefone` is a landline for 103 units; 6 publish only a mobile
   number, dropped by the phone allowlist. `email` is `ouvidoria@sms.curitiba.pr.gov.br` for all 109 (kept: a
-  curitiba.pr.gov.br subdomain). Unit names are place names, some honouring a person as public homage (e.g. a law
+  curitiba.pr.gov.br subdomain; the `note` says it is the SMS Ouvidoria's, not the unit's own). Unit names are place names, some honouring a person as public homage (e.g. a law
   named in `observacao`); no staff or patient data is in the fields read. The read was parsed offline by the server's
   own parser (0 records skipped) and not kept; the test fixture is synthetic. Hours are returned as published text,
   never parsed into a promise: the type's `note` says a day not listed is not published as open, which is not a

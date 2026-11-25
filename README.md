@@ -138,7 +138,7 @@ nightly GitHub workflow publishes (cached 1 hour; `CURITIBAI_REMOTE_DATA=0` turn
 | Transport | `bus_stops_near` | Stops near a point and the lines that serve each one | Local (URBS files); without them, stops only from GeoCuritiba (live) |
 | Transport | `next_buses_near` | The next published departures at the stops near a point | Local (URBS files) |
 | Transport | `bus_route_between` | Direct bus lines (no transfers) from stops near one point to stops near another | Local (URBS files) |
-| Health | `health_units_search` | Public-administration health units in Curitiba (CNES); no hours (`city_facilities_search` `unidade de saude` has them) | Live (Ministry of Health) |
+| Health | `health_units_search` | Public-administration health units in Curitiba (CNES); no hours (municipal UBS hours: `city_facilities_search` `unidade de saude`) | Live (Ministry of Health) |
 | Health | `vaccination_sites_search` | Public vaccination sites with hours and vaccines, by distance | Live (Imuniza Já page) |
 | City | `city_services_search` | Prefeitura services from the Carta de Serviços | Local (your copy) |
 | City | `city_service_guide` | Steps and official links to use 156, Saúde Já, IPTU, Cartão Transporte, Agenda Online, creche, Detran-PR, Curitiba Lê Digital, EstaR parking, Defesa Civil alerts on the phone, the Vale-Creche law or the Ouvidoria's channels (no phone is published), or a guide generated from your Carta copy for any other Carta service; the citizen acts, with consent at every step | Bundled, plus links and text from your Carta copy |

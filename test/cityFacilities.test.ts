@@ -345,7 +345,7 @@ describe("city_facilities_search", () => {
   });
 
   const HEALTH_LAYER = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer/134";
-  it.each(["unidade de saúde", "UBS", "posto de saúde", "postos de saude", "unidade básica de saúde", "unidade basica"])(
+  it.each(["unidade de saúde", "UBS", "posto de saúde", "postos de saude", "unidade básica de saúde", "unidade basica", "unidades básicas"])(
     "v0.44.0: %s maps to the health unit layer 134",
     (input) => {
       expect(resolveType(input)).toMatchObject({ id: "unidade de saude", label: "Unidade de Saúde", layerUrl: HEALTH_LAYER });
@@ -377,6 +377,8 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/as published by the Secretaria Municipal da Saúde/);
     expect(out.note).toMatch(/not a promise that the unit is closed or open/);
     expect(out.note).toMatch(/192 \(SAMU\)/);
+    expect(out.note).toMatch(/`open_periods` are periods of the day, not days/);
+    expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
     // A mobile in `telefone` is dropped, as on every layer.
     const all = await search({ type: "unidade de saude" });
     expect(all.data.items[1]).toMatchObject({ name: "Unidade de Saúde Vila Inventada", phones: [] });

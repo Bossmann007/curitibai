@@ -23,12 +23,13 @@ cited, like the other GeoCuritiba layers). No new host. Details:
 ## Changes
 
 1. **Type** `unidade de saude` in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), layer 134, aliases `unidades de
-   saude`, `ubs`, `unidade basica`, `unidade basica de saude`, `unidades basicas de saude`, `posto de saude`,
+   saude`, `ubs`, `unidade basica`, `unidades basicas`, `unidade basica de saude`, `unidades basicas de saude`, `posto de saude`,
    `postos de saude` (not the bare `saude` or `posto`), and a type `note`: hours as published by the SMS, a day not
-   listed is not a promise either way, check before going (unit's phone or the 156), emergencies 192 or a UPA. Same
+   listed is not a promise either way, `open_periods` are not days, check before going (unit's phone when given, or
+   the 156), the ouvidoria@ e-mail is the SMS Ouvidoria's, no UPAs or hospitals, emergencies 192 or a UPA. Same
    query, fields, host gate, cache and phone and e-mail allowlist as the other urban-equipment layers.
 2. **Descriptions**: `city_facilities_search` names health units (tool) and `unidade de saude`, `ubs`, `posto de
-   saude` (`type`); `health_units_search` says it has no hours and names `city_facilities_search` `unidade de saude`.
+   saude` (`type`); `health_units_search` says it has no hours and names `city_facilities_search` `unidade de saude` for municipal UBS.
    Both within 400 characters. Tool contract snapshot updated.
 3. **Eval**: q122 "A unidade de saúde do Caximba abre no sábado?" → `city_facilities_search` `{type: "unidade de
    saude", name: "caximba"}`, with the synthetic fixture `test/fixtures/geocuritiba/unidade_de_saude_synthetic.json`.

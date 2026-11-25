@@ -7,19 +7,20 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Municipal health units with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
 
 - `city_facilities_search`: new `type` `unidade de saude` (aliases `unidades de saude`, `ubs`, `unidade basica`,
-  `unidade basica de saude`, `unidades basicas de saude`, `posto de saude`, `postos de saude`; not the bare `saude`
+  `unidades basicas`, `unidade basica de saude`, `unidades basicas de saude`, `posto de saude`, `postos de saude`; not the bare `saude`
   or `posto`), read live from IPPUC's GeoCuritiba urban-equipment layer 134 "Unidade de Saúde" (109 records when read
   on 2026-11-25, all with `divulgar_endereco` "Sim" and their hours in `observacao`, such as "2ª a 6ª feira, das 7h às
   17h"; `dt_atualiz` 2025 or 2026). Same fields, filters, host gate, cache and phone and e-mail allowlist as the other
   layers: 6 of the 109 units publish only a mobile number, which is dropped. Hours are returned as published text,
   never read as a promise: the type's `note` says a day not listed is not published as open, which is not a promise
-  that the unit is closed or open, to check by the unit's phone or the 156 before going, and that emergencies go to
-  192 (SAMU) or a UPA. The layer has no UPAs or hospitals.
-- `health_units_search` (CNES) is unchanged and its description now says it has no hours and points to
-  `city_facilities_search` `unidade de saude`; the `city_facilities_search` description names health units and the
+  that the unit is closed or open, that `open_periods` are periods of the day and not days, to check by the unit's
+  phone when one is given or the 156 before going, that an ouvidoria@ e-mail (every record has
+  `ouvidoria@sms.curitiba.pr.gov.br`) is the SMS Ouvidoria's and not the unit's own, that UPAs and hospitals are not
+  in the layer, and that emergencies go to 192 (SAMU) or a UPA.
+- `health_units_search` (CNES) is unchanged and its description now says it has no hours and points municipal UBS
+  to `city_facilities_search` `unidade de saude`; the `city_facilities_search` description names health units and the
   `type` description names `unidade de saude`, `ubs` and `posto de saude` (snapshot updated). To stay within 400
-  characters the tool description no longer names the Ruas da Cidadania (still in the `type` description and
-  `list types`).
+  characters the tool description no longer names libraries (still in the `type` description and `list types`).
 - No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
   Three hand requests that day (robots.txt, the layer's metadata, one whole-layer read), recorded in
   [docs/sources.md](docs/sources.md). The link allowlist is unchanged.

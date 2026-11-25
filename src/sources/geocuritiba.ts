@@ -30,8 +30,10 @@ const CONSERVATION_NOTE =
 /** Health units (v0.44.0): hours are the Secretaria Municipal da Saúde's text, never read as a promise. */
 const HEALTH_UNIT_NOTE =
   "Health unit hours are as published by the Secretaria Municipal da Saúde (see `updated`): a day not listed is not " +
-  "published as open, which is not a promise that the unit is closed or open; check before going, by the unit's " +
-  "phone or the 156. Not for emergencies: call 192 (SAMU) or go to a UPA.";
+  "published as open, which is not a promise that the unit is closed or open; `open_periods` are periods of the day, " +
+  "not days. Check before going, by the unit's phone when one is given, or the 156. An ouvidoria@ e-mail is the SMS " +
+  "Ouvidoria's, not the unit's own. Only municipal health units: no UPAs or hospitals. Not for emergencies: call 192 " +
+  "(SAMU) or go to a UPA.";
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -154,7 +156,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   // `observacao`). health_units_search (CNES) has no hours; this layer has no UPAs or hospitals.
   {
     ...equipment("unidade de saude", 134, "Unidade de Saúde", [
-      "unidades de saude", "ubs", "unidade basica", "unidade basica de saude", "unidades basicas de saude",
+      "unidades de saude", "ubs", "unidade basica", "unidades basicas", "unidade basica de saude", "unidades basicas de saude",
       "posto de saude", "postos de saude",
     ]),
     note: HEALTH_UNIT_NOTE,
