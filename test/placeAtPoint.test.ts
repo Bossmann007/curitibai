@@ -124,7 +124,7 @@ describe("place_at_point answers", () => {
   it("a point with no bairro (a neighbouring city) is an answer with nulls and makes one request", async () => {
     const calls = stubFetch(routes({ bairro: { body: EMPTY } }));
     const out = await place();
-    expect(out.data).toMatchObject({ inside_curitiba: false, bairro: null, regional: null, zoning: [], nearest_street: null, partial: false });
+    expect(out.data).toMatchObject({ inside_curitiba: false, bairro: null, regional: null, zoning: null, nearest_street: null, partial: false });
     expect(calls).toHaveLength(1);
   });
 

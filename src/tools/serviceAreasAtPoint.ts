@@ -56,7 +56,8 @@ const FireArea = z.object({
   source_agency: sourceAgency,
 });
 
-const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
+const UNREAD_FIRST = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
+const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`).";
 
 export const serviceAreasAtPointOutput = z.object({
   data: z.object({
@@ -69,9 +70,9 @@ export const serviceAreasAtPointOutput = z.object({
         "True when the first layer asked (health unit area, or Polícia Militar company for `safety`) or a Curitiba " +
           "neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked.",
       ),
-    health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD}`),
+    health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     cras: z.array(CrasArea).nullable().describe(`\`care\`: CRAS territories containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD}`),
-    police_military: z.array(PoliceMilitaryArea).nullable().describe(`\`safety\`: Polícia Militar company areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
+    police_military: z.array(PoliceMilitaryArea).nullable().describe(`\`safety\`: Polícia Militar company areas containing the point (at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     police_civil: z.array(PoliceCivilArea).nullable().describe(`\`safety\`: Polícia Civil district areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     fire: z.array(FireArea).nullable().describe(`\`safety\`: fire platoon areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     partial: z.boolean().describe("True when a layer of a group asked could not be read; its list is then null."),
@@ -198,7 +199,7 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
     times.push(bairroRes.fetchedAt);
     inside = insideCuritiba(bairroRes.value);
   }
-  let cras: CrasOut[] | null = [];
+  let cras: CrasOut[] | null = null;
   let failure: unknown = null;
   if (inside) {
     try {
@@ -207,7 +208,6 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
       cras = crasOf(c.value);
     } catch (err) {
       failure = err;
-      cras = null;
     }
   }
   const partial = failure !== null;
@@ -265,7 +265,7 @@ async function safetyAreasAt(p: Point, reads: PointReads): Promise<Output> {
   const missing: string[] = [];
   const errors: unknown[] = [];
   async function later<T>(layer: "civil_district" | "fire_platoon", label: string, read: (f: PointFeature[]) => T[]): Promise<T[] | null> {
-    if (!inside) return [];
+    if (!inside) return null;
     try {
       const r = await reads.layer(layer);
       times.push(r.fetchedAt);

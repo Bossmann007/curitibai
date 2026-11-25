@@ -52,7 +52,7 @@ const placeResult = z.object({
     bairro: z.string().nullable(),
     regional: z.string().nullable(),
     boundary: z.boolean().describe("The point touches more than one neighbourhood; `bairro` is the first by name."),
-    zoning: z.array(Zone).nullable().describe("Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read."),
+    zoning: z.array(Zone).nullable().describe("Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read or was not asked (outside Curitiba)."),
     nearest_street: z
       .object({ name: z.string(), distance_m: z.number().int() })
       .nullable()
@@ -127,7 +127,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
     missing.push(part);
     errors.push(err);
   };
-  let zoning: ZoneOut[] | null = [];
+  let zoning: ZoneOut[] | null = null;
   let street: { name: string; distance_m: number } | null = null;
   if (inside) {
     try {
@@ -233,6 +233,12 @@ function jobsFor(include: readonly Part[], areas: "care" | "safety" | "all", p: 
   });
 }
 
+/** Each group decides `inside_curitiba` from its own first layer, so near the city limit the two can differ. */
+const disagree = (care: AreasResult, safety: AreasResult): string =>
+  care.data.inside_curitiba === safety.data.inside_curitiba
+    ? ""
+    : `Near the city limit: only the ${care.data.inside_curitiba ? "care" : "safety"} group found the point inside Curitiba; the other group's later layers were not asked (null).`;
+
 /** Care and safety answered together: one areas object with both groups' lists, credits and notes. */
 function mergeAreas(care: AreasResult, safety: AreasResult): AreasResult {
   return {
@@ -249,7 +255,7 @@ function mergeAreas(care: AreasResult, safety: AreasResult): AreasResult {
     source_url: care.source_url,
     checked_at: care.checked_at < safety.checked_at ? care.checked_at : safety.checked_at,
     license_note: care.license_note,
-    note: `${care.note} ${safety.note}`,
+    note: [care.note, safety.note, disagree(care, safety)].filter(Boolean).join(" "),
   };
 }
 

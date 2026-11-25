@@ -170,11 +170,29 @@ describe("place_at_point outside Curitiba and privacy", () => {
   it("a point in the box but in no Curitiba layer answers inside_curitiba false in every part, one request each", async () => {
     const calls = stubFetch(routes({ bairro: EMPTY, health_area: EMPTY, census_sector: EMPTY }));
     const out = await facade(AT);
-    expect(out.data.place).toMatchObject({ inside_curitiba: false, bairro: null, zoning: [] });
-    expect(out.data.service_areas).toMatchObject({ inside_curitiba: false, health_units: [], cras: [] });
+    expect(out.data.place).toMatchObject({ inside_curitiba: false, bairro: null, zoning: null });
+    expect(out.data.service_areas).toMatchObject({ inside_curitiba: false, health_units: [], cras: null });
     expect(out.data.census).toMatchObject({ inside_curitiba: false, sector: null });
     expect(out.data.partial).toBe(false);
     expect(calls.map((c) => `GET ${c.url}`)).toEqual([key("bairro"), key("health_area"), key("census_sector")]);
+  });
+
+  it("outside Curitiba with areas all, every list not asked is null and the first layer of each group is empty", async () => {
+    stubFetch(routes({ bairro: EMPTY, health_area: EMPTY, pm_company: EMPTY }));
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({
+      areas: "all", inside_curitiba: false, health_units: [], cras: null, police_military: [], police_civil: null, fire: null, partial: false,
+    });
+    expect(out.data.partial).toBe(false);
+  });
+
+  it("areas all near the city limit: when only care finds the point inside, the safety lists not asked are null and a note says why", async () => {
+    stubFetch(routes({ bairro: EMPTY, pm_company: EMPTY }));
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({
+      inside_curitiba: true, health_units: [{ name: "US TESTE" }], cras: [{ name: "CRAS TESTE" }], police_military: [], police_civil: null, fire: null, partial: false,
+    });
+    expect(out.notes.join(" ")).toMatch(/only the care group found the point inside Curitiba; the other group's later layers were not asked \(null\)/);
   });
 
   it("a point outside the box is refused without a request", async () => {
