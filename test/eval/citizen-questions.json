@@ -110,7 +110,7 @@
   {"id":"q109","question":"Qual o horário de visita da Ópera de Arame?","tool":"city_facilities_search","args":{"type":"teatro","name":"opera de arame"},"expect":{"status":"ok","fields":["data.items.0.open_periods","data.items.0.phones"]}},
   {"id":"q110","question":"Qual o telefone da Ouvidoria Geral do Município?","tool":null,"gap":"useful_phones"},
   {"id":"q111","question":"Qual ônibus eu pego para ir da Rodoferroviária até o Parque Barigui?","tool":"bus_route_between","args":{"from":{"lat":-25.437,"lon":-49.257},"to":{"lat":-25.422,"lon":-49.308}},"expect":{"status":"ok","fields":["data.items.0.line_code","data.items.0.board.stop_number","data.items.0.alight.stop_number","data.items.0.direction"]}},
-  {"id":"q112","question":"Como peço o Vale Creche?","tool":null,"gap":"vale_creche"},
+  {"id":"q112","question":"Como peço o Vale Creche?","tool":"city_service_guide","args":{"service":"vale_creche"},"expect":{"status":"guide","fields":["data.steps","data.title"]}},
   {"id":"q113","question":"Qual a previsão do tempo em São Paulo amanhã?","tool":null,"gap":"other_city","tags":["outside_curitiba"]},
   {"id":"q114","question":"Como pago o IPTU em São José dos Pinhais?","tool":null,"gap":"other_city","tags":["outside_curitiba"]},
   {"id":"q115","question":"Como peço a licença sintética online da Prefeitura? Quem pode pedir e quanto custa?","tool":"city_service_guide","args":{"carta_id":9008},"expect":{"status":"guide","fields":["data.steps","data.title","data.generated.captured","data.carta_text.who","data.carta_text.cost"]}},
@@ -118,5 +118,6 @@
   {"id":"q117","question":"Como tiro a segunda via de documento sintético na Prefeitura?","tool":"city_service_guide","args":{"carta_id":9004},"expect":{"status":"guide","fields":["data.steps","data.carta_text.what"]}},
   {"id":"q118","question":"Como emito a guia do IPTU inventado para teste?","tool":"city_service_guide","args":{"carta_id":9009},"expect":{"status":"guide","fields":["data.steps","data.title"]}},
   {"id":"q119","question":"Abre para mim o serviço online da licença sintética","tool":"city_service_guide","args":{"carta_id":9008,"open_step":3},"expect":{"status":"guide","fields":["data.open_step.url","data.title"]}},
-  {"id":"q120","question":"E para voltar do Parque Barigui até a Rodoferroviária, qual ônibus?","tool":"bus_route_between","args":{"from":{"lat":-25.422,"lon":-49.308},"to":{"lat":-25.437,"lon":-49.257}},"expect":{"status":"ok","fields":["data.items.0.line_code","data.items.0.direction"]}}
+  {"id":"q120","question":"E para voltar do Parque Barigui até a Rodoferroviária, qual ônibus?","tool":"bus_route_between","args":{"from":{"lat":-25.422,"lon":-49.308},"to":{"lat":-25.437,"lon":-49.257}},"expect":{"status":"ok","fields":["data.items.0.line_code","data.items.0.direction"]}},
+  {"id":"q121","question":"Como eu peço o Vale-Creche pro meu filho de 2 anos?","tool":"city_service_guide","args":{"service":"vale_creche"},"expect":{"status":"guide","fields":["data.steps","data.title"]}}
 ]

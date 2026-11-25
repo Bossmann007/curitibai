@@ -2,6 +2,32 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.42.0 - 2026-11-25
+
+Vale-Creche, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_service_guide`: new hand-written guide `vale_creche`, written from Lei municipal nº 16.492 of 2025-03-11
+  (Programa Voucher Educacional "Vale-Creche"), read on 2026-11-25 from the SME's PDF on
+  `mid-educacao.curitiba.pr.gov.br` (robots.txt 404; an official act, Lei 9.610/1998 art. 8 IV). It says, without
+  promising the voucher, that the law is for children of 0 to 3 years on the creche waiting list, in exceptional
+  cases; that the family cannot choose between voucher and place and the SME decides; the law's priorities (income up
+  to 3 state minimum wages, registered in the SME's online system, social vulnerability); and that the value is set
+  every year by decree. It states no value. Steps: the Carta page, the law's PDF, the Educação portal, the `creche`
+  guide for the waiting list (no separate application is described in the law) and the Central 156. Its `note` says
+  what was not verified (whether the program is open in 2026, the value, deadlines and how families are called).
+- New optional `fromDocument` on a hand-written guide: `checked_at` and a licence note naming the document it was
+  written from, so this guide's envelope says neither "official sites checked 2026-11-24" nor "web search".
+- The `creche` guide gets `notFor: ["vale"]`, so a Carta title "Vale-Creche" routes to `vale_creche`; Carta words
+  `vale` + `creche`, both mirrored in `scripts/coverage-report.mjs`.
+- Tool contract: one new `service` value (snapshot updated).
+- No new network host; the link allowlist is unchanged (`mid-educacao.curitiba.pr.gov.br` is in the Prefeitura's zone).
+- Two hand requests on 2026-11-25 broke this project's robots rules by mistake (an `educacao.curitiba.pr.gov.br` page
+  outside its Visit-time, and a page on `servicos.curitiba.pr.gov.br`, which is `Disallow: /`); both were deleted
+  unread and nothing from them is used. Recorded in [docs/sources.md](docs/sources.md).
+- Citizen eval: q112 ("Como peço o Vale Creche?") moves from the `vale_creche` gap to the guide, and new q121 asks it
+  for a child of 2; 116 of 121 answered; the `vale_creche` gap label is gone. Curitiba App table: the creche row names
+  the new guide (still 15 of 18 rows covered).
+
 ## 0.41.0 - 2026-11-25
 
 Route planning between two points, phase B of the 1.0 roadmap. 26 → 27 tools. Publishes nothing.

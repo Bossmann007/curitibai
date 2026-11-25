@@ -128,6 +128,61 @@ describe("host allowlist", () => {
   ])("refuses %s", (url) => expect(isAllowedUrl(url)).toBe(false));
 });
 
+describe("Vale-Creche guide (since 0.42.0)", () => {
+  async function guide() {
+    const res = await cityServiceGuideResult("vale_creche", undefined, null, undefined);
+    if (!res.ok) throw new Error(res.message);
+    return cityServiceGuideOutput.parse(res.payload);
+  }
+  const text = (o: Output) =>
+    [o.data.title, o.data.what, o.note, o.license_note, ...allSteps(o).map((s) => `${s.action} ${s.consent ?? ""}`)].join(" ");
+
+  it("names the law and its date, never states a value and never promises the voucher", async () => {
+    const o = await guide();
+    const t = text(o);
+    expect(t).toMatch(/16\.492/);
+    expect(t).toMatch(/11 de março de 2025|2025-03-11/);
+    expect(t).not.toMatch(/R\$|reais/i);
+    expect(t).not.toMatch(/\d{3,}[.,]\d{2}/);
+    expect(o.data.what).toMatch(/não promete o vale/);
+    expect(o.data.what).toMatch(/Secretaria Municipal da Educação \(SME\)/);
+    expect(allSteps(o)[1]!.action).toMatch(/sem prometer o vale/);
+    expect(allSteps(o)[1]!.action).toMatch(/A família não escolhe entre o vale e a vaga/);
+  });
+
+  it("the note says what was not verified; the envelope names the law, not web search", async () => {
+    const o = await guide();
+    expect(o.note).toMatch(/Not verified here: whether the program is open in 2026, the voucher's value/);
+    expect(o.note).toMatch(/was not read/);
+    expect(o.note).toMatch(/Never promise the voucher or state a value/);
+    expect(o.checked_at).toBe("2026-11-25");
+    expect(o.license_note).toMatch(/from Lei municipal 16\.492 of 2025-03-11/);
+    expect(o.license_note).toMatch(/Lei 9\.610\/1998, art\. 8, IV/);
+    expect(o.license_note).not.toMatch(/web search/);
+    expect(o.license_note).toMatch(/Unofficial; not affiliated/);
+  });
+
+  it("links the law PDF, the Educação portal and the Central 156; sends to the creche guide for the waiting list", async () => {
+    const o = await guide();
+    const fixed = allSteps(o).filter((s) => s.link_source === "official_allowlist" && s.url !== CITY_SERVICES_SOURCE_URL);
+    expect(fixed.map((s) => s.url)).toEqual([
+      "https://mid-educacao.curitiba.pr.gov.br/2025/4/pdf/00517415.pdf",
+      "https://educacao.curitiba.pr.gov.br/",
+      "https://156.curitiba.pr.gov.br/",
+    ]);
+    expect(allSteps(o).some((s) => !s.needs_consent && /service "creche"/.test(s.action))).toBe(true);
+    // Nothing is typed or sent: the law describes no application of its own.
+    expect(allSteps(o).every((s) => s.citizen_types_on_site.length === 0)).toBe(true);
+  });
+
+  it("Carta words: a Vale-Creche title gets this guide, not creche; other creche titles keep creche", () => {
+    expect(handWrittenFor("Vale-Creche")).toBe("vale_creche");
+    expect(handWrittenFor("Programa Vale Creche sintético")).toBe("vale_creche");
+    expect(handWrittenFor("Cadastro para vaga em creche sintético")).toBe("creche");
+    expect(handWrittenFor("Vale-transporte sintético")).toBeUndefined();
+  });
+});
+
 describe("guide invariants (every guide, with and without the Carta copy, and generated guides)", () => {
   it("every step that opens a link or has the citizen type data needs consent and says what happens", async () => {
     for (const o of await everyOutput()) {

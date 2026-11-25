@@ -32,10 +32,12 @@ export const GUIDE_TERMS = {
   le_digital: [["le", "digital"]],
   estar: [["estar", "estacionamento", "regulamentado"], ["est", "r", "estacionamento", "regulamentado"]],
   defesa_civil: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
+  vale_creche: [["vale", "creche"]],
 };
 
 /** city_service_guide's notFor words (GUIDES[id].notFor; a test keeps them equal): such a title skips that guide. */
 export const GUIDE_NOT_FOR = {
+  creche: ["vale"],
   estar: [
     "aviso", "avisos", "irregularidade", "irregularidades", "recurso", "recursos", "notificacao", "notificacoes",
     "multa", "multas", "defesa", "credencial", "credenciais",
