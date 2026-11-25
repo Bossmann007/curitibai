@@ -9,7 +9,7 @@ import {
   URBS_SUBDIR,
   type Poi,
 } from "../sources/urbs.js";
-import { MASK, OBJECT_MAX_CHARS } from "../sources/pncp.js";
+import { MASK, OBJECT_MAX_CHARS } from "../mask.js";
 import { PORTAL_DISCLAIMER } from "../sources/portal.js";
 import { fold } from "../text.js";
 import { busEnvelope, isFailure, loadUrbsOrFail, page, pagingInput, skippedRowsOutput } from "./busCommon.js";

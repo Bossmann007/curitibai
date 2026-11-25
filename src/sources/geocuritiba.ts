@@ -2,7 +2,7 @@ import { TtlCache, type Cached } from "../cache.js";
 import { blockHost, fetchText, SourceUnavailableError } from "../http.js";
 import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
-import { fold } from "../text.js";
+import { fold, isObject } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
 
 /** IPPUC's GeoCuritiba ArcGIS REST services (anonymous GET; robots.txt 404 when checked on 2026-11-21). */
@@ -531,8 +531,6 @@ function bikeRecord(a: Record<string, unknown>, g: Record<string, unknown> | nul
     paths,
   };
 }
-
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /**
  * Reads one ArcGIS query answer (f=json). Fails closed (source_unavailable) on anything that is not a complete WGS84

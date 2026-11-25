@@ -1,6 +1,7 @@
 import { TtlCache, type Cached } from "../cache.js";
 import { createHostGate, type HostGateOptions } from "../hostGate.js";
 import { fetchText, SourceUnavailableError } from "../http.js";
+import { isObject } from "../text.js";
 
 /**
  * Receita Federal "calculadora de tributos do consumo" (CBS/IBS), open-data routes of the pilot API. Paths from
@@ -73,10 +74,6 @@ export function receitaLicenseNote(sourceUrl: string, fetchedAt: string): string
     "under the MIT licence; no terms of use for the hosted API were found. Unofficial; not affiliated with Receita Federal " +
     "or Prefeitura de Curitiba."
   );
-}
-
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v : null);

@@ -12,7 +12,7 @@ import {
   URBS_STOPS_PAGE_SIZE,
   urbsStopsPageUrl,
 } from "../src/sources/geocuritiba.js";
-import { MASK } from "../src/sources/pncp.js";
+import { MASK } from "../src/mask.js";
 import { REMOTE_DATA_ENV } from "../src/sources/publishedData.js";
 import { busStopsNearOutput } from "../src/tools/busStopsNear.js";
 import { connectClient, errorOf, stubFetch, type Route } from "./helpers.js";

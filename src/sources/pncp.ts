@@ -3,9 +3,6 @@ import { fetchText, RateLimitedError, REFUSAL_BLOCK_MS, SourceRefusedError, Sour
 import { createHostGate, OutOfTimeError, underOwnBudget, type HostGateOptions } from "../hostGate.js";
 import { maskObject } from "../mask.js";
 
-// Re-exported: the masking moved to src/mask.ts (no imports) so scripts/fetch-events.mjs can load it too.
-export { MASK, maskObject, OBJECT_MAX_CHARS, OBJECT_MAX_RAW_CHARS } from "../mask.js";
-
 export const PNCP_CONSULTA = "https://pncp.gov.br/api/consulta";
 /** Curitiba, 7-digit IBGE code (PNCP's `codigoMunicipioIbge`). */
 export const CURITIBA_IBGE7 = "4106902";
