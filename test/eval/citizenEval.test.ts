@@ -39,6 +39,7 @@ async function run(tool: (typeof tools)[number], args: Record<string, unknown>):
     settled = true;
   });
   for (let i = 0; i < 120 && !settled; i++) await vi.advanceTimersByTimeAsync(1_000);
+  if (!settled) throw new Error(`${tool.name} did not settle within 120 fake seconds`);
   return call;
 }
 

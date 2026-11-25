@@ -27,10 +27,10 @@ export interface Question {
 }
 
 /**
- * Where each tool puts its answer list (or count): empty there means not_found. A tool with no entry always answers
- * something (a calendar, a rule, a guide); a list path is checked by `fields` instead.
+ * Where each tool puts its answer list (or count): empty at every path given means not_found. A tool with no entry
+ * always answers something (a calendar, a rule, a guide); its content is checked by `fields`.
  */
-export const RESULT_PATH: Record<string, string> = {
+export const RESULT_PATH: Record<string, string | string[]> = {
   open_datasets_search: "data.datasets",
   dataset_files: "data.files",
   health_units_search: "data.units",
@@ -46,6 +46,7 @@ export const RESULT_PATH: Record<string, string> = {
   bus_stops_near: "data.items",
   next_buses_near: "data.items",
   city_points_search: "data.items",
+  city_facilities_search: ["data.items", "data.types"], // "list types" answers in data.types
   events_search: "data.items",
   vaccination_sites_search: "data.items",
   useful_phones: "data.items",
@@ -80,7 +81,12 @@ export interface Observed {
 export function observe(tool: string, res: CallToolResult): Observed {
   if (res.isError) {
     const first = res.content?.[0];
-    const body = first?.type === "text" ? (JSON.parse(first.text) as { error: string; message?: string }) : { error: "unknown" };
+    let body: { error: string; message?: string } = { error: "unknown" };
+    try {
+      if (first?.type === "text") body = JSON.parse(first.text) as typeof body;
+    } catch {
+      body = { error: "not_json", message: first?.type === "text" ? first.text : "" };
+    }
     if (body.error === "invalid_argument" && /outside Curitiba/i.test(body.message ?? "")) return { status: "outside_curitiba", error: body.error };
     return { status: "error", error: body.error };
   }
@@ -90,9 +96,9 @@ export function observe(tool: string, res: CallToolResult): Observed {
     const place = at(structured, "data.place");
     if (place && at(place, "inside_curitiba") === false) return { status: "outside_curitiba", structured };
   }
-  const path = RESULT_PATH[tool];
-  const found = path === undefined ? true : at(structured, path);
-  return { status: isEmpty(found) || found === 0 ? "not_found" : "ok", structured };
+  const paths = RESULT_PATH[tool];
+  const found = paths === undefined ? [true] : [paths].flat().map((p) => at(structured, p));
+  return { status: found.every((v) => isEmpty(v) || v === 0) ? "not_found" : "ok", structured };
 }
 
 /** Every mismatch between what a question expects and what its tool returned; empty when the shape holds. */

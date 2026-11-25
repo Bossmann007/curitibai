@@ -85,7 +85,9 @@ Shape only, never exact text. `test/eval/citizenEval.test.ts` runs every questio
 (synthetic fixtures, one fixed clock, every request stubbed): the tool exists, the arguments pass its input schema
 with no unknown key, and the answer has the shape. A question no tool answers yet has `tool: null` and a `gap` label
 (`le_digital`, `defesa_civil`, `estar`, `realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows
-not covered, and others); gaps are counted, not failed. `node scripts/eval-summary.mjs` prints the one-line count
+not covered, and others); gaps are counted, not failed. A question tagged
+`outside_curitiba` to a tool with no city check of its own (a bus stop or a feira near a point in São Paulo) expects
+`not_found`; `place_at_point` refuses such a point and expects `outside_curitiba`. `node scripts/eval-summary.mjs` prints the one-line count
 that `scripts/verify` shows. Closing a gap means a tool, its fixture and the question moved from `tool: null` to that
 tool in the same pull request.
 

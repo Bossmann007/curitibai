@@ -94,7 +94,7 @@
   {"id":"q093","question":"Em que bairro de Curitiba fica a Praça da Sé, em São Paulo?","tool":"place_at_point","args":{"lat":-23.5503,"lon":-46.6339},"expect":{"status":"outside_curitiba","error":"invalid_argument"},"tags":["outside_curitiba"]},
   {"id":"q094","question":"Qual o zoneamento de um terreno em Ponta Grossa?","tool":"place_at_point","args":{"lat":-25.095,"lon":-50.162,"include":["place"]},"expect":{"status":"outside_curitiba","error":"invalid_argument"},"tags":["outside_curitiba"]},
   {"id":"q095","question":"Quais os feriados de 2026 em Curitiba?","tool":"city_calendar","args":{},"expect":{"status":"ok","fields":["data.days"]}},
-  {"id":"q096","question":"Quando vence o IPTU de 2026?","tool":"city_calendar","args":{"topic":"iptu"},"expect":{"status":"ok"}},
+  {"id":"q096","question":"Quando vence o IPTU de 2026?","tool":"city_calendar","args":{"topic":"iptu"},"expect":{"status":"ok","fields":["data.cash_due_date"]}},
   {"id":"q097","question":"Dia 20 de julho de 2026 tem aula nas escolas municipais?","tool":"city_calendar","args":{"unit":"escolas","date":"2026-07-20"},"expect":{"status":"ok","fields":["data.units"]}},
   {"id":"q098","question":"Quando começam as férias dos CMEIs?","tool":"city_calendar","args":{"topic":"school","unit":"cmeis"},"expect":{"status":"ok","fields":["data.units"]}},
   {"id":"q099","question":"Amanhã tem aula?","tool":"city_calendar","args":{"topic":"school"},"expect":{"status":"ok","fields":["data.units"]},"tags":["ambiguous"]},
