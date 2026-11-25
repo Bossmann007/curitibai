@@ -22,16 +22,19 @@ hand-written guides in `city_service_guide`, with the same per-step consent as t
    payment and activation are separate steps. EstaR's payment step names the app or the sales point, not the bank.
    No price, fine, hour or time limit is stated (the sources are from 2020–2021 and disagree).
 2. **Guide note and date**: `GuideDef` gains optional `note` (said before the consent rule, also with `open_step` and
-   on the `carta_id` route) and `checkedAt` (the envelope's `checked_at` and licence note; the new guides use
-   2026-11-25). Each new guide's note says which official page was not read (403 to non-browser clients) and falls
-   back to the Carta step and the Central 156.
+   on the `carta_id` route) and `fromWebSearchAt` (the envelope's `checked_at`, 2026-11-25 for the new guides, and a
+   licence note saying the guide was written from web search results and its official pages were not all read). The
+   EstaR note says the URBS page was not read (403 to non-browser clients); the Lê Digital note says no web page of
+   Lê Digital itself was found, so the in-app steps were not checked. Both fall back to the Carta step and the
+   Central 156. EstaR's app login step is conditional ("Se usar o aplicativo"), since a sales point needs none.
 3. **Links**: only hosts the allowlist already accepts (`www.urbs.curitiba.pr.gov.br`, `www.curitiba.pr.gov.br`,
    `156.curitiba.pr.gov.br`). No app-store link. The server makes no request; no new host in `src/`.
 4. **Carta words** (narrow, because a hand-written guide overrides a generated one): `le_digital` `[["le",
-   "digital"]]`, `estar` `[["estacionamento", "regulamentado"]]` (not the verb "estar"); same in
+   "digital"]]`, `estar` `[["estar", "estacionamento", "regulamentado"]]` (not the verb "estar" alone, and not other services such
+   as a credential that only say "estacionamento regulamentado"); same in
    `scripts/coverage-report.mjs` `GUIDE_TERMS`.
 5. **`cleanCartaText`**: after the masks and markers, every `]:` becomes `] :` too, so no Markdown reference
-   definition forms (low finding of the v0.37 reviews).
+   definition forms (low finding of the v0.37 reviews); the text is cut again when those breaks take it over the cap.
 6. **Eval**: q100, q101 (`le_digital`), q104, q105 (`estar`) move from gaps to guide answers.
 7. **Docs and version**: `docs/tools.md` (row, fixed-link table, the comparison table rows), `docs/sources.md`,
    `docs/roadmap-1.0.md`, README, CHANGELOG 0.38.0, version 0.38.0 in `package.json`, `package-lock.json`,

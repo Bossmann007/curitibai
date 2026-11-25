@@ -248,6 +248,14 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     expect(cleanCartaText(`${"a ".repeat(140)}${raw}`)).not.toContain("]:");
   });
 
+  it("breaking \"](\" and \"]:\" pairs never takes the text over the cap", () => {
+    for (const raw of ["11999998888: ".repeat(40), "11999998888(x) ".repeat(40)]) {
+      const out = cleanCartaText(raw);
+      expect(Array.from(out).length).toBeLessThanOrEqual(MAX_CARTA_FIELD);
+      expect(out).not.toMatch(/\]:|\]\(/);
+    }
+  });
+
   it("a cut never leaves half a link or half a marker", () => {
     const pad = "a ".repeat(140);
     expect(cleanCartaText(`${pad}https://servicos.curitiba.pr.gov.br/um-servico-de-nome-longo/12345 fim`)).toBe(`${pad.trimEnd()}…`);

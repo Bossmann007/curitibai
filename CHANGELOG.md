@@ -11,11 +11,15 @@ Lê Digital and EstaR guides, phase B of the 1.0 roadmap. 26 tools. Publishes no
   URBS-credentialed app or sales point, login, the plate, buying credits, activating the time, and where to check a
   notice of irregularity). Login, personal data, payment and activation are separate consent steps; no price, hour or
   time limit is given. Each guide's `note` says which official page was not read (it answers 403 to non-browser
-  clients) and falls back to the Carta page and the Central 156; `checked_at` is 2026-11-25 for these two. Links only
+  clients, or no Lê Digital web page was found) and falls back to the Carta page and the Central 156; `checked_at` is
+  2026-11-25 for these two and `license_note` says they were written from web search results. EstaR's Carta words
+  are `estar`, `estacionamento` and `regulamentado` together, so other parking services keep their generated guide.
+  Links only
   on hosts the allowlist already accepts; no new host. The `service` enum changed: `test/fixtures/tool-contracts.json`
   rewritten.
 - `city_service_guide` (`carta_id`): cleaned Carta text never contains `]:` (a Markdown reference definition formed by
-  a mask or a link marker followed by a colon); it becomes `] :`, as `](` already did.
+  a mask or a link marker followed by a colon); it becomes `] :`, as `](` already did, and the text is cut again if
+  those breaks take it over the 300-character cap.
 - Curitiba App comparison: Lê Digital and EstaR become guide rows; 13 of 18 rows covered. Citizen eval: the 4 Lê
   Digital and EstaR questions are answered by the new guides; `answered 108 / 119`, 11 gaps.
 

@@ -82,8 +82,8 @@ interface GuideDef {
   steps: StepDef[];
   /** Said before the consent rule in every answer of this guide: what was not verified and the fallback. */
   note?: string;
-  /** Date this guide was written and its links checked, when later than GUIDES_CHECKED_AT. */
-  checkedAt?: string;
+  /** Date this guide was written from web search results (its official pages not all read); else GUIDES_CHECKED_AT. */
+  fromWebSearchAt?: string;
 }
 
 const FIRST_STEP: StepDef = {
@@ -328,11 +328,12 @@ export const GUIDES = {
       "segundo a Prefeitura. O CuritibAI não tem o acervo: a busca de títulos é no próprio app. Livros impressos: " +
       "bibliotecas e Casas da Leitura (places_search ou city_facilities_search).",
     carta: [["le", "digital"]],
-    checkedAt: GUIDES_0_38_CHECKED_AT,
+    fromWebSearchAt: GUIDES_0_38_CHECKED_AT,
     note:
-      "Guide note (le_digital): no web page of Curitiba Lê Digital itself was found (it is inside the Curitiba App). " +
-      "Step 3 links the Prefeitura's news page that names it; that page answers 403 to non-browser clients and was " +
-      "not read here. If a link fails, use the Prefeitura's services page (step 2) or the Central 156 (phone 156). ",
+      "Guide note (le_digital): no web page of Curitiba Lê Digital itself was found (it is inside the Curitiba App), so " +
+      "the steps inside the app were not checked here. Step 3 links the Prefeitura's news page that names it (read in " +
+      "a browser on 2026-11-23). If a link fails, use the Prefeitura's services page (step 2) or the Central 156 " +
+      "(phone 156). ",
     steps: [
       FIRST_STEP,
       CARTA_PAGE,
@@ -360,8 +361,10 @@ export const GUIDES = {
       "compra créditos num aplicativo credenciado pela URBS ou num ponto de venda credenciado e ativa o tempo com a " +
       "placa, o local e o tempo. Horários, tempo máximo e valores: placas de sinalização da quadra e site da URBS; este " +
       "guia não traz números.",
-    carta: [["estacionamento", "regulamentado"]],
-    checkedAt: GUIDES_0_38_CHECKED_AT,
+    // All three words: "estar" alone is a verb, and "estacionamento regulamentado" alone is also in titles of other
+    // services (an appeal, a credential) that the generated guide serves better.
+    carta: [["estar", "estacionamento", "regulamentado"]],
+    fromWebSearchAt: GUIDES_0_38_CHECKED_AT,
     note:
       "Guide note (estar): the URBS EstaR page (step 3, www.urbs.curitiba.pr.gov.br/EstaR, title \"Est@R - URBS\" in " +
       "web search) answers 403 to non-browser clients and was not read here; the app list, sales points and rules " +
@@ -382,7 +385,10 @@ export const GUIDES = {
           "O cidadão instala por conta própria, na loja oficial do celular, um aplicativo da lista da URBS (ou vai a um " +
           "ponto de venda credenciado). Nada é digitado nesta etapa.",
       },
-      APP_LOGIN("aplicativo do EstaR"),
+      {
+        ...APP_LOGIN("aplicativo do EstaR"),
+        action: "Se usar o aplicativo: entrar ou fazer o cadastro, se ele pedir.",
+      },
       {
         action: "Cadastrar no aplicativo a placa do veículo.",
         consent:
@@ -604,11 +610,15 @@ export function buildSteps(guide: GuideDef, links: CartaLinks): StepOut[] {
   });
 }
 
-const licenseNote = (checked: string) =>
-  "Guides written by this project from the official sites named in each step (checked " + checked + "); " +
-  "Carta links come from your local copy of the Prefeitura's Carta de Serviços. Unofficial; not affiliated with the " +
-  "Prefeitura de Curitiba, URBS or Detran-PR. The sites may change: follow what the official page says.";
-const LICENSE_NOTE = licenseNote(GUIDES_CHECKED_AT);
+const NOT_AFFILIATED =
+  "Unofficial; not affiliated with the Prefeitura de Curitiba, URBS or Detran-PR. The sites may change: follow what " +
+  "the official page says.";
+const webSearchLicenseNote = (date: string) =>
+  `Guide written by this project on ${date} from web search results; the official pages it links were not all read ` +
+  "(see note). Carta links come from your local copy of the Prefeitura's Carta de Serviços. " + NOT_AFFILIATED;
+const LICENSE_NOTE =
+  "Guides written by this project from the official sites named in each step (checked " + GUIDES_CHECKED_AT + "); " +
+  "Carta links come from your local copy of the Prefeitura's Carta de Serviços. " + NOT_AFFILIATED;
 
 async function readCatalog(): Promise<Catalog | Error | null> {
   try {
@@ -701,8 +711,11 @@ export async function cityServiceGuideResult(
         }
       : cartaFor(catalog, guide);
   const base: Base = { service: id, title: guide.title, what: guide.what, carta: info, delegation: DELEGATION_INFO };
-  const checked = guide.checkedAt ?? GUIDES_CHECKED_AT;
-  const envelope = { source_url: CITY_SERVICES_SOURCE_URL, checked_at: checked, license_note: licenseNote(checked) };
+  const envelope = {
+    source_url: CITY_SERVICES_SOURCE_URL,
+    checked_at: guide.fromWebSearchAt ?? GUIDES_CHECKED_AT,
+    license_note: guide.fromWebSearchAt === undefined ? LICENSE_NOTE : webSearchLicenseNote(guide.fromWebSearchAt),
+  };
   const note = notePrefix + (guide.note ?? "");
   return answer(base, guide, `guia "${guide.title}"`, buildSteps(guide, links), envelope, openStep, ctx, note);
 }
@@ -755,7 +768,10 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
   // The mask and the link marker write "[...]" after the bracket strip: "11999998888(//x)" would become
   // "[masked](//x)", a Markdown link again, and "11999998888: //x" would become "[masked]: //x", a reference
   // definition. Break every "](" and "]:" pair, here and after a cut.
-  const out = cleanField(t, max).replace(/\]\(/g, "] (").replace(/\]:/g, "] :");
+  let out = cleanField(t, max).replace(/\]\(/g, "] (").replace(/\]:/g, "] :");
+  // Each break adds a character: cut again so the cap holds (a cut never forms a pair again: it only drops text).
+  const points = Array.from(out);
+  if (points.length > max) out = `${points.slice(0, max - 1).join("").trimEnd()}…`;
   if (!out.endsWith("…")) return out;
   // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
   const body = out.slice(0, -1);

@@ -30,7 +30,7 @@ export const GUIDE_TERMS = {
   creche: [["creche"], ["cadastramento", "escolar"]],
   detran: [["detran"]],
   le_digital: [["le", "digital"]],
-  estar: [["estacionamento", "regulamentado"]],
+  estar: [["estar", "estacionamento", "regulamentado"]],
 };
 
 /**

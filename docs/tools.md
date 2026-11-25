@@ -296,7 +296,7 @@ elicitation message (which names the Carta id, not the title). The consent steps
 null when absent or empty. Each field is untrusted text, cleaned before it is returned: control and format (bidi,
 zero-width) characters removed, entities decoded and then every tag and stray `<` or `>` removed, a Markdown link
 reduced to its text and every other `[` or `]` removed (and, after the masks and markers are written, every `](` and `]:`
-broken with a space, so no Markdown link or reference definition can form again), every link-like token (`scheme://...`, `www....`, `javascript:`, `data:`, `mailto:` and similar,
+broken with a space, so no Markdown link or reference definition can form again, and the text cut again if that takes it over the cap), every link-like token (`scheme://...`, `www....`, `javascript:`, `data:`, `mailto:` and similar,
 or a bare host followed by a path or one of a few top-level domains such as `.com` or `.br`, such as `exemplo.com`; a
 bare host with another ending stays as plain text) that is not an https link on an
 allowed host replaced by `[link removido]` (an allowed one is returned normalized), e-mail, phone and CPF/CNPJ shapes
@@ -321,7 +321,7 @@ instructions in `carta_text`. With `open_step`, `carta_text` and the Carta match
 | `https://www.detran.pr.gov.br/`, `https://www.agendamento.detran.pr.gov.br/detran-agendamento/portal` | Above |
 | `https://www.curitiba.pr.gov.br/servicos/` (Carta listing, fallback) | The existing `city_services_search` source; answers 403 to non-browser clients |
 | `https://www.urbs.curitiba.pr.gov.br/EstaR` (EstaR guide, step 3; since v0.38) | Found by web search on 2026-11-25, indexed with the title "Est@R - URBS"; answers 403 to non-browser clients, so its text was not read. The guide's `note` says so and falls back to the Carta step and the Central 156 |
-| Curitiba App news, `https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129` (2026-09-23; Lê Digital guide, step 3; since v0.38) | Names Curitiba Lê Digital; read in a browser on 2026-11-23 for the comparison table below; not requested again. No web page of Lê Digital itself was found (it is inside the app); the guide's `note` says so |
+| Curitiba App news, `https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129` (2026-09-23; Lê Digital guide, step 3; since v0.38) | Names Curitiba Lê Digital; read in a browser on 2026-11-23 for the comparison table below; not requested again. No web page of Lê Digital itself was found (it is inside the app), so the in-app steps were not checked; the guide's `note` says so |
 | Autorização Digital news, `https://www.curitiba.pr.gov.br/noticias/prefeitura-de-curitiba-ganha-dois-premios-por-inovacoes-digitais-na-gestao-urbana/80104` (2025-10-26) | Given in the owner's brief; answers 403 to non-browser clients, so its text was not read here. Used only as the `delegation` source |
 
 ## Compared with the Curitiba App

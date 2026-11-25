@@ -257,7 +257,7 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
   it("EstaR: no price, fine, hour or time limit is stated; the guide says where to check", async () => {
     const o = await guide("estar");
     const text = [o.data.what, ...allSteps(o).map((s) => `${s.action} ${s.consent ?? ""}`)].join(" ");
-    expect(text).not.toMatch(/R\$|\d+\s*(h|min|minutos|horas)\b/i);
+    expect(text).not.toMatch(/R\$|\d+\s*(h|min|minutos|horas)\b|\b(uma|duas|três|meia)\s+hora|\breais\b|\bmulta/i);
     expect(o.data.what).toMatch(/placas de sinalização/);
   });
 
@@ -269,19 +269,29 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
     expect(consentWith(o, /pag[ao]/).every((s) => /nada é pago/i.test(s.consent!))).toBe(true);
   });
 
-  it.each(["le_digital", "estar"] as const)("%s: the note says which official page was not read and gives the fallback", async (id) => {
+  it.each([
+    ["le_digital", /not checked here/],
+    ["estar", /not read here/],
+  ] as const)("%s: the note says what was not verified and gives the fallback; the licence note says web search", async (id, unverified) => {
     const o = await guide(id);
-    expect(o.note).toMatch(/not read here/);
+    expect(o.note).toMatch(unverified);
     expect(o.note).toMatch(/Central 156/);
     expect(o.checked_at).toBe("2026-11-25");
+    expect(o.license_note).toMatch(/from web search results; the official pages it links were not all read/);
     // The note also reaches open_step answers.
     const res = await cityServiceGuideResult(id, 2, null, { elicitUrl: async () => "decline" });
     if (!res.ok) throw new Error(res.message);
-    expect(res.payload.note).toMatch(/not read here/);
+    expect(res.payload.note).toMatch(unverified);
+  });
+
+  it("EstaR: the app login is conditional, since a sales point needs none", async () => {
+    const o = await guide("estar");
+    expect(consentWith(o, /senha/)[0]!.action).toMatch(/^Se usar o aplicativo/);
   });
 
   it("Carta words are narrow: the verb \"estar\" or a lone \"digital\" never routes a service to these guides", () => {
     expect(handWrittenFor("EstaR - Estacionamento Regulamentado")).toBe("estar");
+    expect(handWrittenFor("Credencial para idoso no estacionamento regulamentado")).toBeUndefined();
     expect(handWrittenFor("Curitiba Lê Digital")).toBe("le_digital");
     expect(handWrittenFor("Como estar em dia com a taxa sintética")).toBeUndefined();
     expect(handWrittenFor("Certidão digital sintética")).toBeUndefined();
