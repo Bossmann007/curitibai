@@ -3950,7 +3950,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`care`: health unit areas containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`care`: health unit areas containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "cras": {
                       "anyOf": [
@@ -4017,7 +4017,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`care`: CRAS territories containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`care`: CRAS territories containing the point (distinct, by name, at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "police_military": {
                       "anyOf": [
@@ -4084,7 +4084,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`safety`: Polícia Militar company areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`safety`: Polícia Militar company areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "police_civil": {
                       "anyOf": [
@@ -4135,7 +4135,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`safety`: Polícia Civil district areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`safety`: Polícia Civil district areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "fire": {
                       "anyOf": [
@@ -4194,7 +4194,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`safety`: fire platoon areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`safety`: fire platoon areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "partial": {
                       "type": "boolean",

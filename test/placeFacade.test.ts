@@ -171,7 +171,7 @@ describe("place_at_point outside Curitiba and privacy", () => {
     const calls = stubFetch(routes({ bairro: EMPTY, health_area: EMPTY, census_sector: EMPTY }));
     const out = await facade(AT);
     expect(out.data.place).toMatchObject({ inside_curitiba: false, bairro: null, zoning: [] });
-    expect(out.data.service_areas).toMatchObject({ inside_curitiba: false, health_units: [], cras: [] });
+    expect(out.data.service_areas).toMatchObject({ inside_curitiba: false, health_units: [], cras: null });
     expect(out.data.census).toMatchObject({ inside_curitiba: false, sector: null });
     expect(out.data.partial).toBe(false);
     expect(calls.map((c) => `GET ${c.url}`)).toEqual([key("bairro"), key("health_area"), key("census_sector")]);

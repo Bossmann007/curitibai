@@ -119,7 +119,7 @@ describe("service_areas_at_point answers", () => {
   it("a point in no health area and no Curitiba neighbourhood is inside_curitiba false; the CRAS layer is not asked", async () => {
     const calls = stubFetch(routes({ health_area: { body: EMPTY }, bairro: { body: EMPTY } }));
     const out = await areas();
-    expect(out.data).toMatchObject({ inside_curitiba: false, health_units: [], cras: [], partial: false });
+    expect(out.data).toMatchObject({ inside_curitiba: false, health_units: [], cras: null, partial: false });
     expect(out.note).toMatch(/no Curitiba neighbourhood .*contains this point/);
     expect(out.note).not.toMatch(/No health unit area found/);
     expect(calls.map((c) => c.url)).toEqual([key("health_area"), key("bairro")].map((k) => k.slice(4)));
@@ -228,7 +228,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
   it("no PM area: the bairro layer decides; outside Curitiba nothing else is asked", async () => {
     const calls = stubFetch(safetyRoutes({ pm_company: { body: EMPTY }, bairro: { body: EMPTY } }));
     const out = await areas({ ...AT, areas: "safety" });
-    expect(out.data).toMatchObject({ inside_curitiba: false, police_military: [], police_civil: [], fire: [], partial: false });
+    expect(out.data).toMatchObject({ inside_curitiba: false, police_military: [], police_civil: null, fire: null, partial: false });
     expect(calls.map((c) => c.url)).toEqual([key("pm_company"), key("bairro")].map((k) => k.slice(4)));
   });
 

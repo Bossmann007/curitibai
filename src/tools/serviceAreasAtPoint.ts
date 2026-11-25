@@ -56,7 +56,7 @@ const FireArea = z.object({
   source_agency: sourceAgency,
 });
 
-const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
+const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`).";
 
 export const serviceAreasAtPointOutput = z.object({
   data: z.object({
@@ -198,7 +198,7 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
     times.push(bairroRes.fetchedAt);
     inside = insideCuritiba(bairroRes.value);
   }
-  let cras: CrasOut[] | null = [];
+  let cras: CrasOut[] | null = null;
   let failure: unknown = null;
   if (inside) {
     try {
@@ -207,7 +207,6 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
       cras = crasOf(c.value);
     } catch (err) {
       failure = err;
-      cras = null;
     }
   }
   const partial = failure !== null;
@@ -265,7 +264,7 @@ async function safetyAreasAt(p: Point, reads: PointReads): Promise<Output> {
   const missing: string[] = [];
   const errors: unknown[] = [];
   async function later<T>(layer: "civil_district" | "fire_platoon", label: string, read: (f: PointFeature[]) => T[]): Promise<T[] | null> {
-    if (!inside) return [];
+    if (!inside) return null;
     try {
       const r = await reads.layer(layer);
       times.push(r.fetchedAt);
