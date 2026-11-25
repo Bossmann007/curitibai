@@ -257,7 +257,7 @@ async function fromLayer(args: BusStopsNearArgs) {
   if (!remoteDataEnabled()) {
     return fail(
       "data_not_available",
-      `${REMOTE_DATA_ENV} is 0 or off, so this tool stays local: the GeoCuritiba stop layer is not read. ` +
+      `${REMOTE_DATA_ENV} is off, so this tool stays local: the GeoCuritiba stop layer is not read. ` +
         NOT_AVAILABLE("pontosLinha"),
     );
   }

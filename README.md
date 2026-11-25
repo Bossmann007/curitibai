@@ -115,7 +115,8 @@ lists the nearby stops without their lines from IPPUC's GeoCuritiba layer), and 
 `events_search` and `useful_phones` work without it: they then read the copy the nightly collection publishes
 ([Events and useful phones](#events-and-useful-phones)). [Local data files](docs/local-data.md) says what to put in that folder.
 
-**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: `events_search` and
+**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`, `false`, `no`; `1`, `on`, `true`, `yes` or unset
+leave it on; any other value stops the server at start with a configuration error) in the server's environment: `events_search` and
 `useful_phones` then read only the local file, as before 0.18.0, and `bus_stops_near` only the URBS export, as before
 0.29.0 (`data_not_available` without it); these three then make no network call. The live tools still ask their sources.
 

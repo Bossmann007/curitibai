@@ -828,7 +828,7 @@ in the city's own categories. Built.
   approval, 2026-11-22: facts and links).
 - **How the server reads it:** `src/sources/publishedData.ts`. A local file in `CURITIBAI_DATA_DIR` always wins
   (errors included); only when the data folder is not set or has no such file, and `CURITIBAI_REMOTE_DATA` is not
-  `0`/`off`, it reads
+  off (`0`, `off`, `false`, `no`), it reads
   `https://raw.githubusercontent.com/Bossmann007/curitibai/data/events/events.json` or `.../phones/phones.json`:
   fixed URLs, `src/http.ts` allowlist, same host and `/Bossmann007/curitibai/data` path only on redirects, 10 s
   timeout, 2 MB / 512 KB caps, the same strict schemas as the local file (`buildEvents`, `buildPhones`; fail closed),
@@ -1266,7 +1266,7 @@ Prior art (2026-11-24): `gh search repos "mcp server government services guide"`
   still need the export, and freshness cannot be proven from the metadata. The terminals come from the
   urban-equipment layers 157 and 158 instead (above). Layer 0 is never read (it carries `indfiscal`).
 - **Used since v0.29.0 by `bus_stops_near`, only when no local `pontosLinha` file exists and
-  `CURITIBAI_REMOTE_DATA` is not `0` or `off` (since v0.30.0):** layer 1, fixed query
+  `CURITIBAI_REMOTE_DATA` is not off (`0`, `off`, `false`, `no`; since v0.30.0):** layer 1, fixed query
   `where=1=1&outFields=num,nome_ponto,tipo&returnGeometry=true&outSR=4326&geometryPrecision=6&orderByFields=objectid`
   with `resultOffset` 0, 2,000, 4,000, 6,000 and `resultRecordCount=2000` (`maxRecordCount` 2,000, pagination
   supported). Re-checked on 2026-11-24 before coding: `robots.txt` answers 404 (IIS "Not Found" page, so no rule

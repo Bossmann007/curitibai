@@ -46,7 +46,7 @@ Since v0.29, `bus_stops_near` with no `pontosLinha` file (or no `CURITIBAI_DATA_
 layer instead (`data.source: "geocuritiba_layer"`, `lines` null); there it can also return `source_unavailable` and
 `rate_limited` like the other GeoCuritiba tools, and `data_not_available` when `line_code` is given (only the export
 has lines per stop). An invalid or not allowed stops file keeps its own error; there is no fallback from it. Since
-v0.30, `CURITIBAI_REMOTE_DATA=0` (or `off`) turns this fallback off: without the stops file the tool then answers
+v0.30, `CURITIBAI_REMOTE_DATA=0` (or `off`, `false`, `no`) turns this fallback off: without the stops file the tool then answers
 `data_not_available`, as before v0.29, and makes no request.
 `useful_phones` reads `CURITIBAI_DATA_DIR/phones/phones.json`, written by the collector `scripts/fetch-events.mjs`,
 when it exists, else the copy the nightly collection publishes (see [Events](local-data.md#events-instituto-municipal-de-turismo-calendar-collected-by-a-separate-script)),

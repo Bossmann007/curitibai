@@ -5,6 +5,7 @@
 // needed: none of them fetches anything (CURITIBAI_REMOTE_DATA=0 turns the published copy of events and phones off).
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -128,3 +129,16 @@ console.log(`smoke: bus_stops_near OK (${near.structuredContent.data.total} synt
 console.log(`smoke: bus_departures OK (${bus.structuredContent.data.total} synthetic weekday departures of line 901)`);
 console.log(`smoke: city_services_search OK (${cs.structuredContent.data.total} synthetic services match "ficticia")`);
 console.log(`smoke: tools/list over stdio OK (${names.length} tools: ${names.join(", ")})`);
+{
+  const bad = spawnSync(process.execPath, ["dist/server.js"], {
+    env: { PATH: process.env.PATH ?? "", CURITIBAI_REMOTE_DATA: "maybe" },
+    input: "",
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  if (bad.status !== 1 || !bad.stderr.includes("configuration error: CURITIBAI_REMOTE_DATA must be")) {
+    console.error(`smoke: CURITIBAI_REMOTE_DATA=maybe did not stop the server (status ${bad.status}): ${bad.stderr.slice(0, 300)}`);
+    process.exit(1);
+  }
+  console.log("smoke: CURITIBAI_REMOTE_DATA=maybe stops the server at start with a configuration error");
+}

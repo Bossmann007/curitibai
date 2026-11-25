@@ -408,7 +408,9 @@ export function cartaFor(catalog: Catalog | Error | null, guide: GuideDef): { in
       found.length === 0
         ? " none of their links is on the official-host allowlist, so"
         : found.length < all.length
-          ? ` ${all.length - found.length} of their links are not on the official-host allowlist and are not listed;`
+          ? all.length - found.length === 1
+            ? " 1 of their links is not on the official-host allowlist and is not listed;"
+            : ` ${all.length - found.length} of their links are not on the official-host allowlist and are not listed;`
           : "";
     const message =
       `${all.length} services in the local Carta copy match;${refused} no Carta link is given. Ask the user which one ` +

@@ -179,7 +179,9 @@ The job has `contents: write` only for itself, a 35-minute timeout (above the co
    `raw.githubusercontent.com` itself pauses both files, a problem with one file only that file). Before the first nightly
    run has published anything the tools answer `data_not_available`.
 
-**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`) in the server's environment: the tools then read
+**Turn remote reading off** with `CURITIBAI_REMOTE_DATA=0` (or `off`, `false`, `no`; case and spaces ignored) in the
+server's environment. `1`, `on`, `true`, `yes` or unset leave it on; since 0.31.0 any other value, empty included, stops
+the server at start with a configuration error instead of leaving remote reading on. Off, the tools then read
 only the local file, as before 0.18.0, and make no network call. Since 0.30.0 the same switch keeps `bus_stops_near`
 local too: without `pontosLinha` it answers `data_not_available` instead of reading the GeoCuritiba stop layer. The
 live tools (GeoCuritiba, CNES, PNCP and the others) still ask their sources.

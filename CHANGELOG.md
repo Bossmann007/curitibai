@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.31.0 - 2026-11-24
+
+A quality round: the follow-ups from the v0.30 reviews and a pass that removes code without changing what the tools
+answer (owner approval 2026-11-24). 28 tools. Tool names, schemas and the tools/list contract snapshot are unchanged.
+Publishes nothing.
+
+- `CURITIBAI_REMOTE_DATA` fails closed: `0`, `off`, `false` and `no` turn remote reading off and `1`, `on`, `true` and
+  `yes` leave it on (case and spaces ignored; unset is on, as before). Any other value, empty included, stops the
+  server at start with a configuration error that names the accepted values; before, `false`, `no` and an empty value
+  silently left remote reading on. Inside the server a value that is not on keeps remote reading off.
+- `server.json`: the `CURITIBAI_REMOTE_DATA` description says it also stops `bus_stops_near` from reading the
+  GeoCuritiba stop layer, and lists the accepted values.
+- `city_service_guide`: with one of several Carta matches refused, the message reads "1 of their links is not on the
+  official-host allowlist and is not listed" (it said "are not").
+- The `bus_stops_near` message when remote reading is off says "is off" (it said "is 0 or off").
+- The `bus_stops_near` description does not mention the switch: it would not fit the description size guard
+  (369 of 400 characters for this tool, 9,593 of 9,600 for all of them).
+
 ## 0.30.0 - 2026-11-24
 
 Follow-ups from the v0.29 reviews (owner approval 2026-11-24). 28 tools. Publishes nothing.

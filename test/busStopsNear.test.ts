@@ -83,7 +83,7 @@ beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "curitibai-near-")));
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-21T12:00:00Z"));
-  vi.stubEnv(REMOTE_DATA_ENV, ""); // remote reading on, whatever the developer's shell has; one test turns it off
+  vi.stubEnv(REMOTE_DATA_ENV, undefined); // remote reading on, whatever the developer's shell has; one test turns it off
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -317,15 +317,15 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
 
   it(`${REMOTE_DATA_ENV}=0 keeps it local: data_not_available with no request; unset, the layer answers`, async () => {
     const calls = stubFetch(layerRoutes());
-    for (const value of ["0", "off", " OFF "]) {
+    for (const value of ["0", "off", " OFF ", "false", "no", "", "maybe"]) {
       vi.stubEnv(REMOTE_DATA_ENV, value);
       const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
       expect(err).toMatchObject({ error: "data_not_available" });
-      expect(err.message).toContain(`${REMOTE_DATA_ENV} is 0 or off, so this tool stays local`);
+      expect(err.message).toContain(`${REMOTE_DATA_ENV} is off, so this tool stays local`);
       vi.useRealTimers();
     }
     expect(calls).toHaveLength(0);
-    vi.stubEnv(REMOTE_DATA_ENV, "");
+    vi.stubEnv(REMOTE_DATA_ENV, undefined);
     const res = await layerCall({ near: CENTRE });
     expect(busStopsNearOutput.parse(res.structuredContent).data.source).toBe("geocuritiba_layer");
     expect(calls).toHaveLength(2);
