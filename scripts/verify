@@ -26,6 +26,9 @@ npx eslint .
 step "vitest run"
 npx vitest run
 
+step "citizen eval summary (the questions themselves ran in vitest above: test/eval/citizenEval.test.ts)"
+node scripts/eval-summary.mjs
+
 step "build"
 npm run --silent build
 

@@ -49,7 +49,7 @@ A dev script, not in the package; it reads and never writes or fetches. It print
   reads, [Local data files](local-data.md)): each service classed data, guide or none, with counts and percentages
   per category, the uncovered count per usefulness score, and the 30 most useful uncovered services. Those titles go
   to the terminal only.
-- **A JSON summary** with aggregate numbers only (counts and percentages by category, no service title), safe to
+- **A JSON summary** with numbers per category (category labels, counts and percentages, no service title), safe to
   paste in a pull request.
 
 How a service is classed, from the words of its title (accents and case ignored, whole words):
@@ -65,12 +65,36 @@ The rules err toward none: the scoreboard can understate coverage, never oversta
 none is fixed by adding a rule and a test, not by changing the gate.
 
 The catalog itself is never committed (`scripts/check-no-catalog`); this page and the pull requests carry only
-aggregate numbers. Exit code: 0 when the report is printed (an open gate is not an error), 2 when an input cannot be
+numbers per category. Exit code: 0 when the report is printed (an open gate is not an error), 2 when an input cannot be
 read (a `--carta` file that does not exist included; only the `CURITIBAI_DATA_DIR` copy may be absent) or the table
 has a status the script does not know.
+
+## The citizen eval
+
+"Useful to the citizen" is measured by a bank of realistic questions (`test/eval/citizen-questions.json`, since
+v0.36.0): about 100 questions in Brazilian Portuguese, invented, with no personal data and places named only by public
+landmarks. Each names the tool that should answer it, the arguments, and the shape of the answer expected:
+
+- `status`: `ok` (the tool's answer list is non-empty), `not_found` (it is empty), `outside_curitiba` (the place is
+  not in Curitiba), `guide` (a `city_service_guide` answer) or `error` with its code;
+- `fields`: paths that must be present and non-empty; `link`: the path of the source or official link (`source_url`
+  unless given; `null` for `local_csv_summary`, which reads a local file and has none);
+- for a guide, at least one step that needs consent, each such step with its consent text, and an official link.
+
+Shape only, never exact text. `test/eval/citizenEval.test.ts` runs every question offline in `scripts/verify`
+(synthetic fixtures, one fixed clock, every request stubbed): the tool exists, the arguments pass its input schema
+with no unknown key, and the answer has the shape. A question no tool answers yet has `tool: null` and a `gap` label
+(`le_digital`, `defesa_civil`, `estar`, `realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows
+not covered, and others); gaps are counted, not failed. A question tagged
+`outside_curitiba` to a tool with no city check of its own (a bus stop or a feira near a point in São Paulo) expects
+`not_found`; `place_at_point` refuses such a point and expects `outside_curitiba`. `node scripts/eval-summary.mjs` prints the one-line count
+that `scripts/verify` shows. Closing a gap means a tool, its fixture and the question moved from `tool: null` to that
+tool in the same pull request.
 
 ## Where it stands
 
 At v0.35.0, part (a) from this repository: 18 Curitiba App rows, 11 covered (6 data, 5 guide); not covered: AI
 assistant, useful phones and cultural spaces (partial); Curitiba Lê Digital, Defesa Civil alerts, EstaR and real-time
 buses (none). Part (b) depends on each owner's local Carta copy; run the scoreboard for the current numbers.
+At v0.36.0 the citizen eval answers 99 of 114 questions; 15 are gaps (Lê Digital, Defesa Civil alerts, EstaR and
+real-time buses 2 each, cultural spaces 2, useful phones 1, route planning 1, Vale Creche 1, other cities 2).
