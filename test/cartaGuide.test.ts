@@ -227,7 +227,7 @@ describe("cleanCartaText (untrusted Carta text)", () => {
   it.each([
     "11999998888(//evil.dev)",
     "a@b.com(evil.app)",
-    "123.456.789-09(//evil.dev)",
+    "123.456.789-00(//evil.dev)",
     "11999998888(javascript&colon;alert(1))",
     "http://evil.dev(//evil.dev)",
   ])("a mask or link marker never forms a Markdown link again: %j", (raw) => {
