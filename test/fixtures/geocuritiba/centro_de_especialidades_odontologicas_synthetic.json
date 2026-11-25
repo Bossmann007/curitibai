@@ -1,0 +1,27 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Centro de Especialidades Odontológicas Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "133",
+        "divulgar_endereco": "Sim",
+        "bairro": "Portão",
+        "regional": "Portão",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1330",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776265200000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h às 19h\r\nEspecialidade em endodontia e periodontia.\r\nO encaminhamento ao Centro de Especialidades Odontológicas se dá por meio das Unidades de Saúde."
+      },
+      "geometry": { "x": -49.29, "y": -25.47 }
+    }
+  ]
+}

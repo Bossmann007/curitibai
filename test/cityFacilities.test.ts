@@ -439,6 +439,98 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/being listed does not mean walk-in care/);
   });
 
+  it.each([
+    ["CAPS", "caps", 135],
+    ["Centro de Atenção Psicossocial", "caps", 135],
+    ["centros de atencao psicossocial", "caps", 135],
+    ["Centro de Especialidades Médicas", "centro de especialidades medicas", 132],
+    ["especialidades médicas", "centro de especialidades medicas", 132],
+    ["Centro de Especialidades Odontológicas", "centro de especialidades odontologicas", 133],
+    ["CEO", "centro de especialidades odontologicas", 133],
+  ] as const)("v0.46.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.46.0: bare \"centro de especialidades\" (medical or dental) and \"caps infantil\" are not types", () => {
+    for (const name of ["centro de especialidades", "especialidades", "caps infantil", "caps ad", "saude mental"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it.each(["caps", "estabilizacao psiquiatrica"])(
+    "v0.46.0: the %s note gives 192 or 193 first, then CVV 188",
+    async (t) => {
+      stubFetch(route(t, `${t.replaceAll(" ", "_")}_synthetic.json`));
+      const out = await search({ type: t });
+      expect(out.note.startsWith(
+        "Emergency: call 192 (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go. " +
+          "Emotional support: CVV 188 (24 hours, free call).",
+      )).toBe(true);
+    },
+  );
+
+  it.each(["upa", "hospital publico", "centro de especialidades medicas", "centro de especialidades odontologicas"])(
+    "v0.46.0: the %s note does not name CVV",
+    async (t) => {
+      stubFetch(route(t, `${t.replaceAll(" ", "_")}_synthetic.json`));
+      expect((await search({ type: t })).note).not.toMatch(/CVV|188/);
+    },
+  );
+
+  it("v0.46.0: the CAPS near Centro comes back with its 24-hour flag, hours as published and landline", async () => {
+    const calls = stubFetch(route("caps", "caps_synthetic.json"));
+    const out = await search({ type: "caps", near: { lat: -25.43, lon: -49.27 }, radius_m: 3000 });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/135`);
+    expect(out.data).toMatchObject({ type: "caps", label: "Centro de Atenção Psicossocial", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro de Atenção Psicossocial Territorial Inventado",
+      bairro: "Rebouças",
+      hours: ["Atendimento CAPS Tipo III:", "-Diariamente, 24 horas"],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: true },
+      phones: ["(41) 3333-1350"],
+      updated: "2026-05-04",
+    });
+    expect(out.note).toMatch(/A CAPS listed here is not always the one that serves you/);
+    expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
+  });
+
+  it("v0.46.0: a CAPS Infantil keeps the regionais it serves in `hours`", async () => {
+    stubFetch(route("caps", "caps_synthetic.json"));
+    const out = await search({ type: "caps", name: "infantil" });
+    expect(out.data.items[0]).toMatchObject({
+      hours: ["Atendimento CAPS Tipo II:", "-2ª a 6ª feira, das 7h às 19h", "Atende as Regionais Inventada e Ficticia."],
+      open_periods: { morning: true, afternoon: true, night: false, all_day: false },
+    });
+  });
+
+  it("v0.46.0: medical specialty centres: state e-mail dropped, the note says to ask the health unit about a referral", async () => {
+    stubFetch(route("centro de especialidades medicas", "centro_de_especialidades_medicas_synthetic.json"));
+    const out = await search({ type: "centro de especialidades médicas", name: "ficticio" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/132`);
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro Estadual Ficticio",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 7h30 às 17h."],
+      phones: ["(41) 3333-1321"],
+      emails: [],
+      updated: "2022-01-19",
+    });
+    expect(out.note).toMatch(/check with your health unit \(`unidade de saude`\)/);
+    expect(out.note).toMatch(/Not for emergencies: call 192 \(SAMU\) or 193/);
+  });
+
+  it("v0.46.0: dental specialty centres: the note says referral is through the health units, as the layer publishes", async () => {
+    stubFetch(route("centro de especialidades odontologicas", "centro_de_especialidades_odontologicas_synthetic.json"));
+    const out = await search({ type: "ceo" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/133`);
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro de Especialidades Odontológicas Inventado",
+      phones: ["(41) 3333-1330"],
+      updated: "2026-04-15",
+    });
+    expect(out.note).toMatch(/referral .* is through the health units \(`unidade de saude`\)/);
+  });
+
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
     const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
     const out = await search({ type: "UBS", name: "caximba" });

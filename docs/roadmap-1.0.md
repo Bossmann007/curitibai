@@ -147,3 +147,9 @@ At v0.45.0 (phase B) UPAs and public hospitals have their 24-hour flag, hours an
 and every answer says to call 192 (SAMU) or 193 in an emergency: the tool lists places, it does not triage. 18
 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 119 of 123 questions; 4 are gaps (real-time
 buses 2, other cities 2).
+
+At v0.46.0 (phase B) CAPS and specialty centres have their hours: `city_facilities_search` `caps`, `centro de
+especialidades medicas` and `centro de especialidades odontologicas` read IPPUC's layers 135, 132 and 133 (13, 10 and 2
+records); the CAPS and psychiatric stabilisation answers give 192 or 193 and then CVV 188, and the specialty answers
+say to ask the health unit about a referral. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
+answers 120 of 124 questions; 4 are gaps (real-time buses 2, other cities 2).
