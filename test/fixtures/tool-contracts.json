@@ -729,12 +729,28 @@
       "type": "object",
       "properties": {
         "topic": {
-          "description": "holidays (default): municipal administration holidays and closures of 2026; iptu: IPTU 2026 general rule.",
+          "description": "holidays (default): municipal administration holidays and closures of 2026; school: municipal school calendars 2026; iptu: IPTU 2026 general rule.",
           "type": "string",
           "enum": [
             "holidays",
+            "school",
             "iptu"
           ]
+        },
+        "unit": {
+          "description": "school only: escolas, cmeis or cmaees; all three when omitted.",
+          "type": "string",
+          "enum": [
+            "escolas",
+            "cmeis",
+            "cmaees"
+          ]
+        },
+        "date": {
+          "description": "school only: YYYY-MM-DD; says whether it is a school day.",
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
         }
       },
       "$schema": "http://json-schema.org/draft-07/schema#"
@@ -811,6 +827,209 @@
                 "year",
                 "expired",
                 "days"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "const": "school"
+                },
+                "year": {
+                  "type": "number",
+                  "const": 2026
+                },
+                "expired": {
+                  "type": "boolean",
+                  "description": "True after 2026-12-31 (Curitiba time): the values are of 2026 only."
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "escolas",
+                          "cmeis",
+                          "cmaees"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "first_day_with_students": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "last_day_with_students": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "periods": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "to": {
+                              "type": "string",
+                              "format": "date",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "vacation",
+                                "recess",
+                                "recess_holiday",
+                                "family_saturday",
+                                "holiday",
+                                "teachers_start_end",
+                                "quality_evaluation",
+                                "teachers_day",
+                                "class_council",
+                                "integral_work_organization",
+                                "students_start_end",
+                                "pedagogical_studies",
+                                "administrative_organization",
+                                "documentation_organization"
+                              ]
+                            },
+                            "label": {
+                              "type": "string",
+                              "description": "The PDF legend text of `kind`."
+                            },
+                            "name": {
+                              "description": "Holiday name as printed; null for other kinds.",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to",
+                            "kind",
+                            "label",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "school_days_per_month": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "description": "Dias letivos per month, January first, as printed."
+                      },
+                      "total_school_days": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "on_date": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                              },
+                              "school_day": {
+                                "description": "Null when the date is not in 2026.",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "kinds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "vacation",
+                                    "recess",
+                                    "recess_holiday",
+                                    "family_saturday",
+                                    "holiday",
+                                    "teachers_start_end",
+                                    "quality_evaluation",
+                                    "teachers_day",
+                                    "class_council",
+                                    "integral_work_organization",
+                                    "students_start_end",
+                                    "pedagogical_studies",
+                                    "administrative_organization",
+                                    "documentation_organization"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "school_day",
+                              "kinds"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Null when no `date` was given."
+                      },
+                      "source_url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "description": "sha256 of the PDF read."
+                      },
+                      "signed": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "unit",
+                      "name",
+                      "first_day_with_students",
+                      "last_day_with_students",
+                      "periods",
+                      "school_days_per_month",
+                      "total_school_days",
+                      "on_date",
+                      "source_url",
+                      "sha256",
+                      "signed"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "topic",
+                "year",
+                "expired",
+                "units"
               ],
               "additionalProperties": false
             },

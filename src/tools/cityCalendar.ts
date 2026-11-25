@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { dateInCuritiba } from "../sources/detran.js";
 import { ok, type ToolDef } from "./common.js";
+import { SCHOOL_CALENDAR_READ_AT, SCHOOL_CALENDARS } from "./schoolCalendarData.js";
 
 /** The only year bundled; after it ends (Curitiba time) the answer says `expired: true`. */
 export const CALENDAR_YEAR = 2026;
@@ -51,11 +52,67 @@ const IPTU = {
   where_to_issue: "Curitiba App or the Prefeitura website; the cash and first-instalment slips are also mailed.",
 };
 
+const SCHOOL_UNITS = ["escolas", "cmeis", "cmaees"] as const;
+type SchoolUnit = (typeof SCHOOL_UNITS)[number];
+const UNIT_NAMES: Record<SchoolUnit, string> = {
+  escolas: "Escolas municipais",
+  cmeis: "CMEIs (Centros Municipais de Educação Infantil)",
+  cmaees: "CMAEEs (Centros Municipais de Atendimento Educacional Especializado)",
+};
+/** Legend of the SME PDFs: fills, then shapes (triangle, diamond, circle, hexagon). */
+const SCHOOL_KIND_LABELS = {
+  vacation: "Férias",
+  recess: "Recesso",
+  recess_holiday: "Recessos (feriados)",
+  family_saturday: "Sábado de Integração com as Famílias",
+  holiday: "Feriados",
+  teachers_start_end: "Início/Encerramento com professores",
+  quality_evaluation: "Avaliação dos Parâmetros e Ind. de Qualidade da Educação",
+  teachers_day: "Dia do Professor - dia sem atividade na unidade educacional",
+  class_council: "Conselho de Classe Anos Iniciais e Anos Finais",
+  integral_work_organization: "Org. do trab. Ped. - Ed. Integral e/ou turmas em tempo integral e anos finais EF",
+  students_start_end: "Início / Encerramento com crianças e estudantes",
+  pedagogical_studies: "Semana de Estudos Pedagógicos",
+  administrative_organization: "Organização Administrativo-pedagógica",
+  documentation_organization: "Organização da Documentação Pedagógica - turmas de pré-escola período integral",
+} as const;
+type SchoolKind = keyof typeof SCHOOL_KIND_LABELS;
+const SCHOOL_KINDS = Object.keys(SCHOOL_KIND_LABELS) as [SchoolKind, ...SchoolKind[]];
+
+// School-day rule, inferred from the PDFs' per-month "Letivos" counts (scripts/extract-school-calendar.py checks it on
+// all 36 months; test/cityCalendar.test.ts checks this copy against the committed counts).
+const NO_CLASS: ReadonlySet<SchoolKind> = new Set(["vacation", "recess", "recess_holiday", "holiday", "teachers_start_end", "teachers_day"]);
+const SATURDAY_CLASS: ReadonlySet<SchoolKind> = new Set(["family_saturday", "quality_evaluation"]);
+
+type Period = readonly [SchoolKind, string, string, string?];
+
+/** The legend kinds marked on `date` (YYYY-MM-DD) in the unit's calendar. */
+export function schoolKindsOn(unit: SchoolUnit, date: string): SchoolKind[] {
+  return (SCHOOL_CALENDARS[unit].periods as readonly Period[]).filter((p) => p[1] <= date && date <= p[2]).map((p) => p[0]);
+}
+
+/** True when `date` of 2026 is a school day (dia letivo) for the unit; null outside 2026. */
+export function isSchoolDay(unit: SchoolUnit, date: string): boolean | null {
+  if (!date.startsWith(`${CALENDAR_YEAR}-`)) return null;
+  const kinds = schoolKindsOn(unit, date);
+  if (kinds.includes("students_start_end") || kinds.some((k) => SATURDAY_CLASS.has(k))) return true;
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return weekday >= 1 && weekday <= 5 && !kinds.some((k) => NO_CLASS.has(k));
+}
+
 export const cityCalendarInput = {
   topic: z
-    .enum(["holidays", "iptu"])
+    .enum(["holidays", "school", "iptu"])
     .optional()
-    .describe("holidays (default): municipal administration holidays and closures of 2026; iptu: IPTU 2026 general rule."),
+    .describe(
+      "holidays (default): municipal administration holidays and closures of 2026; school: municipal school calendars " +
+        "2026; iptu: IPTU 2026 general rule.",
+    ),
+  unit: z
+    .enum(SCHOOL_UNITS)
+    .optional()
+    .describe("school only: escolas, cmeis or cmaees; all three when omitted."),
+  date: z.string().date().optional().describe("school only: YYYY-MM-DD; says whether it is a school day."),
 };
 
 const Common = {
@@ -78,6 +135,40 @@ export const cityCalendarOutput = z.object({
               "(suspensão do expediente), no_office_until_14h, recess.",
           ),
           past: z.boolean().describe("`to` is before today (Curitiba time)."),
+        }),
+      ),
+    }),
+    z.object({
+      topic: z.literal("school"),
+      ...Common,
+      units: z.array(
+        z.object({
+          unit: z.enum(SCHOOL_UNITS),
+          name: z.string(),
+          first_day_with_students: z.string().date(),
+          last_day_with_students: z.string().date(),
+          periods: z.array(
+            z.object({
+              from: z.string().date(),
+              to: z.string().date(),
+              kind: z.enum(SCHOOL_KINDS),
+              label: z.string().describe("The PDF legend text of `kind`."),
+              name: z.string().nullable().describe("Holiday name as printed; null for other kinds."),
+            }),
+          ),
+          school_days_per_month: z.array(z.number().int()).describe("Dias letivos per month, January first, as printed."),
+          total_school_days: z.number().int(),
+          on_date: z
+            .object({
+              date: z.string().date(),
+              school_day: z.boolean().nullable().describe("Null when the date is not in 2026."),
+              kinds: z.array(z.enum(SCHOOL_KINDS)),
+            })
+            .nullable()
+            .describe("Null when no `date` was given."),
+          source_url: z.string().url(),
+          sha256: z.string().describe("sha256 of the PDF read."),
+          signed: z.string().date(),
         }),
       ),
     }),
@@ -105,16 +196,58 @@ type Output = z.infer<typeof cityCalendarOutput>;
 const BASE_NOTE = `Unofficial; not affiliated with the Prefeitura. Copied by hand and checked on ${CALENDAR_CHECKED_AT}; this tool makes no network call.`;
 const HOLIDAYS_NOTE =
   "Decreto 2.385/2025 (Diário Oficial do Município of 2025-11-11) sets these days for the municipal administration " +
-  "only, keeping essential services open; municipal schools follow their own school calendar (art. 3), and shops and " +
+  "only, keeping essential services open; municipal schools follow their own school calendar (art. 3; topic \"school\"), and shops and " +
   "private employers follow labour rules. Confirm in the Diário Oficial do Município.";
 const IPTU_NOTE =
   "Secondary source: Legisweb notes (2026-02-03 and 2026-03-18) that mirror Prefeitura releases. The general rule " +
   "only: your own amount, slip and any exemption are on the Curitiba App or the Prefeitura website; confirm there.";
 
-export function calendarResult(topic: "holidays" | "iptu", now: Date): Output {
+const SCHOOL_NOTE =
+  "Municipal network only, from the Secretaria Municipal da Educação's 2026 calendars (one PDF per unit type, signed " +
+  "2025-10-30); state schools follow the Paraná state calendar and private schools their own. A school may adjust " +
+  "its dates: confirm with it. school_day is a rule fitted to the printed per-month counts, not printed itself.";
+
+export function calendarResult(
+  topic: "holidays" | "school" | "iptu",
+  now: Date,
+  opts: { unit?: SchoolUnit; date?: string } = {},
+): Output {
   const today = dateInCuritiba(now);
   const expired = today > `${CALENDAR_YEAR}-12-31`;
   const stale = expired ? ` These are ${CALENDAR_YEAR} values: the ${CALENDAR_YEAR + 1} ones are not bundled in this version.` : "";
+  if (topic === "school") {
+    const units = opts.unit ? [opts.unit] : [...SCHOOL_UNITS];
+    const urls = units.map((u) => SCHOOL_CALENDARS[u].source_url);
+    return {
+      data: {
+        topic,
+        year: CALENDAR_YEAR,
+        expired,
+        units: units.map((u) => {
+          const c = SCHOOL_CALENDARS[u];
+          return {
+            unit: u,
+            name: UNIT_NAMES[u],
+            first_day_with_students: c.first_day_with_students,
+            last_day_with_students: c.last_day_with_students,
+            periods: (c.periods as readonly Period[]).map(([kind, from, to, name]) => ({
+              from, to, kind, label: SCHOOL_KIND_LABELS[kind], name: name ?? null,
+            })),
+            school_days_per_month: [...c.school_days_per_month],
+            total_school_days: c.total_school_days,
+            on_date: opts.date ? { date: opts.date, school_day: isSchoolDay(u, opts.date), kinds: schoolKindsOn(u, opts.date) } : null,
+            source_url: c.source_url,
+            sha256: c.sha256,
+            signed: c.signed,
+          };
+        }),
+      },
+      source_url: urls[0] ?? "",
+      source_urls: urls,
+      checked_at: SCHOOL_CALENDAR_READ_AT,
+      note: `Unofficial; not affiliated with the Prefeitura. Read from the PDFs on ${SCHOOL_CALENDAR_READ_AT}; this tool makes no network call. ${SCHOOL_NOTE}${stale}`,
+    };
+  }
   if (topic === "iptu") {
     return {
       data: { topic, year: CALENDAR_YEAR, expired, ...IPTU, secondary_source: true },
@@ -140,12 +273,13 @@ export function calendarResult(topic: "holidays" | "iptu", now: Date): Output {
 
 export const cityCalendar: ToolDef<typeof cityCalendarInput, typeof cityCalendarOutput> = {
   name: "city_calendar",
-  title: "Curitiba 2026 municipal holidays and IPTU rule (dated notes, no network)",
+  title: "Curitiba 2026 municipal holidays, school calendar and IPTU rule (dated notes, no network)",
   description:
-    "Dated 2026 notes, no network call. `topic` \"holidays\": the Prefeitura's holidays, optional days and closures " +
-    "(Decreto 2.385/2025; schools have their own calendar). \"iptu\": IPTU 2026 general rule (10% off in cash by 20 " +
-    "March, up to 10 instalments), from a secondary source. Says `expired` after 2026. Read-only.",
+    "Dated 2026 notes, no network call. `topic` \"holidays\": the Prefeitura's holidays and closures (Decreto " +
+    "2.385/2025). \"school\": municipal school calendars (escolas, CMEIs, CMAEEs): first and last day, vacations, " +
+    "recesses, school days; `date` says if there is class. \"iptu\": IPTU 2026 general rule, secondary source. Says " +
+    "`expired` after 2026. Read-only.",
   inputSchema: cityCalendarInput,
   outputSchema: cityCalendarOutput,
-  handler: async (args) => ok(calendarResult(args.topic ?? "holidays", new Date())),
+  handler: async (args) => ok(calendarResult(args.topic ?? "holidays", new Date(), { unit: args.unit, date: args.date })),
 };
