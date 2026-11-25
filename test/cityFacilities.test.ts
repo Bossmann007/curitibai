@@ -353,7 +353,90 @@ describe("city_facilities_search", () => {
   );
 
   it("v0.44.0: bare \"saude\" or \"posto\" is not a type (no guess between health units, UPAs and URBS posts)", () => {
-    for (const name of ["saude", "posto", "us", "upa", "hospital"]) expect(resolveType(name)).toBeNull();
+    for (const name of ["saude", "posto", "us", "hospital"]) expect(resolveType(name)).toBeNull();
+  });
+
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+  it.each([
+    ["UPA", "upa", 130],
+    ["UPAs", "upa", 130],
+    ["Unidade de Pronto Atendimento", "upa", 130],
+    ["pronto atendimento", "upa", 130],
+    ["UPA 24h", "upa", 130],
+    ["hospital público", "hospital publico", 129],
+    ["Hospitais Públicos", "hospital publico", 129],
+    ["estabilização psiquiátrica", "estabilizacao psiquiatrica", 131],
+    ["Unidade de Estabilização Psiquiátrica", "estabilizacao psiquiatrica", 131],
+  ] as const)("v0.45.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.45.0: bare \"hospital\" is not a type (layer 129 lists public hospitals only)", () => {
+    expect(resolveType("hospital")).toBeNull();
+    expect(resolveType("hospitais")).toBeNull();
+  });
+
+  it.each(["upa", "hospital publico", "estabilizacao psiquiatrica"])(
+    "v0.45.0: the %s note starts with 192 (SAMU) or 193 and that the tool does not triage",
+    async (t) => {
+      stubFetch(route(t, `${t.replace(" ", "_")}_synthetic.json`));
+      const out = await search({ type: t });
+      expect(out.note.startsWith("Emergency: call 192 (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage")).toBe(true);
+      expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
+    },
+  );
+
+  it("v0.45.0: the psychiatric stabilisation unit comes back with its 24-hour flag and phone", async () => {
+    stubFetch(route("estabilizacao psiquiatrica", "estabilizacao_psiquiatrica_synthetic.json"));
+    const out = await search({ type: "Unidade de Estabilização Psiquiátrica" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/131`);
+    expect(out.data).toMatchObject({ total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Unidade de Estabilização Psiquiátrica Casa Inventada",
+      address: "R. INVENTADA, 131 - CEP: 81.000-131",
+      hours: ["Atendimento:", "-Diariamente, 24 horas"],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: true },
+      phones: ["(41) 3333-0131"],
+      updated: "2026-04-15",
+    });
+  });
+
+  it("v0.45.0: the UPA near Boqueirão comes back with its 24-hour flag, hours as published and landline", async () => {
+    const calls = stubFetch(route("upa", "upa_synthetic.json"));
+    const out = await search({ type: "upa", near: { lat: -25.5, lon: -49.24 }, radius_m: 3000 });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/130`);
+    expect(out.data).toMatchObject({ type: "upa", label: "Unidade de Pronto Atendimento", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Unidade de Pronto Atendimento Boqueirão Ficticia",
+      bairro: "Boqueirão",
+      hours: [
+        "Atendimento de urgência e emergência médica:",
+        "-Diariamente, 24 horas",
+        "Atendimento de urgência odontológica:",
+        "-2ª a 6ª feira, das 19h às 23h",
+      ],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: true },
+      // "3333-0131 (Raio X)" is not a bare number: dropped, as any part not understood.
+      phones: ["(41) 3333-0130"],
+      updated: "2026-04-15",
+    });
+    expect(out.note).toMatch(/`open_periods.all_day` is the layer's 24-hour flag/);
+  });
+
+  it("v0.45.0: a hospital with every flag \"Não\" and no hours is returned as is; the note says that is not closed", async () => {
+    stubFetch(route("hospital publico", "hospital_publico_synthetic.json"));
+    const out = await search({ type: "hospital público", name: "ficticio" });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Hospital Federal Ficticio",
+      hours: [],
+      open_periods: { morning: false, afternoon: false, night: false, all_day: false },
+      phones: ["(41) 3333-1290"],
+      emails: [],
+      updated: "2016-07-05",
+    });
+    expect(out.note).toMatch(/does not mean closed or not open 24 hours/);
+    expect(out.note).toMatch(/being listed does not mean walk-in care/);
   });
 
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
