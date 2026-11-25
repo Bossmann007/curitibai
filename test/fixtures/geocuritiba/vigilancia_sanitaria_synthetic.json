@@ -1,0 +1,50 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventada",
+        "nome_completo": "Vigilância Sanitária Inventada",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "167",
+        "compl_end": "Rua da Cidadania Inventada, Piso Superior - CEP: 80.000-167",
+        "divulgar_endereco": "Sim",
+        "bairro": "Batel",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1670 / 3333-1671",
+        "email": "visa.inventada@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776265200000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 18h\r\nProtocolo:\r\n-Telefone: (41) 3333-1672"
+      },
+      "geometry": { "x": -49.29, "y": -25.44 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Ficticia",
+        "nome_completo": "Vigilância Sanitária Ficticia",
+        "nome_rua": "R. FICTICIA",
+        "num_pred": "1671",
+        "compl_end": "CEP: 81.000-167",
+        "divulgar_endereco": "Sim",
+        "bairro": "Hauer",
+        "regional": "Boqueirão",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1673",
+        "email": "visa.ficticia@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1756386000000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 18h"
+      },
+      "geometry": { "x": -49.25, "y": -25.48 }
+    }
+  ]
+}

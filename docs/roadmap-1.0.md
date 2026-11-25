@@ -153,3 +153,9 @@ especialidades medicas` and `centro de especialidades odontologicas` read IPPUC'
 records); the CAPS and psychiatric stabilisation answers give 192 or 193 and then CVV 188, and the specialty answers
 say to ask the health unit about a referral. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
 answers 120 of 124 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.47.0 (phase B) `city_facilities_search` `vigilancia sanitaria`, `zoonoses` and `hospital veterinario` read
+IPPUC's layers 167, 136 and 112 (10, 1 and 1 records), with hours as published. The veterinary hospital's layer has
+its address only, so the answer says where it is and that how it works is not published (ask the 156). 18 Curitiba
+App rows, 16 covered (7 data, 9 guide). The citizen eval answers 121 of 125 questions; 4 are gaps (real-time buses 2,
+other cities 2).

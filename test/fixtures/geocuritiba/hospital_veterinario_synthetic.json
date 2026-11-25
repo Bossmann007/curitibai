@@ -1,0 +1,28 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Hospital Veterinário Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "112",
+        "compl_end": "Parque Inventado - CEP: 82.000-112",
+        "divulgar_endereco": "Sim",
+        "bairro": "Taboão",
+        "regional": "Boa Vista",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": null,
+        "email": null,
+        "dt_atualiz": 1734534000000,
+        "observacao": null
+      },
+      "geometry": { "x": -49.27, "y": -25.36 }
+    }
+  ]
+}

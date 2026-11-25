@@ -68,6 +68,19 @@ const PSYCHIATRIC_NOTE =
   "The Secretaria Municipal da Saúde's psychiatric stabilisation unit, hours as published (see `updated`). Check by " +
   `its phone or the 156. ${SMS_OUVIDORIA}`;
 
+/** Health surveillance, zoonoses and the veterinary hospital (v0.47.0): only what the layers publish. */
+const SANITARY_NOTE =
+  "The Secretaria Municipal da Saúde's Vigilância Sanitária offices, hours as published (see `updated`). Call the " +
+  "office before going, or the 156.";
+const ZOONOSES_NOTE =
+  "The Centro de Controle de Zoonoses e Vetores, hours as published (see `updated`). Call before going, or the 156. " +
+  "The Hospital Veterinário Municipal is type `hospital veterinario`.";
+const VET_HOSPITAL_NOTE =
+  "When read on 2026-11-25, IPPUC's layer published the Hospital Veterinário Municipal's address only: no hours, " +
+  "phone, services or who it serves. Empty `hours` or `phones` and all-false `open_periods` mean not published, not " +
+  "closed. This tool cannot say who the hospital serves or what it costs: ask the 156 before going. The Centro de " +
+  "Controle de Zoonoses e Vetores is type `zoonoses`.";
+
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -231,6 +244,27 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "centros de especialidades odontologicas", "ceo", "especialidades odontologicas",
     ]),
     note: DENTAL_SPECIALTY_NOTE,
+  },
+  // Health surveillance, zoonoses and the veterinary hospital, added in v0.47.0 (read on 2026-11-25: 10, 1 and 1
+  // records). No bare "vigilancia", "veterinario", "animal" or "pet" alias: they would promise more than these layers.
+  {
+    ...equipment("vigilancia sanitaria", 167, "Vigilância Sanitária", [
+      "vigilancias sanitarias", "vigilancia sanitaria municipal",
+    ]),
+    note: SANITARY_NOTE,
+  },
+  {
+    ...equipment("zoonoses", 136, "Centro de Controle de Zoonoses e Vetores", [
+      "centro de controle de zoonoses", "centro de controle de zoonoses e vetores", "controle de zoonoses",
+      "centro de zoonoses", "centros de zoonoses", "zoonose", "centro de zoonose", "ccz",
+    ]),
+    note: ZOONOSES_NOTE,
+  },
+  {
+    ...equipment("hospital veterinario", 112, "Hospital Veterinário Municipal", [
+      "hospital veterinario municipal", "hospitais veterinarios",
+    ]),
+    note: VET_HOSPITAL_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),
