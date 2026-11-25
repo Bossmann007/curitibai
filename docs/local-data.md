@@ -94,6 +94,13 @@ the official page before acting: the summary is only the site's short teaser, an
 service. It gives a link only when one service matches and its host is allowed. Without the file, the guide still works
 with its fixed official links, and `carta.message` says how to save the copy.
 
+Since 0.37.0, `city_service_guide` with `carta_id` (a service `id`) builds a guide for any service of the file that has
+no hand-written guide. An item may then carry five optional fields, copied by hand from the service page: `who`
+("Quem pode solicitar"), `how` ("Como solicitar"), `documents` ("Documentos necessários"), `channels` (where to ask)
+and `cost`, each a string or a list of strings. They are returned in `carta_text`, cleaned (no HTML, only https links
+on allowed hosts, contact and CPF/CNPJ shapes masked, cut at 300 characters). Any other value of those fields is
+ignored, so a file without them stays valid, and `city_services_search` does not return them.
+
 ## Bus lines, stops, timetables and points of interest (URBS files you download)
 
 `bus_lines_search`, `bus_line_stops`, `bus_departures`, `bus_stops_near`, `next_buses_near` and `city_points_search` read URBS's daily exports from the dataset "Transporte

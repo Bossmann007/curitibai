@@ -1259,7 +1259,9 @@ Since 0.32.0 this is the `census` part of `place_at_point` ([ADR 0011](adr/0011-
 The steps are written by this project and bundled in `src/tools/cityServiceGuide.ts`. The server makes no request:
 it reads only the user's Carta copy (`carta-servicos.json`, as `city_services_search` does). Links, consent design and
 the host allowlist: [docs/tools.md](tools.md#city_service_guide-consent-and-links) and
-[ADR 0010](adr/0010-service-guides-consent-at-every-step.md).
+[ADR 0010](adr/0010-service-guides-consent-at-every-step.md). Since 0.37.0 a guide generated for any Carta service
+(`carta_id`) uses fixed steps written by this project and quotes the user's copy, cleaned; no new host and no request
+([ADR 0012](adr/0012-generated-carta-guides.md)).
 
 What was requested by hand on 2026-11-24 (curl, User-Agent `curitibai-dev-check`, from the developer's machine, to
 write and check the steps; a few requests per host, never by the server):

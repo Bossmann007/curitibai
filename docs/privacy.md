@@ -38,7 +38,7 @@ behind it.
 - **Services that need a login (`city_service_guide`, since 0.28.0; [ADR 0010](adr/0010-service-guides-consent-at-every-step.md)).**
   What CuritibAI never touches: it never logs in, submits, pays, schedules or opens a page; never asks for, receives,
   stores or logs a password, CPF, cartão SUS, card, address or any other personal data; and never fetches a page behind
-  a login (it makes no network call at all). Its input is a guide id and a step number only. It returns steps and
+  a login (it makes no network call at all). Its input is a guide id or a Carta id (since 0.37.0), and a step number only. It returns steps and
   official links (https, allowlisted hosts only). Each step that leaves the conversation is marked `needs_consent`,
   and the assistant is told to ask the user first, one step at a time, and never to type passwords or payment data.
   With `open_step`, the server asks the user's client to show the link for approval (MCP URL-mode elicitation). The

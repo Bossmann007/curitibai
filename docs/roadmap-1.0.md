@@ -55,11 +55,14 @@ A dev script, not in the package; it reads and never writes or fetches. It print
 How a service is classed, from the words of its title (accents and case ignored, whole words):
 
 - **guide:** the title has the words of one of `city_service_guide`'s Carta queries (the same match the tool uses;
-  a test keeps the script's copy equal to the tool's).
+  a test keeps the script's copy equal to the tool's), or, since v0.37.0, the service's `url` is a Carta service page
+  that the generated guide reaches (`city_service_guide` with `carta_id`, [ADR 0012](adr/0012-generated-carta-guides.md);
+  the same URL pattern as the tool, kept equal by a test). The second kind is also counted as `guide_generated`, in
+  total and per category, so the share of hand-written guides stays visible.
 - **data:** the title matches one of the script's narrow rules (for example "vacina", "feira", "linhas de ônibus",
   "feriado") and has no word that asks the citizen to act (matrícula, inscrição, solicitação, agendamento, emissão,
   licença, segunda via and similar).
-- **none:** anything else.
+- **none:** anything else (with a valid copy, only an item whose `url` is not a Carta service page).
 
 The rules err toward none: the scoreboard can understate coverage, never overstate it. A service wrongly counted as
 none is fixed by adding a rule and a test, not by changing the gate.
@@ -98,3 +101,6 @@ assistant, useful phones and cultural spaces (partial); Curitiba Lê Digital, De
 buses (none). Part (b) depends on each owner's local Carta copy; run the scoreboard for the current numbers.
 At v0.36.0 the citizen eval answers 99 of 114 questions; 15 are gaps (Lê Digital, Defesa Civil alerts, EstaR and
 real-time buses 2 each, cultural spaces 2, useful phones 1, route planning 1, Vale Creche 1, other cities 2).
+At v0.37.0 (phase C) every service of a valid Carta copy is reachable through `city_service_guide`: a hand-written
+guide, or the guide generated from the copy (`carta_id`). The citizen eval answers 104 of 119 questions (5 new
+questions on generated guides); the 15 gaps are unchanged.

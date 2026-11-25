@@ -15,9 +15,22 @@ export const CITY_SERVICES_MAX_AGE_DAYS = 180;
 /** Host of the city's obituary system (lists of deceased people): its links are never returned. */
 export const OBITUARY_HOST = "obituarios.curitiba.pr.gov.br";
 
-const OFFICIAL_URL = /^https:\/\/servicos\.curitiba\.pr\.gov\.br\/[a-z0-9-]+\/(\d+)$/;
+export const OFFICIAL_URL = /^https:\/\/servicos\.curitiba\.pr\.gov\.br\/[a-z0-9-]+\/(\d+)$/;
 /** "2026-11-19" or "2026-11-19/20" at the start of `captured`; the rest of that text is never echoed. */
 const CAPTURED = /^(\d{4}-\d{2}-\d{2})(?:\/\d{2})?/;
+
+/**
+ * Optional fields of a richer copy (a service page's "Quem pode solicitar", "Como solicitar", "Documentos", "Canais",
+ * "Custo"), read only by city_service_guide's generated guide. A string or a list of strings; anything else, or a
+ * missing field, is ignored, so a file valid before 0.37.0 stays valid. Cleaned and capped on output, not here.
+ */
+export const CARTA_DETAIL_FIELDS = ["who", "how", "documents", "channels", "cost"] as const;
+export type CartaDetailField = (typeof CARTA_DETAIL_FIELDS)[number];
+const DetailText = z
+  .union([z.string(), z.array(z.string()).max(50)])
+  .optional()
+  .catch(undefined)
+  .transform((v) => (v === undefined ? undefined : (Array.isArray(v) ? v.join("; ") : v).slice(0, 8000)));
 
 export const CatalogFile = z.object({
   source: z.string().max(500).optional(),
@@ -31,6 +44,11 @@ export const CatalogFile = z.object({
         what: z.string().max(2000),
         url: z.string().regex(OFFICIAL_URL),
         online: z.string().max(2000).nullable(),
+        who: DetailText,
+        how: DetailText,
+        documents: DetailText,
+        channels: DetailText,
+        cost: DetailText,
       }),
     )
     .max(5000),
@@ -68,7 +86,11 @@ export interface CityService {
   online_url: string | null;
 }
 
-type Indexed = CityService & { folded: { title: string; all: string } };
+type Indexed = CityService & {
+  folded: { title: string; all: string };
+  /** The raw `what` and the optional detail fields, for city_service_guide only (never returned by this tool). */
+  text: { what: string } & Partial<Record<CartaDetailField, string>>;
+};
 
 export interface Catalog {
   services: Indexed[];
@@ -107,6 +129,8 @@ export function buildCatalog(json: unknown): Catalog {
     if (seen.has(id)) throw new InvalidCatalogError(`${CATALOG_FILE}: service id ${id} appears more than once.`);
     seen.add(id);
     const summary = guardedSummary(x.what);
+    const text: Indexed["text"] = { what: x.what };
+    for (const f of CARTA_DETAIL_FIELDS) if (x[f] !== undefined && x[f].trim() !== "") text[f] = x[f];
     return {
       id,
       title: x.title,
@@ -116,6 +140,7 @@ export function buildCatalog(json: unknown): Catalog {
       online_url: safeOnlineUrl(x.online),
       // Built from the returned (guarded) summary, so a query cannot probe text the mask hides.
       folded: { title: fold(x.title), all: `${fold(x.title)} ${fold(summary).replace(TEASER_LABEL, "")}` },
+      text,
     };
   });
   const names = [...new Set(services.map((s) => s.category))].sort((a, b) => a.localeCompare(b, "pt-BR"));

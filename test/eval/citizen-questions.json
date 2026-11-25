@@ -112,5 +112,10 @@
   {"id":"q111","question":"Qual ônibus eu pego para ir da Rodoferroviária até o Parque Barigui?","tool":null,"gap":"route_planning"},
   {"id":"q112","question":"Como peço o Vale Creche?","tool":null,"gap":"vale_creche"},
   {"id":"q113","question":"Qual a previsão do tempo em São Paulo amanhã?","tool":null,"gap":"other_city","tags":["outside_curitiba"]},
-  {"id":"q114","question":"Como pago o IPTU em São José dos Pinhais?","tool":null,"gap":"other_city","tags":["outside_curitiba"]}
+  {"id":"q114","question":"Como pago o IPTU em São José dos Pinhais?","tool":null,"gap":"other_city","tags":["outside_curitiba"]},
+  {"id":"q115","question":"Como peço a licença sintética online da Prefeitura? Quem pode pedir e quanto custa?","tool":"city_service_guide","args":{"carta_id":9008},"expect":{"status":"guide","fields":["data.steps","data.title","data.generated.captured","data.carta_text.who","data.carta_text.cost"]}},
+  {"id":"q116","question":"Como consigo o alvará de exemplo para obra fictícia?","tool":"city_service_guide","args":{"carta_id":9005},"expect":{"status":"guide","fields":["data.steps","data.title","data.generated.carta_id"]}},
+  {"id":"q117","question":"Como tiro a segunda via de documento sintético na Prefeitura?","tool":"city_service_guide","args":{"carta_id":9004},"expect":{"status":"guide","fields":["data.steps","data.carta_text.what"]}},
+  {"id":"q118","question":"Como emito a guia do IPTU inventado para teste?","tool":"city_service_guide","args":{"carta_id":9009},"expect":{"status":"guide","fields":["data.steps","data.title"]}},
+  {"id":"q119","question":"Abre para mim o serviço online da licença sintética","tool":"city_service_guide","args":{"carta_id":9008,"open_step":3},"expect":{"status":"guide","fields":["data.open_step.url","data.title"]}}
 ]
