@@ -110,7 +110,8 @@ describe("generated guide from the Carta copy", () => {
     expect(o.data.service).toBe("iptu");
     expect(o.data.generated).toBeUndefined();
     expect(o.data.carta_text).toBeUndefined();
-    expect(o.note).toMatch(/^carta_id 9009 is covered by the hand-written guide "iptu", returned instead/);
+    expect(o.note).toMatch(/^carta_id 9009: its title has the words of the hand-written guide "iptu", returned instead/);
+    expect(o.note).toMatch(/covers the topic, not necessarily this exact service/);
     expect(o.data.carta.status).toBe("matched");
   });
 
@@ -222,6 +223,18 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     ["no 156.curitiba.pr.gov.br/x", "no https://156.curitiba.pr.gov.br/x"],
     ["Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5", "Lei 1.234/2020, R$ 10.50, documento.pdf, art. 5"],
   ])("%j → %j", (raw, clean) => expect(cleanCartaText(raw)).toBe(clean));
+
+  it.each([
+    "11999998888(//evil.dev)",
+    "a@b.com(evil.app)",
+    "123.456.789-09(//evil.dev)",
+    "11999998888(javascript&colon;alert(1))",
+    "http://evil.dev(//evil.dev)",
+  ])("a mask or link marker never forms a Markdown link again: %j", (raw) => {
+    const out = cleanCartaText(raw);
+    expect(out).not.toContain("](");
+    expect(cleanCartaText(`${"a ".repeat(140)}${raw}`)).not.toContain("](");
+  });
 
   it("a cut never leaves half a link or half a marker", () => {
     const pad = "a ".repeat(140);

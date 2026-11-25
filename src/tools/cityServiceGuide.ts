@@ -637,7 +637,9 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
     const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });
-  const out = cleanField(t, max);
+  // The mask and the link marker write "[...]" after the bracket strip: "11999998888(//x)" would become
+  // "[masked](//x)", a Markdown link again. Break every "](" pair, here and after a cut.
+  const out = cleanField(t, max).replace(/\]\(/g, "] (");
   if (!out.endsWith("…")) return out;
   // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
   const body = out.slice(0, -1);
@@ -739,7 +741,8 @@ export async function cartaGuideResult(
   }
   const hand = handWrittenFor(s.title);
   if (hand !== undefined) {
-    const prefix = `carta_id ${cartaId} is covered by the hand-written guide "${hand}", returned instead, with this service's Carta links. `;
+    const prefix = `carta_id ${cartaId}: its title has the words of the hand-written guide "${hand}", returned instead, with this ` +
+      "service's Carta links. That guide covers the topic, not necessarily this exact service: check its official page. ";
     return cityServiceGuideResult(hand, openStep, catalog, ctx, prefix, s);
   }
   const page = allowedUrl(s.official_url);
