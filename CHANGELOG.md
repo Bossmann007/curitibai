@@ -20,7 +20,9 @@ One place facade for 1.0 (owner approval 2026-11-24). 28 → 26 tools. Publishes
   areas notes too; before, they said the host was busy or failing.
 - Privacy rules unchanged: only the rounded point is sent; census sectors under 20 households stay withheld
   ([ADR 0009](docs/adr/0009-census-household-floor.md)).
-- tools/list: 116,799 → 115,040 characters; descriptions 9,593 → 8,842 of the 9,600 ceiling.
+- tools/list: 116,799 → 115,040 characters; descriptions 9,593 → 8,842 of the 9,600 ceiling. The new description no
+  longer says "never logged", "not a certificate" or "untrusted data"; docs/tools.md lists them, and `notes` carries
+  the last two in every answer.
 - README: an empty `CURITIBAI_REMOTE_DATA` (some MCP clients pass empty variables) stops the server with the
   configuration error on stderr; unset it or set `0` or `1`.
 
