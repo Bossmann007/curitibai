@@ -1,7 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { SHARED_CACHE_MAX_ENTRIES, sharedCache, TtlCache } from "../src/cache.js";
+import { CACHE_TTL_MS } from "../src/config.js";
 
 describe("sharedCache", () => {
+  it("reads the clock at each call, so a test clock expires its entries (since 0.38.1)", async () => {
+    vi.useFakeTimers();
+    try {
+      let loads = 0;
+      const load = async () => ++loads;
+      await sharedCache.getOrLoad("clock-test", load);
+      vi.advanceTimersByTime(CACHE_TTL_MS + 1);
+      await sharedCache.getOrLoad("clock-test", load);
+      expect(loads).toBe(2);
+    } finally {
+      vi.useRealTimers();
+      sharedCache.clear();
+    }
+  });
+
   it("keeps at most 500 entries and drops the oldest stored first", async () => {
     expect(SHARED_CACHE_MAX_ENTRIES).toBe(500);
     const loads: string[] = [];

@@ -266,6 +266,14 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     }
   });
 
+  it("a cut never ends inside a \"[link removido]\" marker, whose space hides it from the last-word check (since 0.38.1)", () => {
+    for (let n = 286; n <= 291; n++) {
+      const out = cleanCartaText(`${"x".repeat(n)} https://evil.example/x fim`);
+      expect(Array.from(out).length, out).toBeLessThanOrEqual(MAX_CARTA_FIELD);
+      expect(out, out).not.toMatch(/\[[^\]]*$/);
+    }
+  });
+
   it("is capped, and every link it keeps passes the allowlist", () => {
     const long = cleanCartaText("palavra ".repeat(500));
     expect(Array.from(long).length).toBeLessThanOrEqual(MAX_CARTA_FIELD);

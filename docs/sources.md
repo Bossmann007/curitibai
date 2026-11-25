@@ -1309,6 +1309,12 @@ read and falls back to the Carta step and the Central 156. Used:
   URBS-credentialed app or at a sales point, activate with plate, place and time; Lê Digital is inside the Curitiba
   App, free, with a registration and a download. Not linked. Prices, fines, hours and time limits in those summaries
   are from 2020 and 2021 and disagree, so the guides state no number and point to the street signs and the URBS page.
+- Curitiba App store seller (since 0.38.1, web search on 2026-11-25, pages not read): the App Store listing
+  `https://apps.apple.com/br/app/curitiba-app/id1447887852` names "Prefeitura Municipal de Curitiba" as seller in the
+  index summary; for Android, no Google Play page was in the results, and the third-party tracker
+  `https://appgoblin.info/apps/br.org.curitiba.ici.appcuritiba` names the same publisher for package
+  `br.org.curitiba.ici.appcuritiba`. The Lê Digital guide (step 4) asks the citizen to check the seller in the store;
+  no store link is given.
 
 Prior art (2026-11-24): `gh search repos "mcp server government services guide"` found nothing;
 `gh search repos "topic:mcp-server gov.br"` found only unrelated general projects. Decision: build.

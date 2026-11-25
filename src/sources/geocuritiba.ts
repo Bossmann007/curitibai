@@ -589,7 +589,7 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
 
 const cache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS);
 /** Point answers: keys are `GET <url>` with the rounded point; at most 500 kept (user positions are unbounded). */
-const pointCache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS, Date.now, 500);
+const pointCache = new TtlCache(GEOCURITIBA_CACHE_TTL_MS, () => Date.now(), 500);
 
 /** At least this long between two requests to the GeoCuritiba host from this process (any layer). */
 export const GEOCURITIBA_MIN_INTERVAL_MS = 5_000;

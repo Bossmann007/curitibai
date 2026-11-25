@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.38.1 - 2026-11-25
+
+Review hardening of 0.37 and 0.38. 26 tools. Publishes nothing.
+
+- `city_service_guide` (`carta_id`): a Carta title with a notice, appeal or fine word (`aviso`, `irregularidade`,
+  `recurso`, `notificação`, `multa`, `defesa`, and their plurals) no longer gets the hand-written `estar` guide, which
+  buys and activates parking time; it gets the generated guide of that service.
+- `estar`: the spelling "Est@R" (words `est`, `r`, `estacionamento`) also matches, for `carta_id` and for the guide's
+  own Carta links. The install step says to install only an app named on the URBS EstaR page.
+- `le_digital`: the install step says to check in the store that the seller is the Prefeitura Municipal de Curitiba
+  (source in [docs/sources.md](docs/sources.md)).
+- Cleaned Carta text: a cut never ends inside a `[link removido]` marker (its space hid the half marker from the
+  last-word check); the cut goes before its `[`.
+- `sharedCache` and the GeoCuritiba point cache read `Date.now` at each call, as `TtlCache`'s default does since
+  0.36.0, so a test clock expires their entries.
+
 ## 0.38.0 - 2026-11-25
 
 Lê Digital and EstaR guides, phase B of the 1.0 roadmap. 26 tools. Publishes nothing.

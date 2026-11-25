@@ -31,7 +31,9 @@ hand-written guides in `city_service_guide`, with the same per-step consent as t
    `156.curitiba.pr.gov.br`). No app-store link. The server makes no request; no new host in `src/`.
 4. **Carta words** (narrow, because a hand-written guide overrides a generated one): `le_digital` `[["le",
    "digital"]]`, `estar` `[["estar", "estacionamento", "regulamentado"]]` (not the verb "estar" alone, and not other services such
-   as a credential that only say "estacionamento regulamentado"); same in
+   as a credential that only say "estacionamento regulamentado"); since 0.38.1 also `["est", "r", "estacionamento"]`
+   ("Est@R"), and a title with `aviso`, `irregularidade`, `recurso`, `notificacao`, `multa`, `defesa` (or a plural)
+   never gets `estar` (`notFor`); same Carta words in
    `scripts/coverage-report.mjs` `GUIDE_TERMS`.
 5. **`cleanCartaText`**: after the masks and markers, every `]:` becomes `] :` too, so no Markdown reference
    definition forms (low finding of the v0.37 reviews); the text is cut again when those breaks take it over the cap.

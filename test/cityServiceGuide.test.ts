@@ -296,6 +296,35 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
     expect(handWrittenFor("Como estar em dia com a taxa sintética")).toBeUndefined();
     expect(handWrittenFor("Certidão digital sintética")).toBeUndefined();
   });
+
+  it("EstaR: a notice, appeal or fine title goes to the generated guide, not the purchase guide (since 0.38.1)", () => {
+    for (const title of [
+      "Aviso de Irregularidade do Estacionamento Regulamentado (EstaR)",
+      "Recurso de notificação do EstaR - estacionamento regulamentado",
+      "Defesa de multa sintética do EstaR - estacionamento regulamentado",
+      "Aviso de Irregularidade do Est@R - Estacionamento Regulamentado",
+    ]) {
+      expect(handWrittenFor(title), title).toBeUndefined();
+    }
+  });
+
+  it("EstaR: the \"Est@R\" spelling routes too (queryWords splits it into \"est\" and \"r\")", () => {
+    expect(handWrittenFor("Est@R - Estacionamento Regulamentado")).toBe("estar");
+    expect(handWrittenFor("Est@R sintético")).toBeUndefined();
+  });
+
+  it("EstaR: the install step says to install only an app named on the URBS EstaR page", async () => {
+    const o = await guide("estar");
+    const install = allSteps(o).find((s) => /^Instalar um aplicativo credenciado/.test(s.action))!;
+    expect(install.action).toMatch(/só um aplicativo citado na página do EstaR da URBS/);
+  });
+
+  it("Lê Digital: the install step asks the citizen to check the store seller", async () => {
+    const o = await guide("le_digital");
+    expect(allSteps(o).map((s) => s.action)).toContain(
+      "Instalar o Curitiba App pela loja oficial do celular; confira na loja que o vendedor é a Prefeitura Municipal de Curitiba.",
+    );
+  });
 });
 
 describe("Carta copy", () => {
