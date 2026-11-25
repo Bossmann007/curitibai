@@ -13,7 +13,7 @@ Municipal school calendar 2026 (owner approval 2026-11-24). 26 tools. Publishes 
   the school days per month and total (199) as printed, and, with `date`, whether it is a school day. The note says
   it covers the municipal network only: state and private schools follow other calendars. `expired` from 2027.
 - The dates were read from the Secretaria Municipal da Educação's three 2026 PDFs (downloaded once by hand on
-  2026-11-25 from `mid-educacao.curitiba.pr.gov.br`, which has no robots.txt) by the new dev-only
+  2026-11-25 02:16–02:18 UTC, 2026-11-24 in Curitiba, from `mid-educacao.curitiba.pr.gov.br`, which has no robots.txt) by the new dev-only
   `scripts/extract-school-calendar.py`. It maps cell colours and shapes to the PDF's own legend and fails unless the
   school days per month match the printed counts. The PDFs are not committed; only the dates, counts, URLs and
   sha256 are (`src/tools/schoolCalendarData.ts`). New input fields and a new output branch:

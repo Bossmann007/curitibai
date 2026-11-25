@@ -105,8 +105,8 @@ export const cityCalendarInput = {
     .enum(["holidays", "school", "iptu"])
     .optional()
     .describe(
-      "holidays (default): municipal administration holidays and closures of 2026; school: municipal school calendars " +
-        "2026; iptu: IPTU 2026 general rule.",
+      "holidays (default, or school when unit or date is given): municipal administration holidays and closures of " +
+        "2026; school: municipal school calendars 2026; iptu: IPTU 2026 general rule.",
     ),
   unit: z
     .enum(SCHOOL_UNITS)
@@ -281,5 +281,9 @@ export const cityCalendar: ToolDef<typeof cityCalendarInput, typeof cityCalendar
     "`expired` after 2026. Read-only.",
   inputSchema: cityCalendarInput,
   outputSchema: cityCalendarOutput,
-  handler: async (args) => ok(calendarResult(args.topic ?? "holidays", new Date(), { unit: args.unit, date: args.date })),
+  handler: async (args) => {
+    // `unit` and `date` belong to the school topic: with no topic they select it.
+    const topic = args.topic ?? (args.unit || args.date ? "school" : "holidays");
+    return ok(calendarResult(topic, new Date(), { unit: args.unit, date: args.date }));
+  },
 };

@@ -14,8 +14,8 @@ Checks (exit 1 on any failure):
 School-day rule (inferred from the per-month counts; the PDF does not state it): a day with the triangle (início /
 encerramento com crianças e estudantes) is a school day; otherwise a Monday-to-Friday day is a school day unless its
 fill is férias, recesso, recessos (feriados), feriados, início/encerramento com professores or Dia do Professor; a
-Saturday is a school day only with the Sábado de Integração or Avaliação dos Parâmetros fill. src/tools/schoolCalendar.ts
-applies the same rule and test/schoolCalendar.test.ts checks it against the counts committed from here.
+Saturday is a school day only with the Sábado de Integração or Avaliação dos Parâmetros fill. src/tools/cityCalendar.ts
+applies the same rule and test/cityCalendar.test.ts checks it against the counts committed from here.
 
 Usage (no network; the PDFs are downloaded by hand, see docs/sources.md):
   python3 -I scripts/extract-school-calendar.py escolas=<pdf> cmeis=<pdf> cmaees=<pdf>    (JSON)
@@ -112,13 +112,18 @@ def read_legend(page, words, legend_top):
         if r["top"] < legend_top or c in (None, (1.0, 1.0, 1.0), (0.0, 0.0, 0.0)) or r["x1"] - r["x0"] > 30:
             continue
         label = line_text(words, r["top"], r["bottom"], r["x1"], 270)
+        if c in fills:
+            fail(f"two legend swatches share the colour {c}")
         fills[c] = (kind_for(label, FILL_KINDS), label)
     shapes = {}
     for cv in page.curves:
         if cv["top"] < legend_top:
             continue
         label = line_text(words, cv["top"] - 1, cv["bottom"] + 1, cv["x1"], cv["x1"] + 300)
-        shapes[geometry(cv)] = (kind_for(label, SHAPE_KINDS), label)
+        g = geometry(cv)
+        if g in shapes:
+            fail(f"two legend shapes share the geometry {g}")
+        shapes[g] = (kind_for(label, SHAPE_KINDS), label)
     return fills, shapes
 
 
@@ -129,7 +134,7 @@ def read_page(path):
         page = pdf.pages[0]
         words = page.extract_words()
         text = page.extract_text()
-        legend_top = next(w for w in words if w["text"] == "Legenda:")["top"]
+        legend_top = (next((w for w in words if w["text"] == "Legenda:"), None) or fail(f"{path}: no legend"))["top"]
         fills, shapes = read_legend(page, words, legend_top)
 
         # Month blocks: name, weekday header row, day numbers, "Letivos: N", holiday lines.
@@ -148,7 +153,9 @@ def read_page(path):
             half = (xs[-1] - xs[0]) / 12
             left, right = xs[0] - half, xs[-1] + half
             letivos = min((w for w in words if w["text"] == "Letivos:" and w["top"] > name["bottom"]
-                           and left <= w["x0"] <= right + 20), key=lambda w: w["top"])
+                           and left <= w["x0"] <= right + 20), key=lambda w: w["top"], default=None)
+            if letivos is None:
+                fail(f"{path}: {name['text']} has no Letivos line")
             n_word = [w for w in words if abs(w["top"] - letivos["top"]) < 2 and w["x0"] > letivos["x1"]
                       and w["x0"] < right + 25 and w["text"].isdigit()]
             if len(n_word) != 1:
@@ -161,7 +168,7 @@ def read_page(path):
         total_m = re.search(r"Total dias letivos\s*=\s*(\d+)", text) or fail(f"{path}: no total")
         signed_m = re.search(r"Curitiba, (\d+) de (\w+) de (\d{4})", text) or fail(f"{path}: no signature date")
         signed = datetime.date(int(signed_m[3]), MONTHS_PT[signed_m[2].lower()], int(signed_m[1])).isoformat()
-        total_top = next(w for w in words if w["text"] == "Total")["top"]
+        total_top = (next((w for w in words if w["text"] == "Total"), None) or fail(f"{path}: no Total line"))["top"]
 
         # Day cells: the day number's centre and its 2026 date (asserted against its weekday column).
         cells = []
@@ -192,6 +199,8 @@ def read_page(path):
                 if len(tinted) != 1:
                     fail(f"{path}: body fill {c} at ({r['x0']:.1f},{r['top']:.1f}) is not in the legend")
                 tints.add((c, tinted[0], fills[tinted[0]][0]))
+                print(f"extract-school-calendar: NOTE: {path}: body fill {c} read as a 50% tint of the "
+                      f"{fills[tinted[0]][0]} swatch {tinted[0]}", file=sys.stderr)
                 fills[c] = fills[tinted[0]]
             covered = [cl for cl in cells if r["x0"] <= cl["x"] <= r["x1"] and r["top"] <= cl["y"] <= r["bottom"]]
             if not covered:

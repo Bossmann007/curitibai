@@ -1234,7 +1234,7 @@ Since 0.32.0 this is the `census` part of `place_at_point` ([ADR 0011](adr/0011-
 
   The CMAEE file is byte-identical to `.../2026/1/pdf/00522625.pdf`, linked from the same host.
 - **How and when:** the owner approved this on 2026-11-24. The owner's assistant downloaded the three PDFs once on
-  2026-11-25, 02:16–02:18 UTC, with an honest User-Agent; `mid-educacao.curitiba.pr.gov.br` has no robots.txt
+  2026-11-25, 02:16–02:18 UTC (2026-11-24 in Curitiba: `checked_at` is that date), with an honest User-Agent; `mid-educacao.curitiba.pr.gov.br` has no robots.txt
   ([robots.txt findings](#robotstxt-findings)). The PDFs are not committed. `scripts/extract-school-calendar.py`
   (dev only, Python with pdfplumber, not in the package) reads them locally and writes
   `src/tools/schoolCalendarData.ts`: only the dates, holiday names, counts, URL and sha256 (facts of an official act).

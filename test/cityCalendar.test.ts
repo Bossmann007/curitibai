@@ -50,7 +50,7 @@ describe("city_calendar", () => {
       expect(perMonth, unit).toEqual([...SCHOOL_CALENDARS[unit].school_days_per_month]);
       expect(perMonth.reduce((a, b) => a + b), unit).toBe(SCHOOL_CALENDARS[unit].total_school_days);
     }
-    // The numbers printed on the CMAEE PDF, as given in the task brief.
+    // As printed on the CMAEE PDF (00522559.pdf): the "Letivos" of each month and "Total dias letivos = 199".
     expect(SCHOOL_CALENDARS.cmaees.school_days_per_month).toEqual([0, 11, 22, 19, 20, 20, 12, 21, 20, 20, 20, 14]);
     expect(SCHOOL_CALENDARS.cmaees.total_school_days).toBe(199);
   });
@@ -91,7 +91,8 @@ describe("city_calendar", () => {
     const client = await connectClient();
     const res = await client.callTool({ name: "city_calendar", arguments: {} });
     expect(cityCalendarOutput.parse(res.structuredContent).data.topic).toBe("holidays");
-    const school = await client.callTool({ name: "city_calendar", arguments: { topic: "school", unit: "escolas", date: "2026-07-20" } });
+    // `date` with no topic selects the school topic.
+    const school = await client.callTool({ name: "city_calendar", arguments: { unit: "escolas", date: "2026-07-20" } });
     const data = cityCalendarOutput.parse(school.structuredContent).data;
     if (data.topic !== "school") throw new Error("topic");
     expect(data.units[0]?.on_date).toEqual({ date: "2026-07-20", school_day: false, kinds: ["recess"] });

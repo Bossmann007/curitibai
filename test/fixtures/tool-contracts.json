@@ -729,7 +729,7 @@
       "type": "object",
       "properties": {
         "topic": {
-          "description": "holidays (default): municipal administration holidays and closures of 2026; school: municipal school calendars 2026; iptu: IPTU 2026 general rule.",
+          "description": "holidays (default, or school when unit or date is given): municipal administration holidays and closures of 2026; school: municipal school calendars 2026; iptu: IPTU 2026 general rule.",
           "type": "string",
           "enum": [
             "holidays",
