@@ -15,7 +15,7 @@ import { buildDataDir, NOW, routesFor } from "./world.js";
 const BANK = JSON.parse(readFileSync(new URL("./citizen-questions.json", import.meta.url), "utf8")) as Question[];
 const TOOLS = new Map<string, (typeof tools)[number]>(tools.map((t) => [t.name, t]));
 /** The App gaps of docs/tools.md (rows partial or none, AI assistant aside) that the bank must ask about. */
-const APP_GAPS = ["le_digital", "defesa_civil", "estar", "realtime_bus", "cultural_spaces", "useful_phones"];
+const APP_GAPS = ["defesa_civil", "realtime_bus", "cultural_spaces", "useful_phones"];
 
 let dataDir = "";
 beforeAll(() => {

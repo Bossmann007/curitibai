@@ -1826,7 +1826,9 @@
             "cartao_transporte",
             "agenda_online",
             "creche",
-            "detran"
+            "detran",
+            "le_digital",
+            "estar"
           ]
         },
         "carta_id": {
@@ -1861,7 +1863,9 @@
                     "cartao_transporte",
                     "agenda_online",
                     "creche",
-                    "detran"
+                    "detran",
+                    "le_digital",
+                    "estar"
                   ]
                 },
                 {
@@ -2045,7 +2049,9 @@
                       "cartao_transporte",
                       "agenda_online",
                       "creche",
-                      "detran"
+                      "detran",
+                      "le_digital",
+                      "estar"
                     ]
                   },
                   "title": {

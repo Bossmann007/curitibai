@@ -1,6 +1,6 @@
-# SPEC: v0.37.0 generated guides for every Carta service
+# SPEC: v0.38.0 Lê Digital and EstaR guides
 
-Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.37.0, phase C of docs/roadmap-1.0.md"). **This change publishes
+Approved: Enzo 2026-11-25 (task brief "CuritibAI v0.38.0, phase B of docs/roadmap-1.0.md"). **This change publishes
 nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
@@ -8,51 +8,48 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Gate 2 of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): every Carta de Serviços service reachable. When a citizen asks
-how to get a Prefeitura service with no hand-written guide, `city_service_guide` builds one from the user's local Carta
-copy (`CURITIBAI_DATA_DIR/carta-servicos.json`), with the same per-step consent markers as the hand-written guides
-([ADR 0012](docs/adr/0012-generated-carta-guides.md)).
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): close the Curitiba App gaps Curitiba Lê Digital and EstaR with
+hand-written guides in `city_service_guide`, with the same per-step consent as the existing guides
+([ADR 0010](docs/adr/0010-service-guides-consent-at-every-step.md)).
 
 ## Changes
 
-1. **Input** (`src/tools/cityServiceGuide.ts`): `service` becomes optional; new optional `carta_id` (integer, the `id`
-   of `city_services_search`). Exactly one of the two, else `invalid_argument`. Why not a new tool: same answer shape,
-   consent rule, allowlist and `open_step` ([ADR 0005](docs/adr/0005-extend-a-tool-before-adding-one.md)).
-2. **Priority**: when the service title has every word of a hand-written guide's Carta query (`handWrittenFor`), that
-   guide is returned, with a note and the requested service's own Carta links.
-3. **Generated guide** (`cartaGuideResult`, `generatedGuide`): fixed steps only: the first step in the conversation,
-   the official Carta page, the online service when its link passes `allowedUrl`, then login, data and documents,
-   send, pay, each "if the site asks" with `needs_consent` and a fixed consent text. `service` `carta`, `generated`
-   (`carta_id`, `captured`, `reviewed_by_hand: false`), `carta_text`, `checked_at` the copy's date, the Carta licence
-   note. The elicitation message names the Carta id and the host, never Carta text.
-4. **Untrusted text** (`cleanCartaText`): control and format characters removed; entities decoded, then tags and
-   `<`/`>` removed; Markdown links reduced to their text; link-like tokens (scheme, `www.`, bare host) that fail
-   `allowedUrl` become `[link removido]`; `cleanField` masks contact and CPF/CNPJ shapes and cuts at 300 code points
-   (title 120), never inside a link or a marker.
-5. **No copy / invalid copy / unknown id**: no steps; `carta.status` and `carta.message` (`CARTA_HOW_TO` when absent)
-   and `available_guides`; with `open_step`, `invalid_argument`. No network call, no new host.
-6. **Copy format** (`src/tools/cityServicesSearch.ts`): optional item fields `who`, `how`, `documents`, `channels`,
-   `cost` (string or list of strings; anything else ignored; kept raw up to 8,000 characters, cleaned on output).
-   `city_services_search` output unchanged. `OFFICIAL_URL` exported.
-7. **Scoreboard** (`scripts/coverage-report.mjs`): `classifyService(title, url)`; a service whose `url` matches
-   `GENERIC_GUIDE_URL` (equal to `OFFICIAL_URL`, test) and has no data rule or hand-written guide is guide via
-   `city_service_guide carta_id (generated)`, counted also as `guide_generated`; `reachable_without_generated_pct` and
-   the 30 most useful generated-only services (terminal only) keep the next hand-written guides visible.
-8. **Eval**: q115–q119 in `test/eval/citizen-questions.json` (synthetic ids 9008, 9005, 9004, 9009, 9008 with
-   `open_step`). The fixture gains the optional fields on 9008 and item 9009 ("IPTU inventado para teste"); its pin in
-   `scripts/check-no-catalog` is updated.
-9. **Docs and version**: `docs/tools.md` (row and the consent steps table), `docs/local-data.md`, `docs/privacy.md`,
-   `docs/sources.md`, `docs/roadmap-1.0.md`, README, ADR 0012, CHANGELOG 0.37.0, version 0.37.0 in `package.json`,
-   `package-lock.json`, `server.json`, tool contract snapshot.
+1. **Guides** (`src/tools/cityServiceGuide.ts`): `le_digital` (open the Carta page, the Prefeitura's news page that
+   names Lê Digital, install the Curitiba App, log in or register, find and download the book) and `estar` (Carta
+   page, the URBS EstaR page, install a URBS-credentialed app or go to a sales point, log in or register, register the
+   plate, buy credits, activate the time, a notice of irregularity through the URBS page or the Central 156). Every
+   step that leaves the conversation has `needs_consent` and a fixed consent text; login, personal data (CPF, plate),
+   payment and activation are separate steps. EstaR's payment step names the app or the sales point, not the bank.
+   No price, fine, hour or time limit is stated (the sources are from 2020–2021 and disagree).
+2. **Guide note and date**: `GuideDef` gains optional `note` (said before the consent rule, also with `open_step` and
+   on the `carta_id` route) and `fromWebSearchAt` (the envelope's `checked_at`, 2026-11-25 for the new guides, and a
+   licence note saying the guide was written from web search results and its official pages were not all read). The
+   EstaR note says the URBS page was not read (403 to non-browser clients); the Lê Digital note says no web page of
+   Lê Digital itself was found, so the in-app steps were not checked. Both fall back to the Carta step and the
+   Central 156. EstaR's app login step is conditional ("Se usar o aplicativo"), since a sales point needs none.
+3. **Links**: only hosts the allowlist already accepts (`www.urbs.curitiba.pr.gov.br`, `www.curitiba.pr.gov.br`,
+   `156.curitiba.pr.gov.br`). No app-store link. The server makes no request; no new host in `src/`.
+4. **Carta words** (narrow, because a hand-written guide overrides a generated one): `le_digital` `[["le",
+   "digital"]]`, `estar` `[["estar", "estacionamento", "regulamentado"]]` (not the verb "estar" alone, and not other services such
+   as a credential that only say "estacionamento regulamentado"); same in
+   `scripts/coverage-report.mjs` `GUIDE_TERMS`.
+5. **`cleanCartaText`**: after the masks and markers, every `]:` becomes `] :` too, so no Markdown reference
+   definition forms (low finding of the v0.37 reviews); the text is cut again when those breaks take it over the cap.
+6. **Eval**: q100, q101 (`le_digital`), q104, q105 (`estar`) move from gaps to guide answers.
+7. **Docs and version**: `docs/tools.md` (row, fixed-link table, the comparison table rows), `docs/sources.md`,
+   `docs/roadmap-1.0.md`, README, CHANGELOG 0.38.0, version 0.38.0 in `package.json`, `package-lock.json`,
+   `server.json`, tool contract snapshot (the `service` enum).
 
 ## Out of scope
 
-New hand-written guides; reading full service pages (the copy stays a file the user saves by hand); any fetch of
-`www.curitiba.pr.gov.br` or `servicos.curitiba.pr.gov.br`.
+A catalogue of Lê Digital titles; EstaR prices, hours or areas; any fetch of `www.curitiba.pr.gov.br` or
+`servicos.curitiba.pr.gov.br`; the other Curitiba App gaps (Defesa Civil alerts, real-time buses).
 
 ## Check
 
-- `npx vitest run test/cartaGuide.test.ts test/cityServiceGuide.test.ts test/eval`: generated guide shape, cleaning
-  cases, hand-written priority, no copy, hostile Carta text kept out of steps and elicitation, the guide invariants
-  over generated guides, the scoreboard rule equal to the tool's; `citizen eval: answered 104 / 119`.
+- `npx vitest run test/cityServiceGuide.test.ts test/cartaGuide.test.ts`: the guide invariants over the new guides,
+  EstaR's four separate consent steps (login, plate, payment, activation), no number in EstaR, the notes, the narrow
+  Carta words, `]:` never in cleaned text (also after a cut).
+- `node scripts/eval-summary.mjs`: `citizen eval: answered 108 / 119`; `node scripts/coverage-report.mjs`: 13 of 18
+  Curitiba App rows covered.
 - `scripts/check-no-catalog` passes; `scripts/verify` exits 0 on the PR head.

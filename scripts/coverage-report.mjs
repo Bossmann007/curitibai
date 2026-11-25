@@ -29,6 +29,8 @@ export const GUIDE_TERMS = {
   agenda_online: [["agendamento"]],
   creche: [["creche"], ["cadastramento", "escolar"]],
   detran: [["detran"]],
+  le_digital: [["le", "digital"]],
+  estar: [["estar", "estacionamento", "regulamentado"]],
 };
 
 /**
