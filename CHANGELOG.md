@@ -17,8 +17,9 @@ Route planning between two points, phase B of the 1.0 roadmap. 26 → 27 tools. 
   `pontosLinha` and `linhas` files: no network call, and a missing file is `data_not_available` as in
   `next_buses_near` (no GeoCuritiba fallback, since that layer has no lines per stop). The two points are not sent,
   cached, logged or returned.
-- On the real 2026-11-20 files, Rodoferroviária → Parque Barigui (500 m) gives 979 TURISMO; the way back gives no
-  line in order (979 in `other_lines`). About 31 ms per call (median, Apple M4).
+- On the real 2026-11-20 files (points from that day's URBS `pois` file), Rodoferroviária → Parque Barigui at 500 m
+  gives 979 TURISMO and the way back no line in order (979 in `other_lines`); at 1000 m, 979 and 464 one way, 464
+  back. About 31 ms per call (median, Apple M4).
 - `scripts/verify`: new timing guard `scripts/perf-bus-route-between.mjs` (17,496 generated stop rows, radius 1 km;
   median about 30 ms, fails over 400 ms); the stdio smoke test calls the new tool. `groupStops` in
   `src/tools/busStopsNear.ts` is now exported (no behaviour change).
@@ -27,7 +28,7 @@ Route planning between two points, phase B of the 1.0 roadmap. 26 → 27 tools. 
   transfers.
 - Citizen eval: q111 (Rodoferroviária to Parque Barigui) moves from the `route_planning` gap to `bus_route_between`,
   and new q120 asks the way back; the shared synthetic URBS fixture gains six invented rows of line 903 between two
-  stops placed near the two landmarks (approximate public coordinates). 114 of 120 answered; the `route_planning` gap
+  stops placed near the two landmarks (coordinates from the URBS `pois` file, rounded to 3 decimals). 114 of 120 answered; the `route_planning` gap
   label is gone.
 - No new network host for the server, no new dependency; the link allowlist is unchanged.
 

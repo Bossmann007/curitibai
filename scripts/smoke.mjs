@@ -62,7 +62,7 @@ const next = await client.callTool({
   name: "next_buses_near",
   arguments: { near: { lat: -25.41, lon: -49.21 }, at: "06:30", day: "1" },
 });
-// Rodoferroviária to Parque Barigui (approximate public coordinates) on the synthetic line 903 (citizen eval q111).
+// Rodoferroviária to Parque Barigui (coordinates from the URBS pois file, 3 decimals) on the synthetic line 903 (citizen eval q111).
 const route = await client.callTool({
   name: "bus_route_between",
   arguments: { from: { lat: -25.437, lon: -49.257 }, to: { lat: -25.422, lon: -49.308 } },

@@ -166,6 +166,10 @@ describe("bus_route_between", () => {
       stop("990402", "901", "8601", 2, "Terminal Imaginário", -100),
       stop("990401", "901", "8601", 3, "Terminal Imaginário", 100),
       stop("990403", "901", "8601", 4, "Terminal Imaginário", 3000),
+      // Same walk on 8602 with a ride of 2 SEQ: it wins only if 8601 boards at SEQ 1 (ride 3) instead of SEQ 3 (ride 1).
+      stop("990401", "901", "8602", 1, "Terminal Imaginário", 100),
+      stop("990404", "901", "8602", 2, "Terminal Imaginário", 1500),
+      stop("990403", "901", "8602", 3, "Terminal Imaginário", 3000),
       // A tie between two different stops: the later one wins.
       stop("990402", "X91", "8701", 1, "Centro Fictício", -100),
       stop("990401", "X91", "8701", 2, "Centro Fictício", 100),
@@ -174,7 +178,10 @@ describe("bus_route_between", () => {
     writeFileSync(join(tmp, "urbs", "2026_11_20_pontosLinha.json"), JSON.stringify(rows));
     copyFileSync(join(FIXTURES, "linhas.json"), join(tmp, "urbs", "2026_11_20_linhas.json"));
     const out = await route();
-    expect(out.data.items.map((i) => `${i.line_code} ${i.board.stop_number}`)).toEqual(["901 990401", "X91 990401"]);
+    expect(out.data.items.map((i) => `${i.line_code}/${i.itinerary_id} ${i.board.stop_number}`)).toEqual([
+      "901/8601 990401",
+      "X91/8701 990401",
+    ]);
   });
 
   it("says when the two points are close enough to walk, and drops the larger-radius hint at the maximum", async () => {

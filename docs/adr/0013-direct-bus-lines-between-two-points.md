@@ -44,7 +44,9 @@ Where it is written: `src/tools/busRouteBetween.ts`, `test/busRouteBetween.test.
 ## Consequences
 
 - 26 → 27 tools; one more description in every tools/list.
-- On the real 2026-11-20 files, Rodoferroviária → Parque Barigui (500 m) gives one line, 979 TURISMO (the Linha
-  Turismo, a loop), and the way back gives none in order (979 in `other_lines`): most real trips between distant
-  points need a transfer, which this tool does not model. Transfers would be a later, separate decision.
+- On the real 2026-11-20 files, from the Rodoferroviária (-25.437, -49.257) to the Parque Barigui (-25.422, -49.308),
+  both points taken from the URBS `pois` file of that day: at 500 m, one line, 979 TURISMO (the Linha Turismo, a
+  loop), and the way back none in order (979 in `other_lines`); at 1000 m, 979 and 464 A. MUNHOZ / JD. BOTÂNICO one
+  way (alighting 913 m from the park), 464 back. Trips like this one mostly need a transfer, which this tool does
+  not model; transfers would be a later, separate decision.
 - A circular line whose itinerary starts after `from` and ends before `to` is missed; `other_lines` names it.
