@@ -233,6 +233,12 @@ function jobsFor(include: readonly Part[], areas: "care" | "safety" | "all", p: 
   });
 }
 
+/** Each group decides `inside_curitiba` from its own first layer, so near the city limit the two can differ. */
+const disagree = (care: AreasResult, safety: AreasResult): string =>
+  care.data.inside_curitiba === safety.data.inside_curitiba
+    ? ""
+    : `Near the city limit: only the ${care.data.inside_curitiba ? "care" : "safety"} group found the point inside Curitiba; the other group's later layers were not asked (null).`;
+
 /** Care and safety answered together: one areas object with both groups' lists, credits and notes. */
 function mergeAreas(care: AreasResult, safety: AreasResult): AreasResult {
   return {
@@ -249,7 +255,7 @@ function mergeAreas(care: AreasResult, safety: AreasResult): AreasResult {
     source_url: care.source_url,
     checked_at: care.checked_at < safety.checked_at ? care.checked_at : safety.checked_at,
     license_note: care.license_note,
-    note: `${care.note} ${safety.note}`,
+    note: [care.note, safety.note, disagree(care, safety)].filter(Boolean).join(" "),
   };
 }
 

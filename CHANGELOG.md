@@ -11,6 +11,8 @@ Consistency fix from the v0.32 review, and a school calendar check that ends wit
   (`service_areas.cras` with `areas: "care"`, `police_civil` and `fire` with `"safety"`, all three with `"all"`, and
   `place.zoning`). This matches the 0.32.0 rule that empty means "read, and nothing covers the point" and null means
   "not read". `health_units` and `police_military`, whose layers are read to decide `inside_curitiba`, stay `[]`.
+  With `areas: "all"`, each group still decides `inside_curitiba` from its own first layer; near the city limit,
+  when only one group finds the point inside, a new note says the other group's later layers were not asked (null).
   The output descriptions say so; `test/fixtures/tool-contracts.json` was rewritten on purpose.
 - School calendar (Curitiba App comparison): not built. On 2026-11-25, inside the robots.txt Visit-time of
   educacao.curitiba.pr.gov.br, the Secretaria Municipal da Educação's "Calendários do ano letivo 2026" page held only

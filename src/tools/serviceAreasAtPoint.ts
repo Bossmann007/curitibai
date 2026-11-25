@@ -56,6 +56,7 @@ const FireArea = z.object({
   source_agency: sourceAgency,
 });
 
+const UNREAD_FIRST = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
 const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`).";
 
 export const serviceAreasAtPointOutput = z.object({
@@ -69,9 +70,9 @@ export const serviceAreasAtPointOutput = z.object({
         "True when the first layer asked (health unit area, or Polícia Militar company for `safety`) or a Curitiba " +
           "neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked.",
       ),
-    health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD}`),
+    health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     cras: z.array(CrasArea).nullable().describe(`\`care\`: CRAS territories containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD}`),
-    police_military: z.array(PoliceMilitaryArea).nullable().describe(`\`safety\`: Polícia Militar company areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
+    police_military: z.array(PoliceMilitaryArea).nullable().describe(`\`safety\`: Polícia Militar company areas containing the point (at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     police_civil: z.array(PoliceCivilArea).nullable().describe(`\`safety\`: Polícia Civil district areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     fire: z.array(FireArea).nullable().describe(`\`safety\`: fire platoon areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     partial: z.boolean().describe("True when a layer of a group asked could not be read; its list is then null."),

@@ -186,6 +186,15 @@ describe("place_at_point outside Curitiba and privacy", () => {
     expect(out.data.partial).toBe(false);
   });
 
+  it("areas all near the city limit: when only care finds the point inside, the safety lists not asked are null and a note says why", async () => {
+    stubFetch(routes({ bairro: EMPTY, pm_company: EMPTY }));
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({
+      inside_curitiba: true, health_units: [{ name: "US TESTE" }], cras: [{ name: "CRAS TESTE" }], police_military: [], police_civil: null, fire: null, partial: false,
+    });
+    expect(out.notes.join(" ")).toMatch(/only the care group found the point inside Curitiba; the other group's later layers were not asked \(null\)/);
+  });
+
   it("a point outside the box is refused without a request", async () => {
     const calls = stubFetch({});
     expect(errorOf((await callAll({ lat: -23.5, lon: -46.6 }))[0]!)).toMatchObject({ error: "invalid_argument" });
