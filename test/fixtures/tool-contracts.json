@@ -3809,7 +3809,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read."
+                      "description": "Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read or was not asked (outside Curitiba)."
                     },
                     "nearest_street": {
                       "anyOf": [

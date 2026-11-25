@@ -52,7 +52,7 @@ const placeResult = z.object({
     bairro: z.string().nullable(),
     regional: z.string().nullable(),
     boundary: z.boolean().describe("The point touches more than one neighbourhood; `bairro` is the first by name."),
-    zoning: z.array(Zone).nullable().describe("Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read."),
+    zoning: z.array(Zone).nullable().describe("Zones containing the point (distinct, at most 5; two on a boundary); null when the layer could not be read or was not asked (outside Curitiba)."),
     nearest_street: z
       .object({ name: z.string(), distance_m: z.number().int() })
       .nullable()
@@ -127,7 +127,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
     missing.push(part);
     errors.push(err);
   };
-  let zoning: ZoneOut[] | null = [];
+  let zoning: ZoneOut[] | null = null;
   let street: { name: string; distance_m: number } | null = null;
   if (inside) {
     try {
