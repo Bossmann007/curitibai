@@ -25,9 +25,12 @@ the order.
   a name parser here would guess. The model gets coordinates from those tools first.
 - A line is listed when one of its itineraries (same ITINERARY_ID) has a stop within the radius of `from` with a lower
   SEQ than a different stop within the radius of `to`. Per line, the pair with the least straight-line walking wins
-  (then the shorter ride, then the itinerary id); lines are sorted by that walking. Lines with stops near both ends but
-  no such itinerary (a loop line that passes its end first, or one direction only) are named in `other_lines`, never
-  presented as a route.
+  (then the shorter ride, so on a tie or a stop passed twice the later boarding stop; then the itinerary id); lines are
+  sorted by that walking. Lines with an itinerary that has stops near both ends but none in that order (a loop line
+  that passes its end first, or one direction only) are named in `other_lines` (at most 50), never presented as a
+  route. A line whose two directions use different streets, one near each end, is in neither list.
+- When the two points are within twice the radius, the note gives their straight-line distance: walking may be
+  shorter than any bus listed.
 - Direct lines only: no transfers, no integration terminals, no times, no fares. The note says so and points to
   `bus_departures`, `next_buses_near` and `city_facilities_search` `terminal`.
 - Data: the newest local `pontosLinha` and `linhas` files, through `loadUrbsOrFail`; a missing file is

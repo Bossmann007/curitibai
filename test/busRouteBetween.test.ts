@@ -158,6 +158,37 @@ describe("bus_route_between", () => {
     expect(brief(await route({ from: barigui, to: rodo }))).toEqual(["903 Rodoferroviária: 990103>990101"]);
   });
 
+  it("on a walking tie, or a stop passed twice, boards at the later stop (the shorter ride)", async () => {
+    mkdirSync(join(tmp, "urbs"), { recursive: true });
+    const rows = [
+      // A loop: 990401 (100 m) at SEQ 1 and again at SEQ 3, 990402 (100 m, a tie) at SEQ 2, destination at SEQ 4.
+      stop("990401", "901", "8601", 1, "Terminal Imaginário", 100),
+      stop("990402", "901", "8601", 2, "Terminal Imaginário", -100),
+      stop("990401", "901", "8601", 3, "Terminal Imaginário", 100),
+      stop("990403", "901", "8601", 4, "Terminal Imaginário", 3000),
+      // A tie between two different stops: the later one wins.
+      stop("990402", "X91", "8701", 1, "Centro Fictício", -100),
+      stop("990401", "X91", "8701", 2, "Centro Fictício", 100),
+      stop("990403", "X91", "8701", 3, "Centro Fictício", 3000),
+    ];
+    writeFileSync(join(tmp, "urbs", "2026_11_20_pontosLinha.json"), JSON.stringify(rows));
+    copyFileSync(join(FIXTURES, "linhas.json"), join(tmp, "urbs", "2026_11_20_linhas.json"));
+    const out = await route();
+    expect(out.data.items.map((i) => `${i.line_code} ${i.board.stop_number}`)).toEqual(["901 990401", "X91 990401"]);
+  });
+
+  it("says when the two points are close enough to walk, and drops the larger-radius hint at the maximum", async () => {
+    dataDir();
+    const near = await route({ to: { lat: north(600), lon: FROM.lon } });
+    expect(near.note).toContain("`from` and `to` are 600 m apart in a straight line");
+    expect((await route()).note).not.toContain("m apart in a straight line");
+    const far = { lat: north(20_000), lon: FROM.lon };
+    expect((await route({ to: far })).note).toContain("Try a larger radius_m");
+    const max = await route({ to: far, radius_m: 1000 });
+    expect(max.note).toContain("Try two buses through an integration terminal");
+    expect(max.note).not.toContain("Try a larger radius_m");
+  });
+
   it("pages with limit and offset", async () => {
     dataDir();
     const first = await route({ limit: 1 });

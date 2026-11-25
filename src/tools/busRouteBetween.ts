@@ -19,6 +19,9 @@ import { ok, type ToolDef } from "./common.js";
 
 export const ROUTE_RADIUS_DEFAULT_M = 500;
 export const ROUTE_RADIUS_MAX_M = 1000;
+/** At most this many `other_lines`; the note says when more were left out. */
+export const OTHER_LINES_MAX = 50;
+const byCode = (a: string, b: string) => a.localeCompare(b, "en", { numeric: true });
 
 const point = (what: string) =>
   z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) }).describe(`${what}, in decimal degrees.`);
@@ -62,7 +65,9 @@ export const busRouteBetweenOutput = busEnvelope(
     items: z.array(Route),
     other_lines: z
       .array(z.object({ line_code: z.string(), line_name: z.string().nullable() }))
-      .describe("Lines with stops near both ends but in no itinerary that passes `from` before `to` (see note)."),
+      .describe(
+        `Lines with an itinerary that has stops near both ends, but none that passes \`from\` before \`to\` (at most ${OTHER_LINES_MAX}; see note).`,
+      ),
   }),
 );
 
@@ -100,8 +105,7 @@ interface Leg {
   gap: number;
 }
 
-const better = (a: Leg, b: Leg) =>
-  a.walk - b.walk || a.gap - b.gap || a.itinerary.localeCompare(b.itinerary, "en", { numeric: true });
+const better = (a: Leg, b: Leg) => a.walk - b.walk || a.gap - b.gap || byCode(a.itinerary, b.itinerary);
 
 /**
  * Per line (code compared case-insensitively), the boarding and alighting pair with the least walking among the
@@ -121,7 +125,8 @@ export function directLegs(rows: readonly Ponto[], origin: Map<string, Near>, de
   const both = new Map<string, string>(); // upper-cased code -> first spelling, for lines with different stops near the two ends
   for (const list of byItinerary.values()) {
     list.sort((a, b) => Number(a.SEQ) - Number(b.SEQ));
-    // The two nearest boarding stops seen so far, with different stop numbers (one may be the alighting stop itself).
+    // The two nearest boarding stops seen so far, with different stop numbers (one may be the alighting stop itself);
+    // on a tie, or the same stop passed again, the later one (higher SEQ), so the ride is the shortest.
     let b1: { near: Near; seq: number } | null = null;
     let b2: { near: Near; seq: number } | null = null;
     const atOrigin = new Set<string>();
@@ -151,22 +156,22 @@ export function directLegs(rows: readonly Ponto[], origin: Map<string, Near>, de
       if (o !== undefined) {
         atOrigin.add(r.NUM);
         const cand = { near: o, seq };
-        if (b1 === null || o.distance < b1.near.distance) {
+        if (b1 === null || o.distance <= b1.near.distance) {
           if (b1 !== null && b1.near.stop.row.NUM !== r.NUM) b2 = b1;
           b1 = cand;
-        } else if (b1.near.stop.row.NUM !== r.NUM && (b2 === null || o.distance < b2.near.distance)) {
+        } else if (b1.near.stop.row.NUM !== r.NUM && (b2 === null || o.distance <= b2.near.distance)) {
           b2 = cand;
         }
       }
     }
-    // Near both ends: a stop near `from` and a different one near `to` (one shared stop is just a walk).
-    if (atOrigin.size > 0 && atDest.size > 0 && new Set([...atOrigin, ...atDest]).size > 1) {
+    // Near both ends: a stop near `to` that is not the only stop near `from` (one shared stop is just a walk).
+    if ([...atDest].some((d) => [...atOrigin].some((o) => o !== d))) {
       const r = list[0]!;
       if (!both.has(r.COD.toUpperCase())) both.set(r.COD.toUpperCase(), r.COD);
     }
   }
-  const legs = [...best.values()].sort((a, b) => a.walk - b.walk || a.cod.localeCompare(b.cod));
-  const others = [...both].filter(([up]) => !best.has(up)).map(([, cod]) => cod).sort((a, b) => a.localeCompare(b));
+  const legs = [...best.values()].sort((a, b) => a.walk - b.walk || byCode(a.cod, b.cod));
+  const others = [...both].filter(([up]) => !best.has(up)).map(([, cod]) => cod).sort(byCode);
   return { legs, others };
 }
 
@@ -196,11 +201,19 @@ export function busRouteBetweenResult(
       : ` Line names come from ${linesSrc.file} (dated ${linesSrc.date}), a different date from the stops file: compare before relying on them.`;
   const empty =
     legs.length === 0
-      ? ` No direct line was found (${origin.size} stop(s) near \`from\`, ${dest.size} near \`to\`). Try a larger ` +
-        `radius_m (at most ${ROUTE_RADIUS_MAX_M}), or two buses through an integration terminal: transfers and ` +
-        "terminals are not modelled here (city_facilities_search with type terminal lists the terminals and their " +
-        "integrated lines)."
+      ? ` No direct line was found (${origin.size} stop(s) near \`from\`, ${dest.size} near \`to\`). ` +
+        (args.radius_m < ROUTE_RADIUS_MAX_M ? `Try a larger radius_m (at most ${ROUTE_RADIUS_MAX_M}), or two` : "Try two") +
+        " buses through an integration terminal: transfers and terminals are not modelled here " +
+        "(city_facilities_search with type terminal lists the terminals and their integrated lines)."
       : "";
+  // The points are close enough for the two areas to overlap: walking may beat every bus listed.
+  const apart = Math.round(distanceM(args.from, args.to));
+  const close =
+    apart <= 2 * args.radius_m
+      ? ` \`from\` and \`to\` are ${apart} m apart in a straight line: walking there may be shorter than any bus listed.`
+      : "";
+  const cut =
+    others.length > OTHER_LINES_MAX ? ` \`other_lines\` shows the first ${OTHER_LINES_MAX} of ${others.length} by code.` : "";
   return {
     data: {
       radius_m: args.radius_m,
@@ -217,7 +230,7 @@ export function busRouteBetweenResult(
         alight: routeStop(l.alight),
         walk_m: l.walk,
       })),
-      other_lines: others.map((cod) => ({ line_code: cod, line_name: name(cod) })),
+      other_lines: others.slice(0, OTHER_LINES_MAX).map((cod) => ({ line_code: cod, line_name: name(cod) })),
     },
     source_url: URBS_SOURCE_URL,
     checked_at: src.date,
@@ -229,9 +242,12 @@ export function busRouteBetweenResult(
       "next_buses_near at `from`. A line is listed when one of its itineraries (same ITINERARY_ID) passes a stop " +
       "within radius_m of `from` before a stop within radius_m of `to`, by the stop order SEQ; per line, the pair " +
       "with the least walking (`walk_m`). `distance_m` and `walk_m` are straight-line distances, not walking routes. " +
-      "`other_lines` have stops near both ends but in no itinerary in that order (for example a loop line that would " +
-      "pass its end point first): check them with bus_line_stops. Your positions are not sent, stored or returned." +
+      "`other_lines` have an itinerary with stops near both ends, but none in that order (for example a loop line " +
+      "that would pass its end point first): check them with bus_line_stops. A line whose two directions use " +
+      "different streets, one near each end, is in neither list. Your positions are not sent, stored or returned." +
       empty +
+      close +
+      cut +
       linesDate +
       skippedNote(linesSrc.skipped, linesSrc.file),
   };
