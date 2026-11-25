@@ -16,7 +16,7 @@ Publishes nothing.
   GeoCuritiba stop layer, and lists the accepted values.
 - `city_service_guide`: with one of several Carta matches refused, the message reads "1 of their links is not on the
   official-host allowlist and is not listed" (it said "are not").
-- The `bus_stops_near` message when remote reading is off says "is off" (it said "is 0 or off").
+- The `bus_stops_near` message when remote reading is off says "is not on" (it said "is 0 or off").
 - The `bus_stops_near` description does not mention the switch: it would not fit the description size guard
   (369 of 400 characters for this tool, 9,593 of 9,600 for all of them).
 - Code removed, no answer changed: `failFrom` takes an optional hint for the end of its message, so `bus_stops_near`

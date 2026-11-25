@@ -72,7 +72,8 @@ export function createServer(): McpServer {
 async function main(): Promise<void> {
   if (remoteDataSetting() === null) {
     process.stderr.write(`curitibai: configuration error: ${REMOTE_DATA_INVALID}\n`);
-    process.exit(1);
+    process.exitCode = 1; // not process.exit: it could drop the message before a piped stderr is written
+    return;
   }
   const server = createServer();
   await server.connect(new StdioServerTransport());

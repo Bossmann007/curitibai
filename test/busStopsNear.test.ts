@@ -321,7 +321,7 @@ describe("bus_stops_near without the URBS export (GeoCuritiba layer)", () => {
       vi.stubEnv(REMOTE_DATA_ENV, value);
       const err = errorOf(await layerCall({ near: CENTRE })) as { error: string; message: string };
       expect(err).toMatchObject({ error: "data_not_available" });
-      expect(err.message).toContain(`${REMOTE_DATA_ENV} is off, so this tool stays local`);
+      expect(err.message).toContain(`${REMOTE_DATA_ENV} is not on, so this tool stays local`);
       vi.useRealTimers();
     }
     expect(calls).toHaveLength(0);
