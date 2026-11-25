@@ -1082,15 +1082,15 @@ changes (owner request, 2026-11-23: monthly and automatic).
     followed by mobiles; the mobiles are dropped by the phone allowlist. `email` `ouvidoria@sms.curitiba.pr.gov.br`
     for all 13. The bairro is often not the one in the name (CAPS Matriz is in Jardim Social; none is in Centro: the
     two nearest to the centre, about 2.6 and 2.9 km from the point -25.4296, -49.2713, are within the eval's 3,000 m radius). The
-    note leads with the emergency sentence and CVV 188, says the nearest CAPS is not always the one that serves you (a
-    CAPS Infantil is for children; some list their regionais in `hours`) and to ask the health unit or call the CAPS.
+    note leads with the emergency sentence and CVV 188, says a CAPS listed is not always the one that serves you (ask
+    a CAPS Infantil which ages it takes; some list their regionais in `hours`) and to ask the health unit or call the CAPS.
   - 132: 10 records, municipal (Centros de Especialidades Médicas Salgado Filho, Santa Felicidade and Vila Hauer,
     Ambulatório Encantar, Centro de Orientação e Aconselhamento) and state or other (e.g. Centro Psiquiátrico
     Metropolitano, CRAID, Ambulatório Médico de Especialidades Hospital do Trabalhador), all Monday to Friday,
     `dt_atualiz` from 2022-01-19 (three records) to 2026-06-10; some list their specialties. State e-mails
     (`sesa.pr.gov.br`, `pr.gov.br`) are dropped by the e-mail allowlist. No record says how a patient is referred,
     so the note does not say a referral is required: it says being listed does not mean walk-in care, to check with
-    the health unit whether a referral is needed, and to call before going.
+    the health unit whether a referral is needed, to call before going, and that mental health is type `caps`.
   - 133: 2 municipal dental specialty centres (Sylvio Gevaerd, Portão; Professor Léo Kriger, São Francisco), Monday
     to Friday, landline, SMS Ouvidoria e-mail. One record's `observacao` says "O encaminhamento ao Centro de
     Especialidades Odontológicas se dá por meio das Unidades de Saúde.", so the note says, as the layer publishes,

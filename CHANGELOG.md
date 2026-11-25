@@ -16,10 +16,11 @@ CAPS and specialty centres with hours, phase B of the 1.0 roadmap. 27 tools. Pub
   is not a type (medical or dental), and there is no `caps infantil` or `caps ad` alias (the tool has no such filter).
 - The `caps` note and the v0.45 `estabilizacao psiquiatrica` note now lead with the emergency sentence followed by
   "Emotional support: CVV 188 (24 hours, free call)." (number read by hand on cvv.org.br; no link is returned). The
-  `caps` note says `open_periods.all_day` is the layer's 24-hour flag and that the nearest CAPS is not always the one
-  that serves you (a CAPS Infantil is for children; some list in `hours` the regionais they serve): ask your health
-  unit or call the CAPS. The medical specialty note says being listed does not mean walk-in care and to check with
-  the health unit whether a referral is needed (no record of layer 132 says how patients are referred); the dental
+  `caps` note says `open_periods.all_day` is the layer's 24-hour flag and that a CAPS listed is not always the one
+  that serves you (ask a CAPS Infantil which ages it takes; some list in `hours` the regionais they serve): ask your
+  health unit or call the CAPS. The medical specialty note says being listed does not mean walk-in care, to check
+  with the health unit whether a referral is needed (no record of layer 132 says how patients are referred) and that
+  mental health is type `caps`; the dental
   note says, as layer 133 publishes, that referral is through the health units. Both say not for emergencies (192 or
   193) and that an ouvidoria@ e-mail is the SMS Ouvidoria's. The `type` description names the new types (snapshot
   updated, within 400 characters).

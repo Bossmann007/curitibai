@@ -491,7 +491,7 @@ describe("city_facilities_search", () => {
       phones: ["(41) 3333-1350"],
       updated: "2026-05-04",
     });
-    expect(out.note).toMatch(/nearest CAPS is not always the one that serves you/);
+    expect(out.note).toMatch(/A CAPS listed here is not always the one that serves you/);
     expect(out.note).toMatch(/SMS Ouvidoria's, not the unit's own/);
   });
 

@@ -36,11 +36,11 @@ allows `/`); the server never contacts it and no link is added. No new host. Det
    The bare `centro de especialidades` stays unresolved (medical or dental). No alias that implies a filter the tool
    does not apply (`caps infantil`, `caps ad`).
 2. **Notes**. `caps` and `estabilizacao psiquiatrica` lead with the v0.45 emergency sentence followed by "Emotional
-   support: CVV 188 (24 hours, free call)." CAPS: hours as published; `all_day` is the layer's flag; the nearest CAPS
-   is not always the one that serves you (CAPS Infantil are for children and adolescents, some list the regionais
-   they serve in `hours`): ask your health unit or call the CAPS. Medical specialty centres: municipal and state units
-   as listed by IPPUC, some last updated in 2022; access usually needs a referral, check with your health unit
-   (unidade de saude) and call before going. Dental: the layer says referral is through the health units. Both
+   support: CVV 188 (24 hours, free call)." CAPS: hours as published; `all_day` is the layer's flag; a CAPS listed
+   is not always the one that serves you (ask a CAPS Infantil which ages it takes; some list the regionais they serve
+   in `hours`): ask your health unit or call the CAPS. Medical specialty centres: municipal and state units as listed
+   by IPPUC, some last updated in 2022; being listed does not mean walk-in care, check with your health unit
+   (unidade de saude) whether a referral is needed and call before going; mental health is type `caps`. Dental: the layer says referral is through the health units. Both
    specialty notes say not for emergencies, 192 or 193, and that an ouvidoria@ e-mail is the SMS Ouvidoria's.
 3. **Descriptions**: the `type` description names `caps` and the two specialty types; both descriptions within 400
    characters. Tool contract snapshot updated.

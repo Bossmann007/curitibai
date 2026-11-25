@@ -51,14 +51,14 @@ const HOSPITAL_NOTE =
 export const MENTAL_HEALTH_LEAD_NOTE = `${EMERGENCY_NOTE} Emotional support: CVV 188 (24 hours, free call).`;
 const CAPS_NOTE =
   "CAPS hours are as published by the Secretaria Municipal da Saúde (see `updated`); `open_periods.all_day` is the " +
-  "layer's 24-hour flag and `hours` the detail. The nearest CAPS is not always the one that serves you: a CAPS " +
-  "Infantil is for children, and some list in `hours` the regionais they serve. Ask your health " +
+  "layer's 24-hour flag and `hours` the detail. A CAPS listed here is not always the one that serves you: ask a " +
+  "CAPS Infantil which ages it takes, and some CAPS list in `hours` the regionais they serve. Ask your health " +
   `unit (\`unidade de saude\`) or call the CAPS. ${SMS_OUVIDORIA}`;
 const NOT_EMERGENCY = "Not for emergencies: call 192 (SAMU) or 193.";
 const MEDICAL_SPECIALTY_NOTE =
   "Municipal and state specialty centres as listed by IPPUC, hours as published (see `updated`; some date from " +
   "2022). Being listed does not mean walk-in care: check with your health unit (`unidade de saude`) whether you " +
-  "need a referral, and call the centre before going. " +
+  "need a referral, and call the centre before going. Mental health: type `caps`. " +
   `${SMS_OUVIDORIA} ${NOT_EMERGENCY}`;
 const DENTAL_SPECIALTY_NOTE =
   "Municipal dental specialty centres, hours as published (see `updated`). As the layer publishes, referral to a " +
