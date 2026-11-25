@@ -137,3 +137,7 @@ number is given as the Ouvidoria's. The Useful phones row becomes "guide + offic
 App rows, 16 covered (7 data, 9 guide). The citizen eval answers 117 of 121 questions (q110 moved from the gap; q072,
 already answered by `useful_phones` with nothing found, now asks the guide); 4 are gaps (real-time buses 2, other
 cities 2).
+At v0.44.0 (phase B) municipal health units have their hours: `city_facilities_search` `unidade de saude` reads
+IPPUC's layer 134 (109 units, hours as published, to check before going); `health_units_search` (CNES) has no hours
+and points to it. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 118 of 122 questions;
+4 are gaps (real-time buses 2, other cities 2).

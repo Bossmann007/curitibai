@@ -27,6 +27,12 @@ const CONSERVATION_NOTE =
   "A conservation unit is a protected area, not always open to visits: check with SMMA or the 156 before going. " +
   "The layer publishes no update date (`updated` is null).";
 
+/** Health units (v0.44.0): hours are the Secretaria Municipal da Saúde's text, never read as a promise. */
+const HEALTH_UNIT_NOTE =
+  "Health unit hours are as published by the Secretaria Municipal da Saúde (see `updated`): a day not listed is not " +
+  "published as open, which is not a promise that the unit is closed or open; check before going, by the unit's " +
+  "phone or the 156. Not for emergencies: call 192 (SAMU) or go to a UPA.";
+
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -144,6 +150,15 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   sport("centro de lutas", 94, "Centro de Lutas", ["centros de lutas"]),
   sport("pista de patinacao", 165, "Pista de Patinação", ["patinacao", "pistas de patinacao"]),
   sport("velodromo", 166, "Velódromo", ["velodromos"]),
+  // Municipal health units (SMS), added in v0.44.0 (read on 2026-11-25: 109 records, every one with its hours in
+  // `observacao`). health_units_search (CNES) has no hours; this layer has no UPAs or hospitals.
+  {
+    ...equipment("unidade de saude", 134, "Unidade de Saúde", [
+      "unidades de saude", "ubs", "unidade basica", "unidade basica de saude", "unidades basicas de saude",
+      "posto de saude", "postos de saude",
+    ]),
+    note: HEALTH_UNIT_NOTE,
+  },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
