@@ -205,7 +205,8 @@ const IPTU_NOTE =
 const SCHOOL_NOTE =
   "Municipal network only, from the Secretaria Municipal da Educação's 2026 calendars (one PDF per unit type, signed " +
   "2025-10-30); state schools follow the Paraná state calendar and private schools their own. A school may adjust " +
-  "its dates: confirm with it. school_day is a rule fitted to the printed per-month counts, not printed itself.";
+  "its dates: confirm with it. school_day is a rule fitted to the printed per-month counts, not printed itself. No " +
+  "Sábado de Integração com as Famílias is marked in the 2026 PDFs.";
 
 export function calendarResult(
   topic: "holidays" | "school" | "iptu",

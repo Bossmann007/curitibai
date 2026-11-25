@@ -68,6 +68,7 @@ describe("city_calendar", () => {
     expect(u?.on_date).toEqual({ date: "2026-11-28", school_day: true, kinds: ["quality_evaluation"] });
     expect(out.source_urls).toEqual(["https://mid-educacao.curitiba.pr.gov.br/2025/12/pdf/00522559.pdf"]);
     expect(out.note).toMatch(/state schools follow the Paraná state calendar and private schools their own/);
+    expect(out.note).toMatch(/No Sábado de Integração com as Famílias is marked/);
 
     expect(isSchoolDay("escolas", "2026-02-09")).toBe(false); // teachers only
     expect(isSchoolDay("escolas", "2026-02-10")).toBe(true); // first day with students

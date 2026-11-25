@@ -7,7 +7,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Municipal school calendar 2026 (owner approval 2026-11-24). 26 tools. Publishes nothing.
 
 - `city_calendar` takes `topic: "school"`, with optional `unit` (`escolas`, `cmeis`, `cmaees`; all three when
-  omitted) and `date`. Per unit it returns the first and last day with students (2026-02-10 and 2026-12-18), the
+  omitted) and `date`; `unit` or `date` with no `topic` selects it (otherwise `holidays` stays the default). Per unit it returns the first and last day with students (2026-02-10 and 2026-12-18), the
   dated `periods` of each legend kind (vacations, recesses, holidays with their printed names, start and end days,
   pedagogical study days, the quality evaluation Saturday, Dia do Professor, and the escolas' class council weeks),
   the school days per month and total (199) as printed, and, with `date`, whether it is a school day. The note says

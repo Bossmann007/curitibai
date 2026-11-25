@@ -23,7 +23,7 @@ with no network call. v0.33 found the calendars only as PDFs; the owner download
    last day with students, dated periods per legend kind (holidays with their printed names), school days per month
    and total. The PDFs are not committed.
 3. **Tool** (`src/tools/cityCalendar.ts`, ADR 0005: no new tool): `city_calendar` `topic: "school"`, optional `unit`
-   and `date`; `on_date.school_day` from the rule the script checks; `expired` after 2026-12-31; the note says
+   and `date` (either one with no `topic` selects `school`); `on_date.school_day` from the rule the script checks; `expired` after 2026-12-31; the note says
    municipal network only, state and private schools follow other calendars. Contract snapshot rewritten.
 4. **Docs and version**: docs/tools.md (`city_calendar` row; "School calendar" row covered for the municipal
    network), docs/sources.md (mid-educacao row, how and when the PDFs were downloaded and read), README, CHANGELOG
