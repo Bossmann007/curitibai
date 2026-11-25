@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.45.0 - 2026-11-25
+
+UPAs and public hospitals with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: three new `type`s read live from IPPUC's GeoCuritiba urban-equipment layers, with the
+  same fields, filters, host gate, cache and phone and e-mail allowlist as the other layers: `upa` (aliases `upas`,
+  `unidade de pronto atendimento`, `unidades de pronto atendimento`, `pronto atendimento`, `upa 24h`, `upa 24
+  horas`), layer 130 "Unidade de Pronto Atendimento" (9 UPAs when read on 2026-11-25, all with `func_24hr` "Sim" and
+  "Diariamente, 24 horas"); `hospital publico` (alias `hospitais publicos`; the bare `hospital` is not a type, since
+  the layer lists public hospitals only), layer 129 "Hospital (público)" (10 records, municipal, state, federal and
+  military); `estabilizacao psiquiatrica` (aliases `unidade de estabilizacao psiquiatrica`, `unidades de
+  estabilizacao psiquiatrica`), layer 131 (1 record). Every note of the three types starts with "Emergency: call 192
+  (SAMU) or 193 (Bombeiros). This tool lists places, it does not triage or say where to go." The `upa` note says
+  `open_periods.all_day` is the layer's 24-hour flag and `hours` the detail (dental urgency hours differ). Layer
+  129's flags and hours are uneven (4 records with no hours, two last updated in 2016), so the `hospital publico`
+  note says `all_day` false or no hours does not mean closed or not open 24 hours, that being listed does not mean
+  walk-in care, and to check `updated` and call the hospital.
+- The `unidade de saude` note now names the `upa` and `hospital publico` types and says 192 (SAMU) or 193 instead of
+  "no UPAs or hospitals" and "go to a UPA". `health_units_search` (CNES) is unchanged and its description now points
+  UBS, UPAs and public hospitals to `city_facilities_search`; the `city_facilities_search` description names UPAs and
+  the `type` description names `upa` and `hospital publico` (snapshot updated, both within 400 characters).
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
+  Seven hand requests that day (robots.txt, and each layer's metadata and one whole-layer read), recorded in
+  [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
+- Citizen eval: new q123 ("Qual UPA perto do Boqueirão funciona 24 horas?") answered by `city_facilities_search`
+  `upa` with `near` a point in Boqueirão, on a synthetic fixture. 119 of 123 answered. The Curitiba App table's
+  Health information row also names UPAs and public hospitals.
+- SPEC.md's approval line now says who approved it: the task brief, under Enzo's standing go-ahead, not reviewed by
+  Enzo (0.43.0 and 0.44.0 wrongly said "Approved: Enzo").
+
 ## 0.44.0 - 2026-11-25
 
 Municipal health units with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

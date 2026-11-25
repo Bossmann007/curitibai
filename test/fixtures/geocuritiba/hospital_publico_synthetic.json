@@ -1,0 +1,48 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Inventado",
+        "nome_completo": "Hospital Municipal Inventado",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "129",
+        "divulgar_endereco": "Sim",
+        "bairro": "Pinheirinho",
+        "regional": "Pinheirinho",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-0129",
+        "email": "hospital@feas.curitiba.pr.gov.br",
+        "dt_atualiz": 1757961712000,
+        "observacao": "Atendimento:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": { "x": -49.29, "y": -25.51 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Ficticio",
+        "nome_completo": "Hospital Federal Ficticio",
+        "nome_rua": "AV. FICTICIA",
+        "num_pred": "1290",
+        "divulgar_endereco": "Sim",
+        "bairro": "Alto da Glória",
+        "regional": "Matriz",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1290",
+        "email": "direcao@hospital-ficticio.example.invalid",
+        "dt_atualiz": 1467741635000,
+        "observacao": null
+      },
+      "geometry": { "x": -49.26, "y": -25.42 }
+    }
+  ]
+}

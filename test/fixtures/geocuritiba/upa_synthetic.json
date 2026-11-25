@@ -1,0 +1,49 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326, "latestWkid": 4326 },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "Boqueirão Ficticia",
+        "nome_completo": "Unidade de Pronto Atendimento Boqueirão Ficticia",
+        "nome_rua": "R. INVENTADA",
+        "num_pred": "130",
+        "compl_end": "CEP: 81.000-130",
+        "divulgar_endereco": "Sim",
+        "bairro": "Boqueirão",
+        "regional": "Boqueirão",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-0130 / 3333-0131 (Raio X)",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776285209000,
+        "observacao": "Atendimento de urgência e emergência médica:\r\n-Diariamente, 24 horas\r\nAtendimento de urgência odontológica:\r\n-2ª a 6ª feira, das 19h às 23h"
+      },
+      "geometry": { "x": -49.241, "y": -25.497 }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "Vila Inventada",
+        "nome_completo": "Unidade de Pronto Atendimento Vila Inventada",
+        "nome_rua": "R. FICTICIA",
+        "num_pred": "131",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Não",
+        "func_tarde": "Não",
+        "func_noite": "Não",
+        "func_24hr": "Sim",
+        "telefone": "(41) 3333-0132",
+        "email": "ouvidoria@sms.curitiba.pr.gov.br",
+        "dt_atualiz": 1776285209000,
+        "observacao": "Atendimento de urgência e emergência médica:\r\n-Diariamente, 24 horas"
+      },
+      "geometry": { "x": -49.30, "y": -25.40 }
+    }
+  ]
+}

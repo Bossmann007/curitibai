@@ -141,3 +141,9 @@ At v0.44.0 (phase B) municipal health units have their hours: `city_facilities_s
 IPPUC's layer 134 (109 units, hours as published, to check before going); `health_units_search` (CNES) has no hours
 and points to it. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 118 of 122 questions;
 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.45.0 (phase B) UPAs and public hospitals have their 24-hour flag, hours and phone: `city_facilities_search`
+`upa`, `hospital publico` and `estabilizacao psiquiatrica` read IPPUC's layers 130, 129 and 131 (9, 10 and 1 records),
+and every answer says to call 192 (SAMU) or 193 in an emergency: the tool lists places, it does not triage. 18
+Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 119 of 123 questions; 4 are gaps (real-time
+buses 2, other cities 2).
