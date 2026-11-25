@@ -14,8 +14,9 @@ Ouvidoria, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   `falecomacgm@curitiba.pr.gov.br` for illicit acts and unethical conduct (text the citizen sends from their own
   e-mail, a consent step with no link), the identified, confidential and anonymous forms, the Central 156 for the
   identified form's protocol, the 30-day answer (Lei federal 13.460/2017) and the PDF. Its `note` says the source is
-  from 2024 and the channels may have changed. Carta words: `ouvidoria` + `cgm`, `ouvidoria` + `controladoria` or
-  `curitiba` + `ouve` (not the bare word: other offices have their own ouvidoria), mirrored in
+  from 2024 and the channels may have changed. Carta words: `ouvidoria` + `cgm`, `ouvidoria` + `controladoria`,
+  `ouvidoria` + `geral` or `curitiba` + `ouve` (not the bare word: other offices have their own ouvidoria); the `156`
+  guide gets `notFor: ["ouvidoria"]`, so an Ouvidoria title that names the 156 goes to this guide. Both mirrored in
   `scripts/coverage-report.mjs`.
 - The tool description names the Ouvidoria's channels. Tool contract: one new `service` value (snapshot updated).
 - No new network host; the link allowlist is unchanged (`mid.curitiba.pr.gov.br` and `www.curitiba.pr.gov.br` are in

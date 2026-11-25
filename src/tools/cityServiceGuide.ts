@@ -198,6 +198,8 @@ export const GUIDES = {
     title: "Central 156: pedido, informação, denúncia ou elogio",
     what: "Canal de atendimento da Prefeitura; também pelo telefone 156.",
     carta: [["156"]],
+    // An Ouvidoria title that names the 156 (its protocol) goes to the ouvidoria guide (since 0.43.0).
+    notFor: ["ouvidoria"],
     steps: [
       FIRST_STEP,
       OPEN_156,
@@ -608,8 +610,9 @@ export const GUIDES = {
       "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria.",
-    // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
-    carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["curitiba", "ouve"]],
+    // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's. "Ouvidoria
+    // Geral" is taken as the Prefeitura's (the note says that name was not verified against the CGM's).
+    carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral"], ["curitiba", "ouve"]],
     fromDocument: {
       checkedAt: GUIDES_0_43_CHECKED_AT,
       licenseNote:

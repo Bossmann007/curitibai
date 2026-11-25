@@ -205,7 +205,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(allSteps(o)[1]!.action).toMatch(/não publica telefone da Ouvidoria; não dê nenhum número como sendo dela/);
     expect(o.note).toMatch(/Never give a phone number as the Ouvidoria's/);
     // Phone shapes: an area code, 0800, or a dash-separated or 8-9 digit local number. Law numbers and 156 are not phones.
-    expect(t).not.toMatch(/\(\d{2}\)|0800|\d{4,5}-\d{4}|\b\d{8,9}\b/);
+    expect(t).not.toMatch(/\(\d{2}\)|\+55|0800|\b\d{4,5}[\s.-]?\d{4}\b/);
     expect(t).toMatch(/2024/);
     expect(o.note).toMatch(/dated 2024-05-10/);
     expect(o.note).toMatch(/may have changed since 2024/);
@@ -259,6 +259,9 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(handWrittenFor("Ouvidoria da CGM sintética")).toBe("ouvidoria");
     expect(handWrittenFor("Ouvidoria da Controladoria Geral do Município")).toBe("ouvidoria");
     expect(handWrittenFor("Curitiba Ouve")).toBe("ouvidoria");
+    expect(handWrittenFor("Ouvidoria-Geral do Município")).toBe("ouvidoria");
+    expect(handWrittenFor("Ouvidoria da CGM: denúncia com protocolo 156")).toBe("ouvidoria");
+    expect(handWrittenFor("Central 156 sintética")).toBe("156");
     expect(handWrittenFor("Ouvidoria da Saúde sintética")).toBeUndefined();
   });
 });

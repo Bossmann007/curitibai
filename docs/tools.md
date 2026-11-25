@@ -367,7 +367,7 @@ Compared on 2026-11-21 with the App Store listing above, not with the app itself
 Civil, EstaR and real-time buses added on 2026-11-23 from the owner's research of that day; refreshed on 2026-11-23
 from the Prefeitura's news pages linked above (and the Bem Paraná reprint), read in a browser that day.
 IPTU row and the v0.27 extras updated on 2026-11-24; the 156, scheduling, IPTU, Cartão Transporte and creche rows
-updated for v0.28 on 2026-11-24; the Lê Digital and EstaR rows updated for v0.38 on 2026-11-25; the Defesa Civil alerts row updated for v0.39 on 2026-11-25; the creche row updated for v0.42 on 2026-11-25; the useful phones row updated for v0.43 on 2026-11-25; the cultural spaces and useful phones rows updated for v0.40 on 2026-11-25.
+updated for v0.28 on 2026-11-24; the Lê Digital and EstaR rows updated for v0.38 on 2026-11-25; the Defesa Civil alerts row updated for v0.39 on 2026-11-25; the creche row updated for v0.42 on 2026-11-25; the cultural spaces and useful phones rows updated for v0.40 on 2026-11-25; the useful phones row updated again for v0.43 on 2026-11-25.
 The 1.0 gate counts this table: every row covered by a data tool or a guide ([Roadmap to 1.0](roadmap-1.0.md)).
 
 | Curitiba App feature | CuritibAI | Why |

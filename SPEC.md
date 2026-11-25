@@ -31,8 +31,9 @@ Ouve link was not opened (`www.curitiba.pr.gov.br` is never contacted). Details:
    their own e-mail (step 5, consent, no link: the allowlist takes only https); the three forms; the Central 156 for
    the identified form's protocol (step 7); the 30-day answer; the PDF (step 9). The `note` says the source is from
    2024 and the channels may have changed.
-2. **Carta routing**: `[["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["curitiba", "ouve"]]`, not the bare
-   word (other offices have their own ouvidoria). Mirrored in `scripts/coverage-report.mjs` (`GUIDE_TERMS`).
+2. **Carta routing**: `[["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral"], ["curitiba",
+   "ouve"]]`, not the bare word (other offices have their own ouvidoria); `156` gets `notFor: ["ouvidoria"]`. Mirrored
+   in `scripts/coverage-report.mjs` (`GUIDE_TERMS`, `GUIDE_NOT_FOR`).
 3. **Eval**: q072 and q110 → `city_service_guide` `ouvidoria`; the `useful_phones` gap is gone; a unit test keeps
    `useful_phones` answering nothing for "ouvidoria" (what q072 pinned before).
 4. **Curitiba App table**: the "Useful phones" row becomes "guide + official link, citizen acts": its other phones
