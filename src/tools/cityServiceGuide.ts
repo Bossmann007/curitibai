@@ -82,8 +82,9 @@ interface GuideDef {
   /** A Carta title with any of these words gets the generated guide instead (handWrittenFor; folded like the title). */
   notFor?: string[];
   /**
-   * Positive rule (since 0.39.1): the title also needs one of `words`, or its words are exactly one of `bare` (folded,
-   * in order). A deny list leaks through synonyms ("autuação", "vistoria"); this names what the guide is for.
+   * Positive rule (since 0.39.1): the title also needs one of `words`, or its words are the words of one of `bare`
+   * (folded, any order, BARE_FILLER words ignored). A deny list leaks through synonyms ("autuação", "vistoria"); this
+   * names what the guide is for.
    */
   needs?: { words: string[]; bare: string[][] };
   steps: StepDef[];
@@ -149,13 +150,13 @@ export const LE_DIGITAL_NEWS_URL =
 /** Date the Defesa Civil alerts guide was written from web search results (since 0.39.0; see docs/tools.md). */
 export const GUIDES_0_39_CHECKED_AT = "2026-11-25";
 
-/** Anatel's page on Defesa Civil Alerta (cell broadcast), read on 2026-11-25 (docs/sources.md). */
 /**
  * The federal sign-up service (Ministério da Integração e do Desenvolvimento Regional) on www.gov.br, read on
  * 2026-11-25: SMS to 40199 with the CEP of the area, plus other channels (since 0.39.1).
  */
 export const DEFESA_CIVIL_SIGNUP_URL =
   "https://www.gov.br/pt-br/servicos/solicitar-cadastro-para-recebimento-de-avisos-e-alertas-de-desastres";
+/** Anatel's page on Defesa Civil Alerta (cell broadcast), read on 2026-11-25 (docs/sources.md). */
 export const DEFESA_CIVIL_ALERTA_URL =
   "https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta";
 
@@ -462,18 +463,15 @@ export const GUIDES = {
     // A subscription word or the bare title: "Vistoria da Defesa Civil - alerta de risco" is another service (0.39.1).
     needs: {
       words: ["cadastro", "sms", "receber", "recebimento"],
-      bare: [
-        ["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"],
-        ["alerta", "da", "defesa", "civil"], ["alertas", "da", "defesa", "civil"],
-      ],
+      bare: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
     },
     fromWebSearchAt: GUIDES_0_39_CHECKED_AT,
     note:
       "Guide note (defesa_civil): the SMS steps (CEP to 40199, free, a confirmation reply) come from the Paraná " +
       "government's service page on www.parana.pr.gov.br (read 2026-11-25), which is not on the link allowlist and " +
       "is not linked; step 5 links the federal sign-up service on www.gov.br (read 2026-11-25), which gives the " +
-      "same SMS to 40199 with the CEP. Commands to list or cancel a CEP and other sign-up channels were not verified and " +
-      "are left out. Step 4 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
+      "same SMS to 40199 with the CEP and also lists WhatsApp and Telegram; their numbers and steps are on that page " +
+      "and were not verified here. Commands to list or cancel a CEP were not verified and are left out. Step 4 links Anatel's Defesa Civil Alerta page (read 2026-11-25). In an emergency, call " +
       "Defesa Civil 199. ",
     steps: [
       FIRST_STEP,
@@ -619,6 +617,11 @@ const CARTA_HOW_TO =
 
 type GuideRule = Pick<GuideDef, "carta" | "notFor" | "needs">;
 
+/** Words a bare title may have around it: "Alertas da Defesa Civil de Curitiba", "EstaR - ... (URBS)". */
+export const BARE_FILLER = ["de", "da", "do", "curitiba", "urbs"];
+const bareKey = (words: readonly string[]) =>
+  [...new Set(words.filter((w) => !BARE_FILLER.includes(w)))].sort().join(" ");
+
 /**
  * Does this Carta title route to the guide? Every word of one of its queries, as whole words; none of its notFor
  * words; and, when it has `needs`, one of its words or exactly one of its bare titles. handWrittenFor, matchCarta and
@@ -630,8 +633,8 @@ export function titleRoutesTo(title: string, guide: GuideRule): boolean {
   if (guide.notFor?.some((w) => words.has(w))) return false;
   if (!guide.carta.some((q) => queryWords(q.join(" ")).every((w) => words.has(w)))) return false;
   if (guide.needs === undefined) return true;
-  const joined = list.join(" ");
-  return guide.needs.words.some((w) => words.has(w)) || guide.needs.bare.some((b) => queryWords(b.join(" ")).join(" ") === joined);
+  const key = bareKey(list);
+  return guide.needs.words.some((w) => words.has(w)) || guide.needs.bare.some((b) => bareKey(queryWords(b.join(" "))) === key);
 }
 
 /** Services of the user's Carta copy whose title routes to the guide (titleRoutesTo). */
@@ -854,7 +857,7 @@ const URL_TOKEN = new RegExp(
   "giu",
 );
 export const LINK_REMOVED = "[link removido]";
-/** A word, a period and a capitalized word with no space: "internet.Com". Not a scheme, "www.", hyphen or digit. */
+/** A word, a period and a capitalized word with no space: "internet.Com". No hyphen, digit or third label. */
 const GLUED_SENTENCE = /^\p{L}+\.\p{Lu}\p{Ll}+$/u;
 /** The site's own "O que é?" label at the start of `what`. */
 const WHAT_LABEL = /^\s*o\s+que\s+(?:é|e|são|sao)(?![\p{L}\p{N}\p{M}])\s*\??\s*/iu;
@@ -878,7 +881,7 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
     // "internet.Com o protocolo": a sentence glued after a period, not a host (a host written so is not autolinked).
     // Only one plain word before the dot: a hyphen, a digit or another label ("pix-pague.Com", "pag2.Com",
     // "pague.pix.Com") is host-shaped, so it is a link (since 0.39.1).
-    if (GLUED_SENTENCE.test(link)) return tok;
+    if (!/^www\./i.test(link) && GLUED_SENTENCE.test(link)) return tok;
     const kept = allowedUrl(/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`);
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });

@@ -44,7 +44,7 @@ export const GUIDE_NOT_FOR = {
 
 /**
  * city_service_guide's positive rule (GUIDES[id].needs; a test keeps them equal, since 0.39.1): the title also needs
- * one of `words`, or its words are exactly one of `bare`.
+ * one of `words`, or its words are those of one of `bare` (any order, BARE_FILLER ignored).
  */
 export const GUIDE_NEEDS = {
   estar: {
@@ -53,19 +53,20 @@ export const GUIDE_NEEDS = {
   },
   defesa_civil: {
     words: ["cadastro", "sms", "receber", "recebimento"],
-    bare: [
-      ["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"],
-      ["alerta", "da", "defesa", "civil"], ["alertas", "da", "defesa", "civil"],
-    ],
+    bare: [["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]],
   },
 };
 
-/** The positive rule of one guide (GUIDE_NEEDS; true when the guide has none). */
+/** Words a bare title may have around it (BARE_FILLER in src/tools/cityServiceGuide.ts; a test keeps them equal). */
+export const BARE_FILLER = ["de", "da", "do", "curitiba", "urbs"];
+const bareKey = (words) => [...new Set(words.filter((w) => !BARE_FILLER.includes(w)))].sort().join(" ");
+
+/** The positive rule of one guide (GUIDE_NEEDS; true when the guide has none): a word, or a bare title in any order. */
 function needsMet(id, list, words) {
   const needs = GUIDE_NEEDS[id];
   if (needs === undefined) return true;
-  const joined = list.join(" ");
-  return needs.words.some((w) => words.has(w)) || needs.bare.some((b) => b.join(" ") === joined);
+  const key = bareKey(list);
+  return needs.words.some((w) => words.has(w)) || needs.bare.some((b) => bareKey(b) === key);
 }
 
 /**

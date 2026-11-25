@@ -31,13 +31,15 @@ listing with no warnings tool, an INMET REST wrapper for station data, NWS-only 
    the assistant never sends anything). The CEP is never asked in the conversation and is not a tool input.
    Emergencies: Defesa Civil 199 (in `what`). `fromWebSearchAt` 2026-11-25; the `note` says the SMS steps come from
    the Paraná government's page (`www.parana.pr.gov.br`, not on the link allowlist, so no link), that list/cancel
-   commands and other channels were not verified, and that no per-bairro alert feed exists here.
+   commands and other channels were not verified (since 0.39.1: the federal page linked in step 5 lists WhatsApp and
+   Telegram, not verified here), and that no per-bairro alert feed exists here.
 2. **Links**: the Carta step, plus only `https://www.gov.br/anatel/pt-br/dados/utilidade-publica/alertas-de-desastres/defesa-civil-alerta`
    and, since 0.39.1, `https://www.gov.br/pt-br/servicos/solicitar-cadastro-para-recebimento-de-avisos-e-alertas-de-desastres`
    (host `www.gov.br`, already in `EXACT_HOSTS`). `EXACT_HOSTS` and `ALLOWED_HOSTS` unchanged; no new network host.
 3. **Carta words**: `[["alerta", "defesa", "civil"], ["alertas", "defesa", "civil"]]`, mirrored in
    `scripts/coverage-report.mjs` `GUIDE_TERMS`. Since 0.39.1 the title also needs a subscription word (`cadastro`,
-   `sms`, `receber`, `recebimento`) or is the bare "Alerta(s) (da) Defesa Civil" (`needs`, mirrored in `GUIDE_NEEDS`).
+   `sms`, `receber`, `recebimento`) or is the bare "Alerta(s) Defesa Civil" in any order, "de", "da", "do", "Curitiba" or "URBS" ignored (`needs`,
+   mirrored in `GUIDE_NEEDS` and `BARE_FILLER`).
 4. **`weather_alerts`**: its note also names INMET's warnings page (since 0.39.1 `avisos.inmet.gov.br`, plain host
    with no scheme, and the older `alertas2.inmet.gov.br`; text only, outside the
    guide allowlist, as `weather_forecast` names `portal.inmet.gov.br`) and the `defesa_civil` guide.

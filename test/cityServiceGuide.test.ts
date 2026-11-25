@@ -340,6 +340,11 @@ describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
     expect(handWrittenFor("Ativação de tempo no EstaR - estacionamento regulamentado")).toBe("estar");
     expect(handWrittenFor("Cadastro para receber alertas da Defesa Civil por SMS")).toBe("defesa_civil");
     expect(handWrittenFor("Alertas Defesa Civil")).toBe("defesa_civil");
+    // The bare title in any order, with "de", "da", "do", "Curitiba" or "URBS" around it.
+    expect(handWrittenFor("Estacionamento Regulamentado - EstaR")).toBe("estar");
+    expect(handWrittenFor("EstaR - Estacionamento Regulamentado de Curitiba")).toBe("estar");
+    expect(handWrittenFor("Alertas da Defesa Civil de Curitiba")).toBe("defesa_civil");
+    expect(handWrittenFor("Defesa Civil de Curitiba - alerta de risco geológico")).toBeUndefined();
     // The guide's own Carta match follows the same rule.
     const copy = buildCatalog(
       carta([

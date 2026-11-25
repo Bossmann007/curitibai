@@ -227,6 +227,7 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     ["acesse pix-pague.Com para pagar", `acesse ${LINK_REMOVED} para pagar`],
     ["pag2.Com", LINK_REMOVED],
     ["veja pague.pix.Com agora", `veja ${LINK_REMOVED} agora`],
+    ["veja www.Com agora", `veja ${LINK_REMOVED} agora`],
   ])("%j → %j", (raw, clean) => expect(cleanCartaText(raw)).toBe(clean));
 
   it.each([

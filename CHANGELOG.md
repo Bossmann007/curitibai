@@ -10,7 +10,8 @@ Review hardening of 0.38.1 and 0.39.0. 26 tools. Publishes nothing.
   "vistoria"), so `estar` and `defesa_civil` now also need a positive word or the bare service title. `estar`: a
   purchase or activation word (`compra`, `comprar`, `crédito`, `créditos`, `ativação`, `ativar`) or the bare
   "EstaR - Estacionamento Regulamentado" (also spelled "Est@R"). `defesa_civil`: a subscription word (`cadastro`,
-  `sms`, `receber`, `recebimento`) or the bare "Alerta(s) (da) Defesa Civil". The deny words stay. Any other title
+  `sms`, `receber`, `recebimento`) or the bare "Alerta(s) Defesa Civil". A bare title matches in any order, with
+  "de", "da", "do", "Curitiba" or "URBS" around it. The deny words stay. Any other title
   gets the generated guide of that service; the guides' own Carta links follow the same rule. The "Est@R" query also
   needs `regulamentado`, since `est` and `r` are loose words. `scripts/coverage-report.mjs` mirrors the rule
   (`GUIDE_NEEDS`); a test keeps it equal.
@@ -22,7 +23,7 @@ Review hardening of 0.38.1 and 0.39.0. 26 tools. Publishes nothing.
   page this server never read: `avisos.inmet.gov.br` (named by INMET in June 2026) and the older
   `alertas2.inmet.gov.br`.
 - Cleaned Carta text: the glued-sentence exception ("internet.Com o protocolo") applies only to one plain word before
-  the dot; "Pix-pague.Com", "pag2.Com" and "pague.pix.Com" become `[link removido]`. After a cut, the half-marker and
+  the dot and never to `www.`; "Pix-pague.Com", "pag2.Com", "pague.pix.Com" and "www.Com" become `[link removido]`. After a cut, the half-marker and
   last-word checks repeat until neither applies, so dropping a word such as `removido]"https://...` never leaves
   `[link` open. A seeded fuzz test (400 hostile inputs) checks the output never has `](` or `]:`, never ends inside a
   marker and stays within the cap.
