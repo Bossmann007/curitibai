@@ -236,6 +236,18 @@ describe("cleanCartaText (untrusted Carta text)", () => {
     expect(cleanCartaText(`${"a ".repeat(140)}${raw}`)).not.toContain("](");
   });
 
+  it.each([
+    "11999998888: //evil.dev",
+    "11999998888://evil.dev",
+    "a@b.com: https://evil.dev/x",
+    "https://evil.dev/x: //evil.dev",
+    "123.456.789-00: evil.dev/x",
+  ])("a mask or link marker never forms a Markdown reference definition: %j", (raw) => {
+    const out = cleanCartaText(raw);
+    expect(out).not.toContain("]:");
+    expect(cleanCartaText(`${"a ".repeat(140)}${raw}`)).not.toContain("]:");
+  });
+
   it("a cut never leaves half a link or half a marker", () => {
     const pad = "a ".repeat(140);
     expect(cleanCartaText(`${pad}https://servicos.curitiba.pr.gov.br/um-servico-de-nome-longo/12345 fim`)).toBe(`${pad.trimEnd()}…`);

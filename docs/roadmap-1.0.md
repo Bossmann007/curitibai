@@ -92,8 +92,8 @@ landmarks. Each names the tool that should answer it, the arguments, and the sha
 Shape only, never exact text. `test/eval/citizenEval.test.ts` runs every question offline in `scripts/verify`
 (synthetic fixtures, one fixed clock, every request stubbed): the tool exists, the arguments pass its input schema
 with no unknown key, and the answer has the shape. A question no tool answers yet has `tool: null` and a `gap` label
-(`le_digital`, `defesa_civil`, `estar`, `realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows
-not covered, and others); gaps are counted, not failed. A question tagged
+(`defesa_civil`, `realtime_bus`, `cultural_spaces`, `useful_phones` for the Curitiba App rows not covered, and others;
+`le_digital` and `estar` until v0.38.0); gaps are counted, not failed. A question tagged
 `outside_curitiba` to a tool with no city check of its own (a bus stop or a feira near a point in São Paulo) expects
 `not_found`; `place_at_point` refuses such a point and expects `outside_curitiba`. `node scripts/eval-summary.mjs` prints the one-line count
 that `scripts/verify` shows. Closing a gap means a tool, its fixture and the question moved from `tool: null` to that
@@ -109,3 +109,6 @@ real-time buses 2 each, cultural spaces 2, useful phones 1, route planning 1, Va
 At v0.37.0 (phase C) every service of a valid Carta copy is reachable through `city_service_guide`: a hand-written
 guide, or the guide generated from the copy (`carta_id`). The citizen eval answers 104 of 119 questions (5 new
 questions on generated guides); the 15 gaps are unchanged.
+At v0.38.0 (phase B) Curitiba Lê Digital and EstaR have hand-written guides (`le_digital`, `estar`): 18 Curitiba App
+rows, 13 covered (6 data, 7 guide). The citizen eval answers 108 of 119 questions; 11 are gaps (Defesa Civil alerts,
+real-time buses and cultural spaces 2 each, other cities 2, useful phones 1, route planning 1, Vale Creche 1).

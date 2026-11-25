@@ -16,6 +16,7 @@ import {
   cityServiceGuideResult,
   GUIDE_IDS,
   GUIDES,
+  handWrittenFor,
   isAllowedUrl,
 } from "../src/tools/cityServiceGuide.js";
 import { connectClient, errorOf } from "./helpers.js";
@@ -225,6 +226,65 @@ describe("guide invariants (every guide, with and without the Carta copy, and ge
     for (const o of await everyOutput()) {
       expect(o.data.delegation.text).toMatch(/o CuritibAI não faz nem verifica/);
     }
+  });
+});
+
+describe("Lê Digital and EstaR guides (since 0.38.0)", () => {
+  async function guide(id: "le_digital" | "estar") {
+    const res = await cityServiceGuideResult(id, undefined, null, undefined);
+    if (!res.ok) throw new Error(res.message);
+    return cityServiceGuideOutput.parse(res.payload);
+  }
+  const consentWith = (o: Output, re: RegExp) => allSteps(o).filter((s) => s.needs_consent && re.test(`${s.consent} ${s.citizen_types_on_site.join(" ")}`));
+
+  it("EstaR: login, plate, payment and activation are separate consent steps; the citizen types them only in the app", async () => {
+    const o = await guide("estar");
+    const login = consentWith(o, /senha/);
+    const plate = consentWith(o, /placa do veículo/);
+    const pay = consentWith(o, /nunca digita dados de cartão/);
+    const activate = consentWith(o, /Só se o cidadão confirmar/);
+    for (const group of [login, plate, pay, activate]) expect(group.length).toBeGreaterThan(0);
+    const steps = new Set([login[0]!.step, plate[0]!.step, pay[0]!.step, activate[0]!.step]);
+    expect(steps.size).toBe(4);
+    // EstaR is paid in a URBS-credentialed app or sales point, not "no banco" (the generic PAY step).
+    expect(pay[0]!.consent).not.toMatch(/no banco/);
+    expect(allSteps(o).map((s) => s.url_host)).toEqual(
+      expect.arrayContaining(["www.urbs.curitiba.pr.gov.br", "156.curitiba.pr.gov.br"]),
+    );
+    expect(allSteps(o).length).toBeLessThanOrEqual(10);
+  });
+
+  it("EstaR: no price, fine, hour or time limit is stated; the guide says where to check", async () => {
+    const o = await guide("estar");
+    const text = [o.data.what, ...allSteps(o).map((s) => `${s.action} ${s.consent ?? ""}`)].join(" ");
+    expect(text).not.toMatch(/R\$|\d+\s*(h|min|minutos|horas)\b/i);
+    expect(o.data.what).toMatch(/placas de sinalização/);
+  });
+
+  it("Lê Digital: install, login and download are consent steps; nothing is paid", async () => {
+    const o = await guide("le_digital");
+    expect(consentWith(o, /instala o Curitiba App/)).toHaveLength(1);
+    expect(consentWith(o, /senha/)).toHaveLength(1);
+    expect(consentWith(o, /baixa/)).toHaveLength(1);
+    expect(consentWith(o, /pag[ao]/).every((s) => /nada é pago/i.test(s.consent!))).toBe(true);
+  });
+
+  it.each(["le_digital", "estar"] as const)("%s: the note says which official page was not read and gives the fallback", async (id) => {
+    const o = await guide(id);
+    expect(o.note).toMatch(/not read here/);
+    expect(o.note).toMatch(/Central 156/);
+    expect(o.checked_at).toBe("2026-11-25");
+    // The note also reaches open_step answers.
+    const res = await cityServiceGuideResult(id, 2, null, { elicitUrl: async () => "decline" });
+    if (!res.ok) throw new Error(res.message);
+    expect(res.payload.note).toMatch(/not read here/);
+  });
+
+  it("Carta words are narrow: the verb \"estar\" or a lone \"digital\" never routes a service to these guides", () => {
+    expect(handWrittenFor("EstaR - Estacionamento Regulamentado")).toBe("estar");
+    expect(handWrittenFor("Curitiba Lê Digital")).toBe("le_digital");
+    expect(handWrittenFor("Como estar em dia com a taxa sintética")).toBeUndefined();
+    expect(handWrittenFor("Certidão digital sintética")).toBeUndefined();
   });
 });
 

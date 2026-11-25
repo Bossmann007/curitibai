@@ -80,6 +80,10 @@ interface GuideDef {
   /** Alternative title queries for the Carta copy; every word of one query must be in the service title. */
   carta: string[][];
   steps: StepDef[];
+  /** Said before the consent rule in every answer of this guide: what was not verified and the fallback. */
+  note?: string;
+  /** Date this guide was written and its links checked, when later than GUIDES_CHECKED_AT. */
+  checkedAt?: string;
 }
 
 const FIRST_STEP: StepDef = {
@@ -127,6 +131,28 @@ const PAY: StepDef = {
   types: ["dados de pagamento, só no banco"],
 };
 
+/** Date the Lê Digital and EstaR guides were written from web search results (since 0.38.0; see docs/tools.md). */
+export const GUIDES_0_38_CHECKED_AT = "2026-11-25";
+
+export const URBS_ESTAR_URL = "https://www.urbs.curitiba.pr.gov.br/EstaR";
+/** The Prefeitura's news on the Curitiba App's new interface (2026-09-23), which names Curitiba Lê Digital. */
+export const LE_DIGITAL_NEWS_URL =
+  "https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129";
+
+const OPEN_156: StepDef = {
+  action: "Abrir o site oficial da Central 156.",
+  consent: "Abrir 156.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+  link: { fixed: "https://156.curitiba.pr.gov.br/" },
+};
+
+const APP_LOGIN = (app: string): StepDef => ({
+  action: `Entrar no ${app} ou fazer o cadastro, se ele pedir.`,
+  consent:
+    `O cidadão entra ou se cadastra no ${app} e digita ali os dados que ele pedir (como CPF). O assistente não ` +
+    "digita a senha nem o CPF.",
+  types: [`CPF e dados de cadastro que o ${app} pedir`, `senha do ${app}`],
+});
+
 export const GUIDES = {
   "156": {
     title: "Central 156: pedido, informação, denúncia ou elogio",
@@ -134,11 +160,7 @@ export const GUIDES = {
     carta: [["156"]],
     steps: [
       FIRST_STEP,
-      {
-        action: "Abrir o site oficial da Central 156.",
-        consent: "Abrir 156.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
-        link: { fixed: "https://156.curitiba.pr.gov.br/" },
-      },
+      OPEN_156,
       LOGIN_ECIDADAO,
       {
         action: "Abrir o formulário \"Abrir Pedido\" do site da Central 156.",
@@ -297,6 +319,96 @@ export const GUIDES = {
         consent: "Confirmar o pedido ou o agendamento no site oficial. Só se o cidadão confirmar.",
       },
       PAY,
+    ],
+  },
+  le_digital: {
+    title: "Curitiba Lê Digital: livros digitais gratuitos no Curitiba App",
+    what:
+      "Plataforma gratuita de leitura dentro do Curitiba App, com mais de 200 livros (clássicos e autores locais), " +
+      "segundo a Prefeitura. O CuritibAI não tem o acervo: a busca de títulos é no próprio app. Livros impressos: " +
+      "bibliotecas e Casas da Leitura (places_search ou city_facilities_search).",
+    carta: [["le", "digital"]],
+    checkedAt: GUIDES_0_38_CHECKED_AT,
+    note:
+      "Guide note (le_digital): no web page of Curitiba Lê Digital itself was found (it is inside the Curitiba App). " +
+      "Step 3 links the Prefeitura's news page that names it; that page answers 403 to non-browser clients and was " +
+      "not read here. If a link fails, use the Prefeitura's services page (step 2) or the Central 156 (phone 156). ",
+    steps: [
+      FIRST_STEP,
+      CARTA_PAGE,
+      {
+        action: "Abrir a notícia oficial da Prefeitura sobre o Curitiba App, que cita o Curitiba Lê Digital.",
+        consent: "Abrir a página de notícia em www.curitiba.pr.gov.br no navegador do cidadão. Nada é digitado.",
+        link: { fixed: LE_DIGITAL_NEWS_URL },
+      },
+      {
+        action: "Instalar o Curitiba App pela loja oficial do celular (vendedor: Prefeitura Municipal de Curitiba).",
+        consent: "O cidadão instala o Curitiba App por conta própria, na loja oficial do celular. Nada é digitado nesta etapa.",
+      },
+      APP_LOGIN("Curitiba App"),
+      {
+        action: "Abrir o Curitiba Lê no app, buscar o livro e baixá-lo.",
+        consent: "O cidadão busca o livro e o baixa no Curitiba App. É gratuito: nada é pago nem enviado.",
+        types: ["nome ou autor do livro, na busca do app"],
+      },
+    ],
+  },
+  estar: {
+    title: "EstaR: estacionamento regulamentado (comprar e ativar tempo)",
+    what:
+      "Estacionamento regulamentado nas ruas de Curitiba, gerido pela URBS. Segundo a URBS e a Prefeitura, o motorista " +
+      "compra créditos num aplicativo credenciado pela URBS ou num ponto de venda credenciado e ativa o tempo com a " +
+      "placa, o local e o tempo. Horários, tempo máximo e valores: placas de sinalização da quadra e site da URBS; este " +
+      "guia não traz números.",
+    carta: [["estacionamento", "regulamentado"]],
+    checkedAt: GUIDES_0_38_CHECKED_AT,
+    note:
+      "Guide note (estar): the URBS EstaR page (step 3, www.urbs.curitiba.pr.gov.br/EstaR, title \"Est@R - URBS\" in " +
+      "web search) answers 403 to non-browser clients and was not read here; the app list, sales points and rules " +
+      "are on that page or the street signs. If it fails, use the Prefeitura's services page (step 2) or the Central " +
+      "156 (step 9, or phone 156). ",
+    steps: [
+      FIRST_STEP,
+      CARTA_PAGE,
+      {
+        action:
+          "Abrir a página do EstaR no site da URBS e procurar ali os aplicativos credenciados, os pontos de venda e as regras.",
+        consent: "Abrir www.urbs.curitiba.pr.gov.br/EstaR no navegador do cidadão. Nada é digitado.",
+        link: { fixed: URBS_ESTAR_URL },
+      },
+      {
+        action: "Instalar um aplicativo credenciado pela URBS, ou ir a um ponto de venda credenciado.",
+        consent:
+          "O cidadão instala por conta própria, na loja oficial do celular, um aplicativo da lista da URBS (ou vai a um " +
+          "ponto de venda credenciado). Nada é digitado nesta etapa.",
+      },
+      APP_LOGIN("aplicativo do EstaR"),
+      {
+        action: "Cadastrar no aplicativo a placa do veículo.",
+        consent:
+          "O cidadão digita a placa do veículo no aplicativo (ou a informa no ponto de venda). Nada é pago nem ativado nesta etapa.",
+        types: ["placa do veículo"],
+      },
+      {
+        action: "Comprar créditos do EstaR.",
+        consent:
+          "O cidadão compra os créditos e paga por conta própria, no aplicativo ou no ponto de venda. O assistente nunca " +
+          "digita dados de cartão, senha de banco ou código PIX.",
+        types: ["dados de pagamento, só no aplicativo ou no ponto de venda"],
+      },
+      {
+        action: "Ativar o tempo ao estacionar, dentro do limite da placa de sinalização da quadra.",
+        consent:
+          "Ativar o tempo no aplicativo ou no ponto de venda, com a placa, o local e o tempo. Só se o cidadão confirmar; " +
+          "ele confere os dados antes.",
+        types: ["local (quadra) e tempo de estacionamento"],
+      },
+      {
+        ...OPEN_156,
+        action:
+          "Aviso de irregularidade do EstaR: ver na página do EstaR da URBS (passo 3) como consultar e regularizar; se " +
+          "não achar, abrir a Central 156 e perguntar ali.",
+      },
     ],
   },
 } as const satisfies Record<string, GuideDef>;
@@ -492,10 +604,11 @@ export function buildSteps(guide: GuideDef, links: CartaLinks): StepOut[] {
   });
 }
 
-const LICENSE_NOTE =
-  "Guides written by this project from the official sites named in each step (checked " + GUIDES_CHECKED_AT + "); " +
+const licenseNote = (checked: string) =>
+  "Guides written by this project from the official sites named in each step (checked " + checked + "); " +
   "Carta links come from your local copy of the Prefeitura's Carta de Serviços. Unofficial; not affiliated with the " +
   "Prefeitura de Curitiba, URBS or Detran-PR. The sites may change: follow what the official page says.";
+const LICENSE_NOTE = licenseNote(GUIDES_CHECKED_AT);
 
 async function readCatalog(): Promise<Catalog | Error | null> {
   try {
@@ -588,8 +701,10 @@ export async function cityServiceGuideResult(
         }
       : cartaFor(catalog, guide);
   const base: Base = { service: id, title: guide.title, what: guide.what, carta: info, delegation: DELEGATION_INFO };
-  const envelope = { source_url: CITY_SERVICES_SOURCE_URL, checked_at: GUIDES_CHECKED_AT, license_note: LICENSE_NOTE };
-  return answer(base, guide, `guia "${guide.title}"`, buildSteps(guide, links), envelope, openStep, ctx, notePrefix);
+  const checked = guide.checkedAt ?? GUIDES_CHECKED_AT;
+  const envelope = { source_url: CITY_SERVICES_SOURCE_URL, checked_at: checked, license_note: licenseNote(checked) };
+  const note = notePrefix + (guide.note ?? "");
+  return answer(base, guide, `guia "${guide.title}"`, buildSteps(guide, links), envelope, openStep, ctx, note);
 }
 
 // ---- Guide generated from the user's Carta copy, for a service with no hand-written guide (since 0.37.0) ----
@@ -638,8 +753,9 @@ export function cleanCartaText(raw: string, max: number = MAX_CARTA_FIELD): stri
     return (kept ?? LINK_REMOVED) + tok.slice(link.length);
   });
   // The mask and the link marker write "[...]" after the bracket strip: "11999998888(//x)" would become
-  // "[masked](//x)", a Markdown link again. Break every "](" pair, here and after a cut.
-  const out = cleanField(t, max).replace(/\]\(/g, "] (");
+  // "[masked](//x)", a Markdown link again, and "11999998888: //x" would become "[masked]: //x", a reference
+  // definition. Break every "](" and "]:" pair, here and after a cut.
+  const out = cleanField(t, max).replace(/\]\(/g, "] (").replace(/\]:/g, "] :");
   if (!out.endsWith("…")) return out;
   // A cut inside a kept link or a "[link removido]" marker would show a different link or half a marker: drop it.
   const body = out.slice(0, -1);

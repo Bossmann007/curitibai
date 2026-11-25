@@ -1290,6 +1290,26 @@ Not verified: which services the Agenda Online schedules; which Educação menu 
 what the URBS site offers for the Cartão Transporte; the Autorização Digital page's text (date and summary from the
 owner's brief). The guides say so or send the citizen to the official service page.
 
+Lê Digital and EstaR guides (since 0.38.0, written 2026-11-25): the official pages were found by web search only
+(the search engine's index, not a request from this project); `www.curitiba.pr.gov.br` was not requested, and one
+`curl` status probe of `https://www.urbs.curitiba.pr.gov.br/EstaR` (browser User-Agent) answered 403, as the URBS
+site does to non-browser clients. Nothing was read from either site, so each guide's `note` says which page was not
+read and falls back to the Carta step and the Central 156. Used:
+
+- `https://www.urbs.curitiba.pr.gov.br/EstaR`: indexed with the title "Est@R - URBS"; the index summary names the
+  credentialed apps and sales points. Linked in the EstaR guide (step 3).
+- `https://www.curitiba.pr.gov.br/noticias/curitiba-app-ganha-nova-interface-para-facilitar-acesso-aos-servicos-da-prefeitura/85129`
+  (2026-09-23): already cited in [docs/tools.md](tools.md#compared-with-the-curitiba-app) for Curitiba Lê Digital
+  ("plataforma gratuita acessada pelo aplicativo", more than 200 books), read in a browser on 2026-11-23. Linked in the
+  Lê Digital guide (step 3).
+- Index summaries of the Prefeitura's EstaR news pages (`/noticias/estar-eletronico-esclareca-suas-duvidas/57271`,
+  `/noticias/motorista-que-estacionar-sem-ativar-creditos-do-estar-sera-multado/57220`) and Lê Digital news
+  (`/noticias/aplicativo-da-acesso-gratuito-a-200-livros-da-literatura-universal/56086`,
+  `/noticias/novas-obras-de-autores-curitibanos-estao-disponiveis-no-curitiba-le-digital/75493`): buy credits in a
+  URBS-credentialed app or at a sales point, activate with plate, place and time; Lê Digital is inside the Curitiba
+  App, free, with a registration and a download. Not linked. Prices, fines, hours and time limits in those summaries
+  are from 2020 and 2021 and disagree, so the guides state no number and point to the street signs and the URBS page.
+
 Prior art (2026-11-24): `gh search repos "mcp server government services guide"` found nothing;
 `gh search repos "topic:mcp-server gov.br"` found only unrelated general projects. Decision: build.
 
@@ -1616,7 +1636,7 @@ are recorded as reported, not re-checked here.
 | UFPR mirror `/curitiba/MobiliarioUrbano/` | Newest data 2014 (owner's finding) | Not used: stale |
 | UFPR mirror `/curitiba/PesquisaLinhaTurismo/` | Newest data 2013/2014 (owner's finding) | Not used: stale |
 | UFPR mirror `/curitiba/UnidadesAtendimentoCuritiba/` | Newest data 2022 (owner's finding) | Not used: stale |
-| EstaR (parking) and air quality | No open source found (owner's finding) | Not used |
+| EstaR (parking) and air quality | No open source found (owner's finding) | Not used as data; EstaR has a hand-written `city_service_guide` since 0.38.0 |
 | Garbage collection (`coletalixo.curitiba.pr.gov.br`) | Only an undocumented form, no dataset or API (owner's finding) | Not used |
 | `Sigesguarda` (Guarda Municipal) and `PretendentesCohab` (housing applicants) datasets | Personal-data risk (owner's finding) | Avoided |
 | URBS mirror `dadosabertos.c3sl.ufpr.br/curitibaurbs/` | Daily exports since 2017: `linhas`, `pois`, `pontosLinha`, `shapeLinha`, `tabelaLinha`, `tabelaVeiculo`, `trechosItinerarios`, `veiculos`. Root `/robots.txt` 404, none in `/curitibaurbs/`; `/curitiba/robots.txt` asks `Request-rate: 1/5` (and `Disallow: /`, table above) | Treated as disallowed; never fetched. `linhas`, `pontosLinha`, `tabelaLinha` and `pois` are read from local copies a person downloads; the other four are not used |
