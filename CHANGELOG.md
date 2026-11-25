@@ -19,7 +19,8 @@ Vale-Creche, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   written from, so this guide's envelope says neither "official sites checked 2026-11-24" nor "web search".
 - The `creche` guide gets `notFor: ["vale"]`, so a Carta title "Vale-Creche" routes to `vale_creche`; Carta words
   `vale` + `creche`, both mirrored in `scripts/coverage-report.mjs`.
-- Tool contract: one new `service` value (snapshot updated).
+- Tool contract: one new `service` value (snapshot updated). The tool description also names the Vale-Creche rules,
+  so a client picks it for that question.
 - No new network host; the link allowlist is unchanged (`mid-educacao.curitiba.pr.gov.br` is in the Prefeitura's zone).
 - Two hand requests on 2026-11-25 broke this project's robots rules by mistake (an `educacao.curitiba.pr.gov.br` page
   outside its Visit-time, and a page on `servicos.curitiba.pr.gov.br`, which is `Disallow: /`); both were deleted

@@ -302,7 +302,9 @@ export const GUIDES = {
     title: "Creche (CMEI): cadastro para vaga",
     what: "Cadastro para vaga em creche e cadastro escolar da rede municipal.",
     carta: [["creche"], ["cadastramento", "escolar"]],
-    // The voucher is another guide (since 0.42.0); "Vale-Creche" folds to the words "vale" and "creche".
+    // The voucher is another guide (since 0.42.0); "Vale-Creche" folds to the words "vale" and "creche". Words, not a
+    // phrase: a creche title with "vale" in another sense (a place name) would also go to vale_creche. Accepted: no
+    // such Carta title is known, and that guide sends the citizen back to this one for the waiting list.
     notFor: ["vale"],
     steps: [
       FIRST_STEP,
@@ -581,7 +583,9 @@ export const GUIDES = {
       {
         action:
           "Dizer ao cidadão como a lei escolhe: prioridade para famílias com renda mensal de até 3 salários mínimos " +
-          "estaduais, cadastradas no sistema online da SME e em maior vulnerabilidade social. Se a SME oferecer o vale, " +
+          "estaduais, cadastradas no sistema online da SME e em maior vulnerabilidade social. Os critérios da SME são " +
+          "definidos por decreto, que não foi lido aqui e pode trazer outras regras: não diga ao cidadão que ele não " +
+          "tem direito. Se a SME oferecer o vale, " +
           "a família escolhe a escola particular (com os atos regulatórios em dia) e faz a matrícula; o valor é fixado " +
           "por decreto a cada ano. Se surgir vaga num CMEI, a criança passa para a vaga pública no fim do ano letivo.",
       },
@@ -1106,7 +1110,8 @@ export const cityServiceGuide: ToolDef<typeof cityServiceGuideInput, typeof city
   name: "city_service_guide",
   title: "Guide to a Curitiba service (login, sign-up or phone alerts)",
   description:
-    "Steps and official links for a city service that needs a login or sign-up, or for Defesa Civil phone alerts: " +
+    "Steps and official links for a city service that needs a login or sign-up, for Defesa Civil phone alerts, or " +
+    "for the Vale-Creche rules (no value, no promise): " +
     "a hand-written guide (service), or one generated from the user's local Carta copy (carta_id from " +
     "city_services_search). Never logs in, submits or sends. Ask the user before each needs_consent step; never " +
     "type their passwords or payment data.",

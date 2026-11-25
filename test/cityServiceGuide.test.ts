@@ -148,6 +148,7 @@ describe("Vale-Creche guide (since 0.42.0)", () => {
     expect(o.data.what).toMatch(/Secretaria Municipal da Educação \(SME\)/);
     expect(allSteps(o)[1]!.action).toMatch(/sem prometer o vale/);
     expect(allSteps(o)[1]!.action).toMatch(/A família não escolhe entre o vale e a vaga/);
+    expect(t).toMatch(/definidos por decreto, que não foi lido aqui/);
   });
 
   it("the note says what was not verified; the envelope names the law, not web search", async () => {
@@ -171,6 +172,11 @@ describe("Vale-Creche guide (since 0.42.0)", () => {
       "https://156.curitiba.pr.gov.br/",
     ]);
     expect(allSteps(o).some((s) => !s.needs_consent && /service "creche"/.test(s.action))).toBe(true);
+    // The note and the licence note name these step numbers.
+    const at = (n: number) => allSteps(o).find((s) => s.step === n)!.url;
+    expect([at(4), at(5), at(8)]).toEqual(fixed.map((s) => s.url));
+    expect(o.note).toMatch(/Educação portal \(step 5\) or the Central 156 \(step 8/);
+    expect(o.license_note).toMatch(/PDF, step 4/);
     // Nothing is typed or sent: the law describes no application of its own.
     expect(allSteps(o).every((s) => s.citizen_types_on_site.length === 0)).toBe(true);
   });
