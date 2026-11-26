@@ -1978,3 +1978,99 @@ describe("v0.63.0: the garden filter is an allowlist; social types carry a shelt
     expect(FACILITY_TYPES.filter((f) => f.allowlist === true).map((f) => f.id)).toEqual(["horta comunitaria"]);
   });
 });
+
+describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+  const layer = (attributes: Record<string, unknown>) =>
+    JSON.stringify({ features: [{ attributes: { objectid: 1, divulgar_endereco: "Sim", ...attributes }, geometry: { x: -49.27, y: -25.43 } }] });
+
+  it.each([
+    ["sine", "sine", 150], ["SINE Municipal", "sine", 150], ["unidades de atendimento SINE", "sine", 150],
+    ["Agência do Trabalhador", "agencia do trabalhador", 151], ["agencias do trabalhador", "agencia do trabalhador", 151],
+    ["Liceu de Ofícios", "liceu de oficios", 149], ["liceus", "liceu de oficios", 149],
+    ["INSS", "inss", 152], ["agência da Previdência Social", "inss", 152],
+  ])("%s maps to %s (layer %i)", (input, id, n) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${n}` });
+  });
+
+  it("answers \"Onde tem SINE perto do Pinheirinho?\" by name: the unit is in bairro Capão Raso", async () => {
+    const calls = stubFetch(route("sine", "sine_synthetic.json"));
+    const out = await search({ type: "sine", name: "pinheirinho" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/150`);
+    expect(out.data).toMatchObject({ type: "sine", total: 1 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Unidade de Atendimento SINE Pinheirinho",
+      address: "AV. INVENTADA DO SUL, 100 - Rua da Cidadania Inventada, Térreo, Sala 1 - CEP: 80.000-000",
+      bairro: "Capão Raso",
+      phones: ["(41) 3333-5400"],
+      emails: ["sinventada@curitiba.pr.gov.br"],
+    });
+    expect(out.data.items[0]!.hours).toEqual([
+      "Atendimento:",
+      "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
+      "Não é necessário realizar agendamento prévio para atendimento.",
+    ]);
+    expect(out.note).toMatch(/search by `name`/);
+    expect(out.note).toMatch(/Vacancies and anyone's registration are not in this tool/);
+    expect(out.note).toMatch(/`agencia do trabalhador`/);
+  });
+
+  it("a SINE line naming who is in charge is hidden; mobiles and non-city e-mails are dropped", async () => {
+    stubFetch(route("sine", "sine_synthetic.json"));
+    const out = await search({ type: "sine", name: "inventada" });
+    expect(out.data.items[0]!.hours).toEqual([
+      "Atendimento:",
+      "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
+      HIDDEN_PERSON_LINE,
+      "Endereço anterior: Rua Inventada, 35.",
+    ]);
+    expect(out.data.items[0]).toMatchObject({ phones: ["(41) 3333-5800"], emails: [] });
+    expect(JSON.stringify(out)).not.toMatch(/Fulana|fulana|99999/);
+  });
+
+  it("the SINE Móvel has no address or position (divulgar_endereco Não) and keeps its hours", async () => {
+    stubFetch(route("sine", "sine_synthetic.json"));
+    const out = await search({ type: "sine", name: "movel" });
+    expect(out.data.items[0]).toMatchObject({ name: "Unidade de Atendimento SINE Móvel", address: null, lat: null, lon: null });
+    expect(out.data.items[0]!.hours[1]).toBe("-2ª a 6ª feira, das 9h às 15h30");
+    expect(out.note).toMatch(/SINE Móvel/);
+  });
+
+  it("the Agência do Trabalhador keeps its landline and drops an e-mail outside curitiba.pr.gov.br", () => {
+    const [a] = parseLayer(type("agencia do trabalhador"), layer({
+      nome_completo: "Agência do Trabalhador Inventada", nome_rua: "R. INVENTADA", num_pred: "503", telefone: "(41) 3333-2203",
+      email: "fulano.tal@trabalho.example.gov.br", observacao: "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h",
+    })).facilities;
+    expect(a).toMatchObject({ phones: ["(41) 3333-2203"], emails: [], hours: ["Atendimento:", "-2ª a 6ª feira, das 8h às 17h"] });
+  });
+
+  it("INSS keeps the 135 service number and its note points to Meu INSS and the 135 with no link", async () => {
+    stubFetch({ [`GET ${url("inss")}`]: { body: layer({ nome_completo: "Agência da Previdência Social Inventada", telefone: "135", observacao: "Atendimento:\r\n-2ª a 6ª feira, das 7h às 13h" }), contentType: JSON_TYPE } });
+    const out = await search({ type: "inss" });
+    expect(out.data.items[0]).toMatchObject({ phones: ["135"], emails: [], hours: ["Atendimento:", "-2ª a 6ª feira, das 7h às 13h"] });
+    expect(out.note).toMatch(/^[^.]*Meu INSS[^.]*135/);
+    expect(out.note).not.toMatch(/https?:\/\/[^\s]*inss/);
+  });
+
+  it("a Liceu line over 160 characters is wrapped at commas, not cut, and its WhatsApp landline is kept", () => {
+    const long =
+      "O Liceu Inventado oferece cursos gratuitos voltados exclusivamente para artesãos e profissionais da Economia " +
+      "Criativa, como artistas plásticos, fotógrafos, designers, entre outros, que já atuam na área e desejam " +
+      "aperfeiçoar técnicas, desenvolver novos produtos e fortalecer sua atuação no mercado.";
+    const [l] = parseLayer(type("liceu de oficios"), layer({
+      nome_completo: "Liceu de Ofícios Inventado", telefone: "WhatsApp (41) 3333-7710",
+      observacao: `Atendimento:\r\n-2ª a 6ª feira, das 9 às 17h (exceto feriado)\r\n${long}`,
+    })).facilities;
+    expect(l!.phones).toEqual(["(41) 3333-7710"]);
+    expect(l!.hours.slice(0, 2)).toEqual(["Atendimento:", "-2ª a 6ª feira, das 9 às 17h (exceto feriado)"]);
+    expect(l!.hours.slice(2).every((x) => x.length <= 160)).toBe(true);
+    expect(l!.hours.slice(2).join(" ")).toBe(long);
+  });
+
+  it("the four types carry the office person filter", () => {
+    for (const id of ["sine", "agencia do trabalhador", "liceu de oficios", "inss"]) {
+      expect(type(id)).toMatchObject({ hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" });
+    }
+  });
+});
