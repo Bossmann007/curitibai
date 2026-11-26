@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventado Um",
+    "nome_completo": "Centro de Educação Infantil Inventado Um",
+    "nome_rua": "R. INVENTADA CEI",
+    "num_pred": "601",
+    "compl_end": "CEP: 81.000-601",
+    "divulgar_endereco": "Sim",
+    "bairro": "Boqueirão",
+    "regional": "Boqueirão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-6001 / (41) 99999-6001",
+    "email": "ceiinventado.um@gmail.com; ceiinventadoum@educacao.curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h às 18h\r\nMantenedora: Fulana Inventada de Tal ME.\r\nNome anterior: CEI Inventado."
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.5
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Inventado Dois",
+    "nome_completo": "Centro de Educação Infantil Inventado Dois",
+    "nome_rua": "R. INVENTADA CEI DOIS",
+    "num_pred": "602",
+    "compl_end": "CEP: 81.000-602",
+    "divulgar_endereco": "Sim",
+    "bairro": "Xaxim",
+    "regional": "Boqueirão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-6002",
+    "email": "ceiinventadodois@educacao.curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": null
+   },
+   "geometry": {
+    "x": -49.26,
+    "y": -25.49
+   }
+  }
+ ]
+}

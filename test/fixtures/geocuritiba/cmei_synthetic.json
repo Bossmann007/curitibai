@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Bracatinga",
+    "nome_completo": "Centro Municipal de Educação Infantil Bracatinga",
+    "nome_rua": "R. INVENTADA DA BRACATINGA",
+    "num_pred": "501",
+    "compl_end": "CEP: 81.000-501",
+    "divulgar_endereco": "Sim",
+    "bairro": "Pinheirinho",
+    "regional": "Pinheirinho",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-5001 / (41) 99999-5001",
+    "email": "cmeibracatinga@sme.curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h às 18h\r\n(CMEI-PN-01)"
+   },
+   "geometry": {
+    "x": -49.29,
+    "y": -25.51
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Inventado Dois",
+    "nome_completo": "Centro Municipal de Educação Infantil Inventado Dois",
+    "nome_rua": "R. INVENTADA CMEI DOIS",
+    "num_pred": "502",
+    "compl_end": "CEP: 81.000-502",
+    "divulgar_endereco": "Sim",
+    "bairro": "Cajuru",
+    "regional": "Cajuru",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-5002",
+    "email": "cmeiinventadodois@sme.curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 7h às 19h"
+   },
+   "geometry": {
+    "x": -49.21,
+    "y": -25.45
+   }
+  }
+ ]
+}

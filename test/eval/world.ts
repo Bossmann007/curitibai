@@ -48,6 +48,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   "junta militar": "junta_militar_synthetic.json",
   "defensoria publica": "defensoria_publica_synthetic.json",
   forum: "forum_synthetic.json",
+  cmei: "cmei_synthetic.json",
   creas: "creas_synthetic.json",
 };
 

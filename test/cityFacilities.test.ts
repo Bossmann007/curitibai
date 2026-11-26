@@ -4,6 +4,7 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
+  HIDDEN_MAINTAINER_LINE,
   HIDDEN_NAME_LINE,
   HIDDEN_SHELTER_LINE,
   hourLines,
@@ -1274,6 +1275,72 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
   it("other social types carry no emergency lead note", async () => {
     stubFetch(route("creas", "creas_synthetic.json"));
     expect((await search({ type: "creas" })).note).not.toMatch(/\b180\b|\b190\b/);
+  });
+});
+
+describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+
+  it.each([
+    ["escola municipal", "escola municipal", 80],
+    ["Escolas Municipais", "escola municipal", 80],
+    ["CMEI", "cmei", 78],
+    ["Centro Municipal de Educação Infantil", "cmei", 78],
+    ["creche municipal", "cmei", 78],
+    ["cmaee", "cmaee", 81],
+    ["cei contratado", "cei contratado", 79],
+    ["creche contratada", "cei contratado", 79],
+  ] as const)("%s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("bare escola and creche are not types: state schools are not in these layers, and creche could be either kind", () => {
+    for (const name of ["escola", "escolas", "creche", "creches"]) expect(resolveType(name)).toBeNull();
+  });
+
+  it("answers \"Qual o telefone e o horário do CMEI Bracatinga?\" with the landline and the hours line; the mobile is dropped", async () => {
+    const calls = stubFetch(route("cmei", "cmei_synthetic.json"));
+    const out = await search({ type: "cmei", name: "bracatinga" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/78`);
+    expect(out.data).toMatchObject({ type: "cmei", total: 1 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro Municipal de Educação Infantil Bracatinga",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 7h às 18h", "(CMEI-PN-01)"],
+      phones: ["(41) 3333-5001"],
+      emails: ["cmeibracatinga@sme.curitiba.pr.gov.br"],
+    });
+    expect(out.note).toMatch(/vacanc/i);
+  });
+
+  it("a contracted CEI hides the maintainer line, drops the mobile and the gmail, and says it does not confirm Vale-Creche accreditation", async () => {
+    stubFetch(route("cei contratado", "cei_contratado_synthetic.json"));
+    const out = await search({ type: "cei contratado" });
+    expect(out.data).toMatchObject({ total: 2, skipped_records: 0 });
+    const one = out.data.items.find((i) => i.name.endsWith("Um"))!;
+    expect(one.hours).toEqual(["Atendimento:", "-2ª a 6ª feira, das 7h às 18h", HIDDEN_MAINTAINER_LINE, "Nome anterior: CEI Inventado."]);
+    expect(one).toMatchObject({ phones: ["(41) 3333-6001"], emails: ["ceiinventadoum@educacao.curitiba.pr.gov.br"] });
+    expect(out.data.items.find((i) => i.name.endsWith("Dois"))!.hours).toEqual([]);
+    expect(JSON.stringify(out)).not.toMatch(/Fulana|99999-6001|gmail/);
+    expect(out.note).toMatch(/contracted/);
+    expect(out.note).toMatch(/does not confirm Vale-Creche accreditation/);
+    expect(out.note).toMatch(/city_service_guide.*vale_creche/);
+  });
+
+  it("a maintainer or owner named in another form, or on the line after a bare label, is hidden too", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    for (const s of [
+      "Atendimento:\nMantenedora:\nFulana de Tal",
+      "Atendimento:\nMantenedor: Fulano de Tal",
+      "Atendimento:\nMantida por: Fulana de Tal",
+      "Atendimento:\nProprietária: Fulana de Tal",
+      "Atendimento:\nNome anterior: Fulana de Tal ME",
+      "Atendimento:\nNome anterior: Fulana de Tal Eireli",
+    ]) {
+      expect(lines(s)).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE]);
+    }
+    expect(lines("Nome anterior: CEI Inventado.\n-2ª a 6ª feira, das 7h às 18h")).toEqual(["Nome anterior: CEI Inventado.", "-2ª a 6ª feira, das 7h às 18h"]);
   });
 });
 
