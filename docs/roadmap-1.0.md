@@ -221,3 +221,9 @@ At v0.58.0 (phase B) `city_facilities_search` `rodoviaria` (alias `rodoferroviar
 landlines as published; the notes say the terminal's hours are not departures and that no departure time, platform,
 fare or ticket is given. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 129 of 133
 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.59.0 (phase B) `city_facilities_search` `cohab` reads IPPUC's urban-equipment layer 29 (9 COHAB-CT agencies),
+address, hours and contacts as published; toll-free 0800 numbers are kept in `phones` for every type; the notes say
+the tool does not book and that the applicant queue is not in it. A line naming who is in charge is hidden in the
+`administracao regional` and `cohab` hours. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
+answers 130 of 134 questions; 4 are gaps (real-time buses 2, other cities 2).

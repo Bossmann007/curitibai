@@ -51,6 +51,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   cmei: "cmei_synthetic.json",
   creas: "creas_synthetic.json",
   rodoviaria: "rodoviaria_synthetic.json",
+  cohab: "cohab_synthetic.json",
 };
 
 /** Invented events (titles, places and addresses made up), dated around NOW. */

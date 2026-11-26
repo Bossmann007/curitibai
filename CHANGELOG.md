@@ -2,6 +2,27 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.59.0 - 2026-11-26
+
+COHAB agencies, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type` `cohab` from IPPUC's GeoCuritiba urban-equipment layer 29 (9 records on
+  2026-11-26; aliases include `cohab ct`, `agencia da cohab`, `agencias da cohab`). Address, hours and contacts as
+  published. The note says every agency listed the same phones and e-mail (central contacts), that the layer books
+  in-person service through the Agenda Online and this tool does not book (`city_service_guide` `agenda_online`),
+  that housing applications, the applicant queue and anyone's registration are not in this tool, and to search by
+  `name`, since agencies are named after their Rua da Cidadania, not always their bairro.
+- `phones` (every `city_facilities_search` type) now keeps toll-free numbers, formatted "0800 XXX XXXX"; they were
+  dropped before. A toll-free number is never a person's own; mobiles and other area codes are still dropped.
+- `administracao regional` and `cohab`: a `hours` line naming who is in charge ("Responsável:", "Diretor(a):",
+  "Administrador(a):" with a name, or the name on the next line) is replaced by a marker, with the `cei contratado`
+  maintainer filter, whose words now include `administrador` (v0.58 review). No such line was in the live layers.
+- Tool contract: the `type` description and the `phones` description (snapshot updated); the general note says phones
+  keep 0800 numbers.
+- Citizen eval: q134 ("Onde fica a agência da COHAB no Tatuquara e que horas abre?") answered, with a synthetic
+  fixture; 130 of 134.
+- No new network host, no new link, no new dependency.
+
 ## 0.58.0 - 2026-11-26
 
 Rodoferroviária and administrações regionais, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

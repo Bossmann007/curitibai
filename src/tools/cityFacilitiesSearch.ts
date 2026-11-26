@@ -47,7 +47,7 @@ export const cityFacilitiesSearchInput = {
         "\"registro civil\"), \"junta militar\", \"defensoria publica\", \"forum\", \"cras\", \"creas\", \"centro pop\", " +
         "\"central de encaminhamento social\", \"centro de atividades para idosos\", \"centro de referencia da mulher\", " +
         "\"centro de referencia afro\", \"escola municipal\", \"cmei\", \"cmaee\", \"cei contratado\", " +
-        "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\". Fire stations and Polícia Militar " +
+        "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\", \"cohab\". Fire stations and Polícia Militar " +
         "units: places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
@@ -97,7 +97,7 @@ const Item = z.object({
   regional: z.string().nullable(),
   hours: z.array(z.string()).describe("Days, hours and notes as published (observacao), one line each."),
   open_periods: Periods,
-  phones: z.array(z.string()).describe("Institutional landlines and service numbers only; mobiles are dropped."),
+  phones: z.array(z.string()).describe("Institutional landlines, service numbers and 0800 numbers only; mobiles are dropped."),
   emails: z.array(z.string()).describe("Addresses at curitiba.pr.gov.br only; any other domain is dropped."),
   updated: z.string().nullable().describe("When IPPUC last updated the record (dt_atualiz), YYYY-MM-DD."),
   length_km: z.number().nullable(),
@@ -285,7 +285,7 @@ export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; f
     noCoords > 0 ? `${noCoords} matching record(s) without a usable position were left out of this distance search.` : "",
     t.mixedOwnership ? MIXED_NOTE : "",
     t.note ?? "",
-    t.kind === "facility" ? "Phones keep Curitiba landlines and service numbers only, e-mails curitiba.pr.gov.br addresses only; anything else is dropped." : "",
+    t.kind === "facility" ? "Phones keep Curitiba landlines, service numbers and 0800 numbers only, e-mails curitiba.pr.gov.br addresses only; anything else is dropped." : "",
   ].filter(Boolean);
   return {
     data: {
