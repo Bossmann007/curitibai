@@ -184,3 +184,11 @@ published; the registry note says the list is what the layer publishes, not nece
 deadlines and which office holds a record are not in it; the registry offices' trade-name line (a surname) is replaced by a
 visible marker, and long bairro lists are split, not cut. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
 answers 125 of 129 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.52.0 (phase B) `city_facilities_search` `creas`, `centro pop`, `central de encaminhamento social`, `centro de
+atividades para idosos`, `centro de referencia da mulher` and `centro de referencia afro` read IPPUC's layers 38, 40,
+39, 36, 108 and 109 (10, 3, 1, 5, 2 and 1 records), hours as published; the CREAS note says which bairros a unit serves
+is not in the layer. Shelters and transit houses (layers 45, 46 and 164) are never types, and a line that mentions one
+is replaced by a marker; a women's centre whose address is not marked public returns only its name and institutional
+phones, and that type's note leads with 190 and 180. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen
+eval answers 126 of 130 questions; 4 are gaps (real-time buses 2, other cities 2).

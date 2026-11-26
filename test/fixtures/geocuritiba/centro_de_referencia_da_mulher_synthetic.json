@@ -1,0 +1,109 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Casa Inventada",
+    "nome_completo": "Centro de Referência de Atendimento à Mulher Casa Inventada",
+    "nome_rua": "AV. INVENTADA DA MULHER",
+    "num_pred": "1080",
+    "compl_end": "CEP: 80.000-108",
+    "divulgar_endereco": "Sim",
+    "bairro": "Cabral",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Sim",
+    "func_24hr": "Sim",
+    "telefone": "(41) 3333-1081 / (41) 3333-1082",
+    "email": "casainventada@curitiba.pr.gov.br",
+    "dt_atualiz": 1762430400000,
+    "observacao": "Atendimento:\r\n-Diariamente, 24 horas\r\nNeste equipamento encontram-se:\r\n-Serviço de acolhimento e apoio psicossocial\r\n-Delegacia da Mulher"
+   },
+   "geometry": {
+    "x": -49.25,
+    "y": -25.42
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Reservado Não",
+    "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Não",
+    "nome_rua": "R. RESERVADA INVENTADA",
+    "num_pred": "2108",
+    "compl_end": "Sala Reservada - CEP: 81.000-208",
+    "divulgar_endereco": "Não",
+    "bairro": "Cidade Industrial de Curitiba",
+    "regional": "CIC",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-2108 / (41) 99999-2108",
+    "email": "reservado@curitiba.pr.gov.br",
+    "dt_atualiz": 1767614400000,
+    "observacao": "Atendimento:\r\n-Na Rua Reservada Inventada, 2108, fundos"
+   },
+   "geometry": {
+    "x": -49.3456,
+    "y": -25.4987
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 3,
+    "nome": "Reservado Vazio",
+    "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Vazio",
+    "nome_rua": "R. RESERVADA DOIS",
+    "num_pred": "3108",
+    "compl_end": "CEP: 81.000-308",
+    "divulgar_endereco": null,
+    "bairro": "Tatuquara",
+    "regional": "Tatuquara",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3108",
+    "email": "reservado2@curitiba.pr.gov.br",
+    "dt_atualiz": 1767614400000,
+    "observacao": "Atendimento perto da Praça Reservada"
+   },
+   "geometry": {
+    "x": -49.3111,
+    "y": -25.5611
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 4,
+    "nome": "Reservado Minúsculo",
+    "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Minúsculo",
+    "nome_rua": "R. RESERVADA TRES",
+    "num_pred": "4108",
+    "compl_end": "CEP: 81.000-408",
+    "divulgar_endereco": "sim",
+    "bairro": "Pinheirinho",
+    "regional": "Pinheirinho",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "",
+    "email": "",
+    "dt_atualiz": 1767614400000,
+    "observacao": "Ponto de referência reservado"
+   },
+   "geometry": {
+    "x": -49.2911,
+    "y": -25.5111
+   }
+  }
+ ]
+}

@@ -1,0 +1,109 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "CIC",
+    "nome_completo": "Centro de Referência Especializado de Assistência Social CIC",
+    "nome_rua": "R. INVENTADA DA CIC",
+    "num_pred": "1001",
+    "compl_end": "CEP: 81.000-001",
+    "divulgar_endereco": "Sim",
+    "bairro": "Cidade Industrial de Curitiba",
+    "regional": "CIC",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3801 / 3333-3802 / (41) 99999-3801",
+    "email": "creascic@curitiba.pr.br",
+    "dt_atualiz": 1777435200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nEmergências: Central 156."
+   },
+   "geometry": {
+    "x": -49.33,
+    "y": -25.49
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Matriz",
+    "nome_completo": "Centro de Referência Especializado de Assistência Social Matriz",
+    "nome_rua": "AV. INVENTADA DO CENTRO",
+    "num_pred": "202",
+    "compl_end": "CEP: 80.000-002",
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3803 / (41) 98888-3803",
+    "email": "creasmatriz@curitiba.pr.gov.br",
+    "dt_atualiz": 1777435200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nEmergências: Central 156.\r\nEndereço anterior: Rua Inventada Velha, 10."
+   },
+   "geometry": {
+    "x": -49.27,
+    "y": -25.43
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 3,
+    "nome": "Boqueirão",
+    "nome_completo": "Centro de Referência Especializado de Assistência Social Boqueirão",
+    "nome_rua": "R. INVENTADA DO SUL",
+    "num_pred": "303",
+    "compl_end": "CEP: 81.000-003",
+    "divulgar_endereco": "Sim",
+    "bairro": "Boqueirão",
+    "regional": "Boqueirão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3804",
+    "email": "creasboqueirao@curitiba.pr.gov.br",
+    "dt_atualiz": 1777435200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nAtendimento compartilhado com o Abrigo Inventado, na Rua Inventada Oculta, 77.\r\nEmergências: Central 156."
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.5
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 4,
+    "nome": "Anexo",
+    "nome_completo": "Centro de Referência Especializado de Assistência Social Anexo",
+    "nome_rua": "R. INVENTADA ESCONDIDA",
+    "num_pred": "404",
+    "compl_end": "Anexo à Casa-de-Passagem Inventada - CEP: 81.000-004",
+    "divulgar_endereco": "Sim",
+    "bairro": "Portão",
+    "regional": "Portão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3805",
+    "email": "creasanexo@curitiba.pr.gov.br",
+    "dt_atualiz": 1777435200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h"
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.5
+   }
+  }
+ ]
+}

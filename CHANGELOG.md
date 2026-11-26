@@ -2,6 +2,27 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.52.0 - 2026-11-26
+
+Social assistance beyond the CRAS, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba layers (records on 2026-11-26): `creas` (38, 10),
+  `centro pop` (40, 3), `central de encaminhamento social` (39, 1), `centro de atividades para idosos` (36, 5; alias
+  `espaco conviver`), `centro de referencia da mulher` (108, 2; alias `casa da mulher brasileira`) and `centro de
+  referencia afro` (109, 1). Same fields, host gate, cache and contact filters as the other layers. The CREAS note says
+  which bairros a unit serves is not in the layer. No note promises service, eligibility or free care.
+- Shelters and transit houses (layers 45, 46, 164) are never types; no `abrigo`, `casa de passagem` or `acolhimento`
+  name resolves (tested). One Centro POP record named a transit house's address: in the six types and `cras`, a line
+  that may point at a shelter or a confidential unit is replaced by a marker, even past the 160-character cut
+  (`isShelterLine`, linear), and a record whose name or address does is skipped.
+- Women's centres: when `divulgar_endereco` is not exactly "Sim", only the name, institutional phones and a line saying
+  to call are returned, so `bairro` and `near` never match (new optional `privateAddress`; tested with "Sim", "Não",
+  null and "sim"). The note leads with 190 and 180, as on the Ministério das Mulheres' Ligue 180 page (`www.gov.br`,
+  read by hand; never contacted by the server), and says the tool does not dispatch help.
+- Contract: `type` and `skipped_records` descriptions. No new server host or link. Eval: q130 answered; 126 of 130.
+- Package check: the packed-size ceiling is raised once, from 250,000 to 252,000 bytes (CI packed this release at
+  250,367; Enzo's decision, 2026-11-25). It is not to be raised again: on the next overflow, trim what the package ships.
+
 ## 0.51.0 - 2026-11-26
 
 Cartórios de registro civil, Junta Militar, Defensoria Pública and fóruns, phase B of the 1.0 roadmap. 27 tools.
