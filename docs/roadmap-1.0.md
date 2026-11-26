@@ -227,3 +227,11 @@ address, hours and contacts as published; toll-free 0800 numbers are kept in `ph
 the tool does not book and that the applicant queue is not in it. A line naming who is in charge is hidden in the
 `administracao regional` and `cohab` hours. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
 answers 130 of 134 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.60.0 (phase B) `city_facilities_search` reads IPPUC's urban-equipment layers 7 (`mesa solidaria`, 4 places),
+9 (`horta comunitaria`, only its 56 community gardens; school and institutional gardens, some in shelters, are never
+listed), 10 (`fazenda urbana`, 3) and 1 (`nucleo de seguranca alimentar`, 10), address, hours and contacts as
+published; a Mesa Solidária's WhatsApp landline is kept, and the notes say some places only cook and that the gardens
+publish no phone or hours. The office person-line filter gains more roles and no longer hides a CEI's hours after a
+"Responsável …:" line (v0.59 review). 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers
+131 of 135 questions; 4 are gaps (real-time buses 2, other cities 2).

@@ -1,0 +1,34 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Vila Inventada",
+    "nome_completo": "Horta Comunitária Urbana Vila Inventada",
+    "nome_rua": "R. INVENTADA",
+    "num_pred": null,
+    "compl_end": "Esquina com a Rua Inventada Dois",
+    "divulgar_endereco": "Sim",
+    "bairro": "Tatuquara",
+    "regional": "Tatuquara",
+    "func_manha": "Não",
+    "func_tarde": "Não",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": null,
+    "email": "hortainventada@curitiba.pr.gov.br",
+    "dt_atualiz": 1790104802000,
+    "observacao": "Mantida pela Associação de Moradores da Vila Inventada.\r\nCoordenadora: Fulana de Tal\r\nMantido por Fulano de Tal"
+   },
+   "geometry": {
+    "x": -49.33,
+    "y": -25.57
+   }
+  }
+ ]
+}

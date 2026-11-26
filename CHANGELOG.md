@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.60.0 - 2026-11-26
+
+Food security, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba urban-equipment layers, read on 2026-11-26:
+  `mesa solidaria` (layer 7, 4 places; aliases `mesas solidarias`, `mesa solidaria curitiba`), `horta comunitaria`
+  (layer 9, its 56 community gardens; aliases include `hortas comunitarias`, `horta urbana`), `fazenda urbana` (layer
+  10, 3 farms; alias `fazendas urbanas`) and `nucleo de seguranca alimentar` (layer 1, 10 núcleos; aliases include
+  `nucleo regional de seguranca alimentar`). Address, hours and contacts as published.
+- `horta comunitaria` asks the layer for `tipo_equi = 'Horta Comunitária Urbana'` only (a fixed `where`, never user
+  input): the layer's 109 school and 68 institutional gardens are inside schools and institutions, some of them
+  shelters, and are never listed. The note gives those counts and says the gardens had no phone and no hours when
+  read, only the layer's e-mail.
+- `mesa solidaria` splits long hours lines at commas, so no serving time is cut. The note says some places only cook
+  and list no serving hours, and that the phone is published as a WhatsApp line. The `fazenda urbana` note says
+  mobiles are dropped (use the e-mail) and the tool does not enrol; the `nucleo de seguranca alimentar` note says
+  programmes, benefits and registration are not in this tool.
+- `phones` (every `city_facilities_search` type): a leading "WhatsApp" word is removed before the landline test, so
+  "WhatsApp (41) 3350-3821" is kept; it was dropped before. WhatsApp mobiles are still dropped.
+- Person lines (v0.59 review): the four new types use the office filter, whose roles gain secretário/a, supervisor/a,
+  gestor/a, titular and "mantido/a por" ("Secretaria Municipal de …" and "mantida pela Associação …" stay). The v0.59
+  label rule no longer applies to `cei contratado`: "Responsável pela matrícula:" hides only itself, not the hours
+  line after it. No line was hidden in the live layers.
+- Tool contract: the `type` description (snapshot updated).
+- Citizen eval: q135 ("Onde tem Mesa Solidária no Centro?") added and answered, with a synthetic fixture; 131 of 135.
+- No new network host, no new link, no new dependency.
+
 ## 0.59.0 - 2026-11-26
 
 COHAB agencies, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

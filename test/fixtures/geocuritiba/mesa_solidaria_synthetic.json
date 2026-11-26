@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada",
+    "nome_completo": "Mesa Solidária Inventada",
+    "nome_rua": "AL. INVENTADA",
+    "num_pred": "300",
+    "compl_end": "CEP: 80.000-100",
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Matriz",
+    "func_manha": null,
+    "func_tarde": null,
+    "func_noite": null,
+    "func_24hr": null,
+    "telefone": "WhatsApp (41) 3333-3821",
+    "email": "mesainventada@curitiba.pr.gov.br",
+    "dt_atualiz": 1793289391000,
+    "observacao": "Espaço estruturado e equipado para servimento de refeições.\r\nAtendimento:\r\n-2ª a 6ª feira - entrega de senhas para o almoço a partir das 10h e com o servimento a partir das 11h, e entrega de senhas para o jantar a partir das 17h e com o servimento a partir das 18h;\r\n-Sábados, Domingos e Feriados - entrega de senhas para o café da manhã a partir das 8h30 e com o servimento a partir das 9h, entrega de senhas para o almoço a partir das 10h e com o servimento a partir das 12h, entrega de senhas para o jantar a partir das 17h e com o servimento a partir das 18h.\r\nEndereço anterior: Rua Inventada, 81 - Centro."
+   },
+   "geometry": {
+    "x": -49.27,
+    "y": -25.437
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Cozinha Inventada",
+    "nome_completo": "Mesa Solidária Cozinha Inventada",
+    "nome_rua": "R. INVENTADA DO SUL",
+    "num_pred": null,
+    "compl_end": "CEP: 81.000-170",
+    "divulgar_endereco": "Sim",
+    "bairro": "Campo de Santana",
+    "regional": "Tatuquara",
+    "func_manha": null,
+    "func_tarde": null,
+    "func_noite": null,
+    "func_24hr": null,
+    "telefone": "WhatsApp (41) 3333-3821 / 99999-7001",
+    "email": "mesainventada@curitiba.pr.gov.br",
+    "dt_atualiz": 1783620142000,
+    "observacao": "Espaço estruturado e equipado para a produção de refeições."
+   },
+   "geometry": {
+    "x": -49.32,
+    "y": -25.586
+   }
+  }
+ ]
+}

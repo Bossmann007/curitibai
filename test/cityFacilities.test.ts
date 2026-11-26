@@ -1621,3 +1621,118 @@ describe("v0.59.0: COHAB agencies, 0800 numbers and person lines in office hours
     expect(hourLines("Atendimento:\nAdministradora: Fulana de Tal", 30, false, cei.hideLine, cei.hiddenLineMarker)).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE]);
   });
 });
+
+describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcleos de Segurança Alimentar", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+
+  it.each([
+    ["mesa solidaria", "mesa solidaria", 7],
+    ["Mesas Solidárias", "mesa solidaria", 7],
+    ["horta comunitária", "horta comunitaria", 9],
+    ["hortas urbanas", "horta comunitaria", 9],
+    ["Horta Comunitária Urbana", "horta comunitaria", 9],
+    ["fazenda urbana", "fazenda urbana", 10],
+    ["Fazendas Urbanas", "fazenda urbana", 10],
+    ["núcleo de segurança alimentar", "nucleo de seguranca alimentar", 1],
+    ["Núcleo Regional de Segurança Alimentar e Nutricional", "nucleo de seguranca alimentar", 1],
+  ] as const)("%s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("the horta query asks for the community gardens only, with a fixed where; other types still ask for 1=1", () => {
+    const q = new URL(url("horta comunitaria")).searchParams;
+    expect(q.get("where")).toBe("tipo_equi = 'Horta Comunitária Urbana'");
+    expect(new URL(url("mesa solidaria")).searchParams.get("where")).toBe("1=1");
+  });
+
+  it("answers \"Onde tem Mesa Solidária no Centro?\" with the address, every hours line uncut and the WhatsApp landline", async () => {
+    const calls = stubFetch(route("mesa solidaria", "mesa_solidaria_synthetic.json"));
+    const out = await search({ type: "mesa solidaria", bairro: "centro" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/7`);
+    expect(out.data).toMatchObject({ type: "mesa solidaria", total: 1 });
+    const item = out.data.items[0]!;
+    expect(item).toMatchObject({
+      name: "Mesa Solidária Inventada",
+      address: "AL. INVENTADA, 300 - CEP: 80.000-100",
+      phones: ["(41) 3333-3821"],
+      emails: ["mesainventada@curitiba.pr.gov.br"],
+    });
+    expect(item.hours.every((l) => !l.endsWith("…"))).toBe(true);
+    const text = item.hours.join(" ");
+    expect(text).toContain("com o servimento a partir das 18h;");
+    expect(text).toContain("entrega de senhas para o jantar a partir das 17h e com o servimento a partir das 18h.");
+    expect(out.note).toMatch(/WhatsApp/);
+    expect(out.note).toMatch(/kitchens/);
+  });
+
+  it("a Mesa Solidária that only cooks has no hours line; its mobile is dropped", async () => {
+    stubFetch(route("mesa solidaria", "mesa_solidaria_synthetic.json"));
+    const out = await search({ type: "mesa solidaria", name: "cozinha" });
+    expect(out.data.items[0]).toMatchObject({ phones: ["(41) 3333-3821"], hours: ["Espaço estruturado e equipado para a produção de refeições."] });
+    expect(JSON.stringify(out)).not.toMatch(/99999-7001/);
+  });
+
+  it("a community garden keeps the association line and hides a coordinator or a person who keeps it", async () => {
+    const calls = stubFetch(route("horta comunitaria", "horta_comunitaria_synthetic.json"));
+    const out = await search({ type: "horta comunitaria" });
+    expect(calls).toHaveLength(1);
+    expect(out.data.items[0]).toMatchObject({
+      name: "Horta Comunitária Urbana Vila Inventada",
+      phones: [],
+      hours: ["Mantida pela Associação de Moradores da Vila Inventada.", HIDDEN_PERSON_LINE],
+    });
+    expect(JSON.stringify(out)).not.toMatch(/Fulan/);
+    expect(out.note).toMatch(/109 school and 68 institutional gardens/);
+    expect(out.note).toMatch(/no phone and no hours/);
+  });
+
+  it("the Fazenda Urbana and Núcleo notes say what the tool does not do", () => {
+    expect(type("fazenda urbana").note).toMatch(/does not enrol/);
+    expect(type("nucleo de seguranca alimentar").note).toMatch(/Rua da Cidadania/);
+  });
+
+  it("phones: a leading WhatsApp word is removed before the landline test; a WhatsApp mobile is still dropped", () => {
+    expect(institutionalPhones("WhatsApp (41) 3350-3821")).toEqual(["(41) 3350-3821"]);
+    expect(institutionalPhones("whatsapp: 3350-3821")).toEqual(["(41) 3350-3821"]);
+    expect(institutionalPhones("(41) 3267-9128 / 99957-5913 / WhatsApp 99951-0900")).toEqual(["(41) 3267-9128"]);
+    expect(institutionalPhones("(41) 98535-0754 (ligações e WhatsApp)")).toEqual([]);
+  });
+
+  it("the person filter gains secretário/a, supervisor/a, gestor/a, titular and mantido/a por", () => {
+    const t = type("administracao regional");
+    for (const who of [
+      "Secretário: Fulano de Tal",
+      "Secretária: Fulana de Tal",
+      "Secretário(a): Fulana de Tal",
+      "Secretaria: Fulana de Tal",
+      "Supervisora: Fulana de Tal",
+      "Supervisor de área: Fulano de Tal",
+      "Gestor: Fulano de Tal",
+      "Gestora responsável: Fulana de Tal",
+      "Titular: Fulano de Tal",
+      "Coordenador: Fulano de Tal",
+      "Mantida por Fulana de Tal",
+    ]) {
+      const out = hourLines(`Atendimento:\n${who}\n-2ª a 6ª feira, das 8h às 17h.`, 30, true, t.hideLine, t.hiddenLineMarker);
+      expect(out).toEqual(["Atendimento:", HIDDEN_PERSON_LINE, "-2ª a 6ª feira, das 8h às 17h."]);
+    }
+    for (const l of [
+      "Secretaria Municipal de Segurança Alimentar e Nutricional",
+      "Secretaria Municipal:",
+      "Mantida pela Associação de Moradores Inventada.",
+      "Atendimento com supervisor de plantão",
+      "Gestão compartilhada com a comunidade",
+      "Documentos do titular do imóvel",
+    ]) {
+      expect(t.hideLine!(l)).toBe(false);
+    }
+  });
+
+  it("v0.59 regression: a CEI 'Responsável pela matrícula:' line hides itself, not the hours or period line after it", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    expect(lines("Responsável pela matrícula:\n-2ª a 6ª 8h")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª 8h"]);
+    expect(lines("Responsável pela matrícula:\nPeríodo parcial")).toEqual([HIDDEN_MAINTAINER_LINE, "Período parcial"]);
+  });
+});
