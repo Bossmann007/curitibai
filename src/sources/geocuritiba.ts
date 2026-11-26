@@ -281,13 +281,20 @@ export const isPersonInChargeLine = (line: string): boolean =>
  * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
  * Fulana", "Contato: Dona Maria"), except the hours and address labels. "-Área de plantio: 590 m²" and "Mantida pela
  * Associação …" stay.
+ * v0.61.0: also "quem cuida/coordena", "coordenado/a por" (not "pela Associação"), and a capitalised word right before
+ * cuida, cuidam, coordena or coordenam ("Dona Maria cuida da horta"). The labels that stay gain bairro, pomar, cultivo,
+ * plantio and canteiro: an allowlist, so an unknown label still hides its value. "Contato pelo e-mail da secretaria"
+ * stays when it ends the line or a "label:" follows it (the whole field is tested as one line too).
  */
-const GARDEN_PERSON = /\bcontatos?\b|\bvoluntari|\bcuidad[ao]s? por\b/;
+const GARDEN_PERSON = /\bcontatos?\b|\bvoluntari|\bcuidad[ao]s? por\b|\bquem (?:cuida|coordena)|\bcoordenad[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\b/;
+const NAME_BEFORE_VERB = /\p{Lu}\p{Ll}*\s+(?:cuidam?|coordenam?)(?!\p{L})/u;
+const CONTACT_CHANNEL = /\bcontatos? pel[ao] e-?mail d[ao] secret[aá]ria(?=\s*(?:[.;]|$)|\s+-?\s*\p{L}+\s*:)/giu;
 const NAME_AFTER_LABEL = /^[-\s]*(\p{L}+)(?:\(a\))?\s*:\s*\p{Lu}/u;
-const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco)$/;
+const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|plantio|canteiros?)$/;
 export const isGardenPersonLine = (line: string): boolean => {
-  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(line))) return true;
-  const label = NAME_AFTER_LABEL.exec(line.normalize("NFC"))?.[1];
+  const s = line.normalize("NFC").replace(CONTACT_CHANNEL, "");
+  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(s)) || NAME_BEFORE_VERB.test(s)) return true;
+  const label = NAME_AFTER_LABEL.exec(s)?.[1];
   return label !== undefined && !PUBLIC_LABEL.test(fold(label));
 };
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */

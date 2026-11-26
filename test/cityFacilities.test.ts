@@ -1795,6 +1795,27 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
     }
   });
 
+  it("v0.61.0: a garden hides who cares for or coordinates it, and keeps the bairro, pomar, cultivo and secretariat e-mail lines", () => {
+    const t = type("horta comunitaria");
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker);
+    const head = "Mantida pela Associação de Moradores da Vila Inventada.";
+    for (const who of ["Quem cuida: Fulana", "Coordenada por Fulana", "Dona Maria cuida da horta", "Seu João e Dona Maria cuidam da horta", "Fulano coordena os mutirões", "Quem cuida:\nFulana de Tal"]) {
+      const out = lines(`${head}\n${who}\n-Área de plantio em canteiros: 590 m²`);
+      expect(out).toEqual([head, HIDDEN_PERSON_LINE, "-Área de plantio em canteiros: 590 m²"]);
+      expect(out.join(" ")).not.toMatch(/Fulan|Maria|João/);
+    }
+    const kept = ["-Pomar: Citrus e banana", "Cultivo: Hortaliças", "Bairro: Centro", "Contato pelo e-mail da secretaria"];
+    expect(lines(kept.join("\n"))).toEqual(kept);
+    expect(lines([head, ...kept].join("\n"))).toEqual([head, ...kept]);
+    expect(lines(["Dona Maria cuida da horta", ...kept].join("\n"))).toEqual([HIDDEN_PERSON_LINE, ...kept]);
+    for (const l of ["Coordenada pela Associação de Moradores Inventada", "A coordenação da horta é da associação"]) {
+      expect(t.hideLine!(l)).toBe(false);
+    }
+    for (const l of ["Contato pelo e-mail da secretaria Fulana", "Contato pelo e-mail da secretaria: Fulana", "Contato pelo e-mail fulana@example.com", "Contato: Dona Maria", "Bairro: Centro, zeladora Dona Maria cuida"]) {
+      expect(t.hideLine!(l)).toBe(true);
+    }
+  });
+
   it("a CEI keeps 'Matrículas abertas em janeiro' and 'Secretaria da escola' after a hidden label; 'Secretária Fulana' is still hidden", () => {
     const cei = type("cei contratado");
     const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);

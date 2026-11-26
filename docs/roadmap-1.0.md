@@ -239,3 +239,7 @@ publish no phone or hours. The office person-line filter gains more roles and no
 At v0.60.1 the facility source is simpler with no change in behaviour: one record builder and one options argument
 replace the copied literals in `src/sources/geocuritiba.ts` (301 lines removed, 155 added). The citizen eval still
 answers 131 of 135 questions.
+
+At v0.61.0 the community-garden filter also hides who cares for or coordinates a garden ("Quem cuida:",
+"Coordenada por", "Dona Maria cuida da horta") and keeps the bairro, pomar and cultivo labels and "Contato pelo
+e-mail da secretaria". The citizen eval still answers 131 of 135 questions.

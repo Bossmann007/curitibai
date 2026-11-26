@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.61.0 - 2026-11-26
+
+Community-garden person lines, a follow-up of the 0.60.0 review. 27 tools. Publishes nothing.
+
+- `city_facilities_search` `horta comunitaria`: a line naming who cares for or coordinates a garden is now hidden
+  too: "quem cuida" or "quem coordena" ("Quem cuida: Fulana", and the name on the line after "Quem cuida:"),
+  "coordenado/a por" ("Coordenada por Fulana"; "Coordenada pela Associação …" stays) and a capitalised word right
+  before cuida, cuidam, coordena or coordenam ("Dona Maria cuida da horta").
+- The labels whose capitalised value stays visible are an allowlist that gains bairro, pomar, cultivo(s), plantio and
+  canteiro(s): "-Pomar: Citrus e banana", "Cultivo: Hortaliças" and "Bairro: Centro" are shown; any other one-word
+  label followed by a capitalised word is still hidden. "Contato pelo e-mail da secretaria" is shown when it ends the
+  line or a "label:" follows it; any other line with "contato" is still hidden.
+- No tool, input, output or note change; tool contract snapshot unchanged. Citizen eval 131 of 135, as in 0.60.1.
+- No new network host, no new dependency; docs/sources.md, docs/tools.md and SPEC.md describe the new lines.
+
 ## 0.60.1 - 2026-11-26
 
 A simpler `city_facilities_search` source after twenty feature releases (0.41.0 to 0.60.0). 27 tools. Publishes
