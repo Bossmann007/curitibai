@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Tatuquara",
+    "nome_completo": "Agência de Atendimento COHAB Tatuquara",
+    "nome_rua": "R. INVENTADA DO SUL",
+    "num_pred": "100",
+    "compl_end": "Rua da Cidadania Inventada, 1º Andar, Sala 4 - CEP: 80.000-000",
+    "divulgar_endereco": "Sim",
+    "bairro": "Tatuquara",
+    "regional": "Tatuquara",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-8100 / 0800 000 1234",
+    "email": "agencia@cohab.curitiba.pr.gov.br",
+    "dt_atualiz": 1791990507000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nAtendimento acessível em LIBRAS.\r\nAgendar atendimento presencial pela Agenda Online, clicando em ``Saiba Mais´´."
+   },
+   "geometry": {
+    "x": -49.33,
+    "y": -25.56
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Inventada",
+    "nome_completo": "Agência de Atendimento COHAB Inventada",
+    "nome_rua": "AV. INVENTADA DO NORTE",
+    "num_pred": "2000",
+    "compl_end": "Rua da Cidadania Inventada, Térreo - CEP: 80.000-001",
+    "divulgar_endereco": "Sim",
+    "bairro": "Capão Raso",
+    "regional": "Pinheirinho",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-8100 / 0800 000 1234",
+    "email": "agencia@cohab.curitiba.pr.gov.br",
+    "dt_atualiz": 1791990492000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 12h e das 13h às 17h\r\nResponsável: Fulana de Tal\r\nAgendar atendimento presencial pela Agenda Online, clicando em ``Saiba Mais´´."
+   },
+   "geometry": {
+    "x": -49.29,
+    "y": -25.50
+   }
+  }
+ ]
+}

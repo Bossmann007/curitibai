@@ -216,13 +216,31 @@ const REGIONAL_OFFICE_NOTE =
   "serves are in `hours` as published (see `updated`). `bairro` filters by where an office is, not by the bairros it " +
   "serves: list them all and read the \"Bairros de abrangência\" line, or use place_at_point for a point's regional. " +
   "A phone inside `hours` (the protocolo line) is masked and may not be in `phones`: call the office or the 156.";
+/** v0.59.0. Read on 2026-11-26: the 9 agencies share one landline, one 0800 and one e-mail; `site` is never read. */
+const COHAB_NOTE =
+  "The COHAB-CT (Companhia de Habitação Popular de Curitiba) service agencies, in the Ruas da Cidadania, as listed by " +
+  "IPPUC; hours as published (see `updated`). When read, every agency listed the same phones and e-mail: central " +
+  "contacts, not the agency's own. The layer says in-person service is booked through the Agenda Online (\"Saiba " +
+  "Mais\"): this tool does not book (city_service_guide `agenda_online`). Housing applications, " +
+  "the applicant queue and anyone's registration are not in this tool. Agencies are named after their Rua da " +
+  "Cidadania, not always the bairro they are in: search by `name` (e.g. \"tatuquara\").";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
-const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b";
+/** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
+export const HIDDEN_PERSON_LINE = "[a line naming who is in charge is not shown: it can carry a person's name]";
+const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
 const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
 const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b/.test(line) || /\bmei\b/i.test(line);
+/**
+ * v0.59.0, offices (Administração Regional, COHAB): a line that starts with who is in charge, or has "<role>:"
+ * anywhere ("Responsável: Fulana", "Administrador Regional: Fulano", "Diretor(a):"). Narrower than isMaintainerLine,
+ * whose MEI, ME, Ltda and "responsável" anywhere rules would hide office service lines ("atendimento ao MEI").
+ */
+const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe";
+const PERSON_IN_CHARGE = new RegExp(`^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`, "u");
+export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(fold(line));
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
-const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*\\s*:?$`);
+const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -571,6 +589,18 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     ]),
     note: REGIONAL_OFFICE_NOTE,
     wrapLines: true,
+    hideLine: isPersonInChargeLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
+  },
+  // COHAB agencies, added in v0.59.0 (read on 2026-11-26 UTC: 9 records, no line naming a person; hidden if one comes).
+  {
+    ...equipment("cohab", 29, "Agência de Atendimento da COHAB", [
+      "cohab ct", "cohab curitiba", "agencia da cohab", "agencias da cohab", "agencia de atendimento da cohab",
+      "agencias de atendimento da cohab",
+    ]),
+    note: COHAB_NOTE,
+    hideLine: isPersonInChargeLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
   },
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
@@ -751,9 +781,11 @@ function inside(lat: unknown, lon: unknown): { lat: number; lon: number } | null
 }
 
 /**
- * Institutional phone numbers only, formatted "(41) XXXX-XXXX", plus three-digit public service numbers ("156").
- * A Curitiba landline (DDD 41 or none, 8 digits starting 2–5) is kept; a mobile, a toll-free or another DDD, and any
- * part not understood, is dropped: a mobile in this field can be a person's own number.
+ * Institutional phone numbers only, formatted "(41) XXXX-XXXX", plus three-digit public service numbers ("156") and,
+ * since v0.59.0, toll-free numbers ("0800 XXX XXXX", or "0800 XXX XXX" for six digits: a company's or public body's
+ * line, never a person's own), however their digits are grouped.
+ * A Curitiba landline (DDD 41 or none, 8 digits starting 2–5) is kept; a mobile or another DDD, and any part not
+ * understood, is dropped: a mobile in this field can be a person's own number.
  */
 export function institutionalPhones(raw: unknown): string[] {
   const s = str(raw);
@@ -763,6 +795,11 @@ export function institutionalPhones(raw: unknown): string[] {
     const p = part.trim();
     if (/^1\d{2}$/.test(p)) {
       out.push(p);
+      continue;
+    }
+    if (/^0800(?:[-\s]?\d){6,7}$/.test(p)) {
+      const d = p.replace(/\D/g, "");
+      out.push(`0800 ${d.slice(4, 7)} ${d.slice(7)}`);
       continue;
     }
     if (!/^(?:\(41\)\s?)?\d{4}[-\s]?\d{4}$/.test(p)) continue;
@@ -854,9 +891,11 @@ export function hourLines(
         lines.push(t);
         label = rest = false;
       } else {
-        const m = hide === isMaintainerLine;
+        const m = hide === isMaintainerLine || hide === isPersonInChargeLine;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
-        label = m ? MAINTAINER_LABEL.test(fold(t)) : t.endsWith(":") && !label;
+        // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: its value,
+        // however long, follows. "Responsável pelo atendimento, horário:" is not: the hours after it stay.
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (!label && /^[^,]*:$/.test(t)) : t.endsWith(":") && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }

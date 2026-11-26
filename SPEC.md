@@ -1,4 +1,4 @@
-# SPEC: v0.58.0 Rodoferroviária and administrações regionais
+# SPEC: v0.59.0 COHAB agencies
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,66 +8,65 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Qual o endereço e o horário da Rodoferroviária de
-Curitiba?" with the Terminal Rodoviário IPPUC lists, its address, hours and landlines as published. Also list the
-Terminal Ferroviário (the rail side of the same complex) and the ten Administrações Regionais. The tool lists places
-only: it never gives a bus or train departure time, a platform, a fare or a ticket.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Onde fica a agência da COHAB no Tatuquara e que horas
+abre?" with the COHAB-CT agency IPPUC lists, its address, hours and contacts as published. The tool lists places only:
+it never books, and nothing from the COHAB applicant queue (a personal dataset) is read.
 
 ## Source (read 2026-11-26 UTC)
 
-IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` (urban-equipment) layers 159 "Terminal
-Rodoviário" (1 record), 160 "Terminal Ferroviário" (1) and 15 "Administração Regional" (10). robots.txt 404
-(19:43:20 UTC); the layers' metadata has empty `copyrightText` and `description`, so no licence found (facts only,
-IPPUC cited, like the other GeoCuritiba layers). No new host. No new link: the `rodoviaria` note reuses the URBS home
-page link that the bus tools already return. Details:
+IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` (urban-equipment) layer 29 "Agência de
+Atendimento da COHAB" (9 records). robots.txt 404 (19:59:13 UTC); the layer's metadata has empty `copyrightText` and
+`description`, so no licence found (facts only, IPPUC cited, like the other GeoCuritiba layers). No new host, no new
+link. Details:
 [docs/sources.md](docs/sources.md#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes).
 
 What the read showed and how this version handles it:
 
-- Hours are published for all 12 records (the queue's "hours may not be published" did not happen). The Rodoviária
-  publishes administrative hours (daily 6h to 24h) and operational hours (daily 0h to 24h): the terminal's hours, not
-  departures. The note says so.
-- The Ferroviária's hours are split into "alta temporada" and "baixa temporada" with no dates, and its e-mail is at
-  `serraverdeexpress.com.br`, a private train operator's domain (dropped by the unchanged e-mail filter). The note says
-  the layer does not say which season applies and that train times and tickets are not in this tool.
-- Each Administração Regional lists general and protocolo hours, a "-Telefone: …" protocolo line (masked by the
-  unchanged free-text phone mask; in at least one live record that number is not in `telefone`, so the note says
-  it may not be in `phones`) and a "Bairros de
-  abrangência" line; two of those lines are over 160 characters: `wrapLines`.
-- No person's name, mobile or personal e-mail in the 12 records.
+- One agency in each of nine Ruas da Cidadania; hours "2ª a 6ª feira, das 8h às 17h" (four with a 12h–13h break).
+- Every record has the same `telefone`, a landline and a toll-free 0800 number, which the phone filter dropped. A
+  toll-free number is never a person's own, so `institutionalPhones` now keeps it ("0800 XXX XXXX", or "0800 XXX
+  XXX" for six digits, however grouped) for every type;
+  mobiles and other area codes are still dropped. Every record has the same e-mail: the note says these are central
+  contacts.
+- Every `observacao` ends with a line saying in-person service is booked through the Agenda Online ("Saiba Mais", a
+  link in `site`, which is never read). The note says this tool does not book and points to `city_service_guide`
+  `agenda_online`.
+- Three agencies are named after a Rua da Cidadania in another bairro (Pinheirinho is in Capão Raso): the note says to
+  search by `name`.
+- No person's name, mobile or personal e-mail in the 9 records, nor in layer 15 (re-read for the item below).
 
 ## Changes
 
-1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
-   e-mail allowlist as the other urban-equipment layers:
-   - `rodoviaria` (159), aliases `rodoferroviaria`, `rodoviaria de curitiba`, `rodoferroviaria de curitiba`,
-     `terminal rodoviario`, `terminal rodoviario de curitiba`;
-   - `ferroviaria` (160), aliases `terminal ferroviario`, `terminal ferroviario de curitiba`, `estacao ferroviaria`;
-   - `administracao regional` (15), aliases `administracoes regionais`, `administracao regional de curitiba`,
-     `sede da regional`. No bare `regional`, `terminal` (already the urban bus terminals) or `trem`.
-2. **Notes**: `rodoviaria`: the hours are the terminal's, as published, not departures; intercity and interstate
-   departures, platforms and fares are not in this tool (ask the bus company or the terminal, or see
-   https://www.urbs.curitiba.pr.gov.br/); the rail side is type `ferroviaria`; city buses to it: `bus_route_between`.
-   `ferroviaria`: hours as published by season, the layer does not say which season applies, its e-mail is
-   the train operator's and not shown, no train times or tickets. `administracao regional`: one per regional, hours
-   and the bairros each serves as published, `bairro` filters by where the office is, a phone inside `hours` is masked
-   and may not be in `phones` (call the office or the 156), for a point's regional `place_at_point`.
-3. **Eval**: new q133 "Qual o endereço e o horário da Rodoferroviária de Curitiba?" → `city_facilities_search`
-   `{type: "rodoferroviaria"}`, synthetic fixture `test/fixtures/geocuritiba/rodoviaria_synthetic.json`. Tool
-   contract snapshot updated (the `type` description).
-4. **Docs and version**: docs/tools.md (reference row and "Which place tool"), docs/sources.md, README row,
-   docs/roadmap-1.0.md, CHANGELOG 0.58.0, version 0.58.0 in `package.json`, `package-lock.json`, `server.json`. The
-   Curitiba App table has no row for these and is unchanged.
+1. **Type** `cohab` (29) in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), aliases `cohab ct`, `cohab curitiba`,
+   `agencia da cohab`, `agencias da cohab`, `agencia de atendimento da cohab`, `agencias de atendimento da cohab`;
+   same query, fields, host gate, cache and e-mail allowlist as the other urban-equipment layers.
+2. **Note** for `cohab`: central contacts; booking through the Agenda Online, not in this tool; housing applications,
+   the applicant queue and anyone's registration not in this tool; search by `name`.
+3. **0800 numbers** kept in `phones` (all types); the output `phones` description and the general note say so.
+4. **Person lines** (v0.58 review): `administracao regional` and `cohab` hide, with the marker "[a line naming who is
+   in charge is not shown: it can carry a person's name]", a line that starts with a role (responsável, diretor(a),
+   administrador(a), gerente, coordenador(a), chefe) or has "<role>:", via `isPersonInChargeLine`. `hourLines` gives
+   it the `cei contratado` label and split-name handling, and a hidden label with no comma ending in ":"
+   ("Administrador Regional:") hides the next line whatever its length. Not the CEI word list itself: its MEI, ME,
+   Ltda and "responsável anywhere" rules would hide office service lines (found in review, tested). The CEI list gains
+   `administrador`, and a bare label may end in "(a)" ("Diretor(a):").
+5. **Eval**: new q134 → `city_facilities_search` `{type: "cohab", name: "tatuquara"}`, synthetic fixture
+   `test/fixtures/geocuritiba/cohab_synthetic.json`. Tool contract snapshot updated (`type` and `phones`
+   descriptions).
+6. **Docs and version**: docs/tools.md, docs/sources.md, README row, docs/roadmap-1.0.md, CHANGELOG 0.59.0, version
+   0.59.0 in `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has no row for this and is
+   unchanged.
 
 ## Out of scope
 
-Bus or train departure times, platforms, fares or tickets (never fetched; no realtime ever); which regional covers an
-address beyond what `place_at_point` already says; unmasking phones in `hours`; any new host or link.
+Booking, housing applications, the applicant queue (`PretendentesCohab`, avoided), any COHAB or Agenda Online link,
+the `site` field, any new host.
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the three types resolve with their
-  aliases to layers 159, 160 and 15; the synthetic records come back with address, hours and landlines, the operator's
-  e-mail dropped and a long bairro line split; the notes say no departures; q133 answered.
-- `node scripts/eval-summary.mjs`: `answered 129 / 133`.
+- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: `cohab` resolves with its aliases to
+  layer 29; the synthetic Tatuquara agency comes back with address, hours, the landline and the 0800; a "Responsável:"
+  line is hidden; regional-office person lines are hidden and the bairros line stays whole; near-miss 0800 shapes are
+  dropped; q134 answered.
+- `node scripts/eval-summary.mjs`: `answered 130 / 134`.
 - `scripts/verify` exits 0 on the PR head; packed size under 252,000 bytes.
