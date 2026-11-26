@@ -278,34 +278,33 @@ const PERSON_IN_CHARGE = new RegExp(
 );
 export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
 /**
- * v0.60.0, community gardens (run with residents): besides isPersonInChargeLine, a line with "contato" anywhere,
- * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
- * Fulana", "Contato: Dona Maria"), except the hours and address labels. "-Área de plantio: 590 m²" and "Mantida pela
- * Associação …" stay.
- * v0.61.0: also "quem cuida/coordena"; "coordenado/a" or "cuidado/a" por, pelo or pela, unless a body follows
- * ("pela Associação"); a capitalised word right before cuida(m) or coordena(m), with ", que" allowed between ("Dona
- * Maria cuida da horta"; not a body word or an acronym); and Dona, Seu, Sr(a). or Senhor(a) before a capitalised word.
- * The labels that stay are an allowlist that gains bairro, pomar and cultivo, so an unknown label still hides its
- * value. "Contato pelo e-mail da secretaria" stays unless ':' or a run of capitalised words (a name) follows it, on the
- * line or, in the whole-field test, on the next line.
+ * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
+ * GARDEN_LINE (a public label; an hours or number line; the body that keeps the garden, "Mantida pela Associação …";
+ * the city programme; a partner; "Horta com N canteiros") or exactly "Contato pelo e-mail da secretaria", and has no
+ * person in it (GARDEN_PERSON, any case: a contact, a volunteer, "quem cuida", cuidado/coordenado por or pelo/pela a
+ * person, an honorific, cuida(m)/coordena(m) after anything but a body word; and isPersonInChargeLine). Any other line,
+ * a lower-case name included, is hidden. Replaces the v0.60–v0.61 denylist, which a lower-case name passed.
  */
-const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja";
-const GARDEN_PERSON = new RegExp(
-  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))`,
+const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja|lar|smsan";
+const GARDEN_LINE = new RegExp(
+  "^(?:" +
+    [
+      "(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|area de (?:plantio|lavoura)[a-z ]*|jardins? de mel)\\s*:",
+      "(?:(?:atendimento|horarios?|funcionamento)\\s*:?\\s*)?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)\\b)",
+      `(?:(?:mantid|coordenad|cuidad)[ao]s? pel[ao]|a coordenacao da horta e d[ao]|an?|o) (?:${BODY})\\b`,
+      "programa\\b|parceria com\\b|horta com \\d",
+    ].join("|") +
+    ")",
 );
-const NAME_BEFORE_VERB = /(\p{Lu}\p{Ll}+)(?:\s*,\s*que|\s)\s*(?:cuidam?|coordenam?)(?!\p{L})/gu;
-const BODY_WORD = new RegExp(`^(?:${BODY})$`);
-const HONORIFIC = /(?<!\p{L})(?:Dona|Seu|Sra?\.?|Senhora?)\s+\p{Lu}/u;
-const NAME_AHEAD = String.raw`[.;,]?\s+\p{Lu}\p{Ll}*(?:\s+(?:d[aeo]s?|e|\p{Lu}\p{Ll}*))*(?!\s*[\p{Ll}:])`;
-const CONTACT_CHANNEL = new RegExp(String.raw`[Cc]ontatos? pel[ao] e-?mail d[ao] secret[aá]ria(?!\p{L}|\s*:|${NAME_AHEAD})`, "gu");
-const NAME_AFTER_LABEL = /^[-\s]*(\p{L}+)(?:\(a\))?\s*:\s*\p{Lu}/u;
-const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?)$/;
+const GARDEN_CONTACT = /^contatos? pel[ao] e-?mail d[ao] secretaria\.?$/;
+const GARDEN_PERSON = new RegExp(
+  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
+    `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
+);
 export const isGardenPersonLine = (line: string): boolean => {
-  const s = line.normalize("NFC").replace(CONTACT_CHANNEL, "");
-  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(s)) || HONORIFIC.test(s)) return true;
-  if ([...s.matchAll(NAME_BEFORE_VERB)].some((m) => !BODY_WORD.test(fold(m[1] ?? "")))) return true;
-  const label = NAME_AFTER_LABEL.exec(s.trim())?.[1];
-  return label !== undefined && !PUBLIC_LABEL.test(fold(label));
+  const f = fold(line.normalize("NFC")).replace(/^[-\s]+/, "").trim();
+  if (GARDEN_CONTACT.test(f)) return false;
+  return !GARDEN_LINE.test(f) || GARDEN_PERSON.test(f) || isPersonInChargeLine(line);
 };
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
@@ -362,6 +361,13 @@ export interface FacilityType {
    * line ending in ':' with no comma as a label.
    */
   nameLines?: "maintainer" | "person";
+  /**
+   * v0.63.0: `hideLine` is an allowlist (community gardens): it hides every line that is not a known public kind, so the
+   * whole-field test of hourLines (a keyword split across lines) is skipped: several good lines joined are no kind.
+   */
+  allowlist?: true;
+  /** v0.63.0, social assistance: a record whose name or address points at a shelter is skipped, and shelter e-mails dropped. */
+  shelter?: true;
   /** A fixed `where` sent instead of "1=1" (never user input): v0.60.0, the community gardens of the horta layer. */
   where?: string;
   /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
@@ -396,7 +402,7 @@ const equipment = (id: string, layer: number, label: string, aliases: string[] =
 });
 
 /** Lines that may point at a shelter (social assistance) or name the person in charge (offices) are replaced by a marker. */
-const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE };
+const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE, shelter: true } as const;
 const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" } as const;
 
 const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType =>
@@ -604,7 +610,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("mesa solidaria", 7, "Mesa Solidária", ["mesas solidarias", "mesa solidaria curitiba"], { note: MESA_SOLIDARIA_NOTE, wrapLines: true, ...HIDE_PERSON }),
   equipment("horta comunitaria", 9, "Horta Comunitária Urbana", [
     "hortas comunitarias", "horta comunitaria urbana", "hortas comunitarias urbanas", "horta urbana", "hortas urbanas",
-  ], { where: "tipo_equi = 'Horta Comunitária Urbana'", note: COMMUNITY_GARDEN_NOTE, hideLine: isGardenPersonLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" }),
+  ], { where: "tipo_equi = 'Horta Comunitária Urbana'", note: COMMUNITY_GARDEN_NOTE, hideLine: isGardenPersonLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person", allowlist: true }),
   equipment("fazenda urbana", 10, "Fazenda Urbana", ["fazendas urbanas"], { note: URBAN_FARM_NOTE, ...HIDE_PERSON }),
   equipment("nucleo de seguranca alimentar", 1, "Núcleo Regional de Segurança Alimentar e Nutricional", [
     "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
@@ -916,6 +922,7 @@ export function hourLines(
   hide?: (line: string) => boolean,
   marker: string = HIDDEN_NAME_LINE,
   names?: FacilityType["nameLines"],
+  allowlist = false,
 ): string[] {
   const s = str(raw);
   if (s === null) return [];
@@ -951,7 +958,7 @@ export function hourLines(
       }
     }
   }
-  if (hide && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
+  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
@@ -968,7 +975,7 @@ function privateRecord(name: string, a: Record<string, unknown>): Facility {
 function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, t: FacilityType): Facility | null {
   const name = clean(a.nome_completo, NAME_MAX) ?? clean(a.nome, NAME_MAX);
   if (name === null) return null;
-  if (t.hideLine === isShelterLine && [a.nome_completo, a.nome, a.nome_rua, a.compl_end].some((v) => typeof v === "string" && isShelterLine(v))) return null;
+  if (t.shelter && [a.nome_completo, a.nome, a.nome_rua, a.compl_end].some((v) => typeof v === "string" && isShelterLine(v))) return null;
   // The publisher marks whether the address may be shown; anything but "Sim" hides the address and the position.
   const show = a.divulgar_endereco === "Sim";
   if (!show && t.privateAddress) return privateRecord(name, a);
@@ -985,10 +992,10 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines),
+    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
-    emails: institutionalEmails(a.email).filter((e) => t.hideLine !== isShelterLine || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
+    emails: institutionalEmails(a.email).filter((e) => !t.shelter || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
     updated: updated(a.dt_atualiz),
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,

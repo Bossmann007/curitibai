@@ -247,3 +247,8 @@ e-mail da secretaria". The citizen eval still answers 131 of 135 questions.
 At v0.62.0 the text key and the line filter are simpler with no change in behaviour: one `foldKey()` replaces five
 copies, and a type's `nameLines` flag replaces a check on which filter function it uses (source: 56 lines removed, 57
 added). The citizen eval still answers 131 of 135 questions.
+
+At v0.63.0 the community-garden filter is an allowlist: a line is shown only when it is a known public kind (a public
+label, an hours line, the body that keeps the garden, the programme, a partner, the secretariat e-mail line) and names
+no one, so a lower-case name is hidden and the hours after the secretariat e-mail line stay. Social-assistance types
+carry an explicit `shelter` flag. The citizen eval still answers 131 of 135 questions.

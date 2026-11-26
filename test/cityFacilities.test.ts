@@ -1799,9 +1799,11 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
     ]) {
       expect(hide(l)).toBe(true);
     }
-    for (const l of ["Titular da conta", "Mantido pelo Lar Inventado", "Mantida pela Associação de Moradores Inventada."]) {
+    for (const l of ["Mantido pelo Lar Inventado", "Mantida pela Associação de Moradores Inventada."]) {
       expect(hide(l)).toBe(false);
     }
+    // v0.63.0: the garden filter is an allowlist and hides this office line (no garden kind); the person filter keeps it
+    expect(isPersonInChargeLine("Titular da conta")).toBe(false);
   });
 
   it("review: WhatsApp written with a dash, Whats or Zap is read too", () => {
@@ -1814,7 +1816,7 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
 describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () => {
   it("a garden hides a contact, a volunteer, who cares for it and a name after a one-word label; public lines stay", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
     for (const who of [
       "Contato: Dona Maria (41) 99999-1111",
       "Voluntária: Fulana de Tal",
@@ -1833,7 +1835,7 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
 
   it("v0.61.0: a garden hides who cares for or coordinates it, and keeps the bairro, pomar, cultivo and secretariat e-mail lines", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
     const head = "Mantida pela Associação de Moradores da Vila Inventada.";
     for (const who of ["Quem cuida: Fulana", "Coordenada por Fulana", "Dona Maria cuida da horta", "Seu João e Dona Maria cuidam da horta", "Fulano coordena os mutirões", "Quem cuida:\nFulana de Tal"]) {
       const out = lines(`${head}\n${who}\n-Área de plantio em canteiros: 590 m²`);
