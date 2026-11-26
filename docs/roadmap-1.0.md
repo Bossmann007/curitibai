@@ -210,3 +210,8 @@ hidden maintainer line visible, and matches short service words (rua, av, fone, 
 At v0.56.0 the package is smaller with the same behaviour: the build drops source comments (packed 251,583 to
 211,163 bytes) and keeps the ODbL notice of the OSM extract. The citizen eval answers 127 of 131 questions; 4 are
 gaps (real-time buses 2, other cities 2).
+
+At v0.57.0 (phase B) `place_at_point` `areas: "registry"` names the circunscrição imobiliária (registro de imóveis)
+and the registro civil serviço whose area covers a point, with the legal basis as published (IPPUC's thematic layers
+15 and 16); not the office's address and not a certidão. The citizen eval answers 128 of 132 questions; 4 are gaps
+(real-time buses 2, other cities 2).

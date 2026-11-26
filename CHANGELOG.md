@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.57.0 - 2026-11-26
+
+Registry areas at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `place_at_point` `service_areas`: new `areas` value `registry`. It reads IPPUC's GeoCuritiba thematic layers 15
+  (Circunscrição Imobiliária, 12 areas) and 16 (Registro Civil, 19 areas) and returns `property_registry`
+  (`circumscription`, `legal_basis`) and `civil_registry` (`service`, `legal_basis`), `legal_basis` being `fonte` as
+  published. 2 requests cold. Only `circunscricao`, `servicos` and `fonte` are requested; never `nome` or the editor
+  fields `created_user` and `last_edited_user`. The note says the areas may have changed, name the registry and not its
+  address, do not replace a certidão, and points to `city_facilities_search` `cartorio de registro civil`.
+- `all` stays care and safety: a cold `all` already uses the 5 requests of the call budget.
+- Tool contract: the `areas` enum and description, two new nullable lists (snapshot updated).
+- Citizen eval: q132 ("Qual cartório de registro de imóveis atende uma casa no Batel?") answered; 128 of 132.
+- No new network host, no new link, no new dependency.
+
 ## 0.56.0 - 2026-11-26
 
 Smaller package, same behaviour. 27 tools. Publishes nothing.

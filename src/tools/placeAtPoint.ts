@@ -28,11 +28,12 @@ export const placeAtPointInput = {
   lon: z.number().min(-180).max(180).describe("Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."),
   include: z.array(z.enum(PARTS)).min(1).optional().describe("Parts to answer; default all three."),
   areas: z
-    .enum(["care", "safety", "all"])
+    .enum(["care", "safety", "registry", "all"])
     .optional()
     .describe(
       "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia " +
-        "Civil district and fire (Corpo de Bombeiros) platoon areas. \"all\": both.",
+        "Civil district and fire (Corpo de Bombeiros) platoon areas. \"registry\": circunscrição imobiliária " +
+        "(registro de imóveis) and registro civil serviço. \"all\": care and safety.",
     ),
 };
 
@@ -224,7 +225,9 @@ interface Job {
   run: () => Promise<Result>;
 }
 
-function jobsFor(include: readonly Part[], areas: "care" | "safety" | "all", p: Point, reads: PointReads): Job[] {
+type Areas = "care" | "safety" | "registry" | "all";
+
+function jobsFor(include: readonly Part[], areas: Areas, p: Point, reads: PointReads): Job[] {
   const groups = areas === "all" ? (["care", "safety"] as const) : [areas];
   return PARTS.filter((part) => include.includes(part)).flatMap((part): Job[] => {
     if (part === "place") return [{ part, label: "place", run: () => placeAt(p, reads) }];
@@ -266,7 +269,7 @@ const credit = ({ data, source, source_url, checked_at }: Result) => ({ ...data,
  * 5 s apart, in the order asked, so a cold call reads every part's first layer before any later one and the budget cuts
  * later layers first. A part with no answer is null and `partial`; a call with no part answered is an error.
  */
-export async function placeFacade(p: Point, include: readonly Part[], areas: "care" | "safety" | "all", startBy: number): Promise<Output> {
+export async function placeFacade(p: Point, include: readonly Part[], areas: Areas, startBy: number): Promise<Output> {
   const jobs = jobsFor(include, areas, p, pointReads(p, startBy));
   const settled = await Promise.allSettled(jobs.map((j) => j.run()));
   const errors = settled.flatMap((s) => (s.status === "rejected" ? [s.reason as unknown] : []));
@@ -300,7 +303,7 @@ export const placeAtPoint: ToolDef<typeof placeAtPointInput, typeof placeAtPoint
   title: "Place, service areas and census of a point in Curitiba (IPPUC GeoCuritiba)",
   description:
     "Where is this point in Curitiba, who serves it, who lives around? `include` (default all): place (bairro, " +
-    "regional, zoning, nearest street), service_areas (`areas`: care, safety or all) and census (IBGE 2022; sectors " +
+    "regional, zoning, nearest street), service_areas (`areas`: care, safety, registry, all) and census (IBGE 2022; sectors " +
     `under ${MIN_HOUSEHOLDS} households withheld). Live from IPPUC's GeoCuritiba (not affiliated); only the point ` +
     "rounded to 4 decimals is sent. A cold call can be partial: call again. Read-only.",
   inputSchema: placeAtPointInput,

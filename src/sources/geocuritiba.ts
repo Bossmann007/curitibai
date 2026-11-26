@@ -1115,6 +1115,8 @@ export type PointLayer =
   | "pm_company"
   | "civil_district"
   | "fire_platoon"
+  | "property_registry"
+  | "civil_registry"
   | "census_sector";
 
 const ZONING_FIELDS = "sg_zona,nm_zona,legislacao,data_versao";
@@ -1130,6 +1132,10 @@ export const POINT_LAYERS: Record<PointLayer, { service: string; id: number; fie
   pm_company: { service: THEMATIC_SERVICE_URL, id: 27, fields: "nm_batalhao,sg_batalhao,nm_companhia,sg_companhia,data_atualizacao,fonte" },
   civil_district: { service: THEMATIC_SERVICE_URL, id: 25, fields: "nm_divisao,nm_distrito,sg_distrito,fonte" },
   fire_platoon: { service: THEMATIC_SERVICE_URL, id: 41, fields: "batalhao,companhia,pelotao,sigla,fonte" },
+  // v0.57.0, read on 2026-11-26: circunscrições imobiliárias (12 areas), registro civil serviços (19). Never nome,
+  // created_user or last_edited_user (layer 15's editor fields hold user names).
+  property_registry: { service: THEMATIC_SERVICE_URL, id: 15, fields: "circunscricao,fonte" },
+  civil_registry: { service: THEMATIC_SERVICE_URL, id: 16, fields: "servicos,fonte" },
   // IBGE 2022 census sector (3,190 sectors): never v0005, v0006 (household-level averages) or nm_fcu.
   census_sector: { service: THEMATIC_SERVICE_URL, id: 43, fields: "cd_setor,nm_bairro,v0001,v0007,area_km2,dens_pop_km2,renda_media" },
 };

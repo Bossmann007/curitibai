@@ -25,6 +25,8 @@ const BODIES: Record<PointLayer, string> = {
   pm_company: attrs([{ nm_batalhao: "99º Batalhão", sg_batalhao: "99º BPM", nm_companhia: "1ª Companhia", sg_companhia: "1ª CIA", data_atualizacao: "09/2025", fonte: "PMPR TESTE" }]),
   civil_district: attrs([{ nm_divisao: "Divisão Teste", nm_distrito: "99º Distrito Policial", sg_distrito: "99º DP", fonte: "PCPR TESTE" }]),
   fire_platoon: attrs([{ batalhao: "Batalhão Teste", companhia: "Companhia Teste", pelotao: "Pelotão Teste", sigla: "9ª Pel. BM", fonte: "CBMPR TESTE" }]),
+  property_registry: attrs([{ circunscricao: "9ª CIRCUNSCRIÇÃO", fonte: "Tribunal Teste, 1900" }]),
+  civil_registry: attrs([{ servicos: "9º SERVIÇO DE REGISTRO CIVIL", fonte: "Lei Teste 1/1900" }]),
   census_sector: attrs([{ cd_setor: "410690205010084", nm_bairro: "São Francisco", v0001: 231, v0007: 129, area_km2: 0.19, dens_pop_km2: 1229.99, renda_media: 4583.33 }]),
 };
 const TOTALS_KEY = `GET ${censusBairroUrl("São Francisco", 20)}`;
@@ -87,6 +89,15 @@ describe("place_at_point include", () => {
     expect(out.data.census).toMatchObject({ sector: { households: 129 }, neighbourhood: { persons: 5008 }, source: expect.stringMatching(/IBGE/) });
     expect(out.data.service_areas).toMatchObject({ areas: "care", health_units: [{ name: "US TESTE" }], cras: [{ name: "CRAS TESTE" }] });
     expect(out.data.place).toMatchObject({ bairro: "BAIRRO TESTE", nearest_street: { name: "RUA TESTE" }, source: "Fonte: IPPUC/GeoCuritiba" });
+  });
+
+  it("areas all stays care and safety: the registry layers are not asked and their lists are null", async () => {
+    const calls = stubFetch(routes());
+    const out = await facade({ ...AT, include: ["service_areas"], areas: "all" });
+    expect(out.data.service_areas).toMatchObject({ areas: "all", property_registry: null, civil_registry: null });
+    const urls = calls.map((c) => c.url);
+    expect(urls).not.toContain(key("property_registry").slice(4));
+    expect(urls).not.toContain(key("civil_registry").slice(4));
   });
 
   it("areas all gives both groups with both credits and both caveats", async () => {
