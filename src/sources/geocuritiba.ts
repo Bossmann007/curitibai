@@ -335,7 +335,7 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** True when an `observacao` line (after cleaning) is replaced by HIDDEN_NAME_LINE: a registry line that may carry a surname (v0.51.0). */
+  /** True when an `observacao` line (after cleaning) is replaced by `hiddenLineMarker`: a line that may carry a name or point at a shelter. */
   hideLine?: (line: string) => boolean;
   /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
@@ -344,6 +344,9 @@ export interface FacilityType {
   /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
   privateAddress?: true;
 }
+
+/** What an entry may set besides its identity and layer (equipment(), social()). */
+type TypeOptions = Partial<Omit<FacilityType, "id" | "label" | "aliases" | "kind" | "layerUrl">>;
 
 const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
   ...equipment(id, layer, label, aliases),
@@ -360,7 +363,7 @@ const conservation = (id: string, layer: number, label: string, aliases: string[
   note: CONSERVATION_NOTE,
 });
 
-const equipment = (id: string, layer: number, label: string, aliases: string[] = [], extra: Partial<FacilityType> = {}): FacilityType => ({
+const equipment = (id: string, layer: number, label: string, aliases: string[] = [], extra: TypeOptions = {}): FacilityType => ({
   id,
   label,
   aliases,
@@ -730,7 +733,7 @@ export interface Facility {
 }
 
 /** A record with `name` and the given fields; every other field empty. Key order is the output order. */
-export const facility = (name: string, fields: Partial<Facility> = {}): Facility => ({
+export const facility = (name: string, fields: Partial<Omit<Facility, "name">> = {}): Facility => ({
   name,
   kind: null,
   address: null,

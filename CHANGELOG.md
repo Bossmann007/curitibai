@@ -13,7 +13,7 @@ nothing. No tool, input, output, note or error changes: every type's output is b
 - `FACILITY_TYPES`: each entry passes its options to `equipment()` instead of spreading it and overriding fields; the
   `mixed` flag is the `mixedOwnership` option; the shelter and person-in-charge line filters are one shared option
   each (`HIDE_SHELTER`, `HIDE_PERSON`) instead of the same two fields repeated.
-- 300 lines removed and 151 added in `src/`. Pinned by a script outside the repository that ran every type against
+- 301 lines removed and 155 added in `src/`. Pinned by a script outside the repository that ran every type against
   every GeoCuritiba fixture (22,200 outputs, `parseLayer` and `facilitiesResult`, plus the type list and Linha Turismo
   results) before and after: same SHA-1. Tool contract snapshot unchanged; citizen eval 131 of 135, as in 0.60.0.
 - No new network host, no new dependency; docs/sources.md is unchanged.
