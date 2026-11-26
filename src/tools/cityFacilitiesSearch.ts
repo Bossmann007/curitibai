@@ -46,7 +46,7 @@ export const cityFacilitiesSearchInput = {
         "\"policia cientifica\", \"instituto de identificacao\" (or \"rg\"), \"cartorio de registro civil\" (or " +
         "\"registro civil\"), \"junta militar\", \"defensoria publica\", \"forum\", \"cras\", \"creas\", \"centro pop\", " +
         "\"central de encaminhamento social\", \"centro de atividades para idosos\", \"centro de referencia da mulher\", " +
-        "\"centro de referencia afro\". Fire stations and Polícia Militar " +
+        "\"centro de referencia afro\", \"escola municipal\", \"cmei\", \"cmaee\", \"cei contratado\". Fire stations and Polícia Militar " +
         "units: places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),

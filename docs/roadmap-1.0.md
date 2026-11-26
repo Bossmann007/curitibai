@@ -192,3 +192,9 @@ is not in the layer. Shelters and transit houses (layers 45, 46 and 164) are nev
 is replaced by a marker; a women's centre whose address is not marked public returns only its name and institutional
 phones, and that type's note leads with 190 and 180. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen
 eval answers 126 of 130 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.53.0 (phase B) `city_facilities_search` `escola municipal`, `cmei`, `cmaee` and `cei contratado` read IPPUC's
+layers 80, 78, 81 and 79 (188, 241, 13 and 180 records), hours and landlines as published; escolas rarely publish hours.
+A contracted CEI's maintainer line (sometimes a person's name) is replaced by a marker, and its note says the listing does
+not confirm Vale-Creche accreditation. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 127
+of 131 questions; 4 are gaps (real-time buses 2, other cities 2).

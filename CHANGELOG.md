@@ -2,6 +2,17 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.53.0 - 2026-11-26
+
+Municipal schools, CMEIs, CMAEEs and contracted CEIs, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba layers (records on 2026-11-26): `escola municipal`
+  (80, 188), `cmei` (78, 241; alias `creche municipal`), `cmaee` (81, 13) and `cei contratado` (79, 180; alias
+  `creche contratada`). No bare `escola` or `creche`. Escolas rarely publish hours; the note says to call.
+- `cei contratado`: a line naming the maintainer (some are a person) is replaced by a marker; the note says a
+  contracted CEI is not a confirmed Vale-Creche accreditation and points to `city_service_guide` `vale_creche`.
+- Contract: `type` description. No new host or link. Eval: q131 answered; 127 of 131.
+
 ## 0.52.0 - 2026-11-26
 
 Social assistance beyond the CRAS, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

@@ -194,6 +194,16 @@ const WOMEN_CENTRE_NOTE =
   "published (see `updated`). A record whose address is not marked public returns only its name and phones, so " +
   `\`bairro\` and \`near\` never match it: call it or the 180. Who is assisted is not in this tool. ${NO_SHELTERS}`;
 const AFRO_CENTRE_NOTE = "The Centro de Referência Afro as listed by IPPUC, hours as published (see `updated`); call before going.";
+// v0.53.0.
+const SCHOOL_NOTE =
+  "Municipal units as listed by IPPUC, hours as published (see `updated`); escolas rarely publish hours: call. " +
+  "Enrolment and vacancies are not in the layer.";
+const CEI_NOTE =
+  "Private or non-profit centres contracted by the Prefeitura, as listed by IPPUC; this does not confirm Vale-Creche " +
+  "accreditation (see city_service_guide `creche` and `vale_creche`). Hours as published; call before going.";
+/** Every CEI line naming its maintainer: some are sole proprietors (a person's name). */
+export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
+const isMaintainerLine = (line: string): boolean => /mantenedora/i.test(line);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -502,7 +512,17 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     privateAddress: true,
   },
   social("centro de referencia afro", 109, "Centro de Referência Afro", ["centros de referencia afro"], AFRO_CENTRE_NOTE),
-  equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
+  // v0.53.0. No bare "escola" or "creche".
+  { ...equipment("escola municipal", 80, "Escola Municipal", ["escolas municipais"]), note: SCHOOL_NOTE },
+  { ...equipment("cmei", 78, "Centro Municipal de Educação Infantil", ["cmeis", "centro municipal de educacao infantil", "creche municipal"]), note: SCHOOL_NOTE },
+  { ...equipment("cmaee", 81, "Centro Municipal de Atendimento Educacional Especializado", ["cmaees", "centro municipal de atendimento educacional especializado"]), note: SCHOOL_NOTE, wrapLines: true },
+  {
+    ...equipment("cei contratado", 79, "Centro de Educação Infantil (contratado)", ["ceis contratados", "centro de educacao infantil contratado", "creche contratada"]),
+    note: CEI_NOTE,
+    hideLine: isMaintainerLine,
+    hiddenLineMarker: HIDDEN_MAINTAINER_LINE,
+  },
+  equipment("cemiterio", 114,"Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   { ...equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]), hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE },
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
   equipment("posto urbs", 156, "Posto de Atendimento URBS", ["posto de atendimento urbs", "urbs"]),
