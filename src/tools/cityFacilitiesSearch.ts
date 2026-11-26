@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   EQUIPMENT_SERVICE_URL,
+  facility,
   FACILITY_TYPES,
   getFacilityLayer,
   isListRequest,
@@ -187,6 +188,9 @@ function distanceTo(near: { lat: number; lon: number }, f: Facility): number | n
   return distanceM(near, { lat: f.lat, lon: f.lon });
 }
 
+/** An output item: `paths` is internal (distance only) and never returned. */
+const item = ({ paths, ...rest }: Facility, d: number | null) => (void paths, { ...rest, distance_m: d });
+
 export function typesResult(checkedAt: string): Output {
   return {
     data: {
@@ -229,23 +233,7 @@ export function tourResult(args: CityFacilitiesSearchArgs): Output {
       ...p,
       skipped_records: 0,
       items: p.items.map((s) => ({
-        name: s.name,
-        kind: null,
-        address: null,
-        bairro: null,
-        regional: null,
-        hours: [],
-        open_periods: null,
-        phones: [],
-        emails: [],
-        updated: null,
-        length_km: null,
-        area: null,
-        sections: null,
-        electoral_zone: null,
-        lat: null,
-        lon: null,
-        distance_m: null,
+        ...item(facility(s.name), null),
         lookup: s.lookup === null ? null : { type: s.lookup.type, name: s.lookup.name },
       })),
     },
@@ -295,8 +283,7 @@ export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; f
       layer_url: t.layerUrl,
       ...p,
       skipped_records: res.value.skipped,
-      // `paths` is internal (distance only) and never returned.
-      items: p.items.map(({ f: { paths, ...rest }, d }) => (void paths, { ...rest, distance_m: d })),
+      items: p.items.map(({ f, d }) => item(f, d)),
     },
     source: t.credit ?? FACILITIES_SOURCE,
     source_url: t.layerUrl,
