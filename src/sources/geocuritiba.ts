@@ -413,8 +413,9 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
   // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
   // registry record ends with a "Cartório <surname>." line: dropped, a person's name. Only a whole line of "Cartório"
-  // and capitalised words (with da/de/do/dos/e) matches, so "Cartório Souza - plantão ..." or "Cartório Fechado para
-  // reforma." is kept.
+  // and one to three capitalised names (a lowercase da/de/do/dos/das/e between them) matches, and not when the first
+  // word is a status word, so "Cartório Souza - plantão ...", "Cartório Fechado." or "Cartório Funciona Em Novo
+  // Endereço." is kept. Linear: a connective is lowercase and a name starts upper case, so a token fits one way only.
   {
     ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
       "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
@@ -422,7 +423,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "certidao de obito",
     ]),
     note: CIVIL_REGISTRY_NOTE,
-    dropLine: /^(?:Cart[oó]rio|CART[OÓ]RIO)(?:\s+(?:(?:d[aeo]s?|e|D[AEO]S?|E)\s+)?\p{Lu}[\p{L}'’-]*)+\.?$/u,
+    dropLine: /^Cart[oó]rio (?!(?:Fechad[oa]|Abert[oa]|Funciona|Distrital|Temporariamente|Atende|Em|Sem|N[aã]o)(?![\p{L}'’-]))\p{Lu}[\p{L}'’-]*(?: (?:d[aeo]s? |e )?\p{Lu}[\p{L}'’-]*){0,2}\.?$/u,
   },
   {
     ...equipment("junta militar", 21, "Junta de Serviço Militar", [

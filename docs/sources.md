@@ -1245,7 +1245,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     Centro Cívico), `dt_atualiz` 2023-09-29 or 2025-09-15, "2ª a 6ª feira, das 8h30 às 17h30" (one "às 17h"). The
     layer lists four offices; the notes do not claim this is every registry office in Curitiba. Each `observacao`
     ends with "Cartório <surname>.", the office's trade name after a person: **that line is dropped** (`dropLine`,
-    lines starting "Cartório" and a capital letter; a line such as "Cartório de ..." is kept). The e-mails are on the
+    only a whole line of "Cartório" and one to three capitalised names (a lowercase da/de/do/dos/das/e between them) matches, and not when the first word is a status word (Fechado, Aberto, Funciona, Distrital, Temporariamente, Atende, Em, Sem, Não); a line such as "Cartório de ...", "Cartório Souza - plantão ..." or "Cartório Fechado." is kept). The e-mails are on the
     offices' own domains, one with a person's name in it: dropped by the unchanged allowlist. One landline each, kept.
   - 21: 3 records (Fazendinha, Boqueirão and Cristo Rei, each named by its number and sector), "2ª a 6ª feira, das 8h
     às 12h e das 13h às 17h", "Para fazer o alistamento online é necessário possuir CPF." and an "Atende aos bairros:"

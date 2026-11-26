@@ -861,15 +861,34 @@ describe("city_facilities_search", () => {
   it("v0.51.0: only a whole \"Cartório <Name>.\" line is dropped from a registry record; hours or notices after the name stay", () => {
     const t = type("cartorio de registro civil");
     const hours = (obs: string) => hourLines(obs, 30, false, t.dropLine);
-    for (const line of ["Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Dos Santos e Silva", "CARTÓRIO INVENTADO."]) {
+    for (const line of ["Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Inventado dos Santos e Silva", "Cartório Emanuel."]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:"]);
     }
     for (const line of [
       "Cartório Souza - plantão aos sábados, das 9h às 12h.",
       "Cartório Fechado para reforma até 30/11.",
       "Cartório de plantão aos sábados.",
+      "Cartório Fechado.",
+      "Cartório Distrital do Bairro Alto.",
+      "Cartório Funciona Em Novo Endereço.",
+      "Cartório Temporariamente Fechado.",
+      "CARTÓRIO INVENTADO.",
     ]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", line]);
+    }
+  });
+
+  it("v0.51.0: the registry dropLine is linear: long ambiguous lines are processed fast and kept", () => {
+    const t = type("cartorio de registro civil");
+    for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
+      const line = `CARTÓRIO${filler.repeat(60)} x`.slice(0, 160);
+      const cap = `Cartório${filler.repeat(60)} x`.slice(0, 160);
+      for (const l of [line, cap]) {
+        const start = performance.now();
+        const out = hourLines(l, 30, false, t.dropLine);
+        expect(performance.now() - start).toBeLessThan(50);
+        expect(out).toEqual([l.replace(/\s+/g, " ")]);
+      }
     }
   });
 

@@ -51,8 +51,8 @@ What the read showed and how this version handles it:
    No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias (other kinds of cartório exist; registro de
    imóveis is a later item). None of the new names is used by another type (the uniqueness test checks it).
 2. **Two optional `FacilityType` fields**, used only by these types: `dropLine` (a RegExp; matching `observacao` lines
-   are left out after cleaning; only a whole line of "Cartório" and capitalised words matches, so "Cartório Souza -
-   plantão ..." or "Cartório Fechado para reforma." is kept) and `wrapLines` (split a line longer than 160 characters
+   are left out after cleaning; only a whole line of "Cartório" and one to three capitalised names (a lowercase da/de/do/dos/das/e between them) matches, and not when the first word is a status word (Fechado, Aberto, Funciona, Distrital, Temporariamente, Atende, Em, Sem, Não), so "Cartório Souza - plantão ...",
+   "Cartório Fechado." or "Cartório Funciona Em Novo Endereço." is kept; the RegExp is unambiguous, so linear) and `wrapLines` (split a line longer than 160 characters
    after its commas and semicolons; a part
    longer than that is still cut with "…"). Masking is unchanged and runs on every part.
 3. **Notes** (no lead note):
