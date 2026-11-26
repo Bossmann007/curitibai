@@ -2,6 +2,26 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.62.0 - 2026-11-26
+
+A simpler text key and line filter, the follow-ups of the 0.60.1 review. 27 tools. Publishes nothing. No tool, input,
+output, note or error changes.
+
+- `src/text.ts`: one `foldKey()` (folded, every run of non-letters and non-digits one space, trimmed) replaces five
+  copies of the same one-line key in `geocuritiba`, `linhaTurismo`, `city_facilities_search`, `river_levels` and
+  `guaira_events`, and a sixth in a test.
+- `src/sources/geocuritiba.ts`: one `roleFold()` reads "secretária" as the role for both the office person-line test
+  and the CEI service-line tests, in place of two folds that differed only in their regex.
+- `hourLines` no longer decides by which filter function a type uses: the type carries an explicit `nameLines` flag
+  (`maintainer` for contracted CEIs; `person` for the offices, Mesa Solidária, community gardens, Fazenda Urbana and
+  the food-security núcleos). A test pins which types carry it and that the flag, not the function, turns on the
+  split-name and label rules.
+- `city_facilities_search`: the `name` check is written once for the Linha Turismo and the layer paths; a new test
+  pins which error wins when several arguments are wrong (unchanged).
+- Source: 49 lines removed, 51 added (5 of them the flag's doc comment); tests: 21 removed, 51 added. Tool contract
+  snapshot unchanged. Citizen eval 131 of 135, as in 0.61.0.
+- No new network host, no new dependency; docs/sources.md unchanged.
+
 ## 0.61.0 - 2026-11-26
 
 Community-garden person lines, a follow-up of the 0.60.0 review. 27 tools. Publishes nothing.

@@ -2,7 +2,7 @@ import { TtlCache, type Cached } from "../cache.js";
 import { blockHost, fetchText, SourceUnavailableError } from "../http.js";
 import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
-import { fold, isObject } from "../text.js";
+import { fold, foldKey, isObject } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
 
 /** IPPUC's GeoCuritiba ArcGIS REST services (anonymous GET; robots.txt 404 when checked on 2026-11-21). */
@@ -269,13 +269,14 @@ const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe|
  * "mantida pela Associação" stays.
  */
 const LABEL_ONLY = "titular|coordenacao|gestao";
+/** Folded, with "secretária" (a person's role, NFC first) read as "secretario": not the office "Secretaria". */
+const roleFold = (t: string): string => fold(t.normalize("NFC").replace(/secretária/giu, "secretario"));
 const PERSON_IN_CHARGE = new RegExp(
   `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
     `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
   "u",
 );
-export const isPersonInChargeLine = (line: string): boolean =>
-  PERSON_IN_CHARGE.test(fold(line.normalize("NFC").replace(/secretária/giu, "secretario")));
+export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
 /**
  * v0.60.0, community gardens (run with residents): besides isPersonInChargeLine, a line with "contato" anywhere,
  * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
@@ -355,6 +356,12 @@ export interface FacilityType {
   hideLine?: (line: string) => boolean;
   /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
+  /**
+   * The hidden lines may name a person whose name runs on (hourLines): the value after a hidden label and the end of a
+   * split name are hidden too. "maintainer" (CEI, v0.54.0); "person" (offices and gardens, v0.59.0) also reads a hidden
+   * line ending in ':' with no comma as a label.
+   */
+  nameLines?: "maintainer" | "person";
   /** A fixed `where` sent instead of "1=1" (never user input): v0.60.0, the community gardens of the horta layer. */
   where?: string;
   /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
@@ -390,7 +397,7 @@ const equipment = (id: string, layer: number, label: string, aliases: string[] =
 
 /** Lines that may point at a shelter (social assistance) or name the person in charge (offices) are replaced by a marker. */
 const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE };
-const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE };
+const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" } as const;
 
 const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType =>
   equipment(id, layer, label, aliases, { note, ...HIDE_SHELTER });
@@ -565,6 +572,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     note: CEI_NOTE,
     hideLine: isMaintainerLine,
     hiddenLineMarker: HIDDEN_MAINTAINER_LINE,
+    nameLines: "maintainer",
   }),
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"], HIDE_SHELTER),
@@ -596,7 +604,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("mesa solidaria", 7, "Mesa Solidária", ["mesas solidarias", "mesa solidaria curitiba"], { note: MESA_SOLIDARIA_NOTE, wrapLines: true, ...HIDE_PERSON }),
   equipment("horta comunitaria", 9, "Horta Comunitária Urbana", [
     "hortas comunitarias", "horta comunitaria urbana", "hortas comunitarias urbanas", "horta urbana", "hortas urbanas",
-  ], { where: "tipo_equi = 'Horta Comunitária Urbana'", note: COMMUNITY_GARDEN_NOTE, hideLine: isGardenPersonLine, hiddenLineMarker: HIDDEN_PERSON_LINE }),
+  ], { where: "tipo_equi = 'Horta Comunitária Urbana'", note: COMMUNITY_GARDEN_NOTE, hideLine: isGardenPersonLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" }),
   equipment("fazenda urbana", 10, "Fazenda Urbana", ["fazendas urbanas"], { note: URBAN_FARM_NOTE, ...HIDE_PERSON }),
   equipment("nucleo de seguranca alimentar", 1, "Núcleo Regional de Segurança Alimentar e Nutricional", [
     "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
@@ -638,16 +646,14 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
 /** Words that ask for the list of types instead of a search. */
 export const LIST_WORDS = ["list", "list types", "lista", "listar", "tipos", "listar tipos"];
 
-const norm = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-
 /** The type for a name or alias (accents, case and punctuation ignored), or null. */
 export function resolveType(input: string): FacilityType | null {
-  const key = norm(input);
+  const key = foldKey(input);
   return FACILITY_TYPES.find((t) => t.id === key || t.aliases.includes(key)) ?? null;
 }
 
 export function isListRequest(input: string): boolean {
-  return LIST_WORDS.includes(norm(input));
+  return LIST_WORDS.includes(foldKey(input));
 }
 
 /** Fields read from the urban-equipment layers; every other field (indfiscal, dep_admin, site...) is never asked for. */
@@ -898,8 +904,6 @@ const SERVICE_WORD = "rua|av|avenida|fones?|vagas?";
 const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PART}|(?:${SERVICE_WORD})\\b)`);
 /** The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). */
 const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
-/** Folded for the service tests; "Secretária" (a person's role) is not the office "Secretaria". */
-const serviceFold = (t: string): string => fold(t.normalize("NFC").replace(/secretári[ao]/giu, "secretario"));
 
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
@@ -911,6 +915,7 @@ export function hourLines(
   wrap = false,
   hide?: (line: string) => boolean,
   marker: string = HIDDEN_NAME_LINE,
+  names?: FacilityType["nameLines"],
 ): string[] {
   const s = str(raw);
   if (s === null) return [];
@@ -926,19 +931,19 @@ export function hourLines(
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      const tail: boolean = rest && !NOT_A_NAME.test(serviceFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
-      const named = soft && !SERVICE_LINE.test(serviceFold(t));
+      const tail: boolean = rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
+      const named = soft && !SERVICE_LINE.test(roleFold(t));
       if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
         label = rest = soft = false;
       } else {
-        const m = hide === isMaintainerLine || hide === isPersonInChargeLine || hide === isGardenPersonLine;
+        const m = names !== undefined;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
         // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: for an office
         // its value, however long, follows; for a CEI (v0.60.0) see `soft`. "Responsável pelo atendimento, horário:"
         // is not a label: the hours after it stay.
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
-        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && hide !== isMaintainerLine) : t.endsWith(":") && !label;
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && names === "person") : t.endsWith(":") && !label;
         soft = colon && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
@@ -978,7 +983,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker),
+    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email).filter((e) => t.hideLine !== isShelterLine || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),

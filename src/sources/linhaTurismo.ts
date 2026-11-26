@@ -1,4 +1,4 @@
-import { fold } from "../text.js";
+import { foldKey } from "../text.js";
 
 /**
  * The Prefeitura's Linha Turismo boarding points, as listed on its "Onde Embarcar" page. Bundled: the server never
@@ -68,10 +68,9 @@ export const TOUR_STOPS: readonly TourStop[] = [
   { name: "SETOR HISTORICO", lookup: { type: "informacoes turisticas", name: "setor historico", matched: "Posto de Informações Turísticas Setor Histórico" }, aka: "largo da ordem centro historico" },
 ];
 
-const norm = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 export function isTourRequest(input: string): boolean {
-  const key = norm(input);
+  const key = foldKey(input);
   return key === TOUR_TYPE_ID || TOUR_ALIASES.includes(key);
 }
 
@@ -80,9 +79,9 @@ export function isTourRequest(input: string): boolean {
  * page order.
  */
 export function tourStops(name?: string): TourStop[] {
-  const words = name === undefined ? [] : norm(name).split(" ").filter(Boolean);
+  const words = name === undefined ? [] : foldKey(name).split(" ").filter(Boolean);
   return TOUR_STOPS.filter((s) => {
-    const hay = norm(`${s.name} ${s.aka ?? ""} ${s.lookup?.name ?? ""}`);
+    const hay = foldKey(`${s.name} ${s.aka ?? ""} ${s.lookup?.name ?? ""}`);
     return words.every((w) => hay.includes(w));
   });
 }

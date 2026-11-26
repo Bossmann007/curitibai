@@ -20,7 +20,7 @@ import {
   TOUR_TYPE_ID,
   tourStops,
 } from "../sources/linhaTurismo.js";
-import { fold } from "../text.js";
+import { foldKey } from "../text.js";
 import { page, pagingInput } from "./busCommon.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { fail, failFrom, ok, type ToolDef } from "./common.js";
@@ -160,7 +160,6 @@ export const MIXED_NOTE =
   "This layer is open to the public but may include private or non-profit venues (commercial cinemas, private " +
   "theatres and museums, institutes' cultural centres): for those, confirm days and hours with the venue, not the 156.";
 
-const bairroKey = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 /** Metres from `p` to the nearest point of a line, on a local flat projection (fine at a few km). */
 export function distanceToPaths(p: { lat: number; lon: number }, paths: [number, number][][]): number {
@@ -246,15 +245,15 @@ export function tourResult(args: CityFacilitiesSearchArgs): Output {
 }
 
 export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; fetchedAt: string }, args: CityFacilitiesSearchArgs): Output {
-  const want = args.bairro === undefined ? null : bairroKey(args.bairro);
-  const words = args.name === undefined ? [] : bairroKey(args.name).split(" ").filter(Boolean);
+  const want = args.bairro === undefined ? null : foldKey(args.bairro);
+  const words = args.name === undefined ? [] : foldKey(args.name).split(" ").filter(Boolean);
   const radius = args.radius_m ?? DEFAULT_RADIUS_M;
   let noCoords = 0;
   const matches: { f: Facility; d: number | null }[] = [];
   for (const f of res.value.facilities) {
-    if (want !== null && (f.bairro === null || bairroKey(f.bairro) !== want)) continue;
+    if (want !== null && (f.bairro === null || foldKey(f.bairro) !== want)) continue;
     if (words.length > 0) {
-      const hay = bairroKey(f.name);
+      const hay = foldKey(f.name);
       if (!words.every((w) => hay.includes(w))) continue;
     }
     if (args.near === undefined) {
@@ -305,24 +304,20 @@ export const cityFacilitiesSearch: ToolDef<typeof cityFacilitiesSearchInput, typ
   outputSchema: cityFacilitiesSearchOutput,
   handler: async (args) => {
     if (isListRequest(args.type)) return ok(typesResult(new Date().toISOString()));
-    if (isTourRequest(args.type)) {
-      if (args.bairro !== undefined || args.near !== undefined || args.radius_m !== undefined) {
-        return fail("invalid_argument", "\"ponto turistico\" takes only `name`: its stops have no neighbourhood or position here.");
-      }
-      if (args.name !== undefined && bairroKey(args.name) === "") {
-        return fail("invalid_argument", "name must contain at least one letter or digit.");
-      }
-      return ok(tourResult(args));
+    const tour = isTourRequest(args.type);
+    const t = tour ? null : resolveType(args.type);
+    if (tour && (args.bairro !== undefined || args.near !== undefined || args.radius_m !== undefined)) {
+      return fail("invalid_argument", "\"ponto turistico\" takes only `name`: its stops have no neighbourhood or position here.");
     }
-    const t = resolveType(args.type);
-    if (t === null) return fail("invalid_argument", "Unknown type; call with type \"list types\" to see the accepted types.");
+    if (!tour && t === null) return fail("invalid_argument", "Unknown type; call with type \"list types\" to see the accepted types.");
     if (args.radius_m !== undefined && args.near === undefined) return fail("invalid_argument", "radius_m needs near.");
-    if (args.bairro !== undefined && bairroKey(args.bairro) === "") {
+    if (args.bairro !== undefined && foldKey(args.bairro) === "") {
       return fail("invalid_argument", "bairro must contain at least one letter or digit.");
     }
-    if (args.name !== undefined && bairroKey(args.name) === "") {
+    if (args.name !== undefined && foldKey(args.name) === "") {
       return fail("invalid_argument", "name must contain at least one letter or digit.");
     }
+    if (t === null) return ok(tourResult(args));
     try {
       return ok(facilitiesResult(t, await getFacilityLayer(t), args));
     } catch (err) {

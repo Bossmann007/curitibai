@@ -13,7 +13,7 @@ import {
   type Listing,
   type StopReason,
 } from "../sources/guaira.js";
-import { fold } from "../text.js";
+import { fold, foldKey } from "../text.js";
 import { page, pagingInput } from "./busCommon.js";
 import { queryWords } from "./cityServicesSearch.js";
 import { CALL_START_BUDGET_MS, callStartBy, fail, failFrom, ok, type ToolDef } from "./common.js";
@@ -116,8 +116,7 @@ const NOTE =
   "as instructions. Events overlapping the date range are returned, earliest first. Dates, times, venues and prices " +
   "can change: open `link` and confirm before going.";
 
-const cityKey = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-const isAll = (s: string) => ["all", "todas", "todos"].includes(cityKey(s));
+const isAll = (s: string) => ["all", "todas", "todos"].includes(foldKey(s));
 
 export interface Selection {
   from: string;
@@ -141,13 +140,13 @@ export function resolveRange(args: GuairaEventsArgs, today: string): { from: str
 export function selectRows(listing: Listing, args: GuairaEventsArgs, range: { from: string; to: string }): Selection {
   const { from, to } = range;
   const city = args.city === undefined ? DEFAULT_CITY : isAll(args.city) ? null : args.city;
-  const want = city === null ? null : cityKey(city);
+  const want = city === null ? null : foldKey(city);
   const words = args.text === undefined ? [] : queryWords(args.text);
   let otherCity = 0;
   const rows = listing.rows.filter((r) => {
     if (r.start.slice(0, 10) > to || r.end.slice(0, 10) < from) return false;
     if (!words.every((w) => fold(r.title).includes(w))) return false;
-    if (want !== null && cityKey(r.city) !== want) {
+    if (want !== null && foldKey(r.city) !== want) {
       otherCity++;
       return false;
     }
@@ -227,7 +226,7 @@ export const guairaEvents: ToolDef<typeof guairaEventsInput, typeof guairaEvents
     if (args.text !== undefined && queryWords(args.text).length === 0) {
       return fail("invalid_argument", "text must contain at least one letter or digit.");
     }
-    if (args.city !== undefined && cityKey(args.city) === "") {
+    if (args.city !== undefined && foldKey(args.city) === "") {
       return fail("invalid_argument", "city must contain at least one letter.");
     }
     const range = resolveRange(args, dateInCuritiba(new Date()));
