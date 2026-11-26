@@ -1886,3 +1886,83 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
     }
   });
 });
+
+describe("v0.63.0: the garden filter is an allowlist; social types carry a shelter flag", () => {
+  const t = type("horta comunitaria");
+  const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+
+  it("each kind of line the allowlist knows is shown, one by one and all in one field", () => {
+    const kinds = [
+      // a public label
+      "Atendimento: Segunda a sexta",
+      "Horário: 8h às 17h",
+      "Funcionamento: diário",
+      "Endereço: Rua Inventada, 10",
+      "Bairro: Centro",
+      "-Pomar: citrus",
+      "Cultivo: Hortaliças",
+      "-Área de plantio em canteiros: 590 m²",
+      "-Área de lavoura: 1.350 m²",
+      "-Jardins de mel: 1 colmeia de abelhas sem ferrão",
+      // an hours or number line
+      "Segunda a sexta, das 8h às 17h",
+      "-2ª a 6ª feira, das 8h às 17h",
+      "8h às 12h",
+      // the body that keeps or runs the garden
+      "Mantida pela Associação de Moradores da Vila Inventada.",
+      "Mantido pela Associação de Moradores e Amigos Inventados.",
+      "Coordenada pela Associação de Moradores Inventada",
+      "Cuidada pela comunidade",
+      "A coordenação da horta é da associação",
+      "A Associação de Moradores cuida da horta",
+      "A SMSAN coordena os mutirões",
+      // the city programme, a partner, the garden itself, the contact channel
+      "Programa Integrado de Desenvolvimento Sustentável Inventado - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Horta com 20 canteiros",
+      "Contato pelo e-mail da secretaria.",
+    ];
+    for (const l of kinds) expect(lines(l), l).toEqual([l]);
+    expect(lines(kinds.join("\n"))).toEqual(kinds);
+  });
+
+  it("garden hours after the secretariat e-mail line stay visible", () => {
+    for (const contact of ["Contato pelo e-mail da secretaria.", "Contato pelo e-mail da secretaria"]) {
+      for (const next of ["Atendimento 8h às 17h", "Segunda-feira a sexta, 8h às 17h", "Atendimento: Segunda a sexta", "Horário: 8h às 17h"]) {
+        expect(lines(`${contact}\n${next}`)).toEqual([contact, next]);
+      }
+    }
+  });
+
+  it("a lower-case name is hidden, alone or after a public label", () => {
+    for (const who of [
+      "maria cuida da horta",
+      "dona maria cuida da horta",
+      "seu joão e dona maria cuidam da horta",
+      "fulana de tal",
+      "Pomar: dona maria",
+      "Bairro: centro, maria cuida",
+      "Bairro: centro, cuidada por maria",
+      "coordenada pela maria souza",
+    ]) {
+      expect(lines(`Mantida pela Associação Inventada.\n${who}\n-Pomar: citrus`), who).toEqual([
+        "Mantida pela Associação Inventada.",
+        HIDDEN_PERSON_LINE,
+        "-Pomar: citrus",
+      ]);
+    }
+  });
+
+  it("a line of no known kind is hidden (fail closed)", () => {
+    for (const l of ["Horta bonita perto da praça", "Associação de Moradores cuida da horta", "Canteiro: Dona Maria", "Secretaria Fulana"]) {
+      expect(lines(l), l).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("the shelter flag, not which hideLine a type uses, skips a shelter record and drops shelter e-mails", () => {
+    const flagged = FACILITY_TYPES.filter((f) => f.shelter === true).map((f) => f.id);
+    expect(flagged).toEqual(FACILITY_TYPES.filter((f) => f.hideLine === isShelterLine).map((f) => f.id));
+    expect(flagged).toContain("cras");
+    expect(FACILITY_TYPES.filter((f) => f.allowlist === true).map((f) => f.id)).toEqual(["horta comunitaria"]);
+  });
+});
