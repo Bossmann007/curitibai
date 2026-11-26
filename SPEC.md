@@ -1,4 +1,4 @@
-# SPEC: v0.59.0 COHAB agencies
+# SPEC: v0.60.0 Food security: Mesa Solidária, community gardens, Fazenda Urbana
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,65 +8,91 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Onde fica a agência da COHAB no Tatuquara e que horas
-abre?" with the COHAB-CT agency IPPUC lists, its address, hours and contacts as published. The tool lists places only:
-it never books, and nothing from the COHAB applicant queue (a personal dataset) is read.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Onde tem Mesa Solidária no Centro?" with the Mesa
+Solidária places IPPUC lists, their address, hours and contacts as published. Also list the community gardens, the
+Fazendas Urbanas and the Núcleos Regionais de Segurança Alimentar e Nutricional. Places and public contacts only:
+never a volunteer's or coordinator's name or personal phone.
 
 ## Source (read 2026-11-26 UTC)
 
-IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` (urban-equipment) layer 29 "Agência de
-Atendimento da COHAB" (9 records). robots.txt 404 (19:59:13 UTC); the layer's metadata has empty `copyrightText` and
-`description`, so no licence found (facts only, IPPUC cited, like the other GeoCuritiba layers). No new host, no new
-link. Details:
+IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` (urban-equipment) layers 7 "Mesa Solidária"
+(4 records), 9 "Horta" (233), 10 "Fazenda Urbana" (3) and 1 "Núcleo Regional de Segurança Alimentar e Nutricional"
+(10). robots.txt 404 (20:53:33 UTC, User-Agent `curitibai-mcp/0.60`); the layers' metadata has empty `copyrightText`
+and `description`, so no licence found (facts only, IPPUC cited, like the other GeoCuritiba layers). No new host, no
+new link. Details:
 [docs/sources.md](docs/sources.md#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes).
 
 What the read showed and how this version handles it:
 
-- One agency in each of nine Ruas da Cidadania; hours "2ª a 6ª feira, das 8h às 17h" (four with a 12h–13h break).
-- Every record has the same `telefone`, a landline and a toll-free 0800 number, which the phone filter dropped. A
-  toll-free number is never a person's own, so `institutionalPhones` now keeps it ("0800 XXX XXXX", or "0800 XXX
-  XXX" for six digits, however grouped) for every type;
-  mobiles and other area codes are still dropped. Every record has the same e-mail: the note says these are central
-  contacts.
-- Every `observacao` ends with a line saying in-person service is booked through the Agenda Online ("Saiba Mais", a
-  link in `site`, which is never read). The note says this tool does not book and points to `city_service_guide`
-  `agenda_online`.
-- Three agencies are named after a Rua da Cidadania in another bairro (Pinheirinho is in Capão Raso): the note says to
-  search by `name`.
-- No person's name, mobile or personal e-mail in the 9 records, nor in layer 15 (re-read for the item below).
+- **Mesa Solidária (7)**: one in Centro (BASE, Al. Dr. Muricy), two in Jardim Botânico, one in Campo de Santana. Two
+  are only kitchens ("produção de refeições") with no serving hours; the note says so. BASE's weekday and weekend lines
+  are 190 and 300 characters, over the 160-character line cap: the type wraps long lines at commas and semicolons
+  (`wrapLines`), so no time is cut. Every record's phone is "WhatsApp (41) 3350-3821", which the phone filter dropped:
+  a leading "WhatsApp" word is now removed before the landline test (every type); the note says the number is
+  published as a WhatsApp line. Mobiles are still dropped.
+- **Hortas (9)**: 56 "Horta Comunitária Urbana", 109 "Horta Escolar" (inside schools) and 68 "Horta Institucional"
+  (inside institutions, among them three Unidades de Acolhimento Institucional, a Casa de Passagem, a Casa do Piá and
+  a Casa de Semiliberdade, most with the address published). Shelters are never listed (v0.52), so `horta comunitaria`
+  asks the layer only for the community gardens, with a fixed `where` (`tipo_equi = 'Horta Comunitária Urbana'`, no
+  user input, 56 records when tried); the note gives the other two counts as not listed and says `source_url` is the whole layer. None of the 56 has a phone,
+  30 have no `observacao` and none publishes hours: the note says there is no phone or hours and gives the published
+  e-mail (the same city address on every record). Some lines name the association that keeps the garden ("Mantida
+  pela Associação de Moradores …"): kept. A line naming who is in charge is hidden with the offices' person filter, and (Change Reviewer) also a line with "contato" anywhere, "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Contato: Dona Maria", "Zeladora: Fulana"; not the atendimento, horário, funcionamento or endereço labels).
+- **Fazenda Urbana (10)**: three farms with hours. One lists a landline and two mobiles, one only a mobile (dropped,
+  as always), one nothing: the note says to use the e-mail. Their hours say enrolment in activities is through two
+  city pages, given as published text (never fetched); the note says this tool does not enrol.
+- **Núcleos (1)**: ten, one per regional, in the Ruas da Cidadania (Matriz at the Mercado Municipal), hours and a
+  landline each.
+- No person's name, mobile or personal e-mail in the 4, 56, 3 and 10 records returned.
 
 ## Changes
 
-1. **Type** `cohab` (29) in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), aliases `cohab ct`, `cohab curitiba`,
-   `agencia da cohab`, `agencias da cohab`, `agencia de atendimento da cohab`, `agencias de atendimento da cohab`;
-   same query, fields, host gate, cache and e-mail allowlist as the other urban-equipment layers.
-2. **Note** for `cohab`: central contacts; booking through the Agenda Online, not in this tool; housing applications,
-   the applicant queue and anyone's registration not in this tool; search by `name`.
-3. **0800 numbers** kept in `phones` (all types); the output `phones` description and the general note say so.
-4. **Person lines** (v0.58 review): `administracao regional` and `cohab` hide, with the marker "[a line naming who is
-   in charge is not shown: it can carry a person's name]", a line that starts with a role (responsável, diretor(a),
-   administrador(a), gerente, coordenador(a), chefe) or has "<role>:", via `isPersonInChargeLine`. `hourLines` gives
-   it the `cei contratado` label and split-name handling, and a hidden label with no comma ending in ":"
-   ("Administrador Regional:") hides the next line whatever its length. Not the CEI word list itself: its MEI, ME,
-   Ltda and "responsável anywhere" rules would hide office service lines (found in review, tested). The CEI list gains
-   `administrador`, and a bare label may end in "(a)" ("Diretor(a):").
-5. **Eval**: new q134 → `city_facilities_search` `{type: "cohab", name: "tatuquara"}`, synthetic fixture
-   `test/fixtures/geocuritiba/cohab_synthetic.json`. Tool contract snapshot updated (`type` and `phones`
-   descriptions).
-6. **Docs and version**: docs/tools.md, docs/sources.md, README row, docs/roadmap-1.0.md, CHANGELOG 0.59.0, version
-   0.59.0 in `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has no row for this and is
+1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same fields, host gate, cache and e-mail allowlist as
+   the other urban-equipment layers:
+   - `mesa solidaria` (7), aliases `mesas solidarias`, `mesa solidaria curitiba`; `wrapLines`.
+   - `horta comunitaria` (9), aliases `hortas comunitarias`, `horta comunitaria urbana`, `hortas comunitarias urbanas`,
+     `horta urbana`, `hortas urbanas`; fixed `where` on `tipo_equi`; garden person filter
+     (`isGardenPersonLine`: the office filter plus contacts, volunteers and "<label>: <Name>").
+   - `fazenda urbana` (10), alias `fazendas urbanas`; person filter.
+   - `nucleo de seguranca alimentar` (1), aliases `nucleos de seguranca alimentar`, `nucleo regional de seguranca
+     alimentar`, `nucleo regional de seguranca alimentar e nutricional`, `nucleos regionais de seguranca alimentar`;
+     person filter.
+2. **`FacilityType.where`** (optional, a fixed string in the code): sent instead of `1=1`. Only `horta comunitaria`
+   uses it.
+3. **Notes** for the four types as above.
+4. **Phones**: a leading "WhatsApp", "Whats" or "Zap" (any case, optional ':' or '-') is removed from a part before
+   the existing tests.
+5. **Person lines** (v0.59 review Low):
+   - The role words gain secretário/a, supervisor/a and gestor/a (coordenador/a was there); titular, coordenação and
+     gestão count only before ':' ("Titular da conta" stays). "Mantido/a por" anywhere in a line hides it (a person's
+     name follows "por" without an article), and so does "mantida pelo Sr./Sra./Dona"; "mantida pela Associação"
+     stays. "Secretaria" without the accent is an office ("Secretaria Municipal de …"), so it counts only right before
+     ':' ("Secretaria:"); "Secretária" with the accent is the role (the line is NFC-normalised first).
+   - Regression: after the v0.59 rule, a CEI's hidden "…:" line with no comma hid the next line whatever it was
+     ("Responsável pela matrícula:" hid "-2ª a 6ª 8h" and "Período parcial"). For a CEI the next line is now hidden
+     only when it does not start (after an optional dash) with a digit or a service word such as período, horário,
+     atendimento, matrícula, so a name of any length after "Diretora responsável:" is still hidden, even with hours
+     later in the line (found in review). Offices keep the v0.59 rule. One service word list (`SERVICE_PART`, `SERVICE_WORD`) now serves this test and
+     the v0.54 split-name rule, so "Matrículas abertas em janeiro" and "Secretaria da escola" stay after a hidden
+     maintainer line; "Secretária Fulana" (the accented role) is still hidden.
+6. **Eval**: new q135 → `city_facilities_search` `{type: "mesa solidaria", bairro: "centro"}`, synthetic fixture
+   `test/fixtures/geocuritiba/mesa_solidaria_synthetic.json` with a line over 160 characters. Tool contract snapshot
+   updated (`type` description).
+7. **Docs and version**: docs/tools.md, docs/sources.md, README row, docs/roadmap-1.0.md, CHANGELOG 0.60.0, version
+   0.60.0 in `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has no row for this and is
    unchanged.
 
 ## Out of scope
 
-Booking, housing applications, the applicant queue (`PretendentesCohab`, avoided), any COHAB or Agenda Online link,
-the `site` field, any new host.
+School and institutional gardens, enrolment in Fazenda Urbana activities, the Mesa Solidária service page link, the
+`site` field, Armazém da Família and other food layers, any new host.
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: `cohab` resolves with its aliases to
-  layer 29; the synthetic Tatuquara agency comes back with address, hours, the landline and the 0800; a "Responsável:"
-  line is hidden; regional-office person lines are hidden and the bairros line stays whole; near-miss 0800 shapes are
-  dropped; q134 answered.
-- `node scripts/eval-summary.mjs`: `answered 130 / 134`.
+- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the four types resolve with their
+  aliases to layers 7, 9, 10 and 1; the horta query carries the fixed `where`; the synthetic Centro Mesa Solidária
+  comes back with address, every hours line uncut and the WhatsApp landline; mobiles still dropped; new role words
+  hidden and "Secretaria Municipal de …" kept; the two CEI regression examples keep their hours line and a long name
+  after "Diretora responsável:" is hidden; q135 answered.
+- `node scripts/eval-summary.mjs`: `answered 131 / 135`.
 - `scripts/verify` exits 0 on the PR head; packed size under 252,000 bytes.

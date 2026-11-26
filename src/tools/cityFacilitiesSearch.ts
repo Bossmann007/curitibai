@@ -47,8 +47,9 @@ export const cityFacilitiesSearchInput = {
         "\"registro civil\"), \"junta militar\", \"defensoria publica\", \"forum\", \"cras\", \"creas\", \"centro pop\", " +
         "\"central de encaminhamento social\", \"centro de atividades para idosos\", \"centro de referencia da mulher\", " +
         "\"centro de referencia afro\", \"escola municipal\", \"cmei\", \"cmaee\", \"cei contratado\", " +
-        "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\", \"cohab\". Fire stations and Polícia Militar " +
-        "units: places_search. " +
+        "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\", \"cohab\", " +
+        "\"mesa solidaria\", \"horta comunitaria\", \"fazenda urbana\", \"nucleo de seguranca alimentar\". Fire " +
+        "stations and Polícia Militar units: places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z

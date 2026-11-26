@@ -224,6 +224,30 @@ const COHAB_NOTE =
   "Mais\"): this tool does not book (city_service_guide `agenda_online`). Housing applications, " +
   "the applicant queue and anyone's registration are not in this tool. Agencies are named after their Rua da " +
   "Cidadania, not always the bairro they are in: search by `name` (e.g. \"tatuquara\").";
+/** v0.60.0. Read on 2026-11-26: 4 records, one phone published as "WhatsApp (41) …" on all; two only cook. */
+const MESA_SOLIDARIA_NOTE =
+  "Mesa Solidária places (Prefeitura de Curitiba), as listed by IPPUC; hours and serving " +
+  "times as published (see `updated`). Some are kitchens that only cook meals and list no serving hours: check " +
+  "`hours` before going. The phone is published as a WhatsApp line (the same on every record when read). Who may eat " +
+  "there and any registration are not in this tool: ask the place or the 156.";
+/** v0.60.0. Layer 9 read on 2026-11-26: 233 gardens, 56 community ones; none has a phone or published hours. */
+const COMMUNITY_GARDEN_NOTE =
+  "Community gardens (Horta Comunitária Urbana) as listed by IPPUC; some are kept by residents' associations. The " +
+  "layer also lists 109 school and 68 institutional gardens (counts read on 2026-11-26), inside schools and " +
+  "institutions and not open to the public: they are not listed here. When read, the gardens had no phone and no " +
+  "hours: only the e-mail the layer publishes, the same city address on every record. A line naming who is in " +
+  "charge is hidden; how to join a garden is not in this tool: ask the e-mail or the 156. `source_url` is the whole " +
+  "layer, school and institutional gardens included.";
+/** v0.60.0. Layer 10 read on 2026-11-26: 3 farms; two list mobiles only or a landline plus mobiles. */
+const URBAN_FARM_NOTE =
+  "The Fazendas Urbanas (urban farms) of the Prefeitura's food-security secretariat, as listed by IPPUC; hours as " +
+  "published (see `updated`). Mobiles are dropped, so a farm may show no phone: use the e-mail. Enrolment in the " +
+  "farms' courses and activities is through the city pages named in `hours`; this tool does not enrol.";
+/** v0.60.0. Layer 1 read on 2026-11-26: 10 núcleos, one per regional, each with a landline; one shared e-mail. */
+const FOOD_SECURITY_OFFICE_NOTE =
+  "The Núcleos Regionais de Segurança Alimentar e Nutricional (the food-security secretariat's office in each " +
+  "regional, mostly in the Rua da Cidadania; Matriz at the Mercado Municipal), as listed by IPPUC; hours as published " +
+  "(see `updated`). Programmes, benefits and anyone's registration are not in this tool: ask the núcleo or the 156.";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 /** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
@@ -236,9 +260,36 @@ const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(li
  * anywhere ("Responsável: Fulana", "Administrador Regional: Fulano", "Diretor(a):"). Narrower than isMaintainerLine,
  * whose MEI, ME, Ltda and "responsável" anywhere rules would hide office service lines ("atendimento ao MEI").
  */
-const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe";
-const PERSON_IN_CHARGE = new RegExp(`^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`, "u");
-export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(fold(line));
+const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe|secretario|supervisora?|gestora?";
+/**
+ * v0.60.0: the roles gain secretário/a, supervisor/a and gestor/a; titular, coordenação and gestão count only before
+ * ':' ("Titular da conta" stays). "Secretaria" without the accent is an office ("Secretaria Municipal de …"): a role
+ * only right before ':'; with the accent it is the role, read as "secretario" before folding (NFC first). "Mantido/a
+ * por" anywhere hides the line (a person follows "por" with no article), and so does "mantida pelo Sr./Sra./Dona";
+ * "mantida pela Associação" stays.
+ */
+const LABEL_ONLY = "titular|coordenacao|gestao";
+const PERSON_IN_CHARGE = new RegExp(
+  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
+    `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
+  "u",
+);
+export const isPersonInChargeLine = (line: string): boolean =>
+  PERSON_IN_CHARGE.test(fold(line.normalize("NFC").replace(/secretária/giu, "secretario")));
+/**
+ * v0.60.0, community gardens (run with residents): besides isPersonInChargeLine, a line with "contato" anywhere,
+ * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
+ * Fulana", "Contato: Dona Maria"), except the hours and address labels. "-Área de plantio: 590 m²" and "Mantida pela
+ * Associação …" stay.
+ */
+const GARDEN_PERSON = /\bcontatos?\b|\bvoluntari|\bcuidad[ao]s? por\b/;
+const NAME_AFTER_LABEL = /^[-\s]*(\p{L}+)(?:\(a\))?\s*:\s*\p{Lu}/u;
+const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco)$/;
+export const isGardenPersonLine = (line: string): boolean => {
+  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(line))) return true;
+  const label = NAME_AFTER_LABEL.exec(line.normalize("NFC"))?.[1];
+  return label !== undefined && !PUBLIC_LABEL.test(fold(label));
+};
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
@@ -288,6 +339,8 @@ export interface FacilityType {
   hideLine?: (line: string) => boolean;
   /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
+  /** A fixed `where` sent instead of "1=1" (never user input): v0.60.0, the community gardens of the horta layer. */
+  where?: string;
   /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
   privateAddress?: true;
 }
@@ -602,6 +655,38 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     hideLine: isPersonInChargeLine,
     hiddenLineMarker: HIDDEN_PERSON_LINE,
   },
+  // Food security, added in v0.60.0 (read on 2026-11-26 UTC: layers 7, 9, 10 and 1; 4, 233 (56 community), 3, 10).
+  {
+    ...equipment("mesa solidaria", 7, "Mesa Solidária", ["mesas solidarias", "mesa solidaria curitiba"]),
+    note: MESA_SOLIDARIA_NOTE,
+    wrapLines: true,
+    hideLine: isPersonInChargeLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
+  },
+  {
+    ...equipment("horta comunitaria", 9, "Horta Comunitária Urbana", [
+      "hortas comunitarias", "horta comunitaria urbana", "hortas comunitarias urbanas", "horta urbana", "hortas urbanas",
+    ]),
+    where: "tipo_equi = 'Horta Comunitária Urbana'",
+    note: COMMUNITY_GARDEN_NOTE,
+    hideLine: isGardenPersonLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
+  },
+  {
+    ...equipment("fazenda urbana", 10, "Fazenda Urbana", ["fazendas urbanas"]),
+    note: URBAN_FARM_NOTE,
+    hideLine: isPersonInChargeLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
+  },
+  {
+    ...equipment("nucleo de seguranca alimentar", 1, "Núcleo Regional de Segurança Alimentar e Nutricional", [
+      "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
+      "nucleo regional de seguranca alimentar e nutricional", "nucleos regionais de seguranca alimentar e nutricional",
+    ]),
+    note: FOOD_SECURITY_OFFICE_NOTE,
+    hideLine: isPersonInChargeLine,
+    hiddenLineMarker: HIDDEN_PERSON_LINE,
+  },
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",
@@ -666,7 +751,7 @@ export const VOTING_FIELDS = "objectid,nome_local,endereco,bairro,regional,num_s
  * queries, below, send a point rounded to 4 decimals.)
  */
 export function layerQueryUrl(t: FacilityType): string {
-  const p = new URLSearchParams({ where: "1=1" });
+  const p = new URLSearchParams({ where: t.where ?? "1=1" });
   if (t.kind === "facility" || t.kind === "voting") {
     p.set("outFields", t.kind === "voting" ? VOTING_FIELDS : EQUIPMENT_FIELDS);
     p.set("returnGeometry", "true");
@@ -792,7 +877,8 @@ export function institutionalPhones(raw: unknown): string[] {
   if (s === null) return [];
   const out: string[] = [];
   for (const part of s.split(/\s*[/;,]\s*|\s+ou\s+|\s+e\s+/i)) {
-    const p = part.trim();
+    // v0.60.0: "WhatsApp (41) 3350-3821" (the Mesa Solidária line) is a landline too; a WhatsApp mobile is still dropped.
+    const p = part.trim().replace(/^(?:whats(?:app)?|zap)\s*[:\-–]?\s*/i, "");
     if (/^1\d{2}$/.test(p)) {
       out.push(p);
       continue;
@@ -866,6 +952,19 @@ export function isShelterLine(line: string): boolean {
 }
 
 /**
+ * v0.60.0: a line after a CEI's "…:" label that is about the service, not a name (see hourLines `soft`): it starts
+ * (after an optional dash) with a digit or a service word. Only the start counts: "Fulana de Tal, das 7h às 18h" is a
+ * name.
+ */
+const SERVICE_PART = "atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|secretaria";
+const SERVICE_WORD = "rua|av|avenida|fones?|vagas?";
+const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PART}|(?:${SERVICE_WORD})\\b)`);
+/** The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). */
+const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
+/** Folded for the service tests; "Secretária" (a person's role) is not the office "Secretaria". */
+const serviceFold = (t: string): string => fold(t.normalize("NFC").replace(/secretári[ao]/giu, "secretario"));
+
+/**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
  * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
  */
@@ -882,20 +981,28 @@ export function hourLines(
   let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
   // v0.54.0, maintainer only: one next line may end a split name (see docs/sources.md); a third line stays visible.
   let rest = false;
+  // v0.60.0, CEI only: the last line was a hidden "…:" label with no comma ("Diretora responsável:"); the next line is
+  // hidden unless it starts with a digit or a service word (SERVICE_LINE): "Responsável pela matrícula:" keeps
+  // "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora responsável:" is hidden.
+  let soft = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      const tail: boolean = rest && !/^[-\d]|:|^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|\b(rua|av|avenida|fones?|vagas?)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
-      if (!hide || !(label || tail || hide(t) || hide(cleanText(part, Infinity)))) {
+      const tail: boolean = rest && !NOT_A_NAME.test(serviceFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
+      const named = soft && !SERVICE_LINE.test(serviceFold(t));
+      if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
-        label = rest = false;
+        label = rest = soft = false;
       } else {
-        const m = hide === isMaintainerLine || hide === isPersonInChargeLine;
+        const m = hide === isMaintainerLine || hide === isPersonInChargeLine || hide === isGardenPersonLine;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
-        // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: its value,
-        // however long, follows. "Responsável pelo atendimento, horário:" is not: the hours after it stay.
-        label = m ? MAINTAINER_LABEL.test(fold(t)) || (!label && /^[^,]*:$/.test(t)) : t.endsWith(":") && !label;
+        // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: for an office
+        // its value, however long, follows; for a CEI (v0.60.0) see `soft`. "Responsável pelo atendimento, horário:"
+        // is not a label: the hours after it stay.
+        const colon: boolean = m && !label && /^[^,]*:$/.test(t);
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && hide !== isMaintainerLine) : t.endsWith(":") && !label;
+        soft = colon && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
