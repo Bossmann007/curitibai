@@ -1,0 +1,84 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Central",
+    "nome_completo": "Posto de Atendimento da Defensoria Pública Inventada Central",
+    "nome_rua": "R. INVENTADA DA DEFENSORIA",
+    "num_pred": "66",
+    "compl_end": "Térreo",
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Matriz",
+    "func_manha": "Não",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-0066 / (41) 99876-0066",
+    "email": "defensoria.inventada@gmail.com",
+    "dt_atualiz": 1753963200000,
+    "observacao": "Atendimento:\r\n-2ª a 5ª feira, das 13h às 17h\r\nAtendimento nas áreas de: Família e Cível.\r\nAbrange os bairros Bairro Inventado Um, Bairro Inventado Dois, Bairro Inventado Três, Bairro Inventado Quatro, Bairro Inventado Cinco, Bairro Inventado Seis e Bairro Inventado Sete."
+   },
+   "geometry": {
+    "x": -49.272,
+    "y": -25.432
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Bairro",
+    "nome_completo": "Posto de Atendimento da Defensoria Pública Inventada do Bairro",
+    "nome_rua": "R. INVENTADA DO FÓRUM",
+    "num_pred": "2151",
+    "compl_end": "Fórum Inventado",
+    "divulgar_endereco": "Sim",
+    "bairro": "Sítio Cercado",
+    "regional": "Bairro Novo",
+    "func_manha": "Não",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 98765-2151",
+    "email": "posto.bairro@defensoria.pr.def.br",
+    "dt_atualiz": 1753963200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 13h às 17h"
+   },
+   "geometry": {
+    "x": -49.268,
+    "y": -25.543
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 3,
+    "nome": "Comarca",
+    "nome_completo": "Defensoria Pública Inventada - Comarca de Curitiba",
+    "nome_rua": "R. INVENTADA LEME",
+    "num_pred": "1908",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro Cívico",
+    "regional": "Matriz",
+    "func_manha": "Não",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-1908",
+    "email": null,
+    "dt_atualiz": 1753963200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 12h às 17h"
+   },
+   "geometry": {
+    "x": -49.27,
+    "y": -25.421
+   }
+  }
+ ]
+}

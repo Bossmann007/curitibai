@@ -137,6 +137,31 @@ const IDENTIFICATION_NOTE =
   "flags for periods of the day, not days, and `hours` the detail; they do not always agree. Most posts are named " +
   "after their Rua da Cidadania, which is not always the bairro: filter by `bairro` or `near`.";
 
+/**
+ * Registro civil, Junta Militar, Defensoria and Fórum (v0.51.0). The registry offices' and the Defensoria's e-mails
+ * are on their own domains and some Defensoria phones are mobiles: the unchanged contact filters drop them.
+ */
+const CIVIL_REGISTRY_NOTE =
+  "The Registro Civil das Pessoas Naturais offices that IPPUC's layer lists (four when read on 2026-11-25), as " +
+  "published, not necessarily every registry office in Curitiba. Hours as published (see `updated`). Prices, " +
+  "deadlines and which office holds a given record are not in the layer: call the office before going. The offices' " +
+  "e-mails are on their own domains and are not shown.";
+const MILITARY_BOARD_NOTE =
+  "The Juntas de Serviço Militar that IPPUC lists in Curitiba; days, hours and the bairros each one serves are in " +
+  "`hours` as published (see `updated`). `bairro` filters by where a junta is, not by the bairros it serves: to find " +
+  "yours, list them all and read the \"Atende aos bairros\" line. Call before going.";
+const PUBLIC_DEFENDER_NOTE =
+  "The Defensoria Pública do Paraná's posts in Curitiba as listed by IPPUC; days, hours, the areas each post handles " +
+  "and the bairros it covers are in `hours` as published (see `updated`). `bairro` filters by where a post is, not " +
+  "by the bairros it covers. Who can be assisted is not in the layer. Only Curitiba landlines and city e-mails are " +
+  "shown, so the Defensoria's own e-mails and its mobile numbers are not, and a post can come back with no phone: " +
+  "reach it through the Defensoria Pública do Paraná's own channels (not linked by this tool). Several posts are " +
+  "inside a fórum (type `forum`).";
+const COURTHOUSE_NOTE =
+  "The fóruns IPPUC lists in Curitiba (state courts and the Justiça do Trabalho); hours, the courts each one houses " +
+  "and the bairros it covers are in `hours` as published (see `updated`; some records date from 2019 or 2022). " +
+  "`bairro` filters by where a fórum is, not by the bairros it covers. Call before going. The Defensoria Pública's " +
+  "posts are type `defensoria publica`.";
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -178,6 +203,10 @@ export interface FacilityType {
   leadNote?: string;
   /** Lines of `observacao` kept (default MAX_HOUR_LINES); a longer text ends with a line saying how many were cut. */
   maxHourLines?: number;
+  /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
+  wrapLines?: true;
+  /** `observacao` lines left out (after cleaning): the registry offices' trade-name line, a surname (v0.51.0). */
+  dropLine?: RegExp;
 }
 
 const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
@@ -381,6 +410,33 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     note: IDENTIFICATION_NOTE,
     leadNote: IDENTIFICATION_LEAD_NOTE,
   },
+  // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
+  // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
+  // registry record ends with a "Cartório <surname>." line: dropped, a person's name.
+  {
+    ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
+      "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
+      "cartorios de registro civil das pessoas naturais", "certidao de nascimento", "certidao de casamento",
+      "certidao de obito",
+    ]),
+    note: CIVIL_REGISTRY_NOTE,
+    dropLine: /^Cart[oó]rio\s+\p{Lu}/u,
+  },
+  {
+    ...equipment("junta militar", 21, "Junta de Serviço Militar", [
+      "juntas militares", "junta de servico militar", "juntas de servico militar", "alistamento militar",
+    ]),
+    note: MILITARY_BOARD_NOTE,
+    wrapLines: true,
+  },
+  {
+    ...equipment("defensoria publica", 105, "Defensoria Pública", [
+      "defensoria", "defensorias", "defensorias publicas", "defensoria publica do parana", "defensoria publica do estado",
+    ]),
+    note: PUBLIC_DEFENDER_NOTE,
+    wrapLines: true,
+  },
+  { ...equipment("forum", 106, "Fórum", ["foruns"]), note: COURTHOUSE_NOTE, wrapLines: true },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
@@ -607,16 +663,38 @@ export function institutionalEmails(raw: unknown): string[] {
 }
 
 /**
+ * A line longer than `max` split after its commas into lines of at most `max` characters (a part longer than that
+ * stays whole and is cut later). Phones, e-mails and CPFs hold no ", ", so no masked shape is split.
+ */
+export function wrapAtCommas(line: string, max: number): string[] {
+  if (line.length <= max) return [line];
+  const out: string[] = [];
+  let cur = "";
+  for (const part of line.trim().split(/(?<=,)\s+/)) {
+    const next = cur === "" ? part : `${cur} ${part}`;
+    if (next.length <= max || cur === "") cur = next;
+    else {
+      out.push(cur);
+      cur = part;
+    }
+  }
+  if (cur !== "") out.push(cur);
+  return out;
+}
+
+/**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
  * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
  */
-export function hourLines(raw: unknown, max: number = MAX_HOUR_LINES): string[] {
+export function hourLines(raw: unknown, max: number = MAX_HOUR_LINES, wrap = false, drop?: RegExp): string[] {
   const s = str(raw);
   if (s === null) return [];
   const lines: string[] = [];
   for (const line of s.split(/\r\n|\r|\n/)) {
-    const t = cleanText(line, LINE_MAX);
-    if (t !== "") lines.push(t);
+    for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
+      const t = cleanText(part, LINE_MAX);
+      if (t !== "" && !drop?.test(t)) lines.push(t);
+    }
   }
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
@@ -627,7 +705,7 @@ function updated(v: unknown): string | null {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? dateInCuritiba(new Date(v)) : null;
 }
 
-function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, maxLines: number): Facility | null {
+function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, t: FacilityType): Facility | null {
   const name = clean(a.nome_completo, NAME_MAX) ?? clean(a.nome, NAME_MAX);
   if (name === null) return null;
   // The publisher marks whether the address may be shown; anything but "Sim" hides the address and the position.
@@ -647,7 +725,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao, maxLines),
+    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.dropLine),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email),
@@ -812,7 +890,7 @@ export function parseLayer(t: FacilityType, body: string, url: string = t.layerU
       a === null
         ? null
         : t.kind === "facility"
-          ? equipmentRecord(a, geo, t.maxHourLines ?? MAX_HOUR_LINES)
+          ? equipmentRecord(a, geo, t)
           : t.kind === "voting"
             ? votingRecord(a, geo)
             : t.kind === "park"

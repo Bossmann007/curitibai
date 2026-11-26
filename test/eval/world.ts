@@ -44,6 +44,10 @@ const FACILITY_FIXTURES: Record<string, string> = {
   "modulo da guarda": "modulo_da_guarda_synthetic.json",
   delegacia: "delegacia_synthetic.json",
   "instituto de identificacao": "instituto_de_identificacao_synthetic.json",
+  "cartorio de registro civil": "cartorio_de_registro_civil_synthetic.json",
+  "junta militar": "junta_militar_synthetic.json",
+  "defensoria publica": "defensoria_publica_synthetic.json",
+  forum: "forum_synthetic.json",
 };
 
 /** Invented events (titles, places and addresses made up), dated around NOW. */

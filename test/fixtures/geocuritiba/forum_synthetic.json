@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventado",
+    "nome_completo": "Fórum Inventado do Sul",
+    "nome_rua": "R. INVENTADA DO FÓRUM",
+    "num_pred": "2151",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Sítio Cercado",
+    "regional": "Bairro Novo",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-2152",
+    "email": null,
+    "dt_atualiz": 1648728000000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 12h às 18h.\r\nAbriga:\r\n-Juizados Especiais;\r\n-Vara da Família e Sucessões.\r\nBairros de abrangência: Sítio Cercado e Umbará."
+   },
+   "geometry": {
+    "x": -49.268,
+    "y": -25.543
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Trabalho",
+    "nome_completo": "Fórum Inventado da Justiça do Trabalho",
+    "nome_rua": "AV. INVENTADA MACHADO",
+    "num_pred": "400",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-0400",
+    "email": "secretaria.inventada@trt9.jus.br",
+    "dt_atualiz": 1562241600000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 12h às 18h."
+   },
+   "geometry": {
+    "x": -49.276,
+    "y": -25.437
+   }
+  }
+ ]
+}
