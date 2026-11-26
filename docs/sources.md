@@ -1295,7 +1295,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
     by the marker "[a line that may point at a shelter, transit house or confidential unit is not shown; ask the
     156]"; consecutive markers are merged. "Acolhimento" alone (a service, as in the Casa da Mulher Brasileira's list)
     is kept. A record of these types whose name, street or complement mentions one is left out and counted in
-    `skipped_records`; none did when read.
+    `skipped_records`; none did when read. After the review fixes widened this check, the final build re-read layers
+    34 (`cras`, 39 records), 36, 38, 39, 40, 108 and 109 on 2026-11-26, seven more GET requests at least 5 s apart
+    (01:13:09 to 01:13:43 UTC, same User-Agent, the server's fixed query): 0 records skipped in any layer, and the only
+    hidden line in all seven is the Centro POP transit-house line above (no CRAS line changes). The reads were deleted.
   - 39: 1 record, the Central de Encaminhamento Social 24 Horas: "Contato: disque 156" and the 156 site's address
     (kept as text, not linked).
   - 36: 5 records, named Espaço ConViver in `nome_completo`, "2ª a 6ª feira, das 8h às 17h" (one with a lunch break).
@@ -1336,8 +1339,9 @@ changes (owner request, 2026-11-23: monthly and automatic).
   masking, 160 characters, at most 30 lines), `open_periods` (`func_*`: "Sim" true, "Não" false, else null),
   `updated` (`dt_atualiz` as a Curitiba date), phones, e-mails, position. When `divulgar_endereco` is not "Sim" the
   address **and** the position are null (no record had another value on 2026-11-21). Coordinates outside a box around
-  Curitiba (lat −25.7 to −25.3, lon −49.45 to −49.15) are null. Bike lanes not `operacional` = 1 and records without a
-  name are skipped and counted (`skipped_records`).
+  Curitiba (lat −25.7 to −25.3, lon −49.45 to −49.15) are null. Bike lanes not `operacional` = 1, records without a
+  name and (since v0.52) social-assistance records whose name or address mentions a shelter are skipped and counted
+  (`skipped_records`).
 - **Contacts (privacy):** `telefone` and `email` are not masked text but filtered by an allowlist, because some layers
   hold contacts that look personal. Survey of the 24 point layers above on 2026-11-21: Ecocidadão (associations of
   waste pickers) lists mobiles and Gmail/Hotmail addresses; Museu and Teatro list university, company and personal-name
