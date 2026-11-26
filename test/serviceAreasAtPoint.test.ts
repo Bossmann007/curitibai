@@ -334,6 +334,18 @@ describe("place_at_point service_areas, areas: registry (v0.57.0)", () => {
     expect(out.note).toMatch(/Partial: the registro civil layer could not be read now/);
   });
 
+  it("two nameless property rows are not called a boundary", async () => {
+    const nameless = attrs([{ circunscricao: null, fonte: "Fonte A" }, { circunscricao: null, fonte: "Fonte B" }]);
+    stubFetch(registryRoutes({ property_registry: { body: nameless } }));
+    expect((await areas({ ...AT, areas: "registry" })).note).not.toMatch(/boundary/);
+  });
+
+  it("two named property rows are a boundary", async () => {
+    const named = attrs([{ circunscricao: "8ª CIRCUNSCRIÇÃO", fonte: "X" }, { circunscricao: "9ª CIRCUNSCRIÇÃO", fonte: "X" }]);
+    stubFetch(registryRoutes({ property_registry: { body: named } }));
+    expect((await areas({ ...AT, areas: "registry" })).note).toMatch(/on a boundary/);
+  });
+
   it("a failing property layer is source_unavailable", async () => {
     stubFetch(registryRoutes({ property_registry: { status: 500 } }));
     expect(errorOf(await call({ ...AT, areas: "registry" }))).toMatchObject({ error: "source_unavailable" });

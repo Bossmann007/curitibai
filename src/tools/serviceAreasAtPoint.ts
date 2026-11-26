@@ -81,16 +81,16 @@ export const serviceAreasAtPointOutput = z.object({
       .boolean()
       .describe(
         "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for " +
-          "`registry`) or a Curitiba " +
-          "neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked.",
+          "`registry`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a " +
+          "neighbouring city), and then no other layer is asked.",
       ),
     health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     cras: z.array(CrasArea).nullable().describe(`\`care\`: CRAS territories containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD}`),
     police_military: z.array(PoliceMilitaryArea).nullable().describe(`\`safety\`: Polícia Militar company areas containing the point (at most ${MAX_AREAS}).${UNREAD_FIRST}`),
     police_civil: z.array(PoliceCivilArea).nullable().describe(`\`safety\`: Polícia Civil district areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     fire: z.array(FireArea).nullable().describe(`\`safety\`: fire platoon areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
-    property_registry: z.array(PropertyRegistryArea).nullable().describe(`\`registry\`: circunscrição imobiliária areas containing the point (at most ${MAX_AREAS}).${UNREAD_FIRST}`),
-    civil_registry: z.array(CivilRegistryArea).nullable().describe(`\`registry\`: registro civil serviço areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
+    property_registry: z.array(PropertyRegistryArea).nullable().describe(`\`registry\`: circunscrição imobiliária areas containing the point (at most ${MAX_AREAS}); null with \`all\` (ask \`registry\`).${UNREAD_FIRST}`),
+    civil_registry: z.array(CivilRegistryArea).nullable().describe(`\`registry\`: registro civil serviço areas containing the point (at most ${MAX_AREAS}); null with \`all\`.${UNREAD}`),
     partial: z.boolean().describe("True when a layer of a group asked could not be read; its list is then null."),
   }),
   source: z.string(),
@@ -378,7 +378,9 @@ async function registryAreasAt(p: Point, reads: PointReads): Promise<Output> {
     inside ? "" : "No circunscrição imobiliária and no Curitiba neighbourhood (IPPUC cadastral map) contains this point: it may be in a neighbouring city; the registro civil layer was not asked.",
     inside && property.length === 0 ? "No circunscrição imobiliária found here (not covered by the layer)." : "",
     inside && civil?.length === 0 ? "No registro civil area found here (not covered by the layer)." : "",
-    property.length > 1 || (civil?.length ?? 0) > 1 ? "The point is on a boundary: more than one area is listed." : "",
+    property.filter((r) => r.circumscription !== null).length > 1 || (civil ?? []).filter((r) => r.service !== null).length > 1
+      ? "The point is on a boundary: more than one area is listed."
+      : "",
     failure !== null ? `Partial: the registro civil layer could not be read now. ${missingNote([failure])}` : "",
   ].filter(Boolean);
   return {

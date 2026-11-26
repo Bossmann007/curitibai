@@ -4545,7 +4545,7 @@
                     },
                     "inside_curitiba": {
                       "type": "boolean",
-                      "description": "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for `registry`) or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
+                      "description": "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for `registry`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
                     },
                     "health_units": {
                       "anyOf": [
@@ -4883,7 +4883,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`registry`: circunscrição imobiliária areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                      "description": "`registry`: circunscrição imobiliária areas containing the point (at most 3); null with `all` (ask `registry`). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
                     },
                     "civil_registry": {
                       "anyOf": [
@@ -4918,7 +4918,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "`registry`: registro civil serviço areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
+                      "description": "`registry`: registro civil serviço areas containing the point (at most 3); null with `all`. Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
                     "partial": {
                       "type": "boolean",
