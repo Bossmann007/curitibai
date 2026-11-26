@@ -4,6 +4,7 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
+  HIDDEN_NAME_LINE,
   hourLines,
   institutionalEmails,
   institutionalPhones,
@@ -839,12 +840,12 @@ describe("city_facilities_search", () => {
       name: "9º Cartório de Registro Civil das Pessoas Naturais de Curitiba",
       address: "R. INVENTADA DO CENTRO, 101 - Loja 1",
       bairro: "Centro",
-      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30"],
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", HIDDEN_NAME_LINE],
       phones: ["(41) 3333-0101"],
       emails: [],
       updated: "2023-09-29",
     });
-    // A line that is not a "Cartório <Name>." trade name is kept; the mobile and the gmail address are dropped.
+    // A "Cartório ..." line with hours is kept; the mobile and the gmail address are dropped.
     expect(out.data.items[1]).toMatchObject({
       hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h", "Cartório de plantão aos sábados, das 9h às 12h."],
       phones: ["(41) 3333-0202"],
@@ -854,51 +855,43 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(/Prices, deadlines and which office holds a given record are not in the layer/);
     const all = await search({ type: "registro civil" });
     const civico = all.data.items.find((i: { bairro: string | null }) => i.bairro === "Centro Cívico");
-    expect(civico).toMatchObject({ hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30"], phones: [], emails: [] });
+    expect(civico).toMatchObject({ hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", HIDDEN_NAME_LINE], phones: [], emails: [] });
     expect(JSON.stringify(all)).not.toMatch(/Inventado\.|Souza|maria|gmail|9999|9888/i);
   });
 
-  it("v0.51.0: a registry record's last line \"Cartório <Name>.\" is dropped; status lines, other lines and earlier lines stay", () => {
+  it("v0.51.0: a registry line starting \"Cartório\" with no digit is replaced by a visible marker, on any line; lines with hours stay", () => {
     const t = type("cartorio de registro civil");
-    const hours = (obs: string) => hourLines(obs, 30, false, t.dropLastLine);
+    const hours = (obs: string) => hourLines(obs, 30, false, t.hideLine);
     for (const line of [
-      "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Inventado dos Santos e Silva", "Cartório Emanuel.",
-      "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.", "CARTÓRIO FICTÍCIO DE SOUZA.", "Cartório Inventado ;",
-      "Cartório: Inventado.",
+      "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.",
+      "Cartório Inventado ;", "Cartório: Inventado.", "Cartório Fechner.", "Cartório Mudrovitsch.", "Cartório J. Taborda.",
+      "Cartório d'Ávila.", "Cartório Taborda (Centro).", "Cartório Taborda!", "Cartório Fechado.", "Cartório Reaberto.",
+      "Cartório Com Novo Horário.",
     ]) {
-      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:"]);
+      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", HIDDEN_NAME_LINE]);
     }
+    expect(hours("Atendimento:\nCartório Taborda.\nAtualizado em março.")).toEqual(["Atendimento:", HIDDEN_NAME_LINE, "Atualizado em março."]);
     for (const line of [
-      "Cartório Souza - plantão aos sábados, das 9h às 12h.",
+      "Cartório de plantão aos sábados, das 9h às 12h.",
       "Cartório Fechado para reforma até 30/11.",
-      "Cartório de plantão aos sábados.",
-      "Cartório Fechado.",
-      "Cartório FECHADO.",
-      "Cartório Distrital do Bairro Alto.",
-      "Cartório Funciona Em Novo Endereço.",
-      "Cartório Funcionando Normalmente.",
-      "Cartório Temporariamente Fechado.",
-      "Cartório Interditado.",
-      "Cartório Encerrado.",
-      "Cartório Transferido.",
-      "Cartório Mudou De Endereço.",
+      "Atendimento no Cartório Central.",
+      "-2ª a 6ª feira, das 8h30 às 17h30",
     ]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", line]);
     }
-    // Only the last line is checked: that is where the layer puts the trade name.
-    expect(hours("Cartório Inventado.\nAtendimento:")).toEqual(["Cartório Inventado.", "Atendimento:"]);
+    expect(HIDDEN_NAME_LINE.length).toBeLessThanOrEqual(160);
   });
 
-  it("v0.51.0: the registry trade-name check is linear: long ambiguous lines are processed fast and kept", () => {
+  it("v0.51.0: the registry name-line check stays fast on long ambiguous lines (the 5aecd4d regex was exponential)", () => {
     const t = type("cartorio de registro civil");
-    const start = performance.now();
     for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
       for (const head of ["CARTÓRIO", "Cartório"]) {
         const l = `${head}${filler.repeat(60)} x`.slice(0, 160);
-        expect(hourLines(l, 30, false, t.dropLastLine)).toEqual([l.replace(/\s+/g, " ").trim()]);
+        const start = performance.now();
+        expect(hourLines(l, 30, false, t.hideLine)).toEqual([HIDDEN_NAME_LINE]);
+        expect(performance.now() - start).toBeLessThan(50);
       }
     }
-    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it.each([

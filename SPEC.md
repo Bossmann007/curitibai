@@ -25,7 +25,7 @@ records: the 1º to 4º offices, three in Centro, one in Centro Cívico), 21 "Ju
 What the read showed and how this version handles it:
 
 - Every registry record's `observacao` ends with a line "Cartório <surname>." (the office's trade name, a person's
-  surname). That line is dropped for this type (`dropLastLine`); the office's number already names it.
+  surname). That line is replaced by a visible marker for this type (`hideLine`); the office's number already names it.
 - The registry offices' e-mails are on their own domains (one with a person's name); the Defensoria publishes
   `defensoria.pr.def.br` and a gmail address and, for 8 of 14 posts, a mobile number (two posts publish only a
   mobile); the Justiça do Trabalho fórum a `trt9.jus.br` address. The unchanged filters (e-mail `curitiba.pr.gov.br`
@@ -50,9 +50,7 @@ What the read showed and how this version handles it:
    - `forum` (106, "Fórum"), alias `foruns`.
    No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias (other kinds of cartório exist; registro de
    imóveis is a later item). None of the new names is used by another type (the uniqueness test checks it).
-2. **Two optional `FacilityType` fields**, used only by these types: `dropLastLine` (a function; the last `observacao`
-   line is left out after cleaning when it returns true; for the registry type `isRegistryTradeName`: only the last line is checked, and only when it is "Cartório" (any case) and one to six words that are capitalised names or da/de/do/dos/das/e, the first a name that is not a status word (Fechado, Aberto, Funciona, Encerrado, Interditado, Transferido, Mudou and the like), with at most a final "." ";" or ","; checked word by word, with no backtracking regex, so
-   "Cartório Souza - plantão ...", "Cartório Fechado." or "Cartório Funciona Em Novo Endereço." is kept) and `wrapLines` (split a line longer than 160 characters
+2. **Two optional `FacilityType` fields**, used only by these types: `hideLine` (a function; for the registry type `isRegistryNameLine`: a line that starts with "Cartório" (any case) and holds no digit, on any line of the record, is replaced by the marker "[a line naming the cartório is not shown: it can carry a person's name; ask the office]" (new optional `hideLine`; two fixed checks, no backtracking regex), so no surname is shown and nothing is cut silently; a status line with no digit ("Cartório Fechado.") is hidden the same visible way, and a line with days or hours ("Cartório de plantão aos sábados, das 9h às 12h.") is kept) and `wrapLines` (split a line longer than 160 characters
    after its commas and semicolons; a part
    longer than that is still cut with "…"). Masking is unchanged and runs on every part.
 3. **Notes** (no lead note):

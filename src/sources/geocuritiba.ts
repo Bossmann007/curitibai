@@ -145,7 +145,8 @@ const CIVIL_REGISTRY_NOTE =
   "The Registro Civil das Pessoas Naturais offices that IPPUC's layer lists, as published, not necessarily every " +
   "registry office in Curitiba. Hours as published (see `updated`). Prices, " +
   "deadlines and which office holds a given record are not in the layer: call the office before going. The offices' " +
-  "e-mails are on their own domains and are not shown.";
+  "e-mails are on their own domains and are not shown, and a line naming a cartório with no days or hours (it can " +
+  "carry a person's name) is replaced by a marker.";
 const MILITARY_BOARD_NOTE =
   "The Juntas de Serviço Militar that IPPUC lists in Curitiba; days, hours and the bairros each one serves are in " +
   "`hours` as published (see `updated`). `bairro` filters by where a junta is, not by the bairros it serves: to find " +
@@ -205,8 +206,8 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** True when the last `observacao` line (after cleaning) is to be left out: the registry offices' trade-name line, a surname (v0.51.0). */
-  dropLastLine?: (line: string) => boolean;
+  /** True when an `observacao` line (after cleaning) is replaced by HIDDEN_NAME_LINE: a registry line that may carry a surname (v0.51.0). */
+  hideLine?: (line: string) => boolean;
 }
 
 const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
@@ -412,7 +413,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   },
   // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
   // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
-  // registry record ends with a "Cartório <surname>." line: dropped, a person's name (see isRegistryTradeName).
+  // registry record ends with a "Cartório <surname>." line, a person's name: replaced by a marker (isRegistryNameLine).
   {
     ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
       "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
@@ -420,7 +421,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "certidao de obito",
     ]),
     note: CIVIL_REGISTRY_NOTE,
-    dropLastLine: isRegistryTradeName,
+    hideLine: isRegistryNameLine,
   },
   {
     ...equipment("junta militar", 21, "Junta de Serviço Militar", [
@@ -682,24 +683,17 @@ export function wrapAtCommas(line: string, max: number): string[] {
   return out;
 }
 
-/** A first word that says something about the office, not a name ("Cartório Fechado.", "Cartório Mudou De Endereço."). */
-const REGISTRY_STATUS = /^(?:fech|abert|funcion|distrit|tempor|atend|encerr|interdit|transfer|desativ|mud|provis|reform|plant|em$|sem$|n[aã]o$|fora$)/iu;
-const NAME_PART = /^\p{Lu}[\p{L}'’-]*$/u;
-const CONNECTIVE = /^(?:d[aeo]s?|e)$/iu;
+/** Shown instead of a registry line that may carry a person's name (v0.51.0): never a silent cut. */
+export const HIDDEN_NAME_LINE = "[a line naming the cartório is not shown: it can carry a person's name; ask the office]";
 
 /**
- * The registry offices' trade-name line (v0.51.0), "Cartório Taborda." or "Cartório Guimarães de Macedo.": "Cartório"
- * (any case, optional ":"), then one to six words that are names (a capital first letter) or da/de/do/dos/das/e, the
- * first one a name that is not a status word, and at most a trailing ".", ";" or ",". No backtracking regex: the
- * line is split into words and each word is checked once.
+ * A registry line that may name a person (v0.51.0): it starts with "Cartório" (any case) and holds no digit, like the
+ * trade-name line "Cartório Taborda." every record ends with. A status line with no digit ("Cartório Fechado.") is
+ * hidden too, but visibly (HIDDEN_NAME_LINE); a line with days or hours ("Cartório de plantão aos sábados, das 9h às
+ * 12h.") is kept. Two fixed linear tests, no backtracking.
  */
-export function isRegistryTradeName(line: string): boolean {
-  const words = line.replace(/[.;,]$/u, "").trim().split(" ");
-  const head = words.shift()?.replace(/:$/u, "");
-  if (head === undefined || !/^cart[oó]rio$/iu.test(head) || words.length < 1 || words.length > 6) return false;
-  const first = words[0]!;
-  if (!NAME_PART.test(first) || REGISTRY_STATUS.test(first)) return false;
-  return words.every((w) => NAME_PART.test(w) || CONNECTIVE.test(w));
+export function isRegistryNameLine(line: string): boolean {
+  return /^cart[oó]rio\b/iu.test(line) && !/\d/u.test(line);
 }
 
 /**
@@ -710,7 +704,7 @@ export function hourLines(
   raw: unknown,
   max: number = MAX_HOUR_LINES,
   wrap = false,
-  dropLast?: (line: string) => boolean,
+  hide?: (line: string) => boolean,
 ): string[] {
   const s = str(raw);
   if (s === null) return [];
@@ -718,10 +712,9 @@ export function hourLines(
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
-      if (t !== "") lines.push(t);
+      if (t !== "") lines.push(hide?.(t) ? HIDDEN_NAME_LINE : t);
     }
   }
-  if (dropLast && lines.length > 0 && dropLast(lines[lines.length - 1]!)) lines.pop();
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
@@ -751,7 +744,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.dropLastLine),
+    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email),
