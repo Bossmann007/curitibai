@@ -1,4 +1,4 @@
-# SPEC: v0.49.0 Police stations with hours
+# SPEC: v0.50.0 Where to get an RG (Instituto de Identificação)
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo.
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,72 +8,62 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Qual o endereço e o horário da delegacia do
-Tatuquara?" with the delegacia's address, hours as published and phone, and give the Polícia Federal, Polícia
-Rodoviária Federal and Polícia Científica offices the same way. The tool lists places; it does not file police
-reports. Every answer for these types starts with the emergency numbers: 190 (Polícia Militar), 197 (Polícia Civil)
-or 191 (Polícia Rodoviária Federal). `places_search` (OpenStreetMap) stays; the two descriptions point to each other.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Onde eu faço a carteira de identidade no Tatuquara e
+precisa agendar?" with the Instituto de Identificação do Paraná's service post in that bairro, its address, days and
+hours and its appointment line, all as published. The tool lists places; it does not book. Appointments are booked
+through the Paraná state Instituto de Identificação's channels, named without a link (state host, not on the link
+allowlist). The tool never says that no appointment is needed.
 
 ## Source (read 2026-11-25)
 
-IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` layers 143 "Polícia Civil" (49 records:
-the 13 district delegacias, "Delegacia do 13º Distrito Policial da Capital" in Tatuquara with "2ª a 6ª feira, das
-8h30 às 18h" among them, specialised delegacias, and divisions and support units), 146 "Polícia Federal" (1), 147
-"Polícia Rodoviária Federal" (1) and 145 "Polícia Científica" (3). robots.txt 404, layer metadata with empty
-`copyrightText` and `description`, so no licence found (facts only, IPPUC cited, like the other GeoCuritiba layers).
-190, 197 and 191 are all in the "Emergências" section of the Instituto Municipal de Turismo's "Telefones Úteis" page
-as read on 2026-11-22 for `useful_phones` (no new read). No new host. Details:
+IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` layer 168 "Instituto de Identificação do
+Paraná" (12 records: the institute's head office in Centro, "Atendimento administrativo", the Central post, nine posts
+in Ruas da Cidadania and one in a shopping centre). The layer has **no separate appointment field**: the line
+"Necessário agendamento prévio para atendimento." is in `observacao` (11 of 12 records; not the head office), so it
+comes back in `hours`. Three posts (Tatuquara, CIC, Cajuru) publish "2ª e 6ª feira", kept as written. A post's name
+is its Rua da Cidadania, not always its bairro (Pinheirinho is in Capão Raso, Bairro Novo in Sítio Cercado, Boa Vista
+in Bacacheri). robots.txt 404, layer metadata with empty `copyrightText` and `description`, so no licence found (facts
+only, IPPUC cited, like the other GeoCuritiba layers). No new host. Details:
 [docs/sources.md](docs/sources.md#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes).
 
 ## Changes
 
-1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
-   e-mail allowlist as the other urban-equipment layers:
-   - `delegacia` (143, label "Polícia Civil"), aliases `delegacias`, `delegacia de policia`, `delegacias de policia`,
-     `delegacia da policia civil`, `delegacias da policia civil`, `policia civil`, `distrito policial`, `distritos
-     policiais`;
-   - `policia federal` (146), alias `superintendencia da policia federal`;
-   - `policia rodoviaria federal` (147), aliases `prf`, `superintendencia da policia rodoviaria federal`;
-   - `policia cientifica` (145), aliases `policia cientifica do parana`, `unidade de execucao tecnico cientifica`,
-     `unidades de execucao tecnico cientifica`.
-   No bare `policia`, `pf`, `dp` or `iml` alias.
-2. **Notes**. All four lead with "Emergency: call 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia
-   Rodoviária Federal). This tool lists places, it does not file police reports." `delegacia`: layer 143 lists every
-   Polícia Civil unit, not only delegacias; being listed does not mean a unit takes reports from the public, so call
-   before going; district delegacias are named by number, so filter by `bairro`, not `name`; hours as published (see `updated`); `all_day` is the layer's flag and `hours` the detail, and they do
-   not always agree; online reports: the Polícia Civil do Paraná's Delegacia Eletrônica, named without a link (no
-   Polícia Civil host is on the link allowlist); Polícia Militar units are not in the list (`places_search`). The
-   other three: hours as published, call before going (PRF: on a federal highway call 191; Polícia Científica: being
-   listed does not mean desk service). No counts (they go stale).
-3. **Privacy filters unchanged** (owner decision): the layers' `pc.pr.gov.br`, `pf.gov.br` and `prf.gov.br` e-mails
-   are dropped by the `curitiba.pr.gov.br`-only allowlist, so `emails` is empty; docs say so.
-4. **Descriptions**: `city_facilities_search` names delegacias; its `type` description names the four types and
-   points to `places_search` for fire stations and Polícia Militar units; `places_search` says to prefer it only for
-   fire and Polícia Militar stations or when other tools find nothing, and points to `city_facilities_search` for
-   delegacias. Every tool description stays at most 400 characters (`test/contracts.test.ts`). Tool contract snapshot
-   updated.
-5. **Eval**: q127 "Qual o endereço e o horário da delegacia do Tatuquara?" → `city_facilities_search` `{type:
-   "delegacia", bairro: "tatuquara"}` (the record's name has no "Tatuquara"; its `bairro` does), synthetic fixture
-   `test/fixtures/geocuritiba/delegacia_synthetic.json` (plus `policia_federal_synthetic.json`,
-   `policia_rodoviaria_federal_synthetic.json` and `policia_cientifica_synthetic.json` for the unit tests). q035
-   ("Onde ficam as delegacias de polícia em Curitiba?") moves from `places_search` `police` to `city_facilities_search`
-   `{type: "delegacia"}`, the route the new descriptions give; three questions stay on `places_search`.
-6. **Docs and version**: README, docs/tools.md (row, which-tool rows, the `places_search` note), docs/sources.md
-   (layers 143, 146, 147 and 145, the robots.txt recheck, every hand request, the dropped e-mails), docs/roadmap-1.0.md,
-   CHANGELOG 0.49.0, version 0.49.0 in `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has
-   no row for these places and is unchanged.
+1. **Type** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
+   e-mail allowlist as the other urban-equipment layers: `instituto de identificacao` (168, label "Instituto de
+   Identificação do Paraná"), aliases `instituto de identificacao do parana`, `rg`, `carteira de identidade`,
+   `posto de identificacao`, `postos de identificacao`. No bare `identidade`, `documento` or `cin` alias (checked:
+   none of these aliases is used by another type).
+2. **Notes**. Lead: "Appointments are booked through the Paraná state Instituto de Identificação's channels (not
+   linked by this tool); this tool lists places, it does not book." Type note: the posts of the Instituto de
+   Identificação do Paraná in Curitiba as listed by IPPUC; days, hours and the appointment line are in `hours` as
+   published (see `updated`); a record with no appointment line does not mean no appointment is needed, and the head
+   office's hours are administrative, so being listed does not mean a place issues the card; some posts publish "2ª
+   e 6ª feira", kept as written, so call before going; posts are named after their Rua da Cidadania, which is not
+   always the bairro: filter by `bairro` or `near`.
+3. **Privacy filters unchanged**: the layer's `ii.pr.gov.br` e-mails are dropped by the `curitiba.pr.gov.br`-only
+   allowlist, so `emails` is empty; docs say so. Phones are Curitiba landlines and are kept.
+4. **Descriptions**: the `type` parameter description names `"instituto de identificacao"` (or `"rg"`). Tool
+   descriptions unchanged. Tool contract snapshot updated.
+5. **Eval**: new q128 "Onde eu faço a carteira de identidade no Tatuquara e precisa agendar?" →
+   `city_facilities_search` `{type: "rg", bairro: "tatuquara"}`, expecting the post's name, address, the days line
+   (`hours.1`), the appointment line (`hours.2`), phone and `note`; synthetic fixture
+   `test/fixtures/geocuritiba/instituto_de_identificacao_synthetic.json`.
+6. **Docs and version**: README, docs/tools.md (row, which-tool row), docs/sources.md (layer 168, the robots.txt
+   recheck, every hand request, the dropped e-mails), docs/roadmap-1.0.md, CHANGELOG 0.50.0, version 0.50.0 in
+   `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has no row for identity documents and is
+   unchanged.
 
 ## Out of scope
 
-Filing a report or linking the Delegacia Eletrônica; widening the e-mail or phone filters; Polícia Militar units
-(not in these layers); which delegacia covers an address (`place_at_point` `areas: "safety"` gives the Polícia Civil
-district); parsing hours into days or times; any new host or link.
+Booking, or linking the state's booking page or any state host; widening the e-mail or phone filters; parsing hours
+or the appointment line into fields; the Detran or other documents; any new host or link.
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases, bare `policia`, `pf`,
-  `dp`, `iml`, `policia militar`, `delegacia eletronica` not types, hours as published, `emails` empty for an
-  `@pc.pr.gov.br` record, the 24-hour flag kept when it disagrees with `hours`, the 190/197/191 lead sentence first in
-  the note, q127 answered.
-- `node scripts/eval-summary.mjs`: `answered 123 / 127`.
+- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases resolve to layer 168,
+  bare `identidade`, `documento`, `cin` not types, hours and the appointment line as published ("2ª e 6ª feira"
+  kept), `emails` empty for an `@ii.pr.gov.br` record, the head office with no appointment line returned as
+  published, the lead note first and the no-appointment-line sentence in the note, the note carries no link, q128
+  answered.
+- `node scripts/eval-summary.mjs`: `answered 124 / 128`.
 - `scripts/verify` exits 0 on the PR head.

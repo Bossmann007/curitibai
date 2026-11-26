@@ -122,6 +122,20 @@ const POLICE_SCIENTIFIC_NOTE =
   "The Polícia Científica's units in Curitiba as listed by IPPUC, hours as published (see `updated`); being listed " +
   "does not mean a unit serves the public at the desk, so call before going.";
 
+/**
+ * Instituto de Identificação do Paraná (v0.50.0): a state service. The booking page is on a state host that is not on
+ * the link allowlist, so it is named, never linked. The layer has no appointment field: the line is in `observacao`.
+ */
+export const IDENTIFICATION_LEAD_NOTE =
+  "Appointments are booked through the Paraná state Instituto de Identificação's channels (not linked by this " +
+  "tool); this tool lists places, it does not book.";
+const IDENTIFICATION_NOTE =
+  "The Instituto de Identificação do Paraná's posts in Curitiba as listed by IPPUC. Days, hours and the appointment " +
+  "line are in `hours` as published (see `updated`); a record with no appointment line does not mean no appointment " +
+  "is needed, and the head office's hours are administrative, so being listed does not mean a place issues the " +
+  "card. Some posts publish \"2ª e 6ª feira\", kept as written: call before going. Posts are named after their Rua " +
+  "da Cidadania, which is not always the bairro: filter by `bairro` or `near`.";
+
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -354,6 +368,16 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     ]),
     note: POLICE_SCIENTIFIC_NOTE,
     leadNote: POLICE_EMERGENCY_NOTE,
+  },
+  // Instituto de Identificação do Paraná, added in v0.50.0 (read on 2026-11-25: 12 records). No bare "identidade",
+  // "documento" or "cin" alias.
+  {
+    ...equipment("instituto de identificacao", 168, "Instituto de Identificação do Paraná", [
+      "instituto de identificacao do parana", "rg", "carteira de identidade", "posto de identificacao",
+      "postos de identificacao",
+    ]),
+    note: IDENTIFICATION_NOTE,
+    leadNote: IDENTIFICATION_LEAD_NOTE,
   },
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),

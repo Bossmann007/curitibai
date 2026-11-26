@@ -754,6 +754,56 @@ describe("city_facilities_search", () => {
     expect(out.note).toMatch(noteRe);
   });
 
+  it.each([
+    ["Instituto de Identificação", 168],
+    ["Instituto de Identificação do Paraná", 168],
+    ["RG", 168],
+    ["carteira de identidade", 168],
+    ["posto de identificação", 168],
+  ] as const)("v0.50.0: %s maps to instituto de identificacao (layer %i)", (input, layer) => {
+    expect(resolveType(input)).toMatchObject({ id: "instituto de identificacao", layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.50.0: bare \"identidade\", \"documento\" and \"cin\" are not types", () => {
+    for (const name of ["identidade", "documento", "cin", "documentos"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it("v0.50.0: an RG post by bairro comes back with days, hours and the appointment line as published, state e-mail dropped, the booking lead note", async () => {
+    const calls = stubFetch(route("instituto de identificacao", "instituto_de_identificacao_synthetic.json"));
+    const out = await search({ type: "rg", bairro: "tatuquara" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/168`);
+    expect(out.data).toMatchObject({ type: "instituto de identificacao", label: "Instituto de Identificação do Paraná", total: 1, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Posto de Atendimento 990 - Rua da Cidadania Inventada Sul",
+      address: "R. INVENTADA DO SUL, 1680 - Térreo",
+      bairro: "Tatuquara",
+      hours: ["Atendimento:", "-2ª e 6ª feira, das 8h às 17h", "Necessário agendamento prévio para atendimento."],
+      phones: ["(41) 3333-1680"],
+      emails: [],
+      updated: "2025-10-13",
+    });
+    expect(out.note.startsWith(
+      "Appointments are booked through the Paraná state Instituto de Identificação's channels (not linked by this tool); this tool lists places, it does not book.",
+    )).toBe(true);
+    expect(out.note).toMatch(/no appointment line does not mean no appointment is needed/);
+    expect(out.note).toMatch(/"2ª e 6ª feira", kept as written/);
+    expect(out.note).not.toMatch(/https?:|www\.|ii\.pr\.gov\.br/);
+  });
+
+  it("v0.50.0: posts are named after their Rua da Cidadania, so the bairro filter finds one whose name differs, and the head office comes back with no appointment line", async () => {
+    stubFetch(route("instituto de identificacao", "instituto_de_identificacao_synthetic.json"));
+    const out = await search({ type: "instituto de identificacao", bairro: "capao raso" });
+    expect(out.data.items.map((i: { name: string }) => i.name)).toEqual(["Posto de Atendimento 991 - Rua da Cidadania Inventada Leste"]);
+    expect(out.note).toMatch(/filter by `bairro` or `near`/);
+    const all = await search({ type: "carteira de identidade" });
+    expect(all.data.total).toBe(3);
+    const office = all.data.items.find((i: { name: string }) => i.name === "Instituto Inventado de Identificação");
+    expect(office).toMatchObject({ hours: ["Atendimento administrativo:", "-2ª a 6ª feira, das 8h às 18h"], emails: [] });
+  });
+
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {
     const calls = stubFetch(route("unidade de saude", "unidade_de_saude_synthetic.json"));
     const out = await search({ type: "UBS", name: "caximba" });

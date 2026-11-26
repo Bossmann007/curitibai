@@ -2,6 +2,35 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.50.0 - 2026-11-25
+
+Where to get an RG (Instituto de Identificação), phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type` `instituto de identificacao` (aliases `instituto de identificacao do parana`,
+  `rg`, `carteira de identidade`, `posto de identificacao`, `postos de identificacao`), read live from IPPUC's
+  GeoCuritiba urban-equipment layer 168 "Instituto de Identificação do Paraná" with the same fields, filters, host
+  gate, cache and phone and e-mail allowlist as the other layers (12 records when read on 2026-11-25: the head office,
+  the Central post, nine posts in Ruas da Cidadania and one in a shopping centre). No bare `identidade`, `documento` or
+  `cin` alias; none of the new aliases was used by another type.
+- The layer has no appointment field: the line "Necessário agendamento prévio para atendimento." (11 of 12 records)
+  is part of the published text and comes back in `hours`, with the days and hours, as published; "2ª e 6ª feira"
+  (three posts) is kept as written. The note starts "Appointments are booked through the Paraná state Instituto de
+  Identificação's channels (not linked by this tool); this tool lists places, it does not book." and says that a
+  record with no appointment line does not mean no appointment is needed, that the head office's hours are
+  administrative, to call before going, and that posts are named after their Rua da Cidadania, not always the bairro
+  (filter by `bairro` or `near`). The state booking page is not linked (state host, not on the link allowlist).
+- E-mails: the layer publishes `ii.pr.gov.br` addresses; the e-mail allowlist (`curitiba.pr.gov.br` only) is
+  unchanged, so `emails` is empty for every record. Phones are Curitiba landlines and are kept.
+- The `type` parameter description names `instituto de identificacao` (or `rg`) (snapshot updated); the tool
+  descriptions are unchanged.
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-25.
+  Three hand requests to it that day (robots.txt, the layer's metadata and one whole-layer read), recorded in
+  [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
+- Citizen eval: new q128 ("Onde eu faço a carteira de identidade no Tatuquara e precisa agendar?") answered by
+  `city_facilities_search` `rg` with `bairro`, on a synthetic fixture: the post's name, address, days and hours, the
+  appointment line, phone and the note. 124 of 128 answered. The Curitiba App table has no row for identity documents
+  and is unchanged.
+
 ## 0.49.0 - 2026-11-25
 
 Police stations with hours, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

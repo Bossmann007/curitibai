@@ -43,7 +43,8 @@ export const cityFacilitiesSearchInput = {
         "\"centro de especialidades medicas\", \"centro de especialidades odontologicas\" (or \"ceo\"), " +
         "\"vigilancia sanitaria\", \"zoonoses\", \"hospital veterinario\", \"modulo da guarda\", \"nucleo da guarda\", " +
         "\"delegacia\" (Polícia Civil), \"policia federal\", \"policia rodoviaria federal\" (or \"prf\"), " +
-        "\"policia cientifica\". Fire stations and Polícia Militar units: places_search. " +
+        "\"policia cientifica\", \"instituto de identificacao\" (or \"rg\"). Fire stations and Polícia Militar units: " +
+        "places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
   bairro: z
