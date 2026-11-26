@@ -20,6 +20,8 @@ Social assistance beyond the CRAS, phase B of the 1.0 roadmap. 27 tools. Publish
   null and "sim"). The note leads with 190 and 180, as on the Ministério das Mulheres' Ligue 180 page (`www.gov.br`,
   read by hand; never contacted by the server), and says the tool does not dispatch help.
 - Contract: `type` and `skipped_records` descriptions. No new server host or link. Eval: q130 answered; 126 of 130.
+- Package check: the packed-size ceiling is raised once, from 250,000 to 252,000 bytes (CI packed this release at
+  250,367; Enzo's decision, 2026-11-25). It is not to be raised again: on the next overflow, trim what the package ships.
 
 ## 0.51.0 - 2026-11-26
 

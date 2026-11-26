@@ -9,8 +9,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-/** Packed (gzip) size ceiling. 0.26.0 packs to about 179 KB; a jump past this means something unplanned got in. */
-export const MAX_PACKED_BYTES = 250_000;
+/**
+ * Packed (gzip) size ceiling. 0.26.0 packs to about 179 KB; a jump past this means something unplanned got in.
+ * Raised once to 252 KB for 0.52.0 (Enzo, 2026-11-25). Do not raise it again: on the next overflow, trim what the package ships.
+ */
+export const MAX_PACKED_BYTES = 252_000;
 
 /** The only paths the tarball may hold (package.json `files`, plus what npm always adds). */
 const ALLOWED = [
