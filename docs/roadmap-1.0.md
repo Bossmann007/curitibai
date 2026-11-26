@@ -235,3 +235,7 @@ published; a Mesa Solidária's WhatsApp landline is kept, and the notes say some
 publish no phone or hours. The office person-line filter gains more roles and no longer hides a CEI's hours after a
 "Responsável …:" line (v0.59 review). 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers
 131 of 135 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.60.1 the facility source is simpler with no change in behaviour: one record builder and one options argument
+replace the copied literals in `src/sources/geocuritiba.ts` (300 lines removed, 151 added). The citizen eval still
+answers 131 of 135 questions.

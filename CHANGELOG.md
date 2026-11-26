@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.60.1 - 2026-11-26
+
+A simpler `city_facilities_search` source after twenty feature releases (0.41.0 to 0.60.0). 27 tools. Publishes
+nothing. No tool, input, output, note or error changes: every type's output is byte-identical to 0.60.0.
+
+- `src/sources/geocuritiba.ts`: one `facility(name, fields)` builder gives every record its 17 fields in output order,
+  in place of five full literals (equipment, private address, voting, park, bike); the Linha Turismo items in
+  `src/tools/cityFacilitiesSearch.ts` use it too, and one `item()` drops the internal `paths` for both.
+- `FACILITY_TYPES`: each entry passes its options to `equipment()` instead of spreading it and overriding fields; the
+  `mixed` flag is the `mixedOwnership` option; the shelter and person-in-charge line filters are one shared option
+  each (`HIDE_SHELTER`, `HIDE_PERSON`) instead of the same two fields repeated.
+- 300 lines removed and 151 added in `src/`. Pinned by a script outside the repository that ran every type against
+  every GeoCuritiba fixture (22,200 outputs, `parseLayer` and `facilitiesResult`, plus the type list and Linha Turismo
+  results) before and after: same SHA-1. Tool contract snapshot unchanged; citizen eval 131 of 135, as in 0.60.0.
+- No new network host, no new dependency; docs/sources.md is unchanged.
+
 ## 0.60.0 - 2026-11-26
 
 Food security, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
