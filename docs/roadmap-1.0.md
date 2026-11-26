@@ -258,3 +258,8 @@ IPPUC's urban-equipment layers 150, 151, 149 and 152 (12 SINE units, the state A
 Ofícios, 4 INSS agencies), address, hours and public contacts as published; the notes say vacancies, courses and
 INSS benefits are not in this tool and name Meu INSS and the 135 as text. 18 Curitiba App rows, 16 covered (7 data, 9
 guide). The citizen eval answers 132 of 136 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.65.0 (phase B) `place_at_point` part `place` has a `pgv` field: the IPTU Planta Genérica de Valores 2025
+micro-region of a point (fiscal zone, micro-bairro and micro-region codes as published, IPPUC's PGV layer 0); never a
+land or property value (`vukt` is not read) and never a lot. The citizen eval answers 133 of 137 questions; 4 are gaps
+(real-time buses 2, other cities 2).

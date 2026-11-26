@@ -4490,9 +4490,89 @@
                       ],
                       "description": "Nearest street line within 100 m, straight-line distance; null when none."
                     },
+                    "pgv": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "micro_regions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "zone_code": {
+                                    "description": "PGV fiscal zone code as published (sg_zona), e.g. \"EE\"; not the zoning of `zoning`.",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "zone_name": {
+                                    "description": "PGV fiscal zone name as published (nm_zona).",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "bairro": {
+                                    "description": "Bairro as the PGV layer names it (nm_bairro).",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "microbairro": {
+                                    "description": "Micro-bairro code as published (cd_microbairro), e.g. \"27.0\".",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "microregion": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Micro-region code inside the zone and micro-bairro (cd_microrregiao); 0 is a code."
+                                  }
+                                },
+                                "required": [
+                                  "zone_code",
+                                  "zone_name",
+                                  "bairro",
+                                  "microbairro",
+                                  "microregion"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Distinct rows, at most 5 (more than one on a boundary); empty when no polygon contains the point."
+                            },
+                            "source_url": {
+                              "type": "string",
+                              "format": "uri"
+                            }
+                          },
+                          "required": [
+                            "micro_regions",
+                            "source_url"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "IPTU Planta Genérica de Valores 2025 micro-region (IPPUC layer 0); null when not read or not asked (outside Curitiba)."
+                    },
                     "partial": {
                       "type": "boolean",
-                      "description": "True when the zoning or street layer could not be read; that field is then null."
+                      "description": "True when the zoning, street or PGV layer could not be read; that field is then null."
                     },
                     "source": {
                       "type": "string"
@@ -4515,6 +4595,7 @@
                     "boundary",
                     "zoning",
                     "nearest_street",
+                    "pgv",
                     "partial",
                     "source",
                     "source_url",
@@ -4526,7 +4607,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Bairro, regional, zoning and nearest street; null when not in `include` or not read (then `partial` is true and `notes` says why)."
+              "description": "Bairro, regional, zoning, nearest street and IPTU PGV micro-region; null when not in `include` or not read (then `partial` is true and `notes` says why)."
             },
             "service_areas": {
               "anyOf": [

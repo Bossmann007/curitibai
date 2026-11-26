@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.65.0 - 2026-11-26
+
+IPTU Planta Genérica de Valores micro-region at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `place_at_point` part `place`: new field `pgv`, the PGV 2025 micro-region that contains the point, from IPPUC's
+  GeoCuritiba `Publico_GeoCuritiba_Planta_Generica_Valores` layer 0 (1,062 polygons, read on 2026-11-26):
+  `micro_regions` with `zone_code`, `zone_name`, `bairro`, `microbairro` and `microregion` as published (distinct, at
+  most 5; 0 is a code), and `source_url`. One more point query, read last so the call budget cuts it first; a failure
+  leaves `pgv` null and the part `partial`. The note says the micro-region is not a property value or an IPTU amount.
+  `vukt` and `cod_vukt` (a land unit value with no published unit or use) are never requested, and no lot is read.
+- The missing-layers note lists several layers ("the zoning, street and PGV layers").
+- Tool contract: the description, the `place` part and its `pgv` field (snapshot updated).
+- Citizen eval: q137 ("Em qual microrregião da Planta Genérica de Valores do IPTU fica o Portão?") answered, with a
+  synthetic fixture; 133 of 137.
+- No new network host, no new link, no new dependency.
+
 ## 0.64.0 - 2026-11-26
 
 Work services, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
