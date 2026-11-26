@@ -1510,8 +1510,10 @@ describe("v0.58.0: Rodoferroviária and administrações regionais", () => {
     const out = await search({ type: "administracao regional", name: "inventada" });
     expect(out.data).toMatchObject({ total: 2 });
     const one = out.data.items[0]!;
+    // The protocolo number (3333-5813) is masked in `hours` and is not in `telefone`: the note must not send the reader to `phones` for it.
     expect(one.phones).toEqual(["(41) 3333-5799", "(41) 3333-5826"]);
-    expect(one.hours.slice(0, 3)).toEqual(["Atendimento Geral:", "-2ª a 6ª feira, das 8h às 18h.", "Atendimento Protocolo:"]);
+    expect(one.hours.slice(0, 4)).toEqual(["Atendimento Geral:", "-2ª a 6ª feira, das 8h às 18h.", "Atendimento Protocolo:", "-Telefone: [masked]"]);
+    expect(out.note).toMatch(/masked and may not be in `phones`: call the office or the 156/);
     const bairros = one.hours.slice(5).join(" ");
     expect(bairros).toMatch(/^Bairros de abrangência: .*Bairro Inventado Sete\.$/);
     expect(one.hours.every((l) => l.length <= 160)).toBe(true);

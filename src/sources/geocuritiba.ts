@@ -208,14 +208,14 @@ const BUS_STATION_NOTE =
   "fares are not in this tool: ask the bus company or the terminal, or see https://www.urbs.curitiba.pr.gov.br/. " +
   "The rail side is type `ferroviaria`; city buses to it: bus_route_between.";
 const RAIL_STATION_NOTE =
-  "The Terminal Ferroviário de Curitiba (the rail side of the Rodoferroviária) as listed by IPPUC; hours and phone as " +
-  "published by season (see `updated`): the layer does not say which season applies, so call before going. Its " +
+  "The Terminal Ferroviário de Curitiba (the rail side of the Rodoferroviária) as listed by IPPUC; hours as published " +
+  "by season (see `updated`): the layer does not say which season applies, so call before going. Its " +
   "e-mail is the train operator's and is not shown. Train times and tickets are not in this tool.";
 const REGIONAL_OFFICE_NOTE =
   "The Prefeitura's Administrações Regionais (one per regional) as listed by IPPUC; hours and the bairros each one " +
   "serves are in `hours` as published (see `updated`). `bairro` filters by where an office is, not by the bairros it " +
   "serves: list them all and read the \"Bairros de abrangência\" line, or use place_at_point for a point's regional. " +
-  "A phone inside `hours` is masked: use `phones`.";
+  "A phone inside `hours` (the protocolo line) is masked and may not be in `phones`: call the office or the 156.";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b";

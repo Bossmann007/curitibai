@@ -1388,8 +1388,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
     one landline is kept. No train times or tickets.
   - 15: 10 records, one Administração Regional per regional, each inside a Rua da Cidadania; updated 2025-06-06 (one
     2025-11-18). Each `observacao` has general and protocolo hours ("2ª a 6ª feira, das 8h às 18h", Tatuquara to
-    17h), a "-Telefone: (41) …" protocolo line, which the unchanged free-text mask shows as "[masked]" (the note says
-    to use `phones`), and a "Bairros de abrangência" line; two of those (Matriz, Santa Felicidade) are over 160 characters, so the type sets
+    17h), a "-Telefone: (41) …" protocolo line, which the unchanged free-text mask shows as "[masked]"; it is not always among the
+    record's `telefone` landlines (Tatuquara's is not), so the note says it may not be in `phones`, and a "Bairros de abrangência" line; two of those (Matriz, Santa Felicidade) are over 160 characters, so the type sets
     `wrapLines`. One record adds its former address. Landlines and `@curitiba.pr.gov.br` e-mails only.
   - No person's name, mobile or personal e-mail in the 12 records. Aliases: `rodoferroviaria`, `rodoviaria de
     curitiba`, `rodoferroviaria de curitiba`, `terminal rodoviario`, `terminal rodoviario de curitiba`; `terminal

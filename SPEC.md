@@ -31,7 +31,8 @@ What the read showed and how this version handles it:
   `serraverdeexpress.com.br`, a private train operator's domain (dropped by the unchanged e-mail filter). The note says
   the layer does not say which season applies and that train times and tickets are not in this tool.
 - Each Administração Regional lists general and protocolo hours, a "-Telefone: …" protocolo line (masked by the
-  unchanged free-text phone mask; the record's `telefone` field gives its landlines in `phones`) and a "Bairros de
+  unchanged free-text phone mask; in at least one live record that number is not in `telefone`, so the note says
+  it may not be in `phones`) and a "Bairros de
   abrangência" line; two of those lines are over 160 characters: `wrapLines`.
 - No person's name, mobile or personal e-mail in the 12 records.
 
@@ -47,10 +48,10 @@ What the read showed and how this version handles it:
 2. **Notes**: `rodoviaria`: the hours are the terminal's, as published, not departures; intercity and interstate
    departures, platforms and fares are not in this tool (ask the bus company or the terminal, or see
    https://www.urbs.curitiba.pr.gov.br/); the rail side is type `ferroviaria`; city buses to it: `bus_route_between`.
-   `ferroviaria`: hours and phone as published by season, the layer does not say which season applies, its e-mail is
+   `ferroviaria`: hours as published by season, the layer does not say which season applies, its e-mail is
    the train operator's and not shown, no train times or tickets. `administracao regional`: one per regional, hours
    and the bairros each serves as published, `bairro` filters by where the office is, a phone inside `hours` is masked
-   (use `phones`), for a point's regional `place_at_point`.
+   and may not be in `phones` (call the office or the 156), for a point's regional `place_at_point`.
 3. **Eval**: new q133 "Qual o endereço e o horário da Rodoferroviária de Curitiba?" → `city_facilities_search`
    `{type: "rodoferroviaria"}`, synthetic fixture `test/fixtures/geocuritiba/rodoviaria_synthetic.json`. Tool
    contract snapshot updated (the `type` description).
