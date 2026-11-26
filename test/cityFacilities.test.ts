@@ -1377,6 +1377,17 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
     expect(lines("Fulana de Tal mei")).toEqual([HIDDEN_MAINTAINER_LINE]);
     expect(lines("Responsável pelo atendimento, horário:\n-2ª a 6ª feira, das 7h às 18h")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h"]);
   });
+
+  it("v0.55.0: address, phone, period, vagas and berçário lines stay; service words match whole words only", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    for (const next of ["Av. Brasil, 100", "Avenida Brasil, 100", "Fone 3333-4444", "Período parcial", "Vagas pelo 156", "Berçário ao pré", "Horários das 7h às 18h"]) {
+      expect(lines(`Mantenedora: Associação X\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next.replace("3333-4444", "[masked]")]);
+    }
+    for (const rest of ["Ruas Telles", "Tal Integral"]) {
+      expect(lines(`Mantenedora: Fulana\n${rest}\nNão abre em feriados`)).toEqual([HIDDEN_MAINTAINER_LINE, "Não abre em feriados"]);
+    }
+  });
 });
 
 describe("requests to the GeoCuritiba host", () => {
