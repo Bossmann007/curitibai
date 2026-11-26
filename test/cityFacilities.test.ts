@@ -830,7 +830,7 @@ describe("city_facilities_search", () => {
     }
   });
 
-  it("v0.51.0: registry offices in Centro come back with hours as published, the office's trade-name line and personal contacts dropped", async () => {
+  it("v0.51.0: registry offices in Centro come back with hours as published, the office's trade-name line replaced by a marker and personal contacts dropped", async () => {
     const calls = stubFetch(route("cartorio de registro civil", "cartorio_de_registro_civil_synthetic.json"));
     const out = await search({ type: "cartorio de registro civil", bairro: "centro" });
     expect(calls).toHaveLength(1);
@@ -875,10 +875,13 @@ describe("city_facilities_search", () => {
     expect(hours("Atendimento:\n-2ª a 6ª feira, das 8h30 às 17h30\nPlantão aos sábados.")).toEqual([
       "Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", "Plantão aos sábados.",
     ]);
+    expect(hours("Cartório Taborda.\nCartório de plantão aos sábados.\nAtendimento:\nCartório Fechado.")).toEqual([
+      HIDDEN_NAME_LINE, "Atendimento:", HIDDEN_NAME_LINE,
+    ]);
     expect(HIDDEN_NAME_LINE.length).toBeLessThanOrEqual(160);
   });
 
-  it("v0.51.0: the registry line check stays fast on long ambiguous lines (the 5aecd4d regex was exponential)", () => {
+  it("v0.51.0: the registry line check stays fast on long ambiguous lines (regression guard: the first dropLine regex was exponential)", () => {
     const t = type("cartorio de registro civil");
     const start = performance.now();
     for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {

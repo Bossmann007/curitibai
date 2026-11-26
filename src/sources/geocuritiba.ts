@@ -690,7 +690,7 @@ export const HIDDEN_NAME_LINE = "[a line about the cartório is not shown: it ca
  * A registry line that may name a person (v0.51.0): any line that mentions "cartório" (any case, anywhere), like the
  * trade-name line "Cartório Taborda." every record ends with. When read, no other line mentioned it. A notice that
  * does ("Cartório Fechado.", "-Cartório Souza, plantão das 9h às 12h") is hidden too, visibly (HIDDEN_NAME_LINE), so no
- * surname is guessed past. One fixed linear test.
+ * surname is guessed past. A plain substring regex, linear; hourLines merges consecutive markers.
  */
 export function isRegistryNameLine(line: string): boolean {
   return /cart[oó]rio/iu.test(line);
@@ -712,7 +712,9 @@ export function hourLines(
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
-      if (t !== "") lines.push(hide?.(t) ? HIDDEN_NAME_LINE : t);
+      if (t === "") continue;
+      if (!hide?.(t)) lines.push(t);
+      else if (lines[lines.length - 1] !== HIDDEN_NAME_LINE) lines.push(HIDDEN_NAME_LINE);
     }
   }
   if (lines.length <= max) return lines;

@@ -50,9 +50,14 @@ What the read showed and how this version handles it:
    - `forum` (106, "Fórum"), alias `foruns`.
    No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias (other kinds of cartório exist; registro de
    imóveis is a later item). None of the new names is used by another type (the uniqueness test checks it).
-2. **Two optional `FacilityType` fields**, used only by these types: `hideLine` (a function; for the registry type `isRegistryNameLine`: any line that mentions "cartório" (any case, anywhere) is replaced by the marker "[a line about the cartório is not shown: it can carry a person's name or a notice; ask the office]" (new optional `hideLine`; one fixed linear check, no backtracking regex), so no surname is shown and nothing is cut silently; a notice that mentions the cartório ("Cartório Fechado.", "Cartório de plantão aos sábados, das 9h às 12h.") is hidden the same visible way. When read, only the trade-name lines mentioned it) and `wrapLines` (split a line longer than 160 characters
-   after its commas and semicolons; a part
-   longer than that is still cut with "…"). Masking is unchanged and runs on every part.
+2. **Two optional `FacilityType` fields**, used only by these types:
+   - `hideLine` (a function): an `observacao` line for which it returns true is replaced, after cleaning, by the
+     marker "[a line about the cartório is not shown: it can carry a person's name or a notice; ask the office]";
+     consecutive markers are merged, so nothing is cut silently. The registry type uses `isRegistryNameLine`: any line
+     that mentions "cartório" (any case, anywhere), a plain substring regex, linear. A notice that mentions the cartório
+     ("Cartório Fechado.") is hidden the same visible way; when read, only the trade-name lines mentioned it.
+   - `wrapLines`: a line longer than 160 characters is split after its commas and semicolons; a part longer than that
+     is still cut with "…". Masking is unchanged and runs on every part.
 3. **Notes** (no lead note):
    - registry: the offices IPPUC's layer lists, as published, not necessarily every registry office in
      Curitiba; hours as published (see `updated`); prices, deadlines and which office holds a given record are not in
