@@ -1808,10 +1808,33 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
     expect(lines(kept.join("\n"))).toEqual(kept);
     expect(lines([head, ...kept].join("\n"))).toEqual([head, ...kept]);
     expect(lines(["Dona Maria cuida da horta", ...kept].join("\n"))).toEqual([HIDDEN_PERSON_LINE, ...kept]);
-    for (const l of ["Coordenada pela Associação de Moradores Inventada", "A coordenação da horta é da associação"]) {
+    // the kept contact line does not turn a field with no person line into the marker, and a name after it is hidden
+    expect(lines("Contato pelo e-mail da secretaria\n-Área de plantio em canteiros: 590 m²")).toEqual(["Contato pelo e-mail da secretaria", "-Área de plantio em canteiros: 590 m²"]);
+    expect(lines(`${head}\nContato pelo e-mail da secretaria\nHorta com 20 canteiros`)).toEqual([head, "Contato pelo e-mail da secretaria", "Horta com 20 canteiros"]);
+    expect(lines("Contato pelo e-mail da secretaria.\nFulana de Tal").join(" ")).not.toMatch(/Fulana/);
+    for (const l of [
+      "Coordenada pela Associação de Moradores Inventada",
+      "Cuidada pela comunidade",
+      "A coordenação da horta é da associação",
+      "A Associação de Moradores cuida da horta",
+      "A SMSAN coordena os mutirões",
+    ]) {
       expect(t.hideLine!(l)).toBe(false);
     }
-    for (const l of ["Contato pelo e-mail da secretaria Fulana", "Contato pelo e-mail da secretaria: Fulana", "Contato pelo e-mail fulana@example.com", "Contato: Dona Maria", "Bairro: Centro, zeladora Dona Maria cuida"]) {
+    for (const l of [
+      "Contato pelo e-mail da secretaria Fulana",
+      "Contato pelo e-mail da secretaria: Fulana",
+      "Contato pelo e-mail fulana@example.com",
+      "Contato: Dona Maria",
+      "Bairro: Centro, zeladora Dona Maria cuida",
+      "Coordenada pela Maria Souza",
+      "Coordenada pelo João",
+      "Cuidada pela Dona Maria",
+      "Canteiro: Dona Maria",
+      "Plantio: Seu João",
+      "Pomar: Dona Maria",
+      "Fulana, que cuida da horta",
+    ]) {
       expect(t.hideLine!(l)).toBe(true);
     }
   });
