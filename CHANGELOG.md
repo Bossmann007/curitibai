@@ -6,10 +6,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Hardens the `cei contratado` maintainer filter from 0.53.0. 27 tools. Publishes nothing.
 
-- `city_facilities_search` `cei contratado`: the marker now also replaces "Mantida pela/pelo …", "… - MEI",
-  "Responsável:" and "Diretora:" lines, a bare label without ":" ("Mantenedora") and the line after it, and the rest
-  of a name split over lines (the next line, unless it starts with a digit or "-" or has a ":"). Hide only; the shelter and cartório checks
-  are unchanged.
+- `cei contratado`: the marker also replaces "Mantida pela/pelo", "MEI", "Responsável" and "Diretora" lines, a bare
+  label without ":" and the line after it, and one more line of a split name (a third stays visible). Hide only.
 - No contract change, no new host or link. Eval: 127 of 131, unchanged.
 
 ## 0.53.0 - 2026-11-26

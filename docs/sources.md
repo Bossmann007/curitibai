@@ -1355,8 +1355,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
     named after a person: for this type every line that mentions "mantenedor", "mantido/a por/pela/pelo",
     "proprietário/a", "responsável", "diretor/a", "eireli" or "ltda" (any case or accent) or the word "ME" or "MEI"
     (plain regexes, linear), the line after a bare label (the keyword alone, with or without ":"), and, since v0.54.0,
-    the one line after a hidden line unless it starts with a digit or "-" or has a ":" (the rest of a name), is
-    replaced by the marker "[the maintainer line is not shown: it can carry a person's name]". E-mails at
+    the one line after a hidden line not ending in "." or a firm suffix when it looks like the rest of a name (up to 4
+    words before a digit or ",", no ":", no hours or service word), is replaced by the marker "[the maintainer line is not shown: it can carry a person's name]". E-mails at
     gmail, hotmail, yahoo and other private domains, and mobiles, are dropped by the unchanged filters; the kept
     e-mails are unit mailboxes at `educacao.curitiba.pr.gov.br`. The note says the listing does not confirm
     Vale-Creche accreditation and points to `city_service_guide` (`creche`, `vale_creche`); no link is added.
