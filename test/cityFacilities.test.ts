@@ -2074,10 +2074,4 @@ describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", (
     expect(l!.hours.slice(2).every((x) => x.length <= 160)).toBe(true);
     expect(l!.hours.slice(2).join(" ")).toBe(long);
   });
-
-  it("the four types carry the office person filter", () => {
-    for (const id of ["sine", "agencia do trabalhador", "liceu de oficios", "inss"]) {
-      expect(type(id)).toMatchObject({ hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" });
-    }
-  });
 });

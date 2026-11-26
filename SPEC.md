@@ -50,7 +50,7 @@ What the read showed and how this version handles it:
    - `liceu de oficios` (149), aliases `liceu`, `liceus`, `liceus de oficios`, `liceu de oficio`; `wrapLines`.
    - `inss` (152), aliases `agencia do inss`, `agencias do inss`, `agencia da previdencia social`, `agencias da
      previdencia social`, `previdencia social`.
-2. **Notes**: SINE (named after the Rua da Cidadania, search by `name`; SINE Móvel has no fixed place; Economia
+2. **Notes**: SINE (named after the Rua da Cidadania, search by `name`; when read, no address for the SINE Móvel; Economia
    Popular Solidária is in the layer; vacancies and anyone's registration are not in this tool; the state agency is
    `agencia do trabalhador`); Agência do Trabalhador (state agency; its e-mail is not shown; vacancies are not in this
    tool; the city units are `sine`); Liceu (free courses; enrolment and course lists are not in this tool); INSS

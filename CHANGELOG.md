@@ -11,8 +11,8 @@ Work services, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   `liceu de oficios` (149, 16; aliases `liceu`, `liceus`) and `inss` (152, 4; aliases `agencia do inss`, `agencia da
   previdencia social`). Address, hours and public contacts as published, with the offices' person-line filter. The
   SINE note says units are named after their Rua da Cidadania, not always the bairro, so search by `name`
-  ("pinheirinho"); that the SINE Móvel has no fixed place and no address; and that vacancies and anyone's
-  registration are not in this tool. The Agência do Trabalhador's e-mail is not a city address and is not shown. A
+  ("pinheirinho"); that when read the layer published no address for the SINE Móvel, which moves daily; and that vacancies and anyone's
+  registration are not in this tool. When read, the Agência do Trabalhador's e-mail was not a city address and was not shown. A
   Liceu hours line over 160 characters is split at commas, not cut. The INSS lead note says it is a federal service
   whose benefits and appointments go through Meu INSS or the 135 (named, not linked) and that the tool does not
   book; the 135 is kept in `phones`.

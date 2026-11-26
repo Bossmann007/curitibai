@@ -252,13 +252,13 @@ const FOOD_SECURITY_OFFICE_NOTE =
 const SINE_NOTE =
   "The Prefeitura's SINE units (job placement), as listed by IPPUC; hours as published (see `updated`). Units are " +
   "named after their Rua da Cidadania, not always the bairro they are in: search by `name` (e.g. \"pinheirinho\"). " +
-  "The SINE Móvel has no fixed place (the layer says it goes to a different point each day): no address. The layer " +
+  "When read, the layer published no address for the SINE Móvel, which it says goes to a different point each day. The layer " +
   "also lists the Economia Popular Solidária office. Vacancies and anyone's registration are not in this tool. The " +
   "Paraná state agency is type `agencia do trabalhador`.";
 /** v0.64.0. Layer 151 read on 2026-11-26: one record; its e-mail is on a state domain and is dropped. */
 const WORKER_AGENCY_NOTE =
-  "The Paraná state Agência do Trabalhador in Curitiba, as listed by IPPUC; hours as published (see `updated`). Its " +
-  "e-mail is not a city address and is not shown: call. Vacancies and anyone's registration are not in this tool. " +
+  "The Paraná state Agência do Trabalhador in Curitiba, as listed by IPPUC; hours as published (see `updated`). When " +
+  "read, its e-mail was not a city address and was not shown: call. Vacancies and anyone's registration are not in this tool. " +
   "The Prefeitura's units are type `sine`.";
 /** v0.64.0. Layer 149 read on 2026-11-26: 16 records; one hours line about 330 characters (wrapLines). */
 const LICEU_NOTE =
