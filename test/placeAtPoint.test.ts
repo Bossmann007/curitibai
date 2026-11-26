@@ -219,6 +219,8 @@ describe("place_at_point answers", () => {
     stubFetch(routes({ pgv: { body: EMPTY } }));
     const out = await place();
     expect(out.data).toMatchObject({ pgv: { micro_regions: [] }, partial: false });
+    expect(out.note).toMatch(/No PGV micro-region polygon contains this point/);
+    expect(out.note).not.toMatch(/not a property value/);
   });
 
   it("a PGV failure is partial with the rest kept", async () => {

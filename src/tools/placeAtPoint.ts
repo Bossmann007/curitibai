@@ -210,7 +210,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
     inside ? "" : "No Curitiba neighbourhood contains this point (it may be in a neighbouring city); nothing else was asked.",
     b.boundary ? "The point is on a neighbourhood boundary; `bairro` is the first by name." : "",
     (zoning?.length ?? 0) > 1 ? "The point touches more than one zone (a boundary)." : "",
-    pgv === null ? "" : PGV_NOTE,
+    pgv === null ? "" : pgv.micro_regions.length === 0 ? "No PGV micro-region polygon contains this point." : PGV_NOTE,
     (pgv?.micro_regions.length ?? 0) > 1 ? "The point touches more than one PGV micro-region (a boundary)." : "",
     missing.length > 0
       ? `Partial: the ${listed(missing)} ${missing.length > 1 ? "layers" : "layer"} could not be read now. ${missingNote(errors)}`

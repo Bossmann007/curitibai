@@ -37,7 +37,7 @@ What the read showed and how this version handles it:
    bairro, microbairro, microregion}], source_url}`; rows distinct, at most 5; `microregion` an integer or null (0 is
    kept); `[]` when no polygon contains the point; `pgv` null when outside Curitiba or not read (then `partial`). Read
    last, after the street, so the call budget cuts it first. Note: the micro-region is not a property value or an IPTU
-   amount; a boundary note when more than one row. The missing-layers note lists several layers ("the zoning, street
+   amount (when no row: a note saying no polygon contains the point); a boundary note when more than one row. The missing-layers note lists several layers ("the zoning, street
    and PGV layers"). Tool description names the micro-region and stays under 400 characters.
 3. **Eval**: new q137 → `place_at_point` `{lat: -25.4766, lon: -49.2925, include: ["place"]}`, synthetic PGV answer
    in `test/eval/world.ts`. Tool contract snapshot updated.
