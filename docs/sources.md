@@ -1220,7 +1220,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     19h"). The layer has **no appointment field**: 11 of 12 `observacao` texts end with "Necessário agendamento
     prévio para atendimento.", returned in `hours` as published; the note says a record without that line does not
     mean no appointment is needed. Three posts (Tatuquara, CIC, Cajuru) publish "2ª e 6ª feira",
-    kept as written; the note says to call before going. Posts are named after their Rua da Cidadania, which is not
+    kept as written; the note says to call before going. Most posts are named after their Rua da Cidadania, which is not
     always the bairro (Pinheirinho in Capão Raso, Bairro Novo in Sítio Cercado, Boa Vista in Bacacheri).
   - **E-mails are not returned for this type.** Five records publish an `ii.pr.gov.br` address; the e-mail allowlist
     keeps `curitiba.pr.gov.br` only and is unchanged, so `emails` is empty. Phones are Curitiba landlines and are kept.

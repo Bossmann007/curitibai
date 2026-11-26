@@ -133,8 +133,9 @@ const IDENTIFICATION_NOTE =
   "The Instituto de Identificação do Paraná's posts in Curitiba as listed by IPPUC. Days, hours and the appointment " +
   "line are in `hours` as published (see `updated`); a record with no appointment line does not mean no appointment " +
   "is needed, and the head office's hours are administrative, so being listed does not mean a place issues the " +
-  "card. Some posts publish \"2ª e 6ª feira\", kept as written: call before going. Posts are named after their Rua " +
-  "da Cidadania, which is not always the bairro: filter by `bairro` or `near`.";
+  "card. Some posts publish \"2ª e 6ª feira\", kept as written: call before going. `open_periods` are the layer's " +
+  "flags for periods of the day, not days, and `hours` the detail; they do not always agree. Most posts are named " +
+  "after their Rua da Cidadania, which is not always the bairro: filter by `bairro` or `near`.";
 
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -173,7 +174,7 @@ export interface FacilityType {
   credit?: string;
   /** A sentence added to the result's note for this type. */
   note?: string;
-  /** A sentence put first in the result's note, before the general one (the emergency types, v0.45.0). */
+  /** A sentence put first in the result's note, before the general one (the emergency numbers since v0.45.0; the RG booking channel, v0.50.0). */
   leadNote?: string;
   /** Lines of `observacao` kept (default MAX_HOUR_LINES); a longer text ends with a line saying how many were cut. */
   maxHourLines?: number;
@@ -373,7 +374,8 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   // "documento" or "cin" alias.
   {
     ...equipment("instituto de identificacao", 168, "Instituto de Identificação do Paraná", [
-      "instituto de identificacao do parana", "rg", "carteira de identidade", "posto de identificacao",
+      "instituto de identificacao do parana", "rg", "carteira de identidade", "carteira de identidade nacional",
+      "posto de identificacao",
       "postos de identificacao",
     ]),
     note: IDENTIFICATION_NOTE,

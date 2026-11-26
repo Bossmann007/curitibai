@@ -31,15 +31,16 @@ only, IPPUC cited, like the other GeoCuritiba layers). No new host. Details:
 1. **Type** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
    e-mail allowlist as the other urban-equipment layers: `instituto de identificacao` (168, label "Instituto de
    Identificação do Paraná"), aliases `instituto de identificacao do parana`, `rg`, `carteira de identidade`,
-   `posto de identificacao`, `postos de identificacao`. No bare `identidade`, `documento` or `cin` alias (checked:
+   `carteira de identidade nacional`, `posto de identificacao`, `postos de identificacao`. No bare `identidade`, `documento` or `cin` alias (checked:
    none of these aliases is used by another type).
 2. **Notes**. Lead: "Appointments are booked through the Paraná state Instituto de Identificação's channels (not
    linked by this tool); this tool lists places, it does not book." Type note: the posts of the Instituto de
    Identificação do Paraná in Curitiba as listed by IPPUC; days, hours and the appointment line are in `hours` as
    published (see `updated`); a record with no appointment line does not mean no appointment is needed, and the head
    office's hours are administrative, so being listed does not mean a place issues the card; some posts publish "2ª
-   e 6ª feira", kept as written, so call before going; posts are named after their Rua da Cidadania, which is not
-   always the bairro: filter by `bairro` or `near`.
+   e 6ª feira", kept as written, so call before going; `open_periods` are periods of the day, not days, and do not
+   always agree with `hours`; most posts are named after their Rua da Cidadania, which is not always the bairro:
+   filter by `bairro` or `near`.
 3. **Privacy filters unchanged**: the layer's `ii.pr.gov.br` e-mails are dropped by the `curitiba.pr.gov.br`-only
    allowlist, so `emails` is empty; docs say so. Phones are Curitiba landlines and are kept.
 4. **Descriptions**: the `type` parameter description names `"instituto de identificacao"` (or `"rg"`). Tool

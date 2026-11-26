@@ -759,6 +759,7 @@ describe("city_facilities_search", () => {
     ["Instituto de Identificação do Paraná", 168],
     ["RG", 168],
     ["carteira de identidade", 168],
+    ["Carteira de Identidade Nacional", 168],
     ["posto de identificação", 168],
   ] as const)("v0.50.0: %s maps to instituto de identificacao (layer %i)", (input, layer) => {
     expect(resolveType(input)).toMatchObject({ id: "instituto de identificacao", layerUrl: `${EQUIPMENT}/${layer}` });
@@ -790,6 +791,7 @@ describe("city_facilities_search", () => {
     )).toBe(true);
     expect(out.note).toMatch(/no appointment line does not mean no appointment is needed/);
     expect(out.note).toMatch(/"2ª e 6ª feira", kept as written/);
+    expect(out.note).toMatch(/`open_periods` are the layer's flags for periods of the day, not days/);
     expect(out.note).not.toMatch(/https?:|www\.|ii\.pr\.gov\.br/);
   });
 

@@ -7,7 +7,7 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Where to get an RG (Instituto de Identificação), phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
 
 - `city_facilities_search`: new `type` `instituto de identificacao` (aliases `instituto de identificacao do parana`,
-  `rg`, `carteira de identidade`, `posto de identificacao`, `postos de identificacao`), read live from IPPUC's
+  `rg`, `carteira de identidade`, `carteira de identidade nacional`, `posto de identificacao`, `postos de identificacao`), read live from IPPUC's
   GeoCuritiba urban-equipment layer 168 "Instituto de Identificação do Paraná" with the same fields, filters, host
   gate, cache and phone and e-mail allowlist as the other layers (12 records when read on 2026-11-25: the head office,
   the Central post, nine posts in Ruas da Cidadania and one in a shopping centre). No bare `identidade`, `documento` or
@@ -17,7 +17,7 @@ Where to get an RG (Instituto de Identificação), phase B of the 1.0 roadmap. 2
   (three posts) is kept as written. The note starts "Appointments are booked through the Paraná state Instituto de
   Identificação's channels (not linked by this tool); this tool lists places, it does not book." and says that a
   record with no appointment line does not mean no appointment is needed, that the head office's hours are
-  administrative, to call before going, and that posts are named after their Rua da Cidadania, not always the bairro
+  administrative, to call before going, that `open_periods` (periods of the day) and `hours` do not always agree, and that most posts are named after their Rua da Cidadania, not always the bairro
   (filter by `bairro` or `near`). The state booking page is not linked (state host, not on the link allowlist).
 - E-mails: the layer publishes `ii.pr.gov.br` addresses; the e-mail allowlist (`curitiba.pr.gov.br` only) is
   unchanged, so `emails` is empty for every record. Phones are Curitiba landlines and are kept.
