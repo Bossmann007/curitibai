@@ -201,6 +201,21 @@ const SCHOOL_NOTE =
 const CEI_NOTE =
   "Private or non-profit centres contracted by the Prefeitura, as listed by IPPUC; this does not confirm Vale-Creche " +
   "accreditation (see city_service_guide `creche` and `vale_creche`). Hours as published; call before going.";
+/** v0.58.0. The URBS home page is the link the bus tools already return (busCommon.ts); never fetched. */
+const BUS_STATION_NOTE =
+  "The Terminal Rodoviário de Curitiba (the bus side of the Rodoferroviária) as listed by IPPUC; its hours are the " +
+  "terminal's, as published (see `updated`), not departures. Intercity and interstate departures, platforms and " +
+  "fares are not in this tool: ask the bus company or the terminal, or see https://www.urbs.curitiba.pr.gov.br/. " +
+  "The rail side is type `ferroviaria`; city buses to it: bus_route_between.";
+const RAIL_STATION_NOTE =
+  "The Terminal Ferroviário de Curitiba (the rail side of the Rodoferroviária) as listed by IPPUC; hours as published " +
+  "by season (see `updated`): the layer does not say which season applies, so call before going. Its " +
+  "e-mail is the train operator's and is not shown. Train times and tickets are not in this tool.";
+const REGIONAL_OFFICE_NOTE =
+  "The Prefeitura's Administrações Regionais (one per regional) as listed by IPPUC; hours and the bairros each one " +
+  "serves are in `hours` as published (see `updated`). `bairro` filters by where an office is, not by the bairros it " +
+  "serves: list them all and read the \"Bairros de abrangência\" line, or use place_at_point for a point's regional. " +
+  "A phone inside `hours` (the protocolo line) is masked and may not be in `phones`: call the office or the 156.";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b";
@@ -535,6 +550,28 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   // (Pinheirinho: 65 lines), so up to 80 lines are kept.
   { ...equipment("terminal", 157, "Terminal Urbano", ["terminais", "terminal urbano", "terminal de onibus", "terminais de onibus"]), maxHourLines: 80 },
   { ...equipment("terminal metropolitano", 158, "Terminal Metropolitano", ["terminais metropolitanos", "guadalupe"]), maxHourLines: 80 },
+  // Rodoferroviária and administrações regionais, added in v0.58.0 (read on 2026-11-26 UTC: 1, 1 and 10 records). No
+  // bare "regional", "terminal" (the urban bus terminals) or "trem" alias.
+  {
+    ...equipment("rodoviaria", 159, "Terminal Rodoviário", [
+      "rodoferroviaria", "rodoviaria de curitiba", "rodoferroviaria de curitiba", "terminal rodoviario",
+      "terminal rodoviario de curitiba",
+    ]),
+    note: BUS_STATION_NOTE,
+  },
+  {
+    ...equipment("ferroviaria", 160, "Terminal Ferroviário", [
+      "terminal ferroviario", "terminal ferroviario de curitiba", "estacao ferroviaria",
+    ]),
+    note: RAIL_STATION_NOTE,
+  },
+  {
+    ...equipment("administracao regional", 15, "Administração Regional", [
+      "administracoes regionais", "administracao regional de curitiba", "sede da regional",
+    ]),
+    note: REGIONAL_OFFICE_NOTE,
+    wrapLines: true,
+  },
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",

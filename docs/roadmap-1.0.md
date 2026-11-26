@@ -215,3 +215,9 @@ At v0.57.0 (phase B) `place_at_point` `areas: "registry"` names the circunscriç
 and the registro civil serviço whose area covers a point, with the legal basis as published (IPPUC's thematic layers
 15 and 16); not the office's address and not a certidão. The citizen eval answers 128 of 132 questions; 4 are gaps
 (real-time buses 2, other cities 2).
+
+At v0.58.0 (phase B) `city_facilities_search` `rodoviaria` (alias `rodoferroviaria`), `ferroviaria` and
+`administracao regional` read IPPUC's urban-equipment layers 159, 160 and 15 (1, 1 and 10 records), address, hours and
+landlines as published; the notes say the terminal's hours are not departures and that no departure time, platform,
+fare or ticket is given. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 129 of 133
+questions; 4 are gaps (real-time buses 2, other cities 2).

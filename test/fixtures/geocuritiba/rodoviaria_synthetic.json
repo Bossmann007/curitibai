@@ -1,0 +1,34 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada",
+    "nome_completo": "Terminal Rodoviário Inventado",
+    "nome_rua": "AV. INVENTADA DO LESTE",
+    "num_pred": "330",
+    "compl_end": "Complexo Rodoferroviário Inventado - CEP: 80.000-000",
+    "divulgar_endereco": "Sim",
+    "bairro": "Jardim Botânico",
+    "regional": "Matriz",
+    "func_manha": "Não",
+    "func_tarde": "Não",
+    "func_noite": "Não",
+    "func_24hr": "Sim",
+    "telefone": "(41) 3333-3000 / 3333-3232 / (41) 99999-3000",
+    "email": "rodoviaria@urbs.curitiba.pr.gov.br",
+    "dt_atualiz": 1792004939000,
+    "observacao": "Atendimento administrativo:\r\n-Diariamente, das 6h às 24h\r\nAtendimento operacional:\r\n-Diariamente, das 0h às 24h"
+   },
+   "geometry": {
+    "x": -49.257,
+    "y": -25.437
+   }
+  }
+ ]
+}

@@ -1,4 +1,4 @@
-# SPEC: v0.57.0 Registry areas at a point (registro civil and registro de imóveis)
+# SPEC: v0.58.0 Rodoferroviária and administrações regionais
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,55 +8,66 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Qual cartório de registro de imóveis atende uma casa
-no Batel?" with the circunscrição imobiliária and the registro civil serviço whose area covers the point, as IPPUC
-publishes them, with the legal basis field. The answer names the area only: no office address or phone (the layers
-have none), no certidão, no promise that the area is current.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Qual o endereço e o horário da Rodoferroviária de
+Curitiba?" with the Terminal Rodoviário IPPUC lists, its address, hours and landlines as published. Also list the
+Terminal Ferroviário (the rail side of the same complex) and the ten Administrações Regionais. The tool lists places
+only: it never gives a bus or train departure time, a platform, a fare or a ticket.
 
 ## Source (read 2026-11-26 UTC)
 
-IPPUC GeoCuritiba, `Publico_Interno_GeoCuritiba_BaseTematica/MapServer` (the thematic service `place_at_point`
-already reads), layers 16 "Registro Civil" (19 polygons, `returnCountOnly`) and 15 "Circunscrição Imobiliária" (12).
-robots.txt 404 (19:26:36 UTC); the layers' metadata has empty `copyrightText` and `description`, so no licence found
-(facts only, IPPUC cited, like the other GeoCuritiba layers). No new host, no new link. A point query in the Batel
-(-25.4425, -49.288) answered `servicos` "4º SERVIÇO DE REGISTRO CIVIL" with `fonte` "Leis Estaduais 4667/1962, 5409/1966,
-5481/1967, 5809/1968, 8894/1988 e Acordo 10156/2005" (layer 16) and `circunscricao` "6ª CIRCUNSCRIÇÃO" with `fonte`
-"Tribunal de Justiça, 1968" (layer 15). Layer 15 also has `created_user` and `last_edited_user` (user names) and both
-have a `nome` field (null in the sample; unknown content): none of them is ever requested.
+IPPUC GeoCuritiba, `Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer` (urban-equipment) layers 159 "Terminal
+Rodoviário" (1 record), 160 "Terminal Ferroviário" (1) and 15 "Administração Regional" (10). robots.txt 404
+(19:43:20 UTC); the layers' metadata has empty `copyrightText` and `description`, so no licence found (facts only,
+IPPUC cited, like the other GeoCuritiba layers). No new host. No new link: the `rodoviaria` note reuses the URBS home
+page link that the bus tools already return. Details:
+[docs/sources.md](docs/sources.md#city_facilities_search-ippuc-geocuritiba-urban-equipment-parks-and-bike-lanes).
+
+What the read showed and how this version handles it:
+
+- Hours are published for all 12 records (the queue's "hours may not be published" did not happen). The Rodoviária
+  publishes administrative hours (daily 6h to 24h) and operational hours (daily 0h to 24h): the terminal's hours, not
+  departures. The note says so.
+- The Ferroviária's hours are split into "alta temporada" and "baixa temporada" with no dates, and its e-mail is at
+  `serraverdeexpress.com.br`, a private train operator's domain (dropped by the unchanged e-mail filter). The note says
+  the layer does not say which season applies and that train times and tickets are not in this tool.
+- Each Administração Regional lists general and protocolo hours, a "-Telefone: …" protocolo line (masked by the
+  unchanged free-text phone mask; in at least one live record that number is not in `telefone`, so the note says
+  it may not be in `phones`) and a "Bairros de
+  abrangência" line; two of those lines are over 160 characters: `wrapLines`.
+- No person's name, mobile or personal e-mail in the 12 records.
 
 ## Changes
 
-1. **Layers** in `POINT_LAYERS` (`src/sources/geocuritiba.ts`): `property_registry` (15, `outFields`
-   `circunscricao,fonte`) and `civil_registry` (16, `servicos,fonte`). Same point query, host gate and cache.
-2. **Group** `registry` in `place_at_point` `areas` (`src/tools/placeAtPoint.ts`, `src/tools/serviceAreasAtPoint.ts`):
-   the property layer first; when it has no area, the bairro layer decides `inside_curitiba` (as `safety`); then the
-   civil layer, whose failure is only `partial`. New lists `property_registry` (`circumscription`, `legal_basis`) and
-   `civil_registry` (`service`, `legal_basis`), distinct, at most 3; null when the group was not asked. `legal_basis`
-   is `fonte` as published, kept up to 254 characters. 2 requests cold (3 when no property area contains the point).
-3. **`all` stays care and safety.** A cold `all` today fits its 5 requests in the 20 s call budget (5 s apart);
-   adding registry would cut the fire layer on every cold call. The enum and the docs say `all` is care and safety and
-   that `registry` is asked on its own.
-4. **Note**: the areas are as IPPUC publishes them with their legal basis and may have changed; they name the
-   registry that covers the point, not its address; they do not replace a certidão from the registry itself; for
-   registro civil office addresses and hours, `city_facilities_search` `cartorio de registro civil`.
-5. **Eval**: new q132 "Qual cartório de registro de imóveis atende uma casa no Batel?" → `place_at_point`
-   `{lat: -25.4425, lon: -49.288, include: ["service_areas"], areas: "registry"}`, expecting
-   `data.service_areas.property_registry.0.circumscription` and its `legal_basis`; synthetic bodies in
-   `test/eval/world.ts`. Tool contract snapshot updated.
-6. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.57.0, version 0.57.0 in
-   `package.json`, `package-lock.json`, `server.json`. The Curitiba App table has no registry row and is unchanged.
+1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`), same query, fields, host gate, cache and phone and
+   e-mail allowlist as the other urban-equipment layers:
+   - `rodoviaria` (159), aliases `rodoferroviaria`, `rodoviaria de curitiba`, `rodoferroviaria de curitiba`,
+     `terminal rodoviario`, `terminal rodoviario de curitiba`;
+   - `ferroviaria` (160), aliases `terminal ferroviario`, `terminal ferroviario de curitiba`, `estacao ferroviaria`;
+   - `administracao regional` (15), aliases `administracoes regionais`, `administracao regional de curitiba`,
+     `sede da regional`. No bare `regional`, `terminal` (already the urban bus terminals) or `trem`.
+2. **Notes**: `rodoviaria`: the hours are the terminal's, as published, not departures; intercity and interstate
+   departures, platforms and fares are not in this tool (ask the bus company or the terminal, or see
+   https://www.urbs.curitiba.pr.gov.br/); the rail side is type `ferroviaria`; city buses to it: `bus_route_between`.
+   `ferroviaria`: hours as published by season, the layer does not say which season applies, its e-mail is
+   the train operator's and not shown, no train times or tickets. `administracao regional`: one per regional, hours
+   and the bairros each serves as published, `bairro` filters by where the office is, a phone inside `hours` is masked
+   and may not be in `phones` (call the office or the 156), for a point's regional `place_at_point`.
+3. **Eval**: new q133 "Qual o endereço e o horário da Rodoferroviária de Curitiba?" → `city_facilities_search`
+   `{type: "rodoferroviaria"}`, synthetic fixture `test/fixtures/geocuritiba/rodoviaria_synthetic.json`. Tool
+   contract snapshot updated (the `type` description).
+4. **Docs and version**: docs/tools.md (reference row and "Which place tool"), docs/sources.md, README row,
+   docs/roadmap-1.0.md, CHANGELOG 0.58.0, version 0.58.0 in `package.json`, `package-lock.json`, `server.json`. The
+   Curitiba App table has no row for these and is unchanged.
 
 ## Out of scope
 
-Which tabelionato or office name holds a property's matrícula; office addresses or phones for registro de imóveis;
-certidões, prices or deadlines; mapping the circunscrição ordinal to a named office; adding registry to `all`; any
-new host or link.
+Bus or train departure times, platforms, fares or tickets (never fetched; no realtime ever); which regional covers an
+address beyond what `place_at_point` already says; unmasking phones in `hours`; any new host or link.
 
 ## Check
 
-- `npx vitest run test/serviceAreasAtPoint.test.ts test/placeFacade.test.ts test/contracts.test.ts test/eval`: the
-  registry layers are asked with `outFields` `circunscricao,fonte` and `servicos,fonte` only (no `created_user`,
-  `last_edited_user` or `nome`); `areas: "registry"` returns both lists in 2 requests; outside Curitiba the civil layer
-  is not asked; a civil-layer failure is partial; `all` still asks care and safety only; q132 answered.
-- `node scripts/eval-summary.mjs`: `answered 128 / 132`.
+- `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the three types resolve with their
+  aliases to layers 159, 160 and 15; the synthetic records come back with address, hours and landlines, the operator's
+  e-mail dropped and a long bairro line split; the notes say no departures; q133 answered.
+- `node scripts/eval-summary.mjs`: `answered 129 / 133`.
 - `scripts/verify` exits 0 on the PR head; packed size under 252,000 bytes.
