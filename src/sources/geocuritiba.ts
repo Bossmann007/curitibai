@@ -281,13 +281,29 @@ export const isPersonInChargeLine = (line: string): boolean =>
  * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
  * Fulana", "Contato: Dona Maria"), except the hours and address labels. "-Área de plantio: 590 m²" and "Mantida pela
  * Associação …" stay.
+ * v0.61.0: also "quem cuida/coordena"; "coordenado/a" or "cuidado/a" por, pelo or pela, unless a body follows
+ * ("pela Associação"); a capitalised word right before cuida(m) or coordena(m), with ", que" allowed between ("Dona
+ * Maria cuida da horta"; not a body word or an acronym); and Dona, Seu, Sr(a). or Senhor(a) before a capitalised word.
+ * The labels that stay are an allowlist that gains bairro, pomar and cultivo, so an unknown label still hides its
+ * value. "Contato pelo e-mail da secretaria" stays unless ':' or a run of capitalised words (a name) follows it, on the
+ * line or, in the whole-field test, on the next line.
  */
-const GARDEN_PERSON = /\bcontatos?\b|\bvoluntari|\bcuidad[ao]s? por\b/;
+const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja";
+const GARDEN_PERSON = new RegExp(
+  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))`,
+);
+const NAME_BEFORE_VERB = /(\p{Lu}\p{Ll}+)(?:\s*,\s*que|\s)\s*(?:cuidam?|coordenam?)(?!\p{L})/gu;
+const BODY_WORD = new RegExp(`^(?:${BODY})$`);
+const HONORIFIC = /(?<!\p{L})(?:Dona|Seu|Sra?\.?|Senhora?)\s+\p{Lu}/u;
+const NAME_AHEAD = String.raw`[.;,]?\s+\p{Lu}\p{Ll}*(?:\s+(?:d[aeo]s?|e|\p{Lu}\p{Ll}*))*(?!\s*[\p{Ll}:])`;
+const CONTACT_CHANNEL = new RegExp(String.raw`[Cc]ontatos? pel[ao] e-?mail d[ao] secret[aá]ria(?!\p{L}|\s*:|${NAME_AHEAD})`, "gu");
 const NAME_AFTER_LABEL = /^[-\s]*(\p{L}+)(?:\(a\))?\s*:\s*\p{Lu}/u;
-const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco)$/;
+const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?)$/;
 export const isGardenPersonLine = (line: string): boolean => {
-  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(line))) return true;
-  const label = NAME_AFTER_LABEL.exec(line.normalize("NFC"))?.[1];
+  const s = line.normalize("NFC").replace(CONTACT_CHANNEL, "");
+  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(s)) || HONORIFIC.test(s)) return true;
+  if ([...s.matchAll(NAME_BEFORE_VERB)].some((m) => !BODY_WORD.test(fold(m[1] ?? "")))) return true;
+  const label = NAME_AFTER_LABEL.exec(s.trim())?.[1];
   return label !== undefined && !PUBLIC_LABEL.test(fold(label));
 };
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
