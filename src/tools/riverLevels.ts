@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ANA_SERVICE_URL, curitibaIso, getStationData, StationDataError, STATIONS, type Station, type StationData } from "../sources/ana.js";
-import { fold } from "../text.js";
+import { foldKey } from "../text.js";
 import { distanceM } from "./cityPointsSearch.js";
 import { OutOfTimeError } from "../hostGate.js";
 import { RateLimitedError, SourceRefusedError, SourceUnavailableError } from "../http.js";
@@ -98,8 +98,6 @@ export const riverLevelsOutput = z.object({
 type Output = z.infer<typeof riverLevelsOutput>;
 type Near = { lat: number; lon: number };
 
-const key = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-
 /**
  * Bundled stations matching `station` (a code, leading zeros optional, or the start of a code; or text in name, river
  * or municipality), nearest to `near` first. Without `station`, stations on a river (which report a level) come
@@ -113,8 +111,8 @@ export function matchStations(station: string | undefined, near: Near): { s: Sta
       const exact = STATIONS.filter((s) => s.code === code);
       found = exact.length > 0 ? exact : STATIONS.filter((s) => s.code.startsWith(station));
     } else {
-      const want = key(station);
-      found = want === "" ? [] : STATIONS.filter((s) => [s.name, s.river ?? "", s.municipality].some((f) => key(f).includes(want)));
+      const want = foldKey(station);
+      found = want === "" ? [] : STATIONS.filter((s) => [s.name, s.river ?? "", s.municipality].some((f) => foldKey(f).includes(want)));
     }
   }
   return found

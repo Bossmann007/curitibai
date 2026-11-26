@@ -27,3 +27,8 @@ export function isObject(v: unknown): v is Record<string, unknown> {
 export function fold(s: string): string {
   return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
+
+/** fold(), with every run of characters that are not letters or digits made one space, trimmed: the key names are compared on. */
+export function foldKey(s: string): string {
+  return fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}

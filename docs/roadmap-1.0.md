@@ -243,3 +243,7 @@ answers 131 of 135 questions.
 At v0.61.0 the community-garden filter also hides who cares for or coordinates a garden ("Quem cuida:",
 "Coordenada por", "Dona Maria cuida da horta") and keeps the bairro, pomar and cultivo labels and "Contato pelo
 e-mail da secretaria". The citizen eval still answers 131 of 135 questions.
+
+At v0.62.0 the text key and the line filter are simpler with no change in behaviour: one `foldKey()` replaces five
+copies, and a type's `nameLines` flag replaces a check on which filter function it uses (source: 56 lines removed, 57
+added). The citizen eval still answers 131 of 135 questions.

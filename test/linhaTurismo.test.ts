@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FACILITY_TYPES, isListRequest, resolveType } from "../src/sources/geocuritiba.js";
 import { isTourRequest, TOUR_ALIASES, TOUR_SOURCE_URL, TOUR_STOPS, TOUR_TYPE_ID } from "../src/sources/linhaTurismo.js";
-import { fold } from "../src/text.js";
+import { foldKey } from "../src/text.js";
 import { cityFacilitiesSearchOutput } from "../src/tools/cityFacilitiesSearch.js";
 import { connectClient, errorOf, stubFetch } from "./helpers.js";
 
@@ -25,11 +25,10 @@ describe("Linha Turismo stops (bundled)", () => {
   });
 
   it("every lookup word is in the record name it was matched to (the tool's name filter would find it)", () => {
-    const norm = (x: string) => fold(x).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
     for (const s of TOUR_STOPS) {
       if (s.lookup === null) continue;
-      const hay = norm(s.lookup.matched);
-      for (const w of norm(s.lookup.name).split(" ")) expect(hay.includes(w), `${s.name}: ${w}`).toBe(true);
+      const hay = foldKey(s.lookup.matched);
+      for (const w of foldKey(s.lookup.name).split(" ")) expect(hay.includes(w), `${s.name}: ${w}`).toBe(true);
     }
   });
 

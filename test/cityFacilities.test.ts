@@ -11,6 +11,8 @@ import {
   hourLines,
   institutionalEmails,
   institutionalPhones,
+  isGardenPersonLine,
+  isPersonInChargeLine,
   isShelterLine,
   layerQueryUrl,
   parseLayer,
@@ -872,7 +874,7 @@ describe("city_facilities_search", () => {
 
   it("v0.51.0: any registry line that mentions the cartório is replaced by a visible marker, on any line; other lines stay", () => {
     const t = type("cartorio de registro civil");
-    const hours = (obs: string) => hourLines(obs, 30, false, t.hideLine);
+    const hours = (obs: string) => hourLines(obs, 30, false, t.hideLine, undefined, t.nameLines);
     for (const line of [
       "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.",
       "Cartório Inventado ;", "Cartório: Inventado.", "Cartório Fechner.", "Cartório J. Taborda.", "Cartório d'Ávila.",
@@ -898,7 +900,7 @@ describe("city_facilities_search", () => {
     for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
       for (const head of ["CARTÓRIO", "Cartório", "Atendimento"]) {
         const l = `${head}${filler.repeat(60)}`.slice(0, 150) + " x";
-        expect(hourLines(l, 30, false, t.hideLine)).toEqual([head === "Atendimento" ? l.replace(/\s+/g, " ") : HIDDEN_NAME_LINE]);
+        expect(hourLines(l, 30, false, t.hideLine, undefined, t.nameLines)).toEqual([head === "Atendimento" ? l.replace(/\s+/g, " ") : HIDDEN_NAME_LINE]);
       }
     }
     expect(performance.now() - start).toBeLessThan(500);
@@ -1084,6 +1086,18 @@ describe("city_facilities_search", () => {
   ])("rejects %j", async (args, code) => {
     stubFetch({});
     expect(errorOf(await call(args))).toMatchObject({ error: code });
+  });
+
+  it.each([
+    [{ type: "posto de gasolina", name: "--" }, /^Unknown type/],
+    [{ type: "feira", radius_m: 500, name: "--" }, /^radius_m needs near/],
+    [{ type: "feira", bairro: "--", name: "--" }, /^bairro must/],
+    [{ type: "feira", name: "--" }, /^name must/],
+    [{ type: "ponto turistico", bairro: "Centro", name: "--" }, /takes only `name`/],
+    [{ type: "ponto turistico", name: "--" }, /^name must/],
+  ])("with several bad arguments, names the first one checked: %j", async (args, message) => {
+    stubFetch({});
+    expect(errorOf(await call(args))).toMatchObject({ error: "invalid_argument", message: expect.stringMatching(message) });
   });
 
   it.each([
@@ -1333,9 +1347,30 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
     expect(out.note).toMatch(/city_service_guide.*vale_creche/);
   });
 
+  it("v0.62.0: the type's nameLines flag, not which hideLine it uses, turns on the split-name and label rules", () => {
+    expect(FACILITY_TYPES.filter((t) => t.nameLines !== undefined).map((t) => [t.id, t.nameLines])).toEqual([
+      ["cei contratado", "maintainer"],
+      ["administracao regional", "person"],
+      ["cohab", "person"],
+      ["mesa solidaria", "person"],
+      ["horta comunitaria", "person"],
+      ["fazenda urbana", "person"],
+      ["nucleo de seguranca alimentar", "person"],
+    ]);
+    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine)) {
+      expect(t.nameLines, t.id).toBe("person");
+    }
+    const cei = type("cei contratado");
+    const lines = (s: string, names: FacilityType["nameLines"]) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, names);
+    expect(lines("Mantida por Fulana de\nTal Inventada", "maintainer")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    expect(lines("Mantida por Fulana de\nTal Inventada", undefined)).toEqual([HIDDEN_MAINTAINER_LINE, "Tal Inventada"]);
+    expect(lines("Diretora responsável:\n-2ª a 6ª 8h", "maintainer")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª 8h"]);
+    expect(lines("Diretora responsável:\n-2ª a 6ª 8h", "person")).toEqual([HIDDEN_MAINTAINER_LINE]);
+  });
+
   it("a maintainer or owner named in another form, or on the line after a bare label, is hidden too", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     for (const s of [
       "Atendimento:\nMantenedora:\nFulana de Tal",
       "Atendimento:\nMantenedor: Fulano de Tal",
@@ -1361,19 +1396,19 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
     ["labels in a row", "Responsável:\nDiretora:\nFulana de Tal"],
   ])("v0.54.0: %s does not leak the name", (_, s) => {
     const cei = type("cei contratado");
-    const out = hourLines(`Atendimento:\n${s}\n-2ª a 6ª feira, das 7h às 18h\nNome anterior: CEI Inventado.`, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const out = hourLines(`Atendimento:\n${s}\n-2ª a 6ª feira, das 7h às 18h\nNome anterior: CEI Inventado.`, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     expect(out).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h", "Nome anterior: CEI Inventado."]);
   });
 
   it("v0.54.0: CMEI is not MEI, and a shelter line does not hide the Encaminhamento line after it", () => {
     const cei = type("cei contratado");
-    expect(hourLines("Antigo CMEI Inventado", 30, false, cei.hideLine, cei.hiddenLineMarker)).toEqual(["Antigo CMEI Inventado"]);
+    expect(hourLines("Antigo CMEI Inventado", 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines)).toEqual(["Antigo CMEI Inventado"]);
     expect(hourLines("Casa de Passagem\nEncaminhamento pelo CRAS", 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE, "Encaminhamento pelo CRAS"]);
   });
 
   it("v0.54.0: the rest of a name is one line; lowercase mei; hours after a hidden line that ends with ':' stay", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     expect(lines("Mantenedora: X Ltda\nAtendimento em período integral\nNão abre em feriados")).toEqual([HIDDEN_MAINTAINER_LINE, "Atendimento em período integral", "Não abre em feriados"]);
     for (const next of ["Atendimento das 7h às 18h", "Horário integral", "Encaminhamento pelo CRAS", "Rua Inventada, 100", "Telefone (41) 3333-4444"]) {
       expect(lines(`Mantenedora: Associação X\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next.replace("(41) 3333-4444", "[masked]")]);
@@ -1386,7 +1421,7 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
 
   it("v0.55.0: address, phone, period, vagas and berçário lines stay; service words match whole words only", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     for (const next of ["Av. Brasil, 100", "Avenida Brasil, 100", "Fone 3333-4444", "Período parcial", "Vagas pelo 156", "Berçário ao pré", "Horários das 7h às 18h", "Encaminhamentos pelo 156", "Teleatendimento 156", "Integral, das 7h às 18h"]) {
       expect(lines(`Mantenedora: Associação X\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next.replace("3333-4444", "[masked]")]);
     }
@@ -1569,7 +1604,7 @@ describe("v0.59.0: COHAB agencies, 0800 numbers and person lines in office hours
 
   it("an Administração Regional hides Responsável, Diretor(a) and Administrador(a) lines and keeps its bairros", () => {
     const t = type("administracao regional");
-    const lines = (s: string) => hourLines(s, 30, true, t.hideLine, t.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, true, t.hideLine, t.hiddenLineMarker, t.nameLines);
     const bairros =
       "Bairros de abrangência: Bairro Inventado Um, Bairro Inventado Dois, Bairro Inventado Três, Bairro Inventado " +
       "Quatro, Centro, Bairro Inventado Cinco, Bairro Inventado Seis e Bairro Inventado Sete.";
@@ -1611,14 +1646,15 @@ describe("v0.59.0: COHAB agencies, 0800 numbers and person lines in office hours
     stubFetch(route("administracao regional", "administracao_regional_synthetic.json"));
     const out = await search({ type: "administracao regional", name: "inventada" });
     expect(out.data.items[0]!.hours).not.toContain(HIDDEN_PERSON_LINE);
+    const t = type("administracao regional");
     for (const l of ["Atendimento Protocolo:", "-Telefone: (41) 3221-2665", "Endereço anterior: R. Inventada, 2031."]) {
-      expect(hourLines(l, 30, true, type("administracao regional").hideLine)).toEqual([cleanText(l, 160)]);
+      expect(hourLines(l, 30, true, t.hideLine, t.hiddenLineMarker, t.nameLines)).toEqual([cleanText(l, 160)]);
     }
   });
 
   it("the CEI filter also hides an Administrador(a) line", () => {
     const cei = type("cei contratado");
-    expect(hourLines("Atendimento:\nAdministradora: Fulana de Tal", 30, false, cei.hideLine, cei.hiddenLineMarker)).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE]);
+    expect(hourLines("Atendimento:\nAdministradora: Fulana de Tal", 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines)).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE]);
   });
 });
 
@@ -1714,7 +1750,7 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
       "Coordenador: Fulano de Tal",
       "Mantida por Fulana de Tal",
     ]) {
-      const out = hourLines(`Atendimento:\n${who}\n-2ª a 6ª feira, das 8h às 17h.`, 30, true, t.hideLine, t.hiddenLineMarker);
+      const out = hourLines(`Atendimento:\n${who}\n-2ª a 6ª feira, das 8h às 17h.`, 30, true, t.hideLine, t.hiddenLineMarker, t.nameLines);
       expect(out).toEqual(["Atendimento:", HIDDEN_PERSON_LINE, "-2ª a 6ª feira, das 8h às 17h."]);
     }
     for (const l of [
@@ -1731,14 +1767,14 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
 
   it("v0.59 regression: a CEI 'Responsável pela matrícula:' line hides itself, not the hours or period line after it", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     expect(lines("Responsável pela matrícula:\n-2ª a 6ª 8h")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª 8h"]);
     expect(lines("Responsável pela matrícula:\nPeríodo parcial")).toEqual([HIDDEN_MAINTAINER_LINE, "Período parcial"]);
   });
 
   it("review: a CEI name of any length after a multi-word label is still hidden; the hours after it stay", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     for (const label of ["Diretora responsável:", "Mantenedora da unidade:"]) {
       expect(lines(`${label}\nFulana de Tal Silva Souza Lima\n-2ª a 6ª feira, das 7h às 18h`)).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h"]);
     }
@@ -1778,7 +1814,7 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
 describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () => {
   it("a garden hides a contact, a volunteer, who cares for it and a name after a one-word label; public lines stay", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
     for (const who of [
       "Contato: Dona Maria (41) 99999-1111",
       "Voluntária: Fulana de Tal",
@@ -1797,7 +1833,7 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
 
   it("v0.61.0: a garden hides who cares for or coordinates it, and keeps the bairro, pomar, cultivo and secretariat e-mail lines", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
     const head = "Mantida pela Associação de Moradores da Vila Inventada.";
     for (const who of ["Quem cuida: Fulana", "Coordenada por Fulana", "Dona Maria cuida da horta", "Seu João e Dona Maria cuidam da horta", "Fulano coordena os mutirões", "Quem cuida:\nFulana de Tal"]) {
       const out = lines(`${head}\n${who}\n-Área de plantio em canteiros: 590 m²`);
@@ -1841,7 +1877,7 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
 
   it("a CEI keeps 'Matrículas abertas em janeiro' and 'Secretaria da escola' after a hidden label; 'Secretária Fulana' is still hidden", () => {
     const cei = type("cei contratado");
-    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, cei.nameLines);
     for (const label of ["Diretora responsável:", "Mantenedora: Associação Inventada"]) {
       for (const next of ["Matrículas abertas em janeiro", "Secretaria da escola"]) {
         expect(lines(`${label}\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next]);

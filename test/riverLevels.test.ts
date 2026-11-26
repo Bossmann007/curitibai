@@ -187,7 +187,7 @@ describe("assessQuality (data quality checks)", () => {
     expect(assessQuality(flatInRain(25, 0))).toEqual(OK); // dry: a flat baseflow is normal
     expect(assessQuality(flatInRain(24, 0.5))).toEqual(OK); // 5 h 45 min
     // 6 h span but only 13 readings (one every 30 minutes): too sparse to call it stuck.
-    expect(assessQuality(flatInRain(25, 1).filter((r, i) => i < 71 || i % 2 === 1))).toEqual(OK);
+    expect(assessQuality(flatInRain(25, 1).filter((_, i) => i < 71 || i % 2 === 1))).toEqual(OK);
   });
 
   it("never changes the raw values: a suspect latest reading is returned as sent (real Fazendinha sample, latest level edited)", () => {
