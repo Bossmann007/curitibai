@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPack, MAX_PACKED_BYTES, scanSecrets } from "../scripts/check-pack.mjs";
+import { checkNotices, checkPack, MAX_PACKED_BYTES, REQUIRED_NOTICES, scanSecrets } from "../scripts/check-pack.mjs";
 
 const base = ["package.json", "README.md", "LICENSE", "CHANGELOG.md", "docs/licences.md", "dist/server.js", "dist/tools/busLines.js"];
 const pack = (paths: string[], size = 1000) => ({ files: paths.map((path) => ({ path })), size });
@@ -60,5 +60,34 @@ describe("scripts/check-pack.mjs", () => {
       'const url = "https://dadosabertos.curitiba.pr.gov.br/";',
     ].join("\n");
     expect(scanSecrets("dist/x.js", code)).toEqual([]);
+  });
+
+  describe("licence notices", () => {
+    const full = () => new Map(Object.entries(REQUIRED_NOTICES).map(([path, notices]) => [path, `x\n${notices.join("\n")}\n`]));
+
+    it("passes when every required notice is in its file", () => {
+      expect(checkNotices(full())).toEqual([]);
+    });
+
+    it("fails when the ODbL notice is gone from dist/sources/osmBundled.js", () => {
+      const texts = full();
+      texts.set("dist/sources/osmBundled.js", "export const OSM_BUNDLED_CHECKED_AT = \"2026-11-21\";\n");
+      expect(checkNotices(texts)).toHaveLength(REQUIRED_NOTICES["dist/sources/osmBundled.js"]!.length);
+      expect(checkNotices(texts)[0]).toContain("licence notice missing from dist/sources/osmBundled.js");
+    });
+
+    it("fails when a file carrying a notice is not packed", () => {
+      const texts = full();
+      texts.delete("dist/sources/urbs.js");
+      expect(checkNotices(texts)).toEqual([expect.stringContaining("missing from the package: dist/sources/urbs.js")]);
+    });
+  });
+
+  it("finds the required notices in the source files they compile from", async () => {
+    const { readFileSync } = await import("node:fs");
+    const texts = new Map(
+      Object.keys(REQUIRED_NOTICES).map((p) => [p, readFileSync(new URL(`../${p.replace(/^dist/, "src").replace(/\.js$/, ".ts")}`, import.meta.url), "utf8")]),
+    );
+    expect(checkNotices(texts)).toEqual([]);
   });
 });

@@ -56,7 +56,7 @@ tarball again and runs `npm publish` on that file (trusted publishing, so no npm
 [provenance](https://docs.npmjs.com/trusted-publishers)), waits until npm
 serves the version, then runs `mcp-publisher publish` (GitHub OIDC, namespace `io.github.Bossmann007`). It skips
 `npm publish` when that version is already on npm, so a run whose MCP Registry step failed can be run again.
-`scripts/verify` checks the tarball (`scripts/check-pack.mjs`: allowlist, leftovers, secret-shaped lines, size) and
+`scripts/verify` checks the tarball (`scripts/check-pack.mjs`: allowlist, leftovers, secret-shaped lines, licence notices, size) and
 that `server.json` is valid and has the same version as `package.json` (`test/serverJson.test.ts`). Why the
 environment: npm's trusted publisher names only the owner, repository, workflow file and environment, and a workflow
 runs from the ref it is started on, so without it a pushed branch with an edited `publish.yml` could publish. Keep
