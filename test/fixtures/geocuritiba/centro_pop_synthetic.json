@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventado Um",
+    "nome_completo": "Centro POP Inventado Um",
+    "nome_rua": "R. INVENTADA POP",
+    "num_pred": "401",
+    "compl_end": "CEP: 80.000-004",
+    "divulgar_endereco": "Sim",
+    "bairro": "Jardim Botânico",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 99999-4001",
+    "email": "centropop1@curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": "Solicitações de atendimento ou emergência são realizadas pelo telefone 156.\r\nAtendimento:\r\n-Diariamente, das 8h às 17h\r\nObs.: O Centro POP Inventado Um vem funcionando de forma híbrida com a Casa de Passagem Inventada na rua Inventada Secreta, 999"
+   },
+   "geometry": {
+    "x": -49.25,
+    "y": -25.44
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Inventado Dois",
+    "nome_completo": "Centro POP Inventado Dois",
+    "nome_rua": "R. INVENTADA POP DOIS",
+    "num_pred": "402",
+    "compl_end": "Fundos - CEP: 81.000-005",
+    "divulgar_endereco": "Sim",
+    "bairro": "Boqueirão",
+    "regional": "Boqueirão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-4002 / (41) 99999-4002",
+    "email": "centropop2@curitiba.pr.gov.br",
+    "dt_atualiz": 1775793600000,
+    "observacao": "Solicitações de atendimento ou emergência são realizadas pelo telefone 156.\r\nAtendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nUNIDADE DE ACOLHIMENTO INVENTADA AO LADO.\r\nCasas de passagem: ver 156."
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.49
+   }
+  }
+ ]
+}

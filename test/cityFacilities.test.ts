@@ -5,12 +5,16 @@ import {
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
   HIDDEN_NAME_LINE,
+  HIDDEN_SHELTER_LINE,
   hourLines,
   institutionalEmails,
   institutionalPhones,
+  isShelterLine,
   layerQueryUrl,
   parseLayer,
+  PRIVATE_ADDRESS_LINE,
   resolveType,
+  WOMEN_EMERGENCY_NOTE,
   type FacilityType,
 } from "../src/sources/geocuritiba.js";
 import { cityFacilitiesSearchOutput } from "../src/tools/cityFacilitiesSearch.js";
@@ -1120,6 +1124,135 @@ describe("glued digits in free text", () => {
     });
     const [f] = parseLayer(type("feira"), body).facilities;
     expect(f).toMatchObject({ name: "Feira Teste [masked]", hours: ["Tel [masked]"], lat: -25.43, lon: -49.27 });
+  });
+});
+
+describe("v0.52.0: social assistance beyond the CRAS", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+
+  it.each([
+    ["creas", "creas", 38],
+    ["Centro de Referência Especializado de Assistência Social", "creas", 38],
+    ["Centro POP", "centro pop", 40],
+    ["central de encaminhamento social", "central de encaminhamento social", 39],
+    ["Central de Encaminhamento Social 24 Horas", "central de encaminhamento social", 39],
+    ["centro de atividades para idosos", "centro de atividades para idosos", 36],
+    ["Espaço ConViver", "centro de atividades para idosos", 36],
+    ["centro de referência da mulher", "centro de referencia da mulher", 108],
+    ["Casa da Mulher Brasileira", "centro de referencia da mulher", 108],
+    ["centro de referência afro", "centro de referencia afro", 109],
+  ] as const)("%s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("no type points at the shelter and transit-house layers (45, 46, 164), and no name asks for them", () => {
+    const sensitive = [45, 46, 164].map((n) => `${EQUIPMENT}/${n}`);
+    for (const t of FACILITY_TYPES) expect(sensitive).not.toContain(t.layerUrl);
+    for (const name of ["abrigo", "abrigos", "casa de passagem", "casas de passagem", "acolhimento", "unidade de acolhimento", "republica"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it("isShelterLine is a plain linear check: shelters and transit houses, any case or accent; a service called acolhimento is kept", () => {
+    for (const line of ["Casa de Passagem Inventada, Rua X, 1", "ABRIGO INVENTADO", "casas de passagem: ver 156", "Unidade de Acolhimento X", "Casa de Acolhida"]) {
+      expect(isShelterLine(line)).toBe(true);
+    }
+    for (const line of ["-Serviço de acolhimento e apoio psicossocial", "Atendimento:", "Emergências: Central 156."]) {
+      expect(isShelterLine(line)).toBe(false);
+    }
+    const long = `${"casa de pas".repeat(20_000)}x`;
+    const start = performance.now();
+    expect(isShelterLine(long)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it("answers \"Onde fica o CREAS que atende a CIC?\" by name; the mobile and the misspelt e-mail are dropped; the note does not claim coverage", async () => {
+    const calls = stubFetch(route("creas", "creas_synthetic.json"));
+    const out = await search({ type: "creas", name: "cic" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/38`);
+    expect(out.data).toMatchObject({ type: "creas", label: "Centro de Referência Especializado de Assistência Social", total: 1 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Centro de Referência Especializado de Assistência Social CIC",
+      address: "R. INVENTADA DA CIC, 1001 - CEP: 81.000-001",
+      bairro: "Cidade Industrial de Curitiba",
+      regional: "CIC",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h às 17h", "Emergências: Central 156."],
+      phones: ["(41) 3333-3801", "(41) 3333-3802"],
+      emails: [],
+    });
+    expect(out.note).toMatch(/Which bairros a CREAS serves is not in the layer/);
+    expect(out.note).toMatch(/Shelters and transit houses are not listed by this tool/);
+    expect(out.note).not.toMatch(/\bfree\b|gratuit|eligib|guarantee/i);
+  });
+
+  it("a CREAS line that mentions a shelter is replaced by a visible marker", async () => {
+    stubFetch(route("creas", "creas_synthetic.json"));
+    const creas = await search({ type: "creas", bairro: "boqueirao" });
+    expect(creas.data.items[0]!.hours).toEqual(["Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_SHELTER_LINE, "Emergências: Central 156."]);
+    expect(JSON.stringify(creas)).not.toMatch(/Oculta|Abrigo Inventado/);
+  });
+
+  it("a Centro POP line that names a transit house is hidden; a unit with only a mobile has no phone, and the note says so", async () => {
+    stubFetch(route("centro pop", "centro_pop_synthetic.json"));
+    const pop = await search({ type: "centro pop" });
+    expect(pop.source_url).toBe(`${EQUIPMENT}/40`);
+    expect(pop.data.items[0]).toMatchObject({ phones: [], emails: ["centropop1@curitiba.pr.gov.br"] });
+    expect(pop.data.items[0]!.hours.at(-1)).toBe(HIDDEN_SHELTER_LINE);
+    // Two hidden lines in a row give one marker.
+    expect(pop.data.items[1]!.hours).toEqual([
+      "Solicitações de atendimento ou emergência são realizadas pelo telefone 156.", "Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_SHELTER_LINE,
+    ]);
+    expect(pop.note).toMatch(/`phones` can be empty: call the 156/);
+    expect(JSON.stringify(pop)).not.toMatch(/Secreta|999\b|ACOLHIMENTO INVENTADA/);
+  });
+
+  it("a women's centre whose address is not marked \"Sim\" returns only its name, institutional phones and a line to call; bairro and near never match it", async () => {
+    stubFetch(route("centro de referencia da mulher", "centro_de_referencia_da_mulher_synthetic.json"));
+    const out = await search({ type: "centro de referencia da mulher" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/108`);
+    expect(out.data.total).toBe(4);
+    const [open, ...hidden] = out.data.items;
+    expect(open).toMatchObject({
+      address: "AV. INVENTADA DA MULHER, 1080 - CEP: 80.000-108",
+      bairro: "Cabral",
+      lat: -25.42,
+      lon: -49.25,
+      emails: ["casainventada@curitiba.pr.gov.br"],
+      phones: ["(41) 3333-1081", "(41) 3333-1082"],
+    });
+    expect(open!.hours).toContain("-Serviço de acolhimento e apoio psicossocial");
+    expect(hidden.map((i) => i.name)).toEqual([
+      "Centro de Referência de Atendimento à Mulher Reservado Não",
+      "Centro de Referência de Atendimento à Mulher Reservado Vazio",
+      "Centro de Referência de Atendimento à Mulher Reservado Minúsculo",
+    ]);
+    for (const i of hidden) {
+      expect(i).toMatchObject({ address: null, bairro: null, regional: null, lat: null, lon: null, emails: [], open_periods: null, hours: [PRIVATE_ADDRESS_LINE] });
+    }
+    expect(hidden.map((i) => i.phones)).toEqual([["(41) 3333-2108"], ["(41) 3333-3108"], []]);
+    expect(JSON.stringify(hidden)).not.toMatch(/SIGILOSA|Sigilos|Cidade Industrial|Tatuquara|Pinheirinho|"CIC"|-49\.3|-25\.5|reservado2?@|99999/i);
+    for (const bairro of ["cidade industrial de curitiba", "tatuquara", "pinheirinho"]) {
+      expect((await search({ type: "centro de referencia da mulher", bairro })).data.total).toBe(0);
+    }
+    const near = await search({ type: "centro de referencia da mulher", near: { lat: -25.4987, lon: -49.3456 }, radius_m: 3000 });
+    expect(near.data.total).toBe(0);
+    expect(JSON.stringify(near.data)).not.toMatch(/Reservado|SIGILOSA/);
+  });
+
+  it("women's centres lead with 190 and 180 and say the tool does not dispatch help; other social types do not", async () => {
+    stubFetch(route("centro de referencia da mulher", "centro_de_referencia_da_mulher_synthetic.json"));
+    const out = await search({ type: "casa da mulher brasileira", bairro: "cabral" });
+    expect(out.note.startsWith(WOMEN_EMERGENCY_NOTE)).toBe(true);
+    expect(out.note).toMatch(/190 \(Polícia Militar\)/);
+    expect(out.note).toMatch(/180 \(24 hours, free call\)/);
+    expect(out.note).toMatch(/Ministério das Mulheres/);
+    expect(out.note).toMatch(/does not dispatch help/);
+  });
+
+  it("other social types carry no emergency lead note", async () => {
+    stubFetch(route("creas", "creas_synthetic.json"));
+    expect((await search({ type: "creas" })).note).not.toMatch(/\b180\b|\b190\b/);
   });
 });
 
