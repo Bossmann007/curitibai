@@ -1743,6 +1743,12 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
       expect(lines(`${label}\nFulana de Tal Silva Souza Lima\n-2ª a 6ª feira, das 7h às 18h`)).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h"]);
     }
     expect(lines("Diretora responsável:\n- Fulana de Tal Silva Souza Lima")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    for (const n of ["Fulana de Tal - atendimento à tarde", "Fulana de Tal Silva Souza Lima, das 7h às 18h", "Domingos de Tal Silva Souza Lima"]) {
+      expect(lines(`Diretora responsável:\n${n}\n-2ª a 6ª`)).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª"]);
+    }
+    for (const next of ["- 2ª a 6ª, das 7h às 18h", "Horário integral", "Vagas pelo 156"]) {
+      expect(lines(`Responsável pela matrícula:\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next]);
+    }
   });
 
   it("review: mantida por anywhere, pelo Sr./Dona, decomposed accents, Coordenação: and Gestão: are hidden; Titular da conta stays", () => {

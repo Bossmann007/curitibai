@@ -1429,7 +1429,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
   `curitibai-mcp/0.60 (+https://github.com/Bossmann007/curitibai)`, 10 GET requests by hand, at least 5 s apart:
   `/robots.txt` at 20:53:33 (404, `text/html; charset=utf-8`: no rules, RFC 9309); one whole-layer read (`where=1=1`,
   all fields, geometry) of layers 1, 7, 9 and 10 from 20:53:38 to 20:54:00; the metadata (`?f=json`) of layers 1, 7,
-  10 and 9 (the last at about 20:56); and one read of layer 9 with the fixed `where` at 20:58:15 (56 records, 4 fields).
+  10 and 9 (the last after 20:54:00 and before 20:58:15); and one read of layer 9 with the fixed `where` at 20:58:15 (56 records, 4 fields).
   `copyrightText` and `description` are empty in all four, so **no licence found** (facts only, IPPUC cited, as for
   the other GeoCuritiba layers). The reads were inspected offline and deleted; the test fixtures are synthetic.
   - 7: 4 records (Centro 1, Jardim Botânico 2, Campo de Santana 1). Two only cook ("produção de refeições") and list
@@ -1437,7 +1437,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     at commas (`wrapLines`) and no time is cut. Every record's `telefone` is "WhatsApp (41) 3350-3821", which the
     phone filter dropped; since v0.60 a leading "WhatsApp" word is removed first (every type), so the landline is
     kept, and the note says it is a WhatsApp line. Same `@curitiba.pr.gov.br` e-mail on all. The `site` field (a
-    `www.curitiba.pr.gov.br/servicos/` page) is never read.
+    `www.curitiba.pr.gov.br/servicos/` page) is never requested by the server.
   - 9: 233 records, `tipo_equi` "Horta Comunitária Urbana" 56, "Horta Escolar" 109 (inside schools), "Horta
     Institucional" 68 (inside institutions, among them three Unidades de Acolhimento Institucional, a Casa de
     Passagem, a Casa do Piá and a Casa de Semiliberdade, four of them with `divulgar_endereco` "Sim"). Shelters are
@@ -1459,8 +1459,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
     line was hidden. The four types still use the offices' person-line filter, whose roles gain secretário/a,
     supervisor/a and gestor/a, titular, coordenação and gestão before ':', and "mantido/a por" anywhere or "mantida
     pelo Sr./Sra./Dona" ("Secretaria Municipal de …", "Titular da conta" and "mantida pela Associação …" stay;
-    tested). For `cei contratado`, the line after a hidden "…:" label with no comma is hidden only when it is not an
-    hours or service line (v0.59 hid "-2ª a 6ª 8h" after "Responsável pela matrícula:"). No new host for the server
+    tested). For `cei contratado`, the line after a hidden "…:" label with no comma is hidden unless it starts with a
+    digit or a service word (v0.59 hid "-2ª a 6ª 8h" after "Responsável pela matrícula:"). No new host for the server
     and the link allowlist is unchanged.
 - **Query:** one fixed URL per layer: `where=1=1` (since v0.60 `horta comunitaria` sends a fixed `tipo_equi` filter instead), a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
   `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with

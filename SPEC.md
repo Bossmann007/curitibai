@@ -69,9 +69,9 @@ What the read showed and how this version handles it:
      ':' ("Secretaria:"); "Secretária" with the accent is the role (the line is NFC-normalised first).
    - Regression: after the v0.59 rule, a CEI's hidden "…:" line with no comma hid the next line whatever it was
      ("Responsável pela matrícula:" hid "-2ª a 6ª 8h" and "Período parcial"). For a CEI the next line is now hidden
-     only when it is not an hours or service line (it has no digit and no service word such as período, horário,
-     atendimento, matrícula), so a name of any length after "Diretora responsável:" is still hidden (found in
-     review). Offices keep the v0.59 rule.
+     only when it does not start (after an optional dash) with a digit or a service word such as período, horário,
+     atendimento, matrícula, so a name of any length after "Diretora responsável:" is still hidden, even with hours
+     later in the line (found in review). Offices keep the v0.59 rule.
 6. **Eval**: new q135 → `city_facilities_search` `{type: "mesa solidaria", bairro: "centro"}`, synthetic fixture
    `test/fixtures/geocuritiba/mesa_solidaria_synthetic.json` with a line over 160 characters. Tool contract snapshot
    updated (`type` description).

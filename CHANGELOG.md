@@ -29,7 +29,9 @@ Food security, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   hidden. No line was hidden in the live layers.
 - Tool contract: the `type` description (snapshot updated).
 - Citizen eval: q135 ("Onde tem Mesa Solidária no Centro?") added and answered, with a synthetic fixture; 131 of 135.
-- No new network host, no new link, no new dependency.
+- No new network host, no new dependency, and no link added by the code. The `fazenda urbana` hours carry, as
+  published text, two city pages for enrolment (`guia.curitiba.pr.gov.br`, `aprendere.curitiba.pr.gov.br`); the server
+  never fetches them.
 
 ## 0.59.0 - 2026-11-26
 

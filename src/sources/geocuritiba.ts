@@ -226,13 +226,13 @@ const COHAB_NOTE =
   "Cidadania, not always the bairro they are in: search by `name` (e.g. \"tatuquara\").";
 /** v0.60.0. Read on 2026-11-26: 4 records, one phone published as "WhatsApp (41) …" on all; two only cook. */
 const MESA_SOLIDARIA_NOTE =
-  "Mesa Solidária places of the Prefeitura's food-security secretariat (SMSAN), as listed by IPPUC; hours and serving " +
+  "Mesa Solidária places (Prefeitura de Curitiba), as listed by IPPUC; hours and serving " +
   "times as published (see `updated`). Some are kitchens that only cook meals and list no serving hours: check " +
   "`hours` before going. The phone is published as a WhatsApp line (the same on every record when read). Who may eat " +
   "there and any registration are not in this tool: ask the place or the 156.";
 /** v0.60.0. Layer 9 read on 2026-11-26: 233 gardens, 56 community ones; none has a phone or published hours. */
 const COMMUNITY_GARDEN_NOTE =
-  "Community gardens (Horta Comunitária Urbana) as listed by IPPUC; many are run with residents' associations. The " +
+  "Community gardens (Horta Comunitária Urbana) as listed by IPPUC; some are kept by residents' associations. The " +
   "layer also lists 109 school and 68 institutional gardens (counts read on 2026-11-26), inside schools and " +
   "institutions and not open to the public: they are not listed here. When read, the gardens had no phone and no " +
   "hours: only the e-mail the layer publishes, the same city address on every record. A line naming who is in " +
@@ -937,8 +937,12 @@ export function isShelterLine(line: string): boolean {
   );
 }
 
-/** v0.60.0: a line after a CEI's "…:" label that is about the service, not a name (see hourLines `soft`). */
-const SERVICE_LINE = /^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|\b(rua|av|avenida|fones?|vagas?)\b/;
+/**
+ * v0.60.0: a line after a CEI's "…:" label that is about the service, not a name (see hourLines `soft`): it starts
+ * (after an optional dash) with a digit or a service word. Only the start counts: "Fulana de Tal, das 7h às 18h" is a
+ * name.
+ */
+const SERVICE_LINE = /^[-\s]*(?:\d|(?:integral|atendimento|encaminhamento|funcionamento|horarios?|telefones?|periodo|bercario|matriculas?|rua|av|avenida|fones?|vagas?)\b)/;
 
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
@@ -958,7 +962,7 @@ export function hourLines(
   // v0.54.0, maintainer only: one next line may end a split name (see docs/sources.md); a third line stays visible.
   let rest = false;
   // v0.60.0, CEI only: the last line was a hidden "…:" label with no comma ("Diretora responsável:"); the next line is
-  // hidden unless it is an hours or service line (a digit, or a service word): "Responsável pela matrícula:" keeps
+  // hidden unless it starts with a digit or a service word (SERVICE_LINE): "Responsável pela matrícula:" keeps
   // "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora responsável:" is hidden.
   let soft = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
@@ -966,7 +970,7 @@ export function hourLines(
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
       const tail: boolean = rest && !/^[-\d]|:|^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|\b(rua|av|avenida|fones?|vagas?)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
-      const named = soft && !/\d/.test(t) && !SERVICE_LINE.test(fold(t));
+      const named = soft && !SERVICE_LINE.test(fold(t));
       if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
         label = rest = soft = false;
