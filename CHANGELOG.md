@@ -6,8 +6,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Follow-up of the 0.54.0 review. 27 tools. Publishes nothing.
 
-- `cei contratado`: after a hidden maintainer line, an address, phone, period, vagas or berçário line stays visible;
-  service words match whole words, so a split surname ("Ruas Telles") is still hidden. Eval: 127 of 131, unchanged.
+- `cei contratado`: after a hidden maintainer line, an Av., Fone, Período, Vagas or Berçário line stays visible;
+  short service words match whole words, so a split surname ("Ruas Telles") is still hidden. Eval: 127 of 131, unchanged.
 
 ## 0.54.0 - 2026-11-26
 

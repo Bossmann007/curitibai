@@ -1381,7 +1381,7 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
   it("v0.55.0: address, phone, period, vagas and berçário lines stay; service words match whole words only", () => {
     const cei = type("cei contratado");
     const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
-    for (const next of ["Av. Brasil, 100", "Avenida Brasil, 100", "Fone 3333-4444", "Período parcial", "Vagas pelo 156", "Berçário ao pré", "Horários das 7h às 18h"]) {
+    for (const next of ["Av. Brasil, 100", "Avenida Brasil, 100", "Fone 3333-4444", "Período parcial", "Vagas pelo 156", "Berçário ao pré", "Horários das 7h às 18h", "Encaminhamentos pelo 156", "Teleatendimento 156", "Integral, das 7h às 18h"]) {
       expect(lines(`Mantenedora: Associação X\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next.replace("3333-4444", "[masked]")]);
     }
     for (const rest of ["Ruas Telles", "Tal Integral"]) {

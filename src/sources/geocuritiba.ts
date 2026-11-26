@@ -812,7 +812,7 @@ export function hourLines(
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      const tail: boolean = rest && !/^[-\d]|:|\b(atendimentos?|horarios?|rua|av|avenida|(tele)?fones?|encaminhamento|funcionamento|periodo|vagas?|bercario)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
+      const tail: boolean = rest && !/^[-\d]|:|^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|\b(rua|av|avenida|fones?|vagas?)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       if (!hide || !(label || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
         label = rest = false;
