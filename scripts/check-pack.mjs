@@ -2,8 +2,9 @@
 // Package check: what `npm publish` would upload. Runs `npm pack --dry-run --json` (no tarball written, no network) and
 // fails unless every path is on the allowlist below, none is a forbidden kind (local data, tests, fixtures, .env*,
 // *.local), every dist/ file comes from a src/ module (a leftover of a renamed module would ship otherwise: the build
-// does not empty dist/), no packed line looks like a secret (scanSecrets) and the packed size is under
-// MAX_PACKED_BYTES and every required licence notice (REQUIRED_NOTICES) is in its packed file. Run it after `npm run build`: dist/ is gitignored.
+// does not empty dist/), no packed line looks like a secret (scanSecrets), every required licence notice
+// (REQUIRED_NOTICES) is in its packed file and the packed size is under MAX_PACKED_BYTES. Run it after
+// `npm run build`: dist/ is gitignored.
 // Exit 0 = fine, 1 = a rule failed (each one printed), 2 = npm pack failed.
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, realpathSync } from "node:fs";

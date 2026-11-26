@@ -32,7 +32,7 @@ node scripts/eval-summary.mjs
 step "build"
 npm run --silent build
 
-step "package contents: npm pack --dry-run --json holds only dist/*.js, README.md, LICENSE, CHANGELOG.md, docs/licences.md and package.json; no data-local/, tests, fixtures, src/, .env* or *.local; packed size printed, under 252,000 bytes"
+step "package contents: npm pack --dry-run --json holds only dist/*.js, README.md, LICENSE, CHANGELOG.md, docs/licences.md and package.json; no data-local/, tests, fixtures, src/, .env* or *.local; required licence notices (REQUIRED_NOTICES) present; packed size printed, under 252,000 bytes"
 node scripts/check-pack.mjs
 
 step "stdio smoke test (tools/list of the 27 tools; useful_phones, city_services_search, city_service_guide open_step fallback, bus_departures, bus_stops_near, next_buses_near, bus_route_between and city_points_search on the synthetic fixtures; events_search with no copy and CURITIBAI_REMOTE_DATA=0; city_facilities_search list types; CURITIBAI_REMOTE_DATA=maybe stops the server at start)"

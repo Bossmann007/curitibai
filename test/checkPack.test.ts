@@ -83,7 +83,7 @@ describe("scripts/check-pack.mjs", () => {
     });
   });
 
-  it("finds the required notices in the source files they compile from", async () => {
+  it("finds the required notices in the src/ files (the compiled dist/ copy is checked by check-pack.mjs in scripts/verify)", async () => {
     const { readFileSync } = await import("node:fs");
     const texts = new Map(
       Object.keys(REQUIRED_NOTICES).map((p) => [p, readFileSync(new URL(`../${p.replace(/^dist/, "src").replace(/\.js$/, ".ts")}`, import.meta.url), "utf8")]),
