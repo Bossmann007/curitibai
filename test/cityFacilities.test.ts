@@ -4,6 +4,7 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
+  hourLines,
   institutionalEmails,
   institutionalPhones,
   layerQueryUrl,
@@ -857,6 +858,21 @@ describe("city_facilities_search", () => {
     expect(JSON.stringify(all)).not.toMatch(/Inventado\.|Souza|maria|gmail|9999|9888/i);
   });
 
+  it("v0.51.0: only a whole \"Cartório <Name>.\" line is dropped from a registry record; hours or notices after the name stay", () => {
+    const t = type("cartorio de registro civil");
+    const hours = (obs: string) => hourLines(obs, 30, false, t.dropLine);
+    for (const line of ["Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Dos Santos e Silva", "CARTÓRIO INVENTADO."]) {
+      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:"]);
+    }
+    for (const line of [
+      "Cartório Souza - plantão aos sábados, das 9h às 12h.",
+      "Cartório Fechado para reforma até 30/11.",
+      "Cartório de plantão aos sábados.",
+    ]) {
+      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", line]);
+    }
+  });
+
   it.each([
     ["cartorio de registro civil", "cartorio_de_registro_civil_synthetic.json"],
     ["junta militar", "junta_militar_synthetic.json"],
@@ -891,6 +907,10 @@ describe("city_facilities_search", () => {
     expect(coverage.join(" ")).toContain("Centro, Bairro Inventado Cinco");
     expect(coverage.join(" ")).toMatch(/Bairro Inventado Nove e Bairro Inventado Dez\.$/);
     expect(coverage.join(" ")).not.toContain("…");
+    const semi = hourLines(`Bairros de abrangência: ${Array.from({ length: 30 }, (_, i) => `Bairro Inventado ${i}`).join("; ")}.`, 30, true);
+    expect(semi.length).toBeGreaterThan(1);
+    for (const line of semi) expect(line.length).toBeLessThanOrEqual(160);
+    expect(semi.join(" ")).toMatch(/Bairro Inventado 29\.$/);
     expect(out.note).toMatch(/`bairro` filters by where a junta is, not by the bairros it serves/);
   });
 

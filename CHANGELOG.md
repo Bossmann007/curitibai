@@ -27,9 +27,10 @@ Publishes nothing.
   a post can come back with no phone, and to reach the Defensoria Pública do Paraná through its own channels (not
   linked). No note names a price, free service or a same-day document (tested).
 - Each registry record ends with "Cartório <surname>." (the office's trade name after a person): that line is left
-  out of `hours` (new optional `dropLine` on the type). The bairro lists of the juntas, Defensoria posts and fóruns run
+  out of `hours` (new optional `dropLine` on the type; only a whole line of "Cartório" and capitalised words matches,
+  so a line such as "Cartório Souza - plantão ..." is kept). The bairro lists of the juntas, Defensoria posts and fóruns run
   to about 500 characters: for these types a line over 160 characters is split after its commas into several lines
-  instead of being cut with "…" (new optional `wrapLines`). Other types are unchanged.
+  instead of being cut with "…" (new optional `wrapLines`; also after semicolons). Other types are unchanged.
 - Privacy filters unchanged: the registry offices' own-domain e-mails (one with a person's name), the Defensoria's
   `defensoria.pr.def.br` and gmail addresses and its mobile numbers (8 of 14 posts; two publish only a mobile and come
   back with no phone), and the Justiça do Trabalho's `trt9.jus.br` address are dropped; synthetic fixtures with a

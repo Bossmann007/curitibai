@@ -142,8 +142,8 @@ const IDENTIFICATION_NOTE =
  * are on their own domains and some Defensoria phones are mobiles: the unchanged contact filters drop them.
  */
 const CIVIL_REGISTRY_NOTE =
-  "The Registro Civil das Pessoas Naturais offices that IPPUC's layer lists (four when read on 2026-11-25), as " +
-  "published, not necessarily every registry office in Curitiba. Hours as published (see `updated`). Prices, " +
+  "The Registro Civil das Pessoas Naturais offices that IPPUC's layer lists, as published, not necessarily every " +
+  "registry office in Curitiba. Hours as published (see `updated`). Prices, " +
   "deadlines and which office holds a given record are not in the layer: call the office before going. The offices' " +
   "e-mails are on their own domains and are not shown.";
 const MILITARY_BOARD_NOTE =
@@ -205,7 +205,7 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** `observacao` lines left out (after cleaning): the registry offices' trade-name line, a surname (v0.51.0). */
+  /** `observacao` lines left out (after cleaning; the RegExp must match the whole line): the registry offices' trade-name line, a surname (v0.51.0). */
   dropLine?: RegExp;
 }
 
@@ -412,7 +412,9 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   },
   // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
   // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
-  // registry record ends with a "Cartório <surname>." line: dropped, a person's name.
+  // registry record ends with a "Cartório <surname>." line: dropped, a person's name. Only a whole line of "Cartório"
+  // and capitalised words (with da/de/do/dos/e) matches, so "Cartório Souza - plantão ..." or "Cartório Fechado para
+  // reforma." is kept.
   {
     ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
       "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
@@ -420,7 +422,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "certidao de obito",
     ]),
     note: CIVIL_REGISTRY_NOTE,
-    dropLine: /^Cart[oó]rio\s+\p{Lu}/u,
+    dropLine: /^(?:Cart[oó]rio|CART[OÓ]RIO)(?:\s+(?:(?:d[aeo]s?|e|D[AEO]S?|E)\s+)?\p{Lu}[\p{L}'’-]*)+\.?$/u,
   },
   {
     ...equipment("junta militar", 21, "Junta de Serviço Militar", [
@@ -663,14 +665,14 @@ export function institutionalEmails(raw: unknown): string[] {
 }
 
 /**
- * A line longer than `max` split after its commas into lines of at most `max` characters (a part longer than that
- * stays whole and is cut later). Phones, e-mails and CPFs hold no ", ", so no masked shape is split.
+ * A line longer than `max` split after its commas and semicolons into lines of at most `max` characters (a part longer than that
+ * stays whole and is cut later). Phones, e-mails and CPFs hold no ", " or "; ", so no masked shape is split.
  */
 export function wrapAtCommas(line: string, max: number): string[] {
   if (line.length <= max) return [line];
   const out: string[] = [];
   let cur = "";
-  for (const part of line.trim().split(/(?<=,)\s+/)) {
+  for (const part of line.trim().split(/(?<=[,;])\s+/)) {
     const next = cur === "" ? part : `${cur} ${part}`;
     if (next.length <= max || cur === "") cur = next;
     else {

@@ -51,10 +51,12 @@ What the read showed and how this version handles it:
    No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias (other kinds of cartório exist; registro de
    imóveis is a later item). None of the new names is used by another type (the uniqueness test checks it).
 2. **Two optional `FacilityType` fields**, used only by these types: `dropLine` (a RegExp; matching `observacao` lines
-   are left out after cleaning) and `wrapLines` (split a line longer than 160 characters after its commas; a part
+   are left out after cleaning; only a whole line of "Cartório" and capitalised words matches, so "Cartório Souza -
+   plantão ..." or "Cartório Fechado para reforma." is kept) and `wrapLines` (split a line longer than 160 characters
+   after its commas and semicolons; a part
    longer than that is still cut with "…"). Masking is unchanged and runs on every part.
 3. **Notes** (no lead note):
-   - registry: the offices IPPUC's layer lists (four when read), as published, not necessarily every registry office in
+   - registry: the offices IPPUC's layer lists, as published, not necessarily every registry office in
      Curitiba; hours as published (see `updated`); prices, deadlines and which office holds a given record are not in
      the layer, so call the office before going; the offices' e-mails are not shown;
    - junta: days, hours and the bairros each serves are in `hours`; `bairro` filters by where a junta is, so list them
