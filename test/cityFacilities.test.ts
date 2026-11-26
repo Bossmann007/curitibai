@@ -845,9 +845,9 @@ describe("city_facilities_search", () => {
       emails: [],
       updated: "2023-09-29",
     });
-    // A "Cartório ..." line with hours is kept; the mobile and the gmail address are dropped.
+    // A "Cartório ..." line is replaced by the marker even with hours in it; the mobile and the gmail address are dropped.
     expect(out.data.items[1]).toMatchObject({
-      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h", "Cartório de plantão aos sábados, das 9h às 12h."],
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h", HIDDEN_NAME_LINE],
       phones: ["(41) 3333-0202"],
       emails: [],
     });
@@ -859,39 +859,35 @@ describe("city_facilities_search", () => {
     expect(JSON.stringify(all)).not.toMatch(/Inventado\.|Souza|maria|gmail|9999|9888/i);
   });
 
-  it("v0.51.0: a registry line starting \"Cartório\" with no digit is replaced by a visible marker, on any line; lines with hours stay", () => {
+  it("v0.51.0: any registry line that mentions the cartório is replaced by a visible marker, on any line; other lines stay", () => {
     const t = type("cartorio de registro civil");
     const hours = (obs: string) => hourLines(obs, 30, false, t.hideLine);
     for (const line of [
       "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.",
-      "Cartório Inventado ;", "Cartório: Inventado.", "Cartório Fechner.", "Cartório Mudrovitsch.", "Cartório J. Taborda.",
-      "Cartório d'Ávila.", "Cartório Taborda (Centro).", "Cartório Taborda!", "Cartório Fechado.", "Cartório Reaberto.",
-      "Cartório Com Novo Horário.",
+      "Cartório Inventado ;", "Cartório: Inventado.", "Cartório Fechner.", "Cartório J. Taborda.", "Cartório d'Ávila.",
+      "Cartório Taborda (Centro).", "-Cartório Taborda.", "• Cartório Taborda.", "\"Cartório Taborda.\"",
+      "Cartório Souza - plantão aos sábados, das 9h às 12h.", "Cartório Taborda - 2º Ofício.", "Cartorio Taborda.",
+      "Cartório Fechado.", "Cartório de plantão aos sábados.",
     ]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", HIDDEN_NAME_LINE]);
     }
     expect(hours("Atendimento:\nCartório Taborda.\nAtualizado em março.")).toEqual(["Atendimento:", HIDDEN_NAME_LINE, "Atualizado em março."]);
-    for (const line of [
-      "Cartório de plantão aos sábados, das 9h às 12h.",
-      "Cartório Fechado para reforma até 30/11.",
-      "Atendimento no Cartório Central.",
-      "-2ª a 6ª feira, das 8h30 às 17h30",
-    ]) {
-      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", line]);
-    }
+    expect(hours("Atendimento:\n-2ª a 6ª feira, das 8h30 às 17h30\nPlantão aos sábados.")).toEqual([
+      "Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", "Plantão aos sábados.",
+    ]);
     expect(HIDDEN_NAME_LINE.length).toBeLessThanOrEqual(160);
   });
 
-  it("v0.51.0: the registry name-line check stays fast on long ambiguous lines (the 5aecd4d regex was exponential)", () => {
+  it("v0.51.0: the registry line check stays fast on long ambiguous lines (the 5aecd4d regex was exponential)", () => {
     const t = type("cartorio de registro civil");
+    const start = performance.now();
     for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
-      for (const head of ["CARTÓRIO", "Cartório"]) {
-        const l = `${head}${filler.repeat(60)} x`.slice(0, 160);
-        const start = performance.now();
-        expect(hourLines(l, 30, false, t.hideLine)).toEqual([HIDDEN_NAME_LINE]);
-        expect(performance.now() - start).toBeLessThan(50);
+      for (const head of ["CARTÓRIO", "Cartório", "Atendimento"]) {
+        const l = `${head}${filler.repeat(60)}`.slice(0, 150) + " x";
+        expect(hourLines(l, 30, false, t.hideLine)).toEqual([head === "Atendimento" ? l.replace(/\s+/g, " ") : HIDDEN_NAME_LINE]);
       }
     }
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it.each([

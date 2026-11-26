@@ -50,7 +50,7 @@ What the read showed and how this version handles it:
    - `forum` (106, "Fórum"), alias `foruns`.
    No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias (other kinds of cartório exist; registro de
    imóveis is a later item). None of the new names is used by another type (the uniqueness test checks it).
-2. **Two optional `FacilityType` fields**, used only by these types: `hideLine` (a function; for the registry type `isRegistryNameLine`: a line that starts with "Cartório" (any case) and holds no digit, on any line of the record, is replaced by the marker "[a line naming the cartório is not shown: it can carry a person's name; ask the office]" (new optional `hideLine`; two fixed checks, no backtracking regex), so no surname is shown and nothing is cut silently; a status line with no digit ("Cartório Fechado.") is hidden the same visible way, and a line with days or hours ("Cartório de plantão aos sábados, das 9h às 12h.") is kept) and `wrapLines` (split a line longer than 160 characters
+2. **Two optional `FacilityType` fields**, used only by these types: `hideLine` (a function; for the registry type `isRegistryNameLine`: any line that mentions "cartório" (any case, anywhere) is replaced by the marker "[a line about the cartório is not shown: it can carry a person's name or a notice; ask the office]" (new optional `hideLine`; one fixed linear check, no backtracking regex), so no surname is shown and nothing is cut silently; a notice that mentions the cartório ("Cartório Fechado.", "Cartório de plantão aos sábados, das 9h às 12h.") is hidden the same visible way. When read, only the trade-name lines mentioned it) and `wrapLines` (split a line longer than 160 characters
    after its commas and semicolons; a part
    longer than that is still cut with "…"). Masking is unchanged and runs on every part.
 3. **Notes** (no lead note):
@@ -89,7 +89,7 @@ or link.
 
 - `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases resolve to layers 99, 21,
   105 and 106; bare `cartorio`, `certidao`, `junta`, `justica`, `tribunal` not types; the registry offices in Centro
-  with hours as published and the "Cartório <Name>." line dropped (another "Cartório de ..." line kept); for each new
+  with hours as published and every line that mentions the cartório replaced by the marker, on any line and in any case or punctuation, fast on long ambiguous lines; for each new
   type, synthetic personal e-mails and mobiles dropped and no price, free or same-day wording in the note; a junta's
   500-character bairro list split into lines of at most 160 characters with no "…"; a mobile-only Defensoria post
   with no phone; q129 answered.

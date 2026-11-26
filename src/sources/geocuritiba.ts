@@ -145,8 +145,8 @@ const CIVIL_REGISTRY_NOTE =
   "The Registro Civil das Pessoas Naturais offices that IPPUC's layer lists, as published, not necessarily every " +
   "registry office in Curitiba. Hours as published (see `updated`). Prices, " +
   "deadlines and which office holds a given record are not in the layer: call the office before going. The offices' " +
-  "e-mails are on their own domains and are not shown, and a line naming a cartório with no days or hours (it can " +
-  "carry a person's name) is replaced by a marker.";
+  "e-mails are on their own domains and are not shown, and a line in `hours` that mentions the cartório (it can " +
+  "carry a person's name) is replaced by a marker: ask the office.";
 const MILITARY_BOARD_NOTE =
   "The Juntas de Serviço Militar that IPPUC lists in Curitiba; days, hours and the bairros each one serves are in " +
   "`hours` as published (see `updated`). `bairro` filters by where a junta is, not by the bairros it serves: to find " +
@@ -683,17 +683,17 @@ export function wrapAtCommas(line: string, max: number): string[] {
   return out;
 }
 
-/** Shown instead of a registry line that may carry a person's name (v0.51.0): never a silent cut. */
-export const HIDDEN_NAME_LINE = "[a line naming the cartório is not shown: it can carry a person's name; ask the office]";
+/** Shown instead of a registry line that mentions the cartório (v0.51.0): never a silent cut. */
+export const HIDDEN_NAME_LINE = "[a line about the cartório is not shown: it can carry a person's name or a notice; ask the office]";
 
 /**
- * A registry line that may name a person (v0.51.0): it starts with "Cartório" (any case) and holds no digit, like the
- * trade-name line "Cartório Taborda." every record ends with. A status line with no digit ("Cartório Fechado.") is
- * hidden too, but visibly (HIDDEN_NAME_LINE); a line with days or hours ("Cartório de plantão aos sábados, das 9h às
- * 12h.") is kept. Two fixed linear tests, no backtracking.
+ * A registry line that may name a person (v0.51.0): any line that mentions "cartório" (any case, anywhere), like the
+ * trade-name line "Cartório Taborda." every record ends with. When read, no other line mentioned it. A notice that
+ * does ("Cartório Fechado.", "-Cartório Souza, plantão das 9h às 12h") is hidden too, visibly (HIDDEN_NAME_LINE), so no
+ * surname is guessed past. One fixed linear test.
  */
 export function isRegistryNameLine(line: string): boolean {
-  return /^cart[oó]rio\b/iu.test(line) && !/\d/u.test(line);
+  return /cart[oó]rio/iu.test(line);
 }
 
 /**
