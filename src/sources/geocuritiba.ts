@@ -205,8 +205,8 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** `observacao` lines left out (after cleaning; the RegExp must match the whole line): the registry offices' trade-name line, a surname (v0.51.0). */
-  dropLine?: RegExp;
+  /** True when the last `observacao` line (after cleaning) is to be left out: the registry offices' trade-name line, a surname (v0.51.0). */
+  dropLastLine?: (line: string) => boolean;
 }
 
 const sport = (id: string, layer: number, label: string, aliases: string[]): FacilityType => ({
@@ -412,10 +412,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   },
   // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
   // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
-  // registry record ends with a "Cartório <surname>." line: dropped, a person's name. Only a whole line of "Cartório"
-  // and one to three capitalised names (a lowercase da/de/do/dos/das/e between them) matches, and not when the first
-  // word is a status word, so "Cartório Souza - plantão ...", "Cartório Fechado." or "Cartório Funciona Em Novo
-  // Endereço." is kept. Linear: a connective is lowercase and a name starts upper case, so a token fits one way only.
+  // registry record ends with a "Cartório <surname>." line: dropped, a person's name (see isRegistryTradeName).
   {
     ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
       "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
@@ -423,7 +420,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "certidao de obito",
     ]),
     note: CIVIL_REGISTRY_NOTE,
-    dropLine: /^Cart[oó]rio (?!(?:Fechad[oa]|Abert[oa]|Funciona|Distrital|Temporariamente|Atende|Em|Sem|N[aã]o)(?![\p{L}'’-]))\p{Lu}[\p{L}'’-]*(?: (?:d[aeo]s? |e )?\p{Lu}[\p{L}'’-]*){0,2}\.?$/u,
+    dropLastLine: isRegistryTradeName,
   },
   {
     ...equipment("junta militar", 21, "Junta de Serviço Militar", [
@@ -685,20 +682,46 @@ export function wrapAtCommas(line: string, max: number): string[] {
   return out;
 }
 
+/** A first word that says something about the office, not a name ("Cartório Fechado.", "Cartório Mudou De Endereço."). */
+const REGISTRY_STATUS = /^(?:fech|abert|funcion|distrit|tempor|atend|encerr|interdit|transfer|desativ|mud|provis|reform|plant|em$|sem$|n[aã]o$|fora$)/iu;
+const NAME_PART = /^\p{Lu}[\p{L}'’-]*$/u;
+const CONNECTIVE = /^(?:d[aeo]s?|e)$/iu;
+
+/**
+ * The registry offices' trade-name line (v0.51.0), "Cartório Taborda." or "Cartório Guimarães de Macedo.": "Cartório"
+ * (any case, optional ":"), then one to six words that are names (a capital first letter) or da/de/do/dos/das/e, the
+ * first one a name that is not a status word, and at most a trailing ".", ";" or ",". No backtracking regex: the
+ * line is split into words and each word is checked once.
+ */
+export function isRegistryTradeName(line: string): boolean {
+  const words = line.replace(/[.;,]$/u, "").trim().split(" ");
+  const head = words.shift()?.replace(/:$/u, "");
+  if (head === undefined || !/^cart[oó]rio$/iu.test(head) || words.length < 1 || words.length > 6) return false;
+  const first = words[0]!;
+  if (!NAME_PART.test(first) || REGISTRY_STATUS.test(first)) return false;
+  return words.every((w) => NAME_PART.test(w) || CONNECTIVE.test(w));
+}
+
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
  * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
  */
-export function hourLines(raw: unknown, max: number = MAX_HOUR_LINES, wrap = false, drop?: RegExp): string[] {
+export function hourLines(
+  raw: unknown,
+  max: number = MAX_HOUR_LINES,
+  wrap = false,
+  dropLast?: (line: string) => boolean,
+): string[] {
   const s = str(raw);
   if (s === null) return [];
   const lines: string[] = [];
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
-      if (t !== "" && !drop?.test(t)) lines.push(t);
+      if (t !== "") lines.push(t);
     }
   }
+  if (dropLast && lines.length > 0 && dropLast(lines[lines.length - 1]!)) lines.pop();
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
@@ -728,7 +751,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.dropLine),
+    hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.dropLastLine),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email),

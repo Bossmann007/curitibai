@@ -858,10 +858,14 @@ describe("city_facilities_search", () => {
     expect(JSON.stringify(all)).not.toMatch(/Inventado\.|Souza|maria|gmail|9999|9888/i);
   });
 
-  it("v0.51.0: only a whole \"Cartório <Name>.\" line is dropped from a registry record; hours or notices after the name stay", () => {
+  it("v0.51.0: a registry record's last line \"Cartório <Name>.\" is dropped; status lines, other lines and earlier lines stay", () => {
     const t = type("cartorio de registro civil");
-    const hours = (obs: string) => hourLines(obs, 30, false, t.dropLine);
-    for (const line of ["Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Inventado dos Santos e Silva", "Cartório Emanuel."]) {
+    const hours = (obs: string) => hourLines(obs, 30, false, t.dropLastLine);
+    for (const line of [
+      "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Inventado dos Santos e Silva", "Cartório Emanuel.",
+      "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.", "CARTÓRIO FICTÍCIO DE SOUZA.", "Cartório Inventado ;",
+      "Cartório: Inventado.",
+    ]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:"]);
     }
     for (const line of [
@@ -869,27 +873,32 @@ describe("city_facilities_search", () => {
       "Cartório Fechado para reforma até 30/11.",
       "Cartório de plantão aos sábados.",
       "Cartório Fechado.",
+      "Cartório FECHADO.",
       "Cartório Distrital do Bairro Alto.",
       "Cartório Funciona Em Novo Endereço.",
+      "Cartório Funcionando Normalmente.",
       "Cartório Temporariamente Fechado.",
-      "CARTÓRIO INVENTADO.",
+      "Cartório Interditado.",
+      "Cartório Encerrado.",
+      "Cartório Transferido.",
+      "Cartório Mudou De Endereço.",
     ]) {
       expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", line]);
     }
+    // Only the last line is checked: that is where the layer puts the trade name.
+    expect(hours("Cartório Inventado.\nAtendimento:")).toEqual(["Cartório Inventado.", "Atendimento:"]);
   });
 
-  it("v0.51.0: the registry dropLine is linear: long ambiguous lines are processed fast and kept", () => {
+  it("v0.51.0: the registry trade-name check is linear: long ambiguous lines are processed fast and kept", () => {
     const t = type("cartorio de registro civil");
+    const start = performance.now();
     for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
-      const line = `CARTÓRIO${filler.repeat(60)} x`.slice(0, 160);
-      const cap = `Cartório${filler.repeat(60)} x`.slice(0, 160);
-      for (const l of [line, cap]) {
-        const start = performance.now();
-        const out = hourLines(l, 30, false, t.dropLine);
-        expect(performance.now() - start).toBeLessThan(50);
-        expect(out).toEqual([l.replace(/\s+/g, " ")]);
+      for (const head of ["CARTÓRIO", "Cartório"]) {
+        const l = `${head}${filler.repeat(60)} x`.slice(0, 160);
+        expect(hourLines(l, 30, false, t.dropLastLine)).toEqual([l.replace(/\s+/g, " ").trim()]);
       }
     }
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it.each([

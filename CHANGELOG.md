@@ -27,8 +27,8 @@ Publishes nothing.
   a post can come back with no phone, and to reach the Defensoria Pública do Paraná through its own channels (not
   linked). No note names a price, free service or a same-day document (tested).
 - Each registry record ends with "Cartório <surname>." (the office's trade name after a person): that line is left
-  out of `hours` (new optional `dropLine` on the type; only a whole line of "Cartório" and one to three capitalised names (a lowercase da/de/do/dos/das/e between them) matches, and not when the first word is a status word (Fechado, Aberto, Funciona, Distrital, Temporariamente, Atende, Em, Sem, Não), so a line such as
-  "Cartório Souza - plantão ..." or "Cartório Fechado." is kept; tested to stay linear on long ambiguous lines). The bairro lists of the juntas, Defensoria posts and fóruns run
+  out of `hours` (new optional `dropLastLine` on the type; only the last line is checked, and only when it is "Cartório" (any case) and one to six words that are capitalised names or da/de/do/dos/das/e, the first a name that is not a status word (Fechado, Aberto, Funciona, Encerrado, Interditado, Transferido, Mudou and the like), with at most a final "." ";" or ","; checked word by word, with no backtracking regex, so a line such as
+  "Cartório Souza - plantão ..." or "Cartório Fechado." is kept; tested to stay fast on long ambiguous lines). The bairro lists of the juntas, Defensoria posts and fóruns run
   to about 500 characters: for these types a line over 160 characters is split after its commas into several lines
   instead of being cut with "…" (new optional `wrapLines`; also after semicolons). Other types are unchanged.
 - Privacy filters unchanged: the registry offices' own-domain e-mails (one with a person's name), the Defensoria's
