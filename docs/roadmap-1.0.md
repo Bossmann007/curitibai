@@ -206,3 +206,7 @@ At v0.54.0 (phase B) the `cei contratado` maintainer filter also hides "Mantida 
 At v0.55.0 (phase B) the `cei contratado` filter keeps Av., Fone, Período, Vagas and Berçário lines after a
 hidden maintainer line visible, and matches short service words (rua, av, fone, vagas) as whole words. The citizen eval answers 127 of 131 questions;
 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.56.0 the package is smaller with the same behaviour: the build drops source comments (packed 251,583 to
+211,163 bytes) and keeps the ODbL notice of the OSM extract. The citizen eval answers 127 of 131 questions; 4 are
+gaps (real-time buses 2, other cities 2).

@@ -2,6 +2,14 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.56.0 - 2026-11-26
+
+Smaller package, same behaviour. 27 tools. Publishes nothing.
+
+- Build: `removeComments` in `tsconfig.build.json`. Packed size 251,583 to 211,163 bytes (`scripts/check-pack.mjs`).
+- The ODbL notice of `dist/sources/osmBundled.js` is a `/*!` block, kept by the build; the package check fails if it,
+  or the OSM and URBS attribution strings, leave the packed files. No contract change. Eval: 127 of 131, unchanged.
+
 ## 0.55.0 - 2026-11-26
 
 Follow-up of the 0.54.0 review. 27 tools. Publishes nothing.

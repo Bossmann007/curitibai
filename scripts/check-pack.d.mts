@@ -3,3 +3,5 @@
 export const MAX_PACKED_BYTES: number;
 export function checkPack(pack: { files: { path: string }[]; size: number }, built?: string[]): string[];
 export function scanSecrets(path: string, text: string): string[];
+export const REQUIRED_NOTICES: Record<string, string[]>;
+export function checkNotices(texts: Map<string, string>): string[];

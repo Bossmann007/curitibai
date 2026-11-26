@@ -2,8 +2,9 @@
 // Package check: what `npm publish` would upload. Runs `npm pack --dry-run --json` (no tarball written, no network) and
 // fails unless every path is on the allowlist below, none is a forbidden kind (local data, tests, fixtures, .env*,
 // *.local), every dist/ file comes from a src/ module (a leftover of a renamed module would ship otherwise: the build
-// does not empty dist/), no packed line looks like a secret (scanSecrets) and the packed size is under
-// MAX_PACKED_BYTES. Run it after `npm run build`: dist/ is gitignored.
+// does not empty dist/), no packed line looks like a secret (scanSecrets), every required licence notice
+// (REQUIRED_NOTICES) is in its packed file and the packed size is under MAX_PACKED_BYTES. Run it after
+// `npm run build`: dist/ is gitignored.
 // Exit 0 = fine, 1 = a rule failed (each one printed), 2 = npm pack failed.
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, realpathSync } from "node:fs";
@@ -48,6 +49,38 @@ const SECRETS = [
   ["URL with credentials", /\b[a-z][a-z0-9+.-]*:\/\/[^\s/:@'"`]+:[^\s/@'"`]+@[^\s'"`]+/i],
   [".env-style secret", /^\s*(export\s+)?[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\s*=\s*['"]?[^\s'"$]{8,}/],
 ];
+
+/**
+ * Licence and attribution text that must stay in the packed files. The build drops comments (removeComments in
+ * tsconfig.build.json) except blocks opened with "/*!", so a notice kept as a comment must be one of those.
+ */
+export const REQUIRED_NOTICES = {
+  // The ODbL notice of the bundled OpenStreetMap extract (docs/licences.md), a /*! block in src/sources/osmBundled.ts.
+  "dist/sources/osmBundled.js": [
+    "© OpenStreetMap contributors",
+    "Open Database License (ODbL 1.0",
+    "https://opendatacommons.org/licenses/odbl/1-0/",
+    "https://www.openstreetmap.org/copyright",
+    "the Apache-2.0 licence of this repository does not apply to it",
+  ],
+  // Runtime attribution strings the tools return.
+  "dist/sources/osm.js": ["© OpenStreetMap contributors (ODbL 1.0)"],
+  "dist/sources/urbs.js": ["Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.pt_BR)"],
+};
+
+/**
+ * @param {Map<string, string>} texts  packed path -> file content, for the paths in REQUIRED_NOTICES
+ * @returns {string[]} one error per missing file or notice
+ */
+export function checkNotices(texts) {
+  const errors = [];
+  for (const [path, notices] of Object.entries(REQUIRED_NOTICES)) {
+    const text = texts.get(path);
+    if (text === undefined) errors.push(`missing from the package: ${path} (it carries a required licence notice)`);
+    else for (const n of notices) if (!text.includes(n)) errors.push(`licence notice missing from ${path}: "${n}"`);
+  }
+  return errors;
+}
 
 /**
  * @param {string} path  packed path, for the message
@@ -104,7 +137,9 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   for (const f of pack.files) console.log(`  ${String(f.size).padStart(8)}  ${f.path}`);
   console.log(`check-pack: ${pack.filename}, ${pack.files.length} files, packed ${pack.size} bytes, unpacked ${pack.unpackedSize} bytes (ceiling ${MAX_PACKED_BYTES} packed)`);
   const errors = checkPack(pack, built);
-  for (const { path } of pack.files) errors.push(...scanSecrets(path, readFileSync(new URL(`../${path}`, import.meta.url), "utf8")));
+  const texts = new Map(pack.files.map(({ path }) => [path, readFileSync(new URL(`../${path}`, import.meta.url), "utf8")]));
+  for (const [path, text] of texts) errors.push(...scanSecrets(path, text));
+  errors.push(...checkNotices(texts));
   for (const e of errors) console.error(`check-pack: ${e}`);
   if (errors.length > 0) process.exit(1);
   console.log("check-pack: OK");
