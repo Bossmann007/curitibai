@@ -205,7 +205,7 @@ const CEI_NOTE =
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b";
 const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
-const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bMEI?\b/.test(line);
+const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b|\bmei\b/i.test(line);
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
@@ -806,18 +806,21 @@ export function hourLines(
   if (s === null) return [];
   const lines: string[] = [];
   let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
-  // v0.54.0, maintainer only: after a hidden line, a line with no digit and no ':' can be the rest of the name.
+  // v0.54.0, maintainer only: the one line after a hidden line can be the rest of the name, unless it starts with a digit
+  // or "-" (hours) or has a ':' (another label).
   let rest = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      if (!hide || !(label || (rest && !/[\d:]/.test(t)) || hide(t) || hide(cleanText(part, Infinity)))) {
+      const tail: boolean = rest && !/^[-\d]|:/.test(t);
+      if (!hide || !(label || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
         label = rest = false;
       } else {
-        rest = hide === isMaintainerLine;
-        label = (t.endsWith(":") && !label) || (rest && MAINTAINER_LABEL.test(fold(t)));
+        const m = hide === isMaintainerLine;
+        rest = m && (label || !tail);
+        label = m ? MAINTAINER_LABEL.test(fold(t)) : t.endsWith(":") && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }

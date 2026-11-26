@@ -1362,7 +1362,16 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
   it("v0.54.0: CMEI is not MEI, and a shelter line does not hide the Encaminhamento line after it", () => {
     const cei = type("cei contratado");
     expect(hourLines("Antigo CMEI Inventado", 30, false, cei.hideLine, cei.hiddenLineMarker)).toEqual(["Antigo CMEI Inventado"]);
-    expect(hourLines("Casa de Passagem\nEncaminhamento: pelo CRAS", 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE, "Encaminhamento: pelo CRAS"]);
+    expect(hourLines("Casa de Passagem\nEncaminhamento pelo CRAS", 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE, "Encaminhamento pelo CRAS"]);
+  });
+
+  it("v0.54.0: the rest of a name is one line; lowercase mei; hours after a hidden line that ends with ':' stay", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    expect(lines("Mantenedora: X Ltda\nAtendimento em período integral\nNão abre em feriados")).toEqual([HIDDEN_MAINTAINER_LINE, "Não abre em feriados"]);
+    expect(lines("Mantenedora: Fulana de\nTal, CNPJ 12.345.678/0001-90\nNão abre em feriados")).toEqual([HIDDEN_MAINTAINER_LINE, "Não abre em feriados"]);
+    expect(lines("Fulana de Tal mei")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    expect(lines("Responsável pelo atendimento, horário:\n-2ª a 6ª feira, das 7h às 18h")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h"]);
   });
 });
 
