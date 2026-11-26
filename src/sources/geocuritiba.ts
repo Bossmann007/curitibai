@@ -360,21 +360,21 @@ const conservation = (id: string, layer: number, label: string, aliases: string[
   note: CONSERVATION_NOTE,
 });
 
-const equipment = (id: string, layer: number, label: string, aliases: string[] = [], mixed = false): FacilityType => ({
+const equipment = (id: string, layer: number, label: string, aliases: string[] = [], extra: Partial<FacilityType> = {}): FacilityType => ({
   id,
   label,
   aliases,
   kind: "facility",
   layerUrl: `${EQUIPMENT_SERVICE_URL}/${layer}`,
-  ...(mixed ? { mixedOwnership: true as const } : {}),
+  ...extra,
 });
 
-const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType => ({
-  ...equipment(id, layer, label, aliases),
-  note,
-  hideLine: isShelterLine,
-  hiddenLineMarker: HIDDEN_SHELTER_LINE,
-});
+/** Lines that may point at a shelter (social assistance) or name the person in charge (offices) are replaced by a marker. */
+const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE };
+const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE };
+
+const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType =>
+  equipment(id, layer, label, aliases, { note, ...HIDE_SHELTER });
 
 /**
  * The curated subset of layers (ids read from the services on 2026-11-21; the Cultura layers added in v0.20.0 on
@@ -395,19 +395,19 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("banheiro publico", 28, "Sanitário Público", ["banheiros publicos", "sanitario publico", "sanitarios publicos", "banheiro"]),
   equipment("biblioteca", 64, "Biblioteca Geral", ["bibliotecas", "biblioteca geral"]),
   equipment("farol do saber", 63, "Farol do Saber", ["farois do saber"]),
-  equipment("museu", 54, "Museu", ["museus"], true),
-  equipment("teatro", 55, "Teatro", ["teatros"], true),
+  equipment("museu", 54, "Museu", ["museus"], { mixedOwnership: true }),
+  equipment("teatro", 55, "Teatro", ["teatros"], { mixedOwnership: true }),
   // Cultura group, added in v0.20.0 (ids and counts read on 2026-11-23; at most 24 records each).
-  equipment("centro cultural", 50, "Centro Cultural", ["centros culturais"], true),
+  equipment("centro cultural", 50, "Centro Cultural", ["centros culturais"], { mixedOwnership: true }),
   equipment("espaco expositivo", 51, "Espaço Expositivo de Artes", [
     "espacos expositivos", "espaco expositivo de artes", "espaco expositivo de arte", "espacos expositivos de artes",
-  ], true),
+  ], { mixedOwnership: true }),
   equipment("memorial", 53, "Memorial", ["memoriais"]),
-  equipment("cinema", 56, "Cinema", ["cinemas"], true),
+  equipment("cinema", 56, "Cinema", ["cinemas"], { mixedOwnership: true }),
   equipment("espetaculos ao ar livre", 59, "Espaço para Espetáculos ao Ar Livre", [
     "espetaculo ao ar livre", "espaco para espetaculos ao ar livre", "espacos para espetaculos ao ar livre",
     "espaco para espetaculo ao ar livre",
-  ], true),
+  ], { mixedOwnership: true }),
   equipment("gibiteca", 62, "Gibiteca", ["gibitecas"]),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),
@@ -430,156 +430,89 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   sport("velodromo", 166, "Velódromo", ["velodromos"]),
   // Municipal health units (SMS), added in v0.44.0 (read on 2026-11-25: 109 records, every one with its hours in
   // `observacao`). health_units_search (CNES) has no hours; UPAs and hospitals are the next layers.
-  {
-    ...equipment("unidade de saude", 134, "Unidade de Saúde", [
-      "unidades de saude", "ubs", "unidade basica", "unidades basicas", "unidade basica de saude", "unidades basicas de saude",
-      "posto de saude", "postos de saude",
-    ]),
-    note: HEALTH_UNIT_NOTE,
-  },
+  equipment("unidade de saude", 134, "Unidade de Saúde", [
+    "unidades de saude", "ubs", "unidade basica", "unidades basicas", "unidade basica de saude", "unidades basicas de saude",
+    "posto de saude", "postos de saude",
+  ], { note: HEALTH_UNIT_NOTE }),
   // UPAs, public hospitals and psychiatric stabilisation, added in v0.45.0 (read on 2026-11-25: 9, 10 and 1 records).
   // Layer 129's flags and hours are uneven (some records all "Não" with no text), so its note says what they do not mean.
-  {
-    ...equipment("upa", 130, "Unidade de Pronto Atendimento", [
-      "upas", "unidade de pronto atendimento", "unidades de pronto atendimento", "pronto atendimento", "upa 24h", "upa 24 horas",
-    ]),
-    note: UPA_NOTE,
-    leadNote: EMERGENCY_NOTE,
-  },
-  { ...equipment("hospital publico", 129, "Hospital (público)", ["hospitais publicos"]), note: HOSPITAL_NOTE, leadNote: EMERGENCY_NOTE },
-  {
-    ...equipment("estabilizacao psiquiatrica", 131, "Unidade de Estabilização Psiquiátrica", [
-      "unidade de estabilizacao psiquiatrica", "unidades de estabilizacao psiquiatrica",
-    ]),
-    note: PSYCHIATRIC_NOTE,
-    leadNote: MENTAL_HEALTH_LEAD_NOTE,
-  },
+  equipment("upa", 130, "Unidade de Pronto Atendimento", [
+    "upas", "unidade de pronto atendimento", "unidades de pronto atendimento", "pronto atendimento", "upa 24h", "upa 24 horas",
+  ], { note: UPA_NOTE, leadNote: EMERGENCY_NOTE }),
+  equipment("hospital publico", 129, "Hospital (público)", ["hospitais publicos"], { note: HOSPITAL_NOTE, leadNote: EMERGENCY_NOTE }),
+  equipment("estabilizacao psiquiatrica", 131, "Unidade de Estabilização Psiquiátrica", [
+    "unidade de estabilizacao psiquiatrica", "unidades de estabilizacao psiquiatrica",
+  ], { note: PSYCHIATRIC_NOTE, leadNote: MENTAL_HEALTH_LEAD_NOTE }),
   // CAPS and specialty centres, added in v0.46.0 (read on 2026-11-25: 13, 10 and 2 records). The bare
   // "centro de especialidades" stays unresolved (medical or dental); no "caps infantil" alias (no such filter).
-  {
-    ...equipment("caps", 135, "Centro de Atenção Psicossocial", ["centro de atencao psicossocial", "centros de atencao psicossocial"]),
+  equipment("caps", 135, "Centro de Atenção Psicossocial", ["centro de atencao psicossocial", "centros de atencao psicossocial"], {
     note: CAPS_NOTE,
     leadNote: MENTAL_HEALTH_LEAD_NOTE,
-  },
-  {
-    ...equipment("centro de especialidades medicas", 132, "Centro de Especialidades Médicas", [
-      "centros de especialidades medicas", "especialidades medicas",
-    ]),
-    note: MEDICAL_SPECIALTY_NOTE,
-  },
-  {
-    ...equipment("centro de especialidades odontologicas", 133, "Centro de Especialidades Odontológicas", [
-      "centros de especialidades odontologicas", "ceo", "especialidades odontologicas",
-    ]),
-    note: DENTAL_SPECIALTY_NOTE,
-  },
+  }),
+  equipment("centro de especialidades medicas", 132, "Centro de Especialidades Médicas", [
+    "centros de especialidades medicas", "especialidades medicas",
+  ], { note: MEDICAL_SPECIALTY_NOTE }),
+  equipment("centro de especialidades odontologicas", 133, "Centro de Especialidades Odontológicas", [
+    "centros de especialidades odontologicas", "ceo", "especialidades odontologicas",
+  ], { note: DENTAL_SPECIALTY_NOTE }),
   // Health surveillance, zoonoses and the veterinary hospital, added in v0.47.0 (read on 2026-11-25: 10, 1 and 1
   // records). No bare "vigilancia", "veterinario", "animal" or "pet" alias: they would promise more than these layers.
-  {
-    ...equipment("vigilancia sanitaria", 167, "Vigilância Sanitária", [
-      "vigilancias sanitarias", "vigilancia sanitaria municipal",
-    ]),
-    note: SANITARY_NOTE,
-  },
-  {
-    ...equipment("zoonoses", 136, "Centro de Controle de Zoonoses e Vetores", [
-      "centro de controle de zoonoses", "centro de controle de zoonoses e vetores", "controle de zoonoses",
-      "centro de zoonoses", "centros de zoonoses", "zoonose", "centro de zoonose", "ccz",
-    ]),
-    note: ZOONOSES_NOTE,
-  },
-  {
-    ...equipment("hospital veterinario", 112, "Hospital Veterinário Municipal", [
-      "hospital veterinario municipal", "hospitais veterinarios",
-    ]),
-    note: VET_HOSPITAL_NOTE,
-  },
+  equipment("vigilancia sanitaria", 167, "Vigilância Sanitária", [
+    "vigilancias sanitarias", "vigilancia sanitaria municipal",
+  ], { note: SANITARY_NOTE }),
+  equipment("zoonoses", 136, "Centro de Controle de Zoonoses e Vetores", [
+    "centro de controle de zoonoses", "centro de controle de zoonoses e vetores", "controle de zoonoses",
+    "centro de zoonoses", "centros de zoonoses", "zoonose", "centro de zoonose", "ccz",
+  ], { note: ZOONOSES_NOTE }),
+  equipment("hospital veterinario", 112, "Hospital Veterinário Municipal", [
+    "hospital veterinario municipal", "hospitais veterinarios",
+  ], { note: VET_HOSPITAL_NOTE }),
   // Guarda Municipal modules and regional núcleos, added in v0.48.0 (read on 2026-11-25: 40 and 10 records). No bare
   // "guarda", "guarda municipal" (module or núcleo), "seguranca", "policia", "modulo" or "nucleo" alias.
-  {
-    ...equipment("modulo da guarda", 139, "Módulo da Guarda Municipal", [
-      "modulos da guarda", "modulo da guarda municipal", "modulos da guarda municipal",
-    ]),
-    note: GUARD_MODULE_NOTE,
-    leadNote: GUARD_EMERGENCY_NOTE,
-  },
-  {
-    ...equipment("nucleo da guarda", 138, "Núcleo Regional da Guarda Municipal", [
-      "nucleos da guarda", "nucleo da guarda municipal", "nucleos da guarda municipal",
-      "nucleo regional da guarda municipal", "nucleos regionais da guarda municipal",
-      "nucleo regional da defesa social", "nucleos regionais da defesa social",
-    ]),
-    note: GUARD_NUCLEUS_NOTE,
-    leadNote: GUARD_EMERGENCY_NOTE,
-  },
+  equipment("modulo da guarda", 139, "Módulo da Guarda Municipal", [
+    "modulos da guarda", "modulo da guarda municipal", "modulos da guarda municipal",
+  ], { note: GUARD_MODULE_NOTE, leadNote: GUARD_EMERGENCY_NOTE }),
+  equipment("nucleo da guarda", 138, "Núcleo Regional da Guarda Municipal", [
+    "nucleos da guarda", "nucleo da guarda municipal", "nucleos da guarda municipal",
+    "nucleo regional da guarda municipal", "nucleos regionais da guarda municipal",
+    "nucleo regional da defesa social", "nucleos regionais da defesa social",
+  ], { note: GUARD_NUCLEUS_NOTE, leadNote: GUARD_EMERGENCY_NOTE }),
   // Police units, added in v0.49.0 (read on 2026-11-25: 49, 1, 1 and 3 records). No bare "policia", "pf", "dp" or
   // "iml" alias; Polícia Militar units are not in these layers.
-  {
-    ...equipment("delegacia", 143, "Polícia Civil", [
-      "delegacias", "delegacia de policia", "delegacias de policia", "delegacia da policia civil",
-      "delegacias da policia civil", "policia civil", "distrito policial", "distritos policiais",
-    ]),
-    note: POLICE_CIVIL_NOTE,
-    leadNote: POLICE_EMERGENCY_NOTE,
-  },
-  {
-    ...equipment("policia federal", 146, "Polícia Federal", ["superintendencia da policia federal"]),
-    note: POLICE_FEDERAL_NOTE,
-    leadNote: POLICE_EMERGENCY_NOTE,
-  },
-  {
-    ...equipment("policia rodoviaria federal", 147, "Polícia Rodoviária Federal", [
-      "prf", "superintendencia da policia rodoviaria federal",
-    ]),
-    note: POLICE_HIGHWAY_NOTE,
-    leadNote: POLICE_EMERGENCY_NOTE,
-  },
-  {
-    ...equipment("policia cientifica", 145, "Polícia Científica", [
-      "policia cientifica do parana", "unidade de execucao tecnico cientifica",
-      "unidades de execucao tecnico cientifica",
-    ]),
-    note: POLICE_SCIENTIFIC_NOTE,
-    leadNote: POLICE_EMERGENCY_NOTE,
-  },
+  equipment("delegacia", 143, "Polícia Civil", [
+    "delegacias", "delegacia de policia", "delegacias de policia", "delegacia da policia civil",
+    "delegacias da policia civil", "policia civil", "distrito policial", "distritos policiais",
+  ], { note: POLICE_CIVIL_NOTE, leadNote: POLICE_EMERGENCY_NOTE }),
+  equipment("policia federal", 146, "Polícia Federal", ["superintendencia da policia federal"], { note: POLICE_FEDERAL_NOTE, leadNote: POLICE_EMERGENCY_NOTE }),
+  equipment("policia rodoviaria federal", 147, "Polícia Rodoviária Federal", [
+    "prf", "superintendencia da policia rodoviaria federal",
+  ], { note: POLICE_HIGHWAY_NOTE, leadNote: POLICE_EMERGENCY_NOTE }),
+  equipment("policia cientifica", 145, "Polícia Científica", [
+    "policia cientifica do parana", "unidade de execucao tecnico cientifica",
+    "unidades de execucao tecnico cientifica",
+  ], { note: POLICE_SCIENTIFIC_NOTE, leadNote: POLICE_EMERGENCY_NOTE }),
   // Instituto de Identificação do Paraná, added in v0.50.0 (read on 2026-11-25: 12 records). No bare "identidade",
   // "documento" or "cin" alias.
-  {
-    ...equipment("instituto de identificacao", 168, "Instituto de Identificação do Paraná", [
-      "instituto de identificacao do parana", "rg", "carteira de identidade", "carteira de identidade nacional",
-      "posto de identificacao",
-      "postos de identificacao",
-    ]),
-    note: IDENTIFICATION_NOTE,
-    leadNote: IDENTIFICATION_LEAD_NOTE,
-  },
+  equipment("instituto de identificacao", 168, "Instituto de Identificação do Paraná", [
+    "instituto de identificacao do parana", "rg", "carteira de identidade", "carteira de identidade nacional",
+    "posto de identificacao",
+    "postos de identificacao",
+  ], { note: IDENTIFICATION_NOTE, leadNote: IDENTIFICATION_LEAD_NOTE }),
   // Registro civil, Junta Militar, Defensoria Pública and Fórum, added in v0.51.0 (read on 2026-11-26 UTC: 4, 3, 14
   // and 9 records). No bare "cartorio" (other kinds of cartório exist), "junta", "justica" or "tribunal" alias. Each
   // registry record ends with a "Cartório <surname>." line, a person's name: replaced by a marker (isRegistryNameLine).
-  {
-    ...equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
-      "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
-      "cartorios de registro civil das pessoas naturais", "certidao de nascimento", "certidao de casamento",
-      "certidao de obito",
-    ]),
-    note: CIVIL_REGISTRY_NOTE,
-    hideLine: isRegistryNameLine,
-  },
-  {
-    ...equipment("junta militar", 21, "Junta de Serviço Militar", [
-      "juntas militares", "junta de servico militar", "juntas de servico militar", "alistamento militar",
-    ]),
-    note: MILITARY_BOARD_NOTE,
-    wrapLines: true,
-  },
-  {
-    ...equipment("defensoria publica", 105, "Defensoria Pública", [
-      "defensoria", "defensorias", "defensorias publicas", "defensoria publica do parana", "defensoria publica do estado",
-    ]),
-    note: PUBLIC_DEFENDER_NOTE,
-    wrapLines: true,
-  },
-  { ...equipment("forum", 106, "Fórum", ["foruns"]), note: COURTHOUSE_NOTE, wrapLines: true },
+  equipment("cartorio de registro civil", 99, "Cartório de Registro Civil", [
+    "cartorios de registro civil", "registro civil", "cartorio de registro civil das pessoas naturais",
+    "cartorios de registro civil das pessoas naturais", "certidao de nascimento", "certidao de casamento",
+    "certidao de obito",
+  ], { note: CIVIL_REGISTRY_NOTE, hideLine: isRegistryNameLine }),
+  equipment("junta militar", 21, "Junta de Serviço Militar", [
+    "juntas militares", "junta de servico militar", "juntas de servico militar", "alistamento militar",
+  ], { note: MILITARY_BOARD_NOTE, wrapLines: true }),
+  equipment("defensoria publica", 105, "Defensoria Pública", [
+    "defensoria", "defensorias", "defensorias publicas", "defensoria publica do parana", "defensoria publica do estado",
+  ], { note: PUBLIC_DEFENDER_NOTE, wrapLines: true }),
+  equipment("forum", 106, "Fórum", ["foruns"], { note: COURTHOUSE_NOTE, wrapLines: true }),
   // v0.52.0.
   social("creas", 38, "Centro de Referência Especializado de Assistência Social", [
     "centro de referencia especializado de assistencia social", "centros de referencia especializados de assistencia social",
@@ -603,90 +536,53 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   },
   social("centro de referencia afro", 109, "Centro de Referência Afro", ["centros de referencia afro"], AFRO_CENTRE_NOTE),
   // v0.53.0. No bare "escola" or "creche".
-  { ...equipment("escola municipal", 80, "Escola Municipal", ["escolas municipais"]), note: SCHOOL_NOTE },
-  { ...equipment("cmei", 78, "Centro Municipal de Educação Infantil", ["cmeis", "centro municipal de educacao infantil", "creche municipal"]), note: SCHOOL_NOTE },
-  { ...equipment("cmaee", 81, "Centro Municipal de Atendimento Educacional Especializado", ["cmaees", "centro municipal de atendimento educacional especializado"]), note: SCHOOL_NOTE, wrapLines: true },
-  {
-    ...equipment("cei contratado", 79, "Centro de Educação Infantil (contratado)", ["ceis contratados", "centro de educacao infantil contratado", "creche contratada"]),
+  equipment("escola municipal", 80, "Escola Municipal", ["escolas municipais"], { note: SCHOOL_NOTE }),
+  equipment("cmei", 78, "Centro Municipal de Educação Infantil", ["cmeis", "centro municipal de educacao infantil", "creche municipal"], { note: SCHOOL_NOTE }),
+  equipment("cmaee", 81, "Centro Municipal de Atendimento Educacional Especializado", ["cmaees", "centro municipal de atendimento educacional especializado"], {
+    note: SCHOOL_NOTE,
+    wrapLines: true,
+  }),
+  equipment("cei contratado", 79, "Centro de Educação Infantil (contratado)", ["ceis contratados", "centro de educacao infantil contratado", "creche contratada"], {
     note: CEI_NOTE,
     hideLine: isMaintainerLine,
     hiddenLineMarker: HIDDEN_MAINTAINER_LINE,
-  },
+  }),
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
-  { ...equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]), hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE },
+  equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"], HIDE_SHELTER),
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
   equipment("posto urbs", 156, "Posto de Atendimento URBS", ["posto de atendimento urbs", "urbs"]),
   equipment("informacoes turisticas", 162, "Posto de Informações Turísticas", ["posto de informacoes turisticas", "turismo"]),
   // Bus terminals, added in v0.27.0 (read on 2026-11-24: 22 and 1 records). `observacao` lists the integrated lines
   // (Pinheirinho: 65 lines), so up to 80 lines are kept.
-  { ...equipment("terminal", 157, "Terminal Urbano", ["terminais", "terminal urbano", "terminal de onibus", "terminais de onibus"]), maxHourLines: 80 },
-  { ...equipment("terminal metropolitano", 158, "Terminal Metropolitano", ["terminais metropolitanos", "guadalupe"]), maxHourLines: 80 },
+  equipment("terminal", 157, "Terminal Urbano", ["terminais", "terminal urbano", "terminal de onibus", "terminais de onibus"], { maxHourLines: 80 }),
+  equipment("terminal metropolitano", 158, "Terminal Metropolitano", ["terminais metropolitanos", "guadalupe"], { maxHourLines: 80 }),
   // Rodoferroviária and administrações regionais, added in v0.58.0 (read on 2026-11-26 UTC: 1, 1 and 10 records). No
   // bare "regional", "terminal" (the urban bus terminals) or "trem" alias.
-  {
-    ...equipment("rodoviaria", 159, "Terminal Rodoviário", [
-      "rodoferroviaria", "rodoviaria de curitiba", "rodoferroviaria de curitiba", "terminal rodoviario",
-      "terminal rodoviario de curitiba",
-    ]),
-    note: BUS_STATION_NOTE,
-  },
-  {
-    ...equipment("ferroviaria", 160, "Terminal Ferroviário", [
-      "terminal ferroviario", "terminal ferroviario de curitiba", "estacao ferroviaria",
-    ]),
-    note: RAIL_STATION_NOTE,
-  },
-  {
-    ...equipment("administracao regional", 15, "Administração Regional", [
-      "administracoes regionais", "administracao regional de curitiba", "sede da regional",
-    ]),
-    note: REGIONAL_OFFICE_NOTE,
-    wrapLines: true,
-    hideLine: isPersonInChargeLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
+  equipment("rodoviaria", 159, "Terminal Rodoviário", [
+    "rodoferroviaria", "rodoviaria de curitiba", "rodoferroviaria de curitiba", "terminal rodoviario",
+    "terminal rodoviario de curitiba",
+  ], { note: BUS_STATION_NOTE }),
+  equipment("ferroviaria", 160, "Terminal Ferroviário", [
+    "terminal ferroviario", "terminal ferroviario de curitiba", "estacao ferroviaria",
+  ], { note: RAIL_STATION_NOTE }),
+  equipment("administracao regional", 15, "Administração Regional", [
+    "administracoes regionais", "administracao regional de curitiba", "sede da regional",
+  ], { note: REGIONAL_OFFICE_NOTE, wrapLines: true, ...HIDE_PERSON }),
   // COHAB agencies, added in v0.59.0 (read on 2026-11-26 UTC: 9 records, no line naming a person; hidden if one comes).
-  {
-    ...equipment("cohab", 29, "Agência de Atendimento da COHAB", [
-      "cohab ct", "cohab curitiba", "agencia da cohab", "agencias da cohab", "agencia de atendimento da cohab",
-      "agencias de atendimento da cohab",
-    ]),
-    note: COHAB_NOTE,
-    hideLine: isPersonInChargeLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
+  equipment("cohab", 29, "Agência de Atendimento da COHAB", [
+    "cohab ct", "cohab curitiba", "agencia da cohab", "agencias da cohab", "agencia de atendimento da cohab",
+    "agencias de atendimento da cohab",
+  ], { note: COHAB_NOTE, ...HIDE_PERSON }),
   // Food security, added in v0.60.0 (read on 2026-11-26 UTC: layers 7, 9, 10 and 1; 4, 233 (56 community), 3, 10).
-  {
-    ...equipment("mesa solidaria", 7, "Mesa Solidária", ["mesas solidarias", "mesa solidaria curitiba"]),
-    note: MESA_SOLIDARIA_NOTE,
-    wrapLines: true,
-    hideLine: isPersonInChargeLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
-  {
-    ...equipment("horta comunitaria", 9, "Horta Comunitária Urbana", [
-      "hortas comunitarias", "horta comunitaria urbana", "hortas comunitarias urbanas", "horta urbana", "hortas urbanas",
-    ]),
-    where: "tipo_equi = 'Horta Comunitária Urbana'",
-    note: COMMUNITY_GARDEN_NOTE,
-    hideLine: isGardenPersonLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
-  {
-    ...equipment("fazenda urbana", 10, "Fazenda Urbana", ["fazendas urbanas"]),
-    note: URBAN_FARM_NOTE,
-    hideLine: isPersonInChargeLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
-  {
-    ...equipment("nucleo de seguranca alimentar", 1, "Núcleo Regional de Segurança Alimentar e Nutricional", [
-      "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
-      "nucleo regional de seguranca alimentar e nutricional", "nucleos regionais de seguranca alimentar e nutricional",
-    ]),
-    note: FOOD_SECURITY_OFFICE_NOTE,
-    hideLine: isPersonInChargeLine,
-    hiddenLineMarker: HIDDEN_PERSON_LINE,
-  },
+  equipment("mesa solidaria", 7, "Mesa Solidária", ["mesas solidarias", "mesa solidaria curitiba"], { note: MESA_SOLIDARIA_NOTE, wrapLines: true, ...HIDE_PERSON }),
+  equipment("horta comunitaria", 9, "Horta Comunitária Urbana", [
+    "hortas comunitarias", "horta comunitaria urbana", "hortas comunitarias urbanas", "horta urbana", "hortas urbanas",
+  ], { where: "tipo_equi = 'Horta Comunitária Urbana'", note: COMMUNITY_GARDEN_NOTE, hideLine: isGardenPersonLine, hiddenLineMarker: HIDDEN_PERSON_LINE }),
+  equipment("fazenda urbana", 10, "Fazenda Urbana", ["fazendas urbanas"], { note: URBAN_FARM_NOTE, ...HIDE_PERSON }),
+  equipment("nucleo de seguranca alimentar", 1, "Núcleo Regional de Segurança Alimentar e Nutricional", [
+    "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
+    "nucleo regional de seguranca alimentar e nutricional", "nucleos regionais de seguranca alimentar e nutricional",
+  ], { note: FOOD_SECURITY_OFFICE_NOTE, ...HIDE_PERSON }),
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",
