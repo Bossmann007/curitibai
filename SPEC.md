@@ -37,7 +37,7 @@ What the read showed and how this version handles it:
   user input, 56 records when tried); the note gives the other two counts as not listed and says `source_url` is the whole layer. None of the 56 has a phone,
   30 have no `observacao` and none publishes hours: the note says there is no phone or hours and gives the published
   e-mail (the same city address on every record). Some lines name the association that keeps the garden ("Mantida
-  pela Associação de Moradores …"): kept. A line naming who is in charge is hidden with the offices' person filter.
+  pela Associação de Moradores …"): kept. A line naming who is in charge is hidden with the offices' person filter, and (Change Reviewer) also a line with "contato" anywhere, "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Contato: Dona Maria", "Zeladora: Fulana"; not the atendimento, horário, funcionamento or endereço labels).
 - **Fazenda Urbana (10)**: three farms with hours. One lists a landline and two mobiles, one only a mobile (dropped,
   as always), one nothing: the note says to use the e-mail. Their hours say enrolment in activities is through two
   city pages, given as published text (never fetched); the note says this tool does not enrol.
@@ -51,7 +51,8 @@ What the read showed and how this version handles it:
    the other urban-equipment layers:
    - `mesa solidaria` (7), aliases `mesas solidarias`, `mesa solidaria curitiba`; `wrapLines`.
    - `horta comunitaria` (9), aliases `hortas comunitarias`, `horta comunitaria urbana`, `hortas comunitarias urbanas`,
-     `horta urbana`, `hortas urbanas`; fixed `where` on `tipo_equi`; person filter.
+     `horta urbana`, `hortas urbanas`; fixed `where` on `tipo_equi`; garden person filter
+     (`isGardenPersonLine`: the office filter plus contacts, volunteers and "<label>: <Name>").
    - `fazenda urbana` (10), alias `fazendas urbanas`; person filter.
    - `nucleo de seguranca alimentar` (1), aliases `nucleos de seguranca alimentar`, `nucleo regional de seguranca
      alimentar`, `nucleo regional de seguranca alimentar e nutricional`, `nucleos regionais de seguranca alimentar`;
@@ -71,7 +72,9 @@ What the read showed and how this version handles it:
      ("Responsável pela matrícula:" hid "-2ª a 6ª 8h" and "Período parcial"). For a CEI the next line is now hidden
      only when it does not start (after an optional dash) with a digit or a service word such as período, horário,
      atendimento, matrícula, so a name of any length after "Diretora responsável:" is still hidden, even with hours
-     later in the line (found in review). Offices keep the v0.59 rule.
+     later in the line (found in review). Offices keep the v0.59 rule. One service word list (`SERVICE_PART`, `SERVICE_WORD`) now serves this test and
+     the v0.54 split-name rule, so "Matrículas abertas em janeiro" and "Secretaria da escola" stay after a hidden
+     maintainer line; "Secretária Fulana" (the accented role) is still hidden.
 6. **Eval**: new q135 → `city_facilities_search` `{type: "mesa solidaria", bairro: "centro"}`, synthetic fixture
    `test/fixtures/geocuritiba/mesa_solidaria_synthetic.json` with a line over 160 characters. Tool contract snapshot
    updated (`type` description).

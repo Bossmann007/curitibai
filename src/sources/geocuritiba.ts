@@ -276,6 +276,20 @@ const PERSON_IN_CHARGE = new RegExp(
 );
 export const isPersonInChargeLine = (line: string): boolean =>
   PERSON_IN_CHARGE.test(fold(line.normalize("NFC").replace(/secretária/giu, "secretario")));
+/**
+ * v0.60.0, community gardens (run with residents): besides isPersonInChargeLine, a line with "contato" anywhere,
+ * "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Zeladora:
+ * Fulana", "Contato: Dona Maria"), except the hours and address labels. "-Área de plantio: 590 m²" and "Mantida pela
+ * Associação …" stay.
+ */
+const GARDEN_PERSON = /\bcontatos?\b|\bvoluntari|\bcuidad[ao]s? por\b/;
+const NAME_AFTER_LABEL = /^[-\s]*(\p{L}+)(?:\(a\))?\s*:\s*\p{Lu}/u;
+const PUBLIC_LABEL = /^(?:atendimento|horarios?|funcionamento|endereco)$/;
+export const isGardenPersonLine = (line: string): boolean => {
+  if (isPersonInChargeLine(line) || GARDEN_PERSON.test(fold(line))) return true;
+  const label = NAME_AFTER_LABEL.exec(line.normalize("NFC"))?.[1];
+  return label !== undefined && !PUBLIC_LABEL.test(fold(label));
+};
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
@@ -655,7 +669,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     ]),
     where: "tipo_equi = 'Horta Comunitária Urbana'",
     note: COMMUNITY_GARDEN_NOTE,
-    hideLine: isPersonInChargeLine,
+    hideLine: isGardenPersonLine,
     hiddenLineMarker: HIDDEN_PERSON_LINE,
   },
   {
@@ -942,7 +956,13 @@ export function isShelterLine(line: string): boolean {
  * (after an optional dash) with a digit or a service word. Only the start counts: "Fulana de Tal, das 7h às 18h" is a
  * name.
  */
-const SERVICE_LINE = /^[-\s]*(?:\d|(?:integral|atendimento|encaminhamento|funcionamento|horarios?|telefones?|periodo|bercario|matriculas?|rua|av|avenida|fones?|vagas?)\b)/;
+const SERVICE_PART = "atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|secretaria";
+const SERVICE_WORD = "rua|av|avenida|fones?|vagas?";
+const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PART}|(?:${SERVICE_WORD})\\b)`);
+/** The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). */
+const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
+/** Folded for the service tests; "Secretária" (a person's role) is not the office "Secretaria". */
+const serviceFold = (t: string): string => fold(t.normalize("NFC").replace(/secretári[ao]/giu, "secretario"));
 
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
@@ -969,19 +989,19 @@ export function hourLines(
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      const tail: boolean = rest && !/^[-\d]|:|^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|\b(rua|av|avenida|fones?|vagas?)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
-      const named = soft && !SERVICE_LINE.test(fold(t));
+      const tail: boolean = rest && !NOT_A_NAME.test(serviceFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
+      const named = soft && !SERVICE_LINE.test(serviceFold(t));
       if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
         label = rest = soft = false;
       } else {
-        const m = hide === isMaintainerLine || hide === isPersonInChargeLine;
+        const m = hide === isMaintainerLine || hide === isPersonInChargeLine || hide === isGardenPersonLine;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
         // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: for an office
         // its value, however long, follows; for a CEI (v0.60.0) see `soft`. "Responsável pelo atendimento, horário:"
         // is not a label: the hours after it stay.
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
-        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && hide === isPersonInChargeLine) : t.endsWith(":") && !label;
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && hide !== isMaintainerLine) : t.endsWith(":") && !label;
         soft = colon && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }

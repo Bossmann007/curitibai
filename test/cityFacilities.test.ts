@@ -1774,3 +1774,35 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
     }
   });
 });
+
+describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () => {
+  it("a garden hides a contact, a volunteer, who cares for it and a name after a one-word label; public lines stay", () => {
+    const t = type("horta comunitaria");
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker);
+    for (const who of [
+      "Contato: Dona Maria (41) 99999-1111",
+      "Voluntária: Fulana de Tal",
+      "Cuidada por Fulana",
+      "Zeladora: Fulana de Tal",
+      "Contato:\nFulana de Tal Silva Souza Lima",
+    ]) {
+      const out = lines(`Mantida pela Associação de Moradores da Vila Inventada.\n${who}\n-Área de plantio em canteiros: 590 m²`);
+      expect(out).toEqual(["Mantida pela Associação de Moradores da Vila Inventada.", HIDDEN_PERSON_LINE, "-Área de plantio em canteiros: 590 m²"]);
+      expect(out.join(" ")).not.toMatch(/Fulan|Maria/);
+    }
+    for (const l of ["Programa Integrado de Desenvolvimento Sustentável Inventado - Projeto Hortas Comunitárias.", "-Pomar: citrus", "Atendimento: Segunda a sexta"]) {
+      expect(t.hideLine!(l)).toBe(false);
+    }
+  });
+
+  it("a CEI keeps 'Matrículas abertas em janeiro' and 'Secretaria da escola' after a hidden label; 'Secretária Fulana' is still hidden", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    for (const label of ["Diretora responsável:", "Mantenedora: Associação Inventada"]) {
+      for (const next of ["Matrículas abertas em janeiro", "Secretaria da escola"]) {
+        expect(lines(`${label}\n${next}`)).toEqual([HIDDEN_MAINTAINER_LINE, next]);
+      }
+      expect(lines(`${label}\nSecretária Fulana`)).toEqual([HIDDEN_MAINTAINER_LINE]);
+    }
+  });
+});

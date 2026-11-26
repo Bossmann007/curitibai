@@ -1456,7 +1456,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   - 1: 10 núcleos, one per regional, in the Ruas da Cidadania (Matriz at the Mercado Municipal, Cajuru at the Mercado
     Regional), hours and a landline each, one shared e-mail.
   - No person's name, mobile or personal e-mail in the 4, 56, 3 and 10 records returned: run through the parser, no
-    line was hidden. The four types still use the offices' person-line filter, whose roles gain secretário/a,
+    line was hidden. `horta comunitaria` also hides a line with "contato" anywhere, "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Contato: Dona Maria", "Zeladora: Fulana"; not the atendimento, horário, funcionamento or endereço labels) (Change Reviewer).
+    The four types use the offices' person-line filter, whose roles gain secretário/a,
     supervisor/a and gestor/a, titular, coordenação and gestão before ':', and "mantido/a por" anywhere or "mantida
     pelo Sr./Sra./Dona" ("Secretaria Municipal de …", "Titular da conta" and "mantida pela Associação …" stay;
     tested). For `cei contratado`, the line after a hidden "…:" label with no comma is hidden unless it starts with a

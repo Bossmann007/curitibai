@@ -26,7 +26,9 @@ Food security, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   Dona" ("Secretaria Municipal de …", "Titular da conta" and "mantida pela Associação …" stay). For `cei contratado`
   the line after a hidden "…:" label is hidden only when it is not an hours or service line: "Responsável pela
   matrícula:" no longer hides "-2ª a 6ª" or "Período parcial", and a long name after "Diretora responsável:" is still
-  hidden. No line was hidden in the live layers.
+  hidden. `horta comunitaria` also hides a line with "contato" anywhere, "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Contato: Dona Maria", "Zeladora: Fulana"; not the atendimento, horário, funcionamento or endereço labels). One service word list serves the CEI tests, so
+  "Matrículas abertas em janeiro" and "Secretaria da escola" stay after a hidden maintainer line. No line was hidden in
+  the live layers.
 - Tool contract: the `type` description (snapshot updated).
 - Citizen eval: q135 ("Onde tem Mesa Solidária no Centro?") added and answered, with a synthetic fixture; 131 of 135.
 - No new network host, no new dependency, and no link added by the code. The `fazenda urbana` hours carry, as
