@@ -833,6 +833,28 @@ export interface Facility {
   paths: [number, number][][] | null;
 }
 
+/** A record with `name` and the given fields; every other field empty. Key order is the output order. */
+export const facility = (name: string, fields: Partial<Facility> = {}): Facility => ({
+  name,
+  kind: null,
+  address: null,
+  bairro: null,
+  regional: null,
+  hours: [],
+  open_periods: null,
+  phones: [],
+  emails: [],
+  updated: null,
+  length_km: null,
+  area: null,
+  sections: null,
+  electoral_zone: null,
+  lat: null,
+  lon: null,
+  paths: null,
+  ...fields,
+});
+
 export interface FacilityLayer {
   facilities: Facility[];
   /** Records left out: no name, (bike) not operational, or (social) naming a shelter. */
@@ -1018,25 +1040,7 @@ function updated(v: unknown): string | null {
 }
 
 function privateRecord(name: string, a: Record<string, unknown>): Facility {
-  return {
-    name,
-    kind: null,
-    address: null,
-    bairro: null,
-    regional: null,
-    hours: [PRIVATE_ADDRESS_LINE],
-    open_periods: null,
-    phones: institutionalPhones(a.telefone),
-    emails: [],
-    updated: updated(a.dt_atualiz),
-    length_km: null,
-    area: null,
-    sections: null,
-    electoral_zone: null,
-    lat: null,
-    lon: null,
-    paths: null,
-  };
+  return facility(name, { hours: [PRIVATE_ADDRESS_LINE], phones: institutionalPhones(a.telefone), updated: updated(a.dt_atualiz) });
 }
 
 function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, t: FacilityType): Facility | null {
@@ -1055,9 +1059,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     night: yesNo(a.func_noite),
     all_day: yesNo(a.func_24hr),
   };
-  return {
-    name,
-    kind: null,
+  return facility(name, {
     address: show ? clean(compl ? `${street} - ${compl}` : street, ADDRESS_MAX) : null,
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
@@ -1066,14 +1068,9 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     phones: institutionalPhones(a.telefone),
     emails: institutionalEmails(a.email).filter((e) => t.hideLine !== isShelterLine || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
     updated: updated(a.dt_atualiz),
-    length_km: null,
-    area: null,
-    sections: null,
-    electoral_zone: null,
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,
-    paths: null,
-  };
+  });
 }
 
 /** DD/MM/YYYY (data_alteracao) as YYYY-MM-DD; null when not a real date. */
@@ -1090,50 +1087,30 @@ function votingRecord(a: Record<string, unknown>, g: Record<string, unknown> | n
   if (name === null) return null;
   const at = g ? inside(g.y, g.x) : null;
   const n = a.num_secoes;
-  return {
-    name,
-    kind: null,
+  return facility(name, {
     address: clean(a.endereco, ADDRESS_MAX),
     bairro: clean(a.bairro, 60),
     regional: clean(a.regional, 60),
-    hours: [],
-    open_periods: null,
-    phones: [],
-    emails: [],
     updated: dayMonthYear(a.data_alteracao),
-    length_km: null,
-    area: null,
     sections: typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null,
     electoral_zone: clean(a.zona_eleitoral, 20),
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,
-    paths: null,
-  };
+  });
 }
 
 function parkRecord(a: Record<string, unknown>, centroid: Record<string, unknown> | null): Facility | null {
   const name = clean(a.nome, NAME_MAX);
   if (name === null) return null;
   const at = centroid ? inside(centroid.y, centroid.x) : null;
-  return {
-    name,
+  return facility(name, {
     kind: code(a.ctba_tipounidprotinteg_smuc, PARK_KINDS),
-    address: null,
     bairro: code(a.ctba_bairro, BAIRROS),
     regional: code(a.ctba_regional, REGIONAIS),
-    hours: [],
-    open_periods: null,
-    phones: [],
-    emails: [],
-    updated: null,
-    length_km: null,
     area: clean(a.areaoficial, 40),
-    sections: null,
-    electoral_zone: null,
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,
-    paths: null,
-  };
+  });
 }
 
 function bikePaths(g: Record<string, unknown> | null): [number, number][][] | null {
@@ -1162,25 +1139,16 @@ function bikeRecord(a: Record<string, unknown>, g: Record<string, unknown> | nul
   const paths = bikePaths(g);
   const first = paths?.[0]?.[0];
   const km = a.lenght_km;
-  return {
-    name,
+  return facility(name, {
     kind,
     address: where,
     bairro: code(a.ctba_bairro, BAIRROS),
     regional: code(a.ctba_regional, REGIONAIS),
-    hours: [],
-    open_periods: null,
-    phones: [],
-    emails: [],
-    updated: null,
     length_km: typeof km === "number" && Number.isFinite(km) && km >= 0 ? Math.round(km * 1000) / 1000 : null,
-    area: null,
-    sections: null,
-    electoral_zone: null,
     lat: first ? first[1] : null,
     lon: first ? first[0] : null,
     paths,
-  };
+  });
 }
 
 /**
