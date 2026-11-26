@@ -201,10 +201,13 @@ const SCHOOL_NOTE =
 const CEI_NOTE =
   "Private or non-profit centres contracted by the Prefeitura, as listed by IPPUC; this does not confirm Vale-Creche " +
   "accreditation (see city_service_guide `creche` and `vale_creche`). Hours as published; call before going.";
-/** Every CEI line naming its maintainer or owner, or a firm (ME, Eireli, Ltda): some are a person's name. */
+/** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
-const isMaintainerLine = (line: string): boolean =>
-  /mantenedor|mantid[ao]s? por|propriet[aá]ri|eireli|ltda/i.test(line) || /\bME\b/.test(line);
+const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b";
+const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
+const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bMEI?\b/.test(line);
+/** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
+const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -803,15 +806,18 @@ export function hourLines(
   if (s === null) return [];
   const lines: string[] = [];
   let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
+  // v0.54.0, maintainer only: after a hidden line, a line with no digit and no ':' can be the rest of the name.
+  let rest = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      if (!hide || !(label || hide(t) || hide(cleanText(part, Infinity)))) {
+      if (!hide || !(label || (rest && !/[\d:]/.test(t)) || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
-        label = false;
+        label = rest = false;
       } else {
-        label = t.endsWith(":") && !label;
+        rest = hide === isMaintainerLine;
+        label = (t.endsWith(":") && !label) || (rest && MAINTAINER_LABEL.test(fold(t)));
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }

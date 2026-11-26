@@ -198,3 +198,7 @@ layers 80, 78, 81 and 79 (188, 241, 13 and 180 records), hours and landlines as 
 A contracted CEI's maintainer line (sometimes a person's name) is replaced by a marker, and its note says the listing does
 not confirm Vale-Creche accreditation. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 127
 of 131 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.54.0 (phase B) the `cei contratado` maintainer filter also hides "Mantida pela/pelo", "MEI", "Responsável" and
+"Diretora" lines, a bare label without ":" and a name split over lines; nothing is un-hidden. The citizen eval answers
+127 of 131 questions; 4 are gaps (real-time buses 2, other cities 2).

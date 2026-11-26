@@ -1342,6 +1342,28 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
     }
     expect(lines("Nome anterior: CEI Inventado.\n-2ª a 6ª feira, das 7h às 18h")).toEqual(["Nome anterior: CEI Inventado.", "-2ª a 6ª feira, das 7h às 18h"]);
   });
+
+  it.each([
+    ["a bare label without ':'", "Mantenedora\nFulana de Tal"],
+    ["a name on two lines after a bare label", "Mantenedora:\nFulana\nde Tal"],
+    ["a name on two lines after a label with a value", "Mantenedora: Fulana\nde Tal"],
+    ["mantida pela", "Mantida pela Fulana de Tal"],
+    ["mantido pelo", "Mantido pelo Fulano de Tal"],
+    ["MEI", "Fulana de Tal - MEI"],
+    ["Responsável:", "Responsável: Fulana de Tal"],
+    ["Diretora:", "Diretora:\nFulana de Tal"],
+    ["labels in a row", "Responsável:\nDiretora:\nFulana de Tal"],
+  ])("v0.54.0: %s does not leak the name", (_, s) => {
+    const cei = type("cei contratado");
+    const out = hourLines(`Atendimento:\n${s}\n-2ª a 6ª feira, das 7h às 18h\nNome anterior: CEI Inventado.`, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    expect(out).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h", "Nome anterior: CEI Inventado."]);
+  });
+
+  it("v0.54.0: CMEI is not MEI, and a shelter line does not hide the Encaminhamento line after it", () => {
+    const cei = type("cei contratado");
+    expect(hourLines("Antigo CMEI Inventado", 30, false, cei.hideLine, cei.hiddenLineMarker)).toEqual(["Antigo CMEI Inventado"]);
+    expect(hourLines("Casa de Passagem\nEncaminhamento: pelo CRAS", 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE, "Encaminhamento: pelo CRAS"]);
+  });
 });
 
 describe("requests to the GeoCuritiba host", () => {
