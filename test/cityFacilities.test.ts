@@ -1910,6 +1910,12 @@ describe("v0.63.0: the garden filter is an allowlist; social types carry a shelt
       "Segunda a sexta, das 8h às 17h",
       "-2ª a 6ª feira, das 8h às 17h",
       "8h às 12h",
+      "Horário de funcionamento: 8h às 17h",
+      "Das 8h às 17h",
+      "De segunda a sexta",
+      "Sábados das 8h às 12h",
+      "Atendimento de segunda a sexta",
+      "• Horário: 8h",
       // the body that keeps or runs the garden
       "Mantida pela Associação de Moradores da Vila Inventada.",
       "Mantido pela Associação de Moradores e Amigos Inventados.",
@@ -1926,6 +1932,9 @@ describe("v0.63.0: the garden filter is an allowlist; social types carry a shelt
     ];
     for (const l of kinds) expect(lines(l), l).toEqual([l]);
     expect(lines(kinds.join("\n"))).toEqual(kinds);
+    expect(lines("–Área de plantio: 590 m²")).toEqual([cleanText("–Área de plantio: 590 m²", 160)]);
+    // after a hidden line, a short public line is not read as the end of a split name
+    for (const l of kinds) expect(lines(`fulana de tal\n${l}`), l).toEqual([HIDDEN_PERSON_LINE, l]);
   });
 
   it("garden hours after the secretariat e-mail line stay visible", () => {
@@ -1946,6 +1955,7 @@ describe("v0.63.0: the garden filter is an allowlist; social types carry a shelt
       "Bairro: centro, maria cuida",
       "Bairro: centro, cuidada por maria",
       "coordenada pela maria souza",
+      "Coordenada pela secretária Maria Souza",
     ]) {
       expect(lines(`Mantida pela Associação Inventada.\n${who}\n-Pomar: citrus`), who).toEqual([
         "Mantida pela Associação Inventada.",

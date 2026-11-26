@@ -283,14 +283,15 @@ export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.
  * the city programme; a partner; "Horta com N canteiros") or exactly "Contato pelo e-mail da secretaria", and has no
  * person in it (GARDEN_PERSON, any case: a contact, a volunteer, "quem cuida", cuidado/coordenado por or pelo/pela a
  * person, an honorific, cuida(m)/coordena(m) after anything but a body word; and isPersonInChargeLine). Any other line,
- * a lower-case name included, is hidden. Replaces the v0.60–v0.61 denylist, which a lower-case name passed.
+ * a lower-case name included, is hidden. Replaces the v0.60–v0.61 denylist, which a lower-case name passed. Folded
+ * with roleFold, so "secretária Fulana" is a person, not the body "secretaria".
  */
 const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja|lar|smsan";
 const GARDEN_LINE = new RegExp(
   "^(?:" +
     [
       "(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|area de (?:plantio|lavoura)[a-z ]*|jardins? de mel)\\s*:",
-      "(?:(?:atendimento|horarios?|funcionamento)\\s*:?\\s*)?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)\\b)",
+      "(?:(?:atendimento|horarios?(?: de funcionamento)?|funcionamento)\\s*:?\\s*)?(?:(?:de|das?|aos?) )?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?\\b)",
       `(?:(?:mantid|coordenad|cuidad)[ao]s? pel[ao]|a coordenacao da horta e d[ao]|an?|o) (?:${BODY})\\b`,
       "programa\\b|parceria com\\b|horta com \\d",
     ].join("|") +
@@ -302,7 +303,7 @@ const GARDEN_PERSON = new RegExp(
     `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
 );
 export const isGardenPersonLine = (line: string): boolean => {
-  const f = fold(line.normalize("NFC")).replace(/^[-\s]+/, "").trim();
+  const f = roleFold(line).replace(/^[^\p{L}\p{N}]+/u, "").trim();
   if (GARDEN_CONTACT.test(f)) return false;
   return !GARDEN_LINE.test(f) || GARDEN_PERSON.test(f) || isPersonInChargeLine(line);
 };
@@ -363,7 +364,8 @@ export interface FacilityType {
   nameLines?: "maintainer" | "person";
   /**
    * v0.63.0: `hideLine` is an allowlist (community gardens): it hides every line that is not a known public kind, so the
-   * whole-field test of hourLines (a keyword split across lines) is skipped: several good lines joined are no kind.
+   * whole-field test of hourLines (a keyword split across lines) is skipped: several good lines joined are no kind. So is
+   * the split-name tail rule: a line of no kind is hidden anyway, and a public line after a hidden one stays.
    */
   allowlist?: true;
   /** v0.63.0, social assistance: a record whose name or address points at a shelter is skipped, and shelter e-mails dropped. */
@@ -940,7 +942,7 @@ export function hourLines(
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      const tail: boolean = rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
+      const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
       if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
