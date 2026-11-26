@@ -1446,7 +1446,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
     `tipo_equi` is not in `outFields`). Of the 56: no `telefone` in any, no `observacao` in 30, no hours in any
     (`func_*` "Não"); the others say who keeps the garden ("Mantida pela Associação de Moradores …", kept), the
     programme ("Programa Integrado de Desenvolvimento Sustentável Eletrosul") or the planted areas. One
-    `@curitiba.pr.gov.br` e-mail on all. The note says there is no phone or hours and gives the two other counts.
+    `@curitiba.pr.gov.br` e-mail on all. The note says there is no phone or hours, gives the two other counts and
+    says `source_url` is the whole layer.
   - 10: 3 farms (Cajuru, Tatuquara, CIC), hours "2ª a 6ª feira, das 8h às 12h e das 13h às 17h". `telefone`: a
     landline and two mobiles; nothing; one mobile. Mobiles are dropped as always, and the note says to use the e-mail.
     Each `observacao` names two city pages for enrolment in activities (`guia.curitiba.pr.gov.br` and
@@ -1456,8 +1457,11 @@ changes (owner request, 2026-11-23: monthly and automatic).
     Regional), hours and a landline each, one shared e-mail.
   - No person's name, mobile or personal e-mail in the 4, 56, 3 and 10 records returned: run through the parser, no
     line was hidden. The four types still use the offices' person-line filter, whose roles gain secretário/a,
-    supervisor/a, gestor/a, titular and "mantido/a por" ("Secretaria Municipal de …" and "mantida pela Associação
-    …" stay; tested). No new host for the server and the link allowlist is unchanged.
+    supervisor/a and gestor/a, titular, coordenação and gestão before ':', and "mantido/a por" anywhere or "mantida
+    pelo Sr./Sra./Dona" ("Secretaria Municipal de …", "Titular da conta" and "mantida pela Associação …" stay;
+    tested). For `cei contratado`, the line after a hidden "…:" label with no comma is hidden only when it is not an
+    hours or service line (v0.59 hid "-2ª a 6ª 8h" after "Responsável pela matrícula:"). No new host for the server
+    and the link allowlist is unchanged.
 - **Query:** one fixed URL per layer: `where=1=1` (since v0.60 `horta comunitaria` sends a fixed `tipo_equi` filter instead), a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
   `globalid`, edit users and every other field are never asked for), `outSR=4326` (WGS84), `f=json`; points with
   `returnGeometry=true`; parks with `returnCentroid=true` and no geometry; bike lanes with geometry simplified
@@ -1486,8 +1490,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   mobiles next to landlines; Feira has one typo domain (`curitiba.pr.gpv.br`). Kept: three-digit service numbers
   ("156"), Curitiba landlines (DDD 41 or none, 8 digits starting 2–5), formatted "(41) XXXX-XXXX", and (since
   v0.59) toll-free numbers, "0800" and 6 or 7 digits however grouped, formatted "0800 XXX XXXX" or "0800 XXX XXX" (a company's or public body's line,
-  never a person's own; the COHAB agencies publish one), at most 8 in all; since v0.60 a leading "WhatsApp" word
-  is removed from a part first (the Mesa Solidária landline is published as "WhatsApp (41) …");
+  never a person's own; the COHAB agencies publish one), at most 8 in all; since v0.60 a leading "WhatsApp", "Whats" or "Zap"
+  word is removed from a part first (the Mesa Solidária landline is published as "WhatsApp (41) …");
   e-mails at `curitiba.pr.gov.br` or a subdomain, lowercased, at most 3. Dropped: mobiles, other area
   codes, any part not understood, and every other e-mail domain (state and federal government addresses too). A
   landline of a non-municipal institution (an association, a university) is kept. `ramal` and `site` are not read.

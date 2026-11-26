@@ -34,7 +34,7 @@ What the read showed and how this version handles it:
   (inside institutions, among them three Unidades de Acolhimento Institucional, a Casa de Passagem, a Casa do Piá and
   a Casa de Semiliberdade, most with the address published). Shelters are never listed (v0.52), so `horta comunitaria`
   asks the layer only for the community gardens, with a fixed `where` (`tipo_equi = 'Horta Comunitária Urbana'`, no
-  user input, 56 records when tried); the note gives the other two counts as not listed. None of the 56 has a phone,
+  user input, 56 records when tried); the note gives the other two counts as not listed and says `source_url` is the whole layer. None of the 56 has a phone,
   30 have no `observacao` and none publishes hours: the note says there is no phone or hours and gives the published
   e-mail (the same city address on every record). Some lines name the association that keeps the garden ("Mantida
   pela Associação de Moradores …"): kept. A line naming who is in charge is hidden with the offices' person filter.
@@ -59,15 +59,19 @@ What the read showed and how this version handles it:
 2. **`FacilityType.where`** (optional, a fixed string in the code): sent instead of `1=1`. Only `horta comunitaria`
    uses it.
 3. **Notes** for the four types as above.
-4. **Phones**: a leading "WhatsApp" (any case, optional ':') is removed from a part before the existing tests.
+4. **Phones**: a leading "WhatsApp", "Whats" or "Zap" (any case, optional ':' or '-') is removed from a part before
+   the existing tests.
 5. **Person lines** (v0.59 review Low):
-   - The role words gain secretário/a, supervisor/a, gestor/a and titular (coordenador/a was there), and "mantido/a
-     por" (a person's name follows "por" without an article; "mantida pela Associação" stays). "Secretaria" without
-     the accent is an office ("Secretaria Municipal de …"), so it counts only right before ':' ("Secretaria:");
-     "Secretária" with the accent is the role.
-   - Regression: the v0.59 rule that a hidden line with no comma ending in ':' hides the next line applies only to
-     the offices' filter, not to `cei contratado` ("Responsável pela matrícula:" no longer hides "-2ª a 6ª 8h" or
-     "Período parcial").
+   - The role words gain secretário/a, supervisor/a and gestor/a (coordenador/a was there); titular, coordenação and
+     gestão count only before ':' ("Titular da conta" stays). "Mantido/a por" anywhere in a line hides it (a person's
+     name follows "por" without an article), and so does "mantida pelo Sr./Sra./Dona"; "mantida pela Associação"
+     stays. "Secretaria" without the accent is an office ("Secretaria Municipal de …"), so it counts only right before
+     ':' ("Secretaria:"); "Secretária" with the accent is the role (the line is NFC-normalised first).
+   - Regression: after the v0.59 rule, a CEI's hidden "…:" line with no comma hid the next line whatever it was
+     ("Responsável pela matrícula:" hid "-2ª a 6ª 8h" and "Período parcial"). For a CEI the next line is now hidden
+     only when it is not an hours or service line (it has no digit and no service word such as período, horário,
+     atendimento, matrícula), so a name of any length after "Diretora responsável:" is still hidden (found in
+     review). Offices keep the v0.59 rule.
 6. **Eval**: new q135 → `city_facilities_search` `{type: "mesa solidaria", bairro: "centro"}`, synthetic fixture
    `test/fixtures/geocuritiba/mesa_solidaria_synthetic.json` with a line over 160 characters. Tool contract snapshot
    updated (`type` description).
@@ -85,6 +89,7 @@ School and institutional gardens, enrolment in Fazenda Urbana activities, the Me
 - `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the four types resolve with their
   aliases to layers 7, 9, 10 and 1; the horta query carries the fixed `where`; the synthetic Centro Mesa Solidária
   comes back with address, every hours line uncut and the WhatsApp landline; mobiles still dropped; new role words
-  hidden and "Secretaria Municipal de …" kept; the two CEI regression examples keep their hours line; q135 answered.
+  hidden and "Secretaria Municipal de …" kept; the two CEI regression examples keep their hours line and a long name
+  after "Diretora responsável:" is hidden; q135 answered.
 - `node scripts/eval-summary.mjs`: `answered 131 / 135`.
 - `scripts/verify` exits 0 on the PR head; packed size under 252,000 bytes.

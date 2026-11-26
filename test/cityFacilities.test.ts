@@ -1735,4 +1735,36 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
     expect(lines("Responsável pela matrícula:\n-2ª a 6ª 8h")).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª 8h"]);
     expect(lines("Responsável pela matrícula:\nPeríodo parcial")).toEqual([HIDDEN_MAINTAINER_LINE, "Período parcial"]);
   });
+
+  it("review: a CEI name of any length after a multi-word label is still hidden; the hours after it stay", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    for (const label of ["Diretora responsável:", "Mantenedora da unidade:"]) {
+      expect(lines(`${label}\nFulana de Tal Silva Souza Lima\n-2ª a 6ª feira, das 7h às 18h`)).toEqual([HIDDEN_MAINTAINER_LINE, "-2ª a 6ª feira, das 7h às 18h"]);
+    }
+    expect(lines("Diretora responsável:\n- Fulana de Tal Silva Souza Lima")).toEqual([HIDDEN_MAINTAINER_LINE]);
+  });
+
+  it("review: mantida por anywhere, pelo Sr./Dona, decomposed accents, Coordenação: and Gestão: are hidden; Titular da conta stays", () => {
+    const hide = type("horta comunitaria").hideLine!;
+    for (const l of [
+      "Horta mantida por Fulana de Tal",
+      "Mantida pelo Sr. Fulano de Tal",
+      "Mantida pela Dona Fulana",
+      "Secreta\u0301ria Fulana de Tal",
+      "Coordenação: Fulana de Tal",
+      "Gestão: Fulano",
+    ]) {
+      expect(hide(l)).toBe(true);
+    }
+    for (const l of ["Titular da conta", "Mantido pelo Lar Inventado", "Mantida pela Associação de Moradores Inventada."]) {
+      expect(hide(l)).toBe(false);
+    }
+  });
+
+  it("review: WhatsApp written with a dash, Whats or Zap is read too", () => {
+    for (const p of ["WhatsApp - (41) 3350-3821", "Whats 3350-3821", "Zap: (41) 3350-3821"]) {
+      expect(institutionalPhones(p)).toEqual(["(41) 3350-3821"]);
+    }
+  });
 });

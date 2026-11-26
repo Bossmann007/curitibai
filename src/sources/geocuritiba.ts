@@ -236,7 +236,8 @@ const COMMUNITY_GARDEN_NOTE =
   "layer also lists 109 school and 68 institutional gardens (counts read on 2026-11-26), inside schools and " +
   "institutions and not open to the public: they are not listed here. When read, the gardens had no phone and no " +
   "hours: only the e-mail the layer publishes, the same city address on every record. A line naming who is in " +
-  "charge is hidden; how to join a garden is not in this tool: ask the e-mail or the 156.";
+  "charge is hidden; how to join a garden is not in this tool: ask the e-mail or the 156. `source_url` is the whole " +
+  "layer, school and institutional gardens included.";
 /** v0.60.0. Layer 10 read on 2026-11-26: 3 farms; two list mobiles only or a landline plus mobiles. */
 const URBAN_FARM_NOTE =
   "The Fazendas Urbanas (urban farms) of the Prefeitura's food-security secretariat, as listed by IPPUC; hours as " +
@@ -259,15 +260,22 @@ const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(li
  * anywhere ("Responsável: Fulana", "Administrador Regional: Fulano", "Diretor(a):"). Narrower than isMaintainerLine,
  * whose MEI, ME, Ltda and "responsável" anywhere rules would hide office service lines ("atendimento ao MEI").
  */
-const ROLE =
-  "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe|secretario|supervisora?|gestora?|titular|mantid[ao]s? por";
+const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe|secretario|supervisora?|gestora?";
 /**
- * v0.60.0: the roles gain secretário/a, supervisor/a, gestor/a, titular and "mantido/a por" (a person follows "por"
- * with no article; "mantida pela Associação" stays). "Secretaria" without the accent is an office ("Secretaria
- * Municipal de …"): a role only right before ':'. With the accent it is the role: read as "secretario" before folding.
+ * v0.60.0: the roles gain secretário/a, supervisor/a and gestor/a; titular, coordenação and gestão count only before
+ * ':' ("Titular da conta" stays). "Secretaria" without the accent is an office ("Secretaria Municipal de …"): a role
+ * only right before ':'; with the accent it is the role, read as "secretario" before folding (NFC first). "Mantido/a
+ * por" anywhere hides the line (a person follows "por" with no article), and so does "mantida pelo Sr./Sra./Dona";
+ * "mantida pela Associação" stays.
  */
-const PERSON_IN_CHARGE = new RegExp(`^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:`, "u");
-export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(fold(line.replace(/secretária/giu, "secretario")));
+const LABEL_ONLY = "titular|coordenacao|gestao";
+const PERSON_IN_CHARGE = new RegExp(
+  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
+    `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
+  "u",
+);
+export const isPersonInChargeLine = (line: string): boolean =>
+  PERSON_IN_CHARGE.test(fold(line.normalize("NFC").replace(/secretária/giu, "secretario")));
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
@@ -856,7 +864,7 @@ export function institutionalPhones(raw: unknown): string[] {
   const out: string[] = [];
   for (const part of s.split(/\s*[/;,]\s*|\s+ou\s+|\s+e\s+/i)) {
     // v0.60.0: "WhatsApp (41) 3350-3821" (the Mesa Solidária line) is a landline too; a WhatsApp mobile is still dropped.
-    const p = part.trim().replace(/^whatsapp\s*:?\s*/i, "");
+    const p = part.trim().replace(/^(?:whats(?:app)?|zap)\s*[:\-–]?\s*/i, "");
     if (/^1\d{2}$/.test(p)) {
       out.push(p);
       continue;
@@ -929,6 +937,9 @@ export function isShelterLine(line: string): boolean {
   );
 }
 
+/** v0.60.0: a line after a CEI's "…:" label that is about the service, not a name (see hourLines `soft`). */
+const SERVICE_LINE = /^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|\b(rua|av|avenida|fones?|vagas?)\b/;
+
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
  * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
@@ -946,22 +957,28 @@ export function hourLines(
   let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
   // v0.54.0, maintainer only: one next line may end a split name (see docs/sources.md); a third line stays visible.
   let rest = false;
+  // v0.60.0, CEI only: the last line was a hidden "…:" label with no comma ("Diretora responsável:"); the next line is
+  // hidden unless it is an hours or service line (a digit, or a service word): "Responsável pela matrícula:" keeps
+  // "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora responsável:" is hidden.
+  let soft = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
       const tail: boolean = rest && !/^[-\d]|:|^integral\b|atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|\b(rua|av|avenida|fones?|vagas?)\b/.test(fold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
-      if (!hide || !(label || tail || hide(t) || hide(cleanText(part, Infinity)))) {
+      const named = soft && !/\d/.test(t) && !SERVICE_LINE.test(fold(t));
+      if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
         lines.push(t);
-        label = rest = false;
+        label = rest = soft = false;
       } else {
         const m = hide === isMaintainerLine || hide === isPersonInChargeLine;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
-        // v0.59.0, offices only (v0.60.0): a hidden line ending in ':' with no comma ("Administrador Regional:") is a
-        // label too: its value, however long, follows. "Responsável pelo atendimento, horário:" is not. For a CEI,
-        // "Responsável pela matrícula:" is followed by hours ("-2ª a 6ª", "Período parcial"), which stay.
-        const office: boolean = hide === isPersonInChargeLine && !label && /^[^,]*:$/.test(t);
-        label = m ? MAINTAINER_LABEL.test(fold(t)) || office : t.endsWith(":") && !label;
+        // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: for an office
+        // its value, however long, follows; for a CEI (v0.60.0) see `soft`. "Responsável pelo atendimento, horário:"
+        // is not a label: the hours after it stay.
+        const colon: boolean = m && !label && /^[^,]*:$/.test(t);
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && hide === isPersonInChargeLine) : t.endsWith(":") && !label;
+        soft = colon && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
