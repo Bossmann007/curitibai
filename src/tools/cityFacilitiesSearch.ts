@@ -160,7 +160,6 @@ export const MIXED_NOTE =
   "This layer is open to the public but may include private or non-profit venues (commercial cinemas, private " +
   "theatres and museums, institutes' cultural centres): for those, confirm days and hours with the venue, not the 156.";
 
-
 /** Metres from `p` to the nearest point of a line, on a local flat projection (fine at a few km). */
 export function distanceToPaths(p: { lat: number; lon: number }, paths: [number, number][][]): number {
   const kx = 111_320 * Math.cos((p.lat * Math.PI) / 180);

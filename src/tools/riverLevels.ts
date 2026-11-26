@@ -98,7 +98,6 @@ export const riverLevelsOutput = z.object({
 type Output = z.infer<typeof riverLevelsOutput>;
 type Near = { lat: number; lon: number };
 
-
 /**
  * Bundled stations matching `station` (a code, leading zeros optional, or the start of a code; or text in name, river
  * or municipality), nearest to `near` first. Without `station`, stations on a river (which report a level) come

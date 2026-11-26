@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { datasetUrl, filesListUrl, parseDownloadKeys, parseFilesJson, parseSearchPage } from "../src/sources/portal.js";
-import { decodeEntities, fold, htmlToText } from "../src/text.js";
+import { decodeEntities, fold, foldKey, htmlToText } from "../src/text.js";
 import { SourceUnavailableError } from "../src/http.js";
 import { EXT_CSV, fixture, ID_UNIDADES } from "./helpers.js";
 
@@ -9,6 +9,9 @@ describe("text helpers", () => {
     expect(decodeEntities("Sa&#xFA;de J&#xE1; &amp; &#8211; &unknown;")).toBe("Saúde Já & – &unknown;");
     expect(htmlToText("INTEGRAÇÃO (<b>SOMENTE</b>)\n  ok")).toBe("INTEGRAÇÃO ( SOMENTE ) ok");
     expect(fold("Botânico")).toBe("botanico");
+    expect(foldKey("  São-José  dos Pinhais! ")).toBe("sao jose dos pinhais");
+    expect(foldKey("Sa\u0303o Paulo, 2")).toBe("sao paulo 2");
+    expect(foldKey("--")).toBe("");
   });
 });
 

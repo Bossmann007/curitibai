@@ -11,6 +11,8 @@ import {
   hourLines,
   institutionalEmails,
   institutionalPhones,
+  isGardenPersonLine,
+  isPersonInChargeLine,
   isShelterLine,
   layerQueryUrl,
   parseLayer,
@@ -1355,6 +1357,9 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
       ["fazenda urbana", "person"],
       ["nucleo de seguranca alimentar", "person"],
     ]);
+    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine)) {
+      expect(t.nameLines, t.id).toBe("person");
+    }
     const cei = type("cei contratado");
     const lines = (s: string, names: FacilityType["nameLines"]) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker, names);
     expect(lines("Mantida por Fulana de\nTal Inventada", "maintainer")).toEqual([HIDDEN_MAINTAINER_LINE]);

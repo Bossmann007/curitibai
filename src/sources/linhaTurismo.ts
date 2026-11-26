@@ -68,7 +68,6 @@ export const TOUR_STOPS: readonly TourStop[] = [
   { name: "SETOR HISTORICO", lookup: { type: "informacoes turisticas", name: "setor historico", matched: "Posto de Informações Turísticas Setor Histórico" }, aka: "largo da ordem centro historico" },
 ];
 
-
 export function isTourRequest(input: string): boolean {
   const key = foldKey(input);
   return key === TOUR_TYPE_ID || TOUR_ALIASES.includes(key);

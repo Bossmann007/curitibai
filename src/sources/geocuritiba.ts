@@ -921,11 +921,13 @@ export function hourLines(
   if (s === null) return [];
   const lines: string[] = [];
   let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
-  // v0.54.0, maintainer only: one next line may end a split name (see docs/sources.md); a third line stays visible.
+  // v0.54.0, a type with nameLines only: one next line may end a split name (see docs/sources.md); a third line stays
+  // visible.
   let rest = false;
-  // v0.60.0, CEI only: the last line was a hidden "…:" label with no comma ("Diretora responsável:"); the next line is
-  // hidden unless it starts with a digit or a service word (SERVICE_LINE): "Responsável pela matrícula:" keeps
-  // "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora responsável:" is hidden.
+  // v0.60.0, nameLines "maintainer" (CEI) only: the last line was a hidden "…:" label with no comma ("Diretora
+  // responsável:"); the next line is hidden unless it starts with a digit or a service word (SERVICE_LINE):
+  // "Responsável pela matrícula:" keeps "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora
+  // responsável:" is hidden.
   let soft = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {

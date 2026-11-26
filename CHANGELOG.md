@@ -18,8 +18,8 @@ output, note or error changes.
   split-name and label rules.
 - `city_facilities_search`: the `name` check is written once for the Linha Turismo and the layer paths; a new test
   pins which error wins when several arguments are wrong (unchanged).
-- Source: 49 lines removed, 51 added (5 of them the flag's doc comment); tests: 21 removed, 51 added. Tool contract
-  snapshot unchanged. Citizen eval 131 of 135, as in 0.61.0.
+- Source: 56 lines removed, 57 added (5 of them the flag's doc comment); tests: 22 removed, 60 added (the two pins
+  and `foldKey` cases). Tool contract snapshot unchanged. Citizen eval 131 of 135, as in 0.61.0.
 - No new network host, no new dependency; docs/sources.md unchanged.
 
 ## 0.61.0 - 2026-11-26
