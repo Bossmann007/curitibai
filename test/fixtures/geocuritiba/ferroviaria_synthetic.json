@@ -1,0 +1,34 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada",
+    "nome_completo": "Terminal Ferroviário Inventado",
+    "nome_rua": "AV. INVENTADA DO LESTE",
+    "num_pred": "330",
+    "compl_end": "Complexo Rodoferroviário Inventado, Bloco Ferroviário - CEP: 80.000-000",
+    "divulgar_endereco": "Sim",
+    "bairro": "Jardim Botânico",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3488",
+    "email": "contato@operadora-inventada.com.br",
+    "dt_atualiz": 1792004939000,
+    "observacao": "Atendimento alta temporada:\r\n-2ª a 6ª feira, das 7h às 18h30\r\n-Sábado, das 7h às 17h\r\nAtendimento baixa temporada:\r\n-2ª a 6ª feira, das 7h às 17h30\r\n-Domingo, das 7h às 10h"
+   },
+   "geometry": {
+    "x": -49.256,
+    "y": -25.437
+   }
+  }
+ ]
+}

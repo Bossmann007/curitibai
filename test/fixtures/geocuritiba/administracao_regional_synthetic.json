@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada",
+    "nome_completo": "Administração Regional Inventada",
+    "nome_rua": "PÇ. INVENTADA",
+    "num_pred": "101",
+    "compl_end": "Rua da Cidadania Inventada, 1º Andar - CEP: 80.000-001",
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Inventada",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-5799 / 3333-5826",
+    "email": "arinventadasgm@curitiba.pr.gov.br",
+    "dt_atualiz": 1792004939000,
+    "observacao": "Atendimento Geral:\r\n-2ª a 6ª feira, das 8h às 18h.\r\nAtendimento Protocolo:\r\n-Telefone: (41) 3333-5813\r\n-2ª a 6ª feira, das 8h às 18h.\r\nBairros de abrangência: Bairro Inventado Um, Bairro Inventado Dois, Bairro Inventado Três, Bairro Inventado Quatro, Centro, Bairro Inventado Cinco, Bairro Inventado Seis e Bairro Inventado Sete."
+   },
+   "geometry": {
+    "x": -49.273,
+    "y": -25.435
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Sul Inventada",
+    "nome_completo": "Administração Regional Sul Inventada",
+    "nome_rua": "AV. INVENTADA DO SUL",
+    "num_pred": "2150",
+    "compl_end": "Rua da Cidadania Sul Inventada - CEP: 80.000-002",
+    "divulgar_endereco": "Sim",
+    "bairro": "Boqueirão",
+    "regional": "Sul Inventada",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-2489",
+    "email": "arsulinventadasgm@curitiba.pr.gov.br",
+    "dt_atualiz": 1792004939000,
+    "observacao": "Atendimento Geral:\r\n-2ª a 6ª feira, das 8h às 17h.\r\nBairros de abrangência: Boqueirão, Hauer e Xaxim."
+   },
+   "geometry": {
+    "x": -49.238,
+    "y": -25.502
+   }
+  }
+ ]
+}

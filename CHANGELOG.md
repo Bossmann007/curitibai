@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.58.0 - 2026-11-26
+
+Rodoferroviária and administrações regionais, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba urban-equipment layers (records on 2026-11-26):
+  `rodoviaria` (159, 1; aliases `rodoferroviaria`, `terminal rodoviario`), `ferroviaria` (160, 1; aliases `terminal
+  ferroviario`, `estacao ferroviaria`) and `administracao regional` (15, 10; alias `administracoes regionais`). No
+  bare `regional`, `terminal` (still the urban bus terminals) or `trem`. Hours, address and landlines as published.
+- `rodoviaria` note: the hours are the terminal's, not departures; intercity departures, platforms and fares are not in
+  this tool (the bus company, the terminal or the URBS home page, the link the bus tools already return).
+  `ferroviaria` note: hours by season as published, the layer does not say which season applies; the operator's
+  e-mail is dropped by the unchanged filter; no train times or tickets. `administracao regional`: long bairro lines are
+  split, not cut; `bairro` filters by where the office is, not the bairros it serves.
+- Tool contract: the `type` description (snapshot updated).
+- Citizen eval: q133 ("Qual o endereço e o horário da Rodoferroviária de Curitiba?") answered, with a synthetic
+  fixture; 129 of 133.
+- No new network host, no new link, no new dependency.
+
 ## 0.57.0 - 2026-11-26
 
 Registry areas at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

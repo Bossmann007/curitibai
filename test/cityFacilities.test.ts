@@ -1455,3 +1455,67 @@ describe("requests to the GeoCuritiba host", () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe("v0.58.0: Rodoferroviária and administrações regionais", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+
+  it.each([
+    ["rodoviaria", "rodoviaria", 159],
+    ["Rodoferroviária", "rodoviaria", 159],
+    ["Rodoferroviária de Curitiba", "rodoviaria", 159],
+    ["terminal rodoviário", "rodoviaria", 159],
+    ["ferroviaria", "ferroviaria", 160],
+    ["estação ferroviária", "ferroviaria", 160],
+    ["Administração Regional", "administracao regional", 15],
+    ["administrações regionais", "administracao regional", 15],
+  ] as const)("%s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("bare regional and trem are not types; terminal stays the urban bus terminals", () => {
+    for (const name of ["regional", "regionais", "trem"]) expect(resolveType(name)).toBeNull();
+    expect(resolveType("terminal")).toMatchObject({ id: "terminal" });
+  });
+
+  it("answers \"Qual o endereço e o horário da Rodoferroviária de Curitiba?\" with address, hours and landlines, and gives no departures", async () => {
+    const calls = stubFetch(route("rodoviaria", "rodoviaria_synthetic.json"));
+    const out = await search({ type: "rodoferroviaria" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/159`);
+    expect(out.data).toMatchObject({ type: "rodoviaria", total: 1 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Terminal Rodoviário Inventado",
+      address: "AV. INVENTADA DO LESTE, 330 - Complexo Rodoferroviário Inventado - CEP: 80.000-000",
+      hours: ["Atendimento administrativo:", "-Diariamente, das 6h às 24h", "Atendimento operacional:", "-Diariamente, das 0h às 24h"],
+      phones: ["(41) 3333-3000", "(41) 3333-3232"],
+      emails: ["rodoviaria@urbs.curitiba.pr.gov.br"],
+    });
+    expect(out.note).toMatch(/not departures/);
+    expect(out.note).toMatch(/departures, platforms and fares are not in this tool/);
+    expect(out.note).toMatch(/https:\/\/www\.urbs\.curitiba\.pr\.gov\.br\//);
+    expect(out.note).toMatch(/`ferroviaria`/);
+  });
+
+  it("the Ferroviária drops the operator's e-mail and says which season applies is not published", async () => {
+    stubFetch(route("ferroviaria", "ferroviaria_synthetic.json"));
+    const out = await search({ type: "ferroviaria" });
+    expect(out.data.items[0]).toMatchObject({ phones: ["(41) 3333-3488"], emails: [] });
+    expect(out.data.items[0]!.hours).toContain("Atendimento baixa temporada:");
+    expect(out.note).toMatch(/does not say which season applies/);
+    expect(out.note).toMatch(/train times and tickets are not in this tool/i);
+  });
+
+  it("an Administração Regional keeps its bairros line whole (split after commas) and says bairro is where the office is", async () => {
+    stubFetch(route("administracao regional", "administracao_regional_synthetic.json"));
+    const out = await search({ type: "administracao regional", name: "inventada" });
+    expect(out.data).toMatchObject({ total: 2 });
+    const one = out.data.items[0]!;
+    expect(one.phones).toEqual(["(41) 3333-5799", "(41) 3333-5826"]);
+    expect(one.hours.slice(0, 3)).toEqual(["Atendimento Geral:", "-2ª a 6ª feira, das 8h às 18h.", "Atendimento Protocolo:"]);
+    const bairros = one.hours.slice(5).join(" ");
+    expect(bairros).toMatch(/^Bairros de abrangência: .*Bairro Inventado Sete\.$/);
+    expect(one.hours.every((l) => l.length <= 160)).toBe(true);
+    expect(out.note).toMatch(/not by the bairros it serves/);
+    expect(out.note).toMatch(/place_at_point/);
+  });
+});
