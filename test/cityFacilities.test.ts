@@ -1356,6 +1356,10 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
       ["horta comunitaria", "person"],
       ["fazenda urbana", "person"],
       ["nucleo de seguranca alimentar", "person"],
+      ["sine", "person"],
+      ["agencia do trabalhador", "person"],
+      ["liceu de oficios", "person"],
+      ["inss", "person"],
     ]);
     for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine)) {
       expect(t.nameLines, t.id).toBe("person");
@@ -1982,7 +1986,10 @@ describe("v0.63.0: the garden filter is an allowlist; social types carry a shelt
 describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", () => {
   const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
   const layer = (attributes: Record<string, unknown>) =>
-    JSON.stringify({ features: [{ attributes: { objectid: 1, divulgar_endereco: "Sim", ...attributes }, geometry: { x: -49.27, y: -25.43 } }] });
+    JSON.stringify({
+      spatialReference: { wkid: 4326 },
+      features: [{ attributes: { objectid: 1, divulgar_endereco: "Sim", ...attributes }, geometry: { x: -49.27, y: -25.43 } }],
+    });
 
   it.each([
     ["sine", "sine", 150], ["SINE Municipal", "sine", 150], ["unidades de atendimento SINE", "sine", 150],

@@ -248,6 +248,29 @@ const FOOD_SECURITY_OFFICE_NOTE =
   "The Núcleos Regionais de Segurança Alimentar e Nutricional (the food-security secretariat's office in each " +
   "regional, mostly in the Rua da Cidadania; Matriz at the Mercado Municipal), as listed by IPPUC; hours as published " +
   "(see `updated`). Programmes, benefits and anyone's registration are not in this tool: ask the núcleo or the 156.";
+/** v0.64.0. Layer 150 read on 2026-11-26: 12 records; one SINE Móvel with no published address, one Economia Popular Solidária. */
+const SINE_NOTE =
+  "The Prefeitura's SINE units (job placement), as listed by IPPUC; hours as published (see `updated`). Units are " +
+  "named after their Rua da Cidadania, not always the bairro they are in: search by `name` (e.g. \"pinheirinho\"). " +
+  "The SINE Móvel has no fixed place (the layer says it goes to a different point each day): no address. The layer " +
+  "also lists the Economia Popular Solidária office. Vacancies and anyone's registration are not in this tool. The " +
+  "Paraná state agency is type `agencia do trabalhador`.";
+/** v0.64.0. Layer 151 read on 2026-11-26: one record; its e-mail is on a state domain and is dropped. */
+const WORKER_AGENCY_NOTE =
+  "The Paraná state Agência do Trabalhador in Curitiba, as listed by IPPUC; hours as published (see `updated`). Its " +
+  "e-mail is not a city address and is not shown: call. Vacancies and anyone's registration are not in this tool. " +
+  "The Prefeitura's units are type `sine`.";
+/** v0.64.0. Layer 149 read on 2026-11-26: 16 records; one hours line about 330 characters (wrapLines). */
+const LICEU_NOTE =
+  "The Prefeitura's Liceus de Ofícios (free courses), as listed by IPPUC, the Liceu das Artes among them; hours as " +
+  "published (see `updated`). Courses, dates and enrolment are not in this tool: call the Liceu or the 156.";
+/** v0.64.0. Layer 152 read on 2026-11-26: 4 federal agencies; phone 135, no e-mail. Meu INSS and 135 are in the layer. */
+const INSS_LEAD_NOTE =
+  "The INSS is a federal service: benefits and appointments go through Meu INSS (app or site) or the 135 phone line " +
+  "(not linked by this tool); this tool lists places, it does not book.";
+const INSS_NOTE =
+  "The INSS agencies (Agência da Previdência Social) in Curitiba as listed by IPPUC; hours as published (see " +
+  "`updated`). A phone of 135 is the INSS's central line, not the agency's own.";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 /** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
@@ -618,6 +641,21 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     "nucleos de seguranca alimentar", "nucleo regional de seguranca alimentar", "nucleos regionais de seguranca alimentar",
     "nucleo regional de seguranca alimentar e nutricional", "nucleos regionais de seguranca alimentar e nutricional",
   ], { note: FOOD_SECURITY_OFFICE_NOTE, ...HIDE_PERSON }),
+  // Work, added in v0.64.0 (read on 2026-11-26 UTC: layers 150, 151, 149 and 152; 12, 1, 16 and 4 records).
+  equipment("sine", 150, "Unidade de Atendimento SINE", [
+    "sine municipal", "sine curitiba", "unidade do sine", "unidades do sine", "unidade de atendimento sine",
+    "unidades de atendimento sine", "agencia do sine",
+  ], { note: SINE_NOTE, ...HIDE_PERSON }),
+  equipment("agencia do trabalhador", 151, "Agência do Trabalhador", [
+    "agencias do trabalhador", "agencia do trabalhador de curitiba",
+  ], { note: WORKER_AGENCY_NOTE, ...HIDE_PERSON }),
+  equipment("liceu de oficios", 149, "Liceu de Ofícios", ["liceu", "liceus", "liceus de oficios", "liceu de oficio"], {
+    note: LICEU_NOTE, wrapLines: true, ...HIDE_PERSON,
+  }),
+  equipment("inss", 152, "Agência da Previdência Social (INSS)", [
+    "agencia do inss", "agencias do inss", "agencia da previdencia social", "agencias da previdencia social",
+    "previdencia social",
+  ], { leadNote: INSS_LEAD_NOTE, note: INSS_NOTE, ...HIDE_PERSON }),
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",
