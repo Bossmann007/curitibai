@@ -1352,9 +1352,11 @@ changes (owner request, 2026-11-23: monthly and automatic).
     it after its commas, and the two parts still longer than 160 characters end with "…".
   - 79: 180 contracted CEIs (private or non-profit centres the Prefeitura contracts). 137 publish an hours line, 23
     have no `observacao`. **131 records have a "Mantenedora: …" line**, and some maintainers are sole proprietors
-    named after a person: for this type every line that mentions "mantenedor", "mantido/a por",
-    "proprietário/a", "eireli" or "ltda" (any case) or the word "ME" (plain regexes, linear), and the line after
-    such a line when it is a bare label ending in ":", is replaced by the marker "[the maintainer line is not shown: it can carry a person's name]". E-mails at
+    named after a person: for this type every line that mentions "mantenedor", "mantido/a por/pela/pelo",
+    "proprietário/a", "responsável", "diretor/a", "eireli" or "ltda" (any case or accent) or the word "ME" or "MEI"
+    (plain regexes, linear), the line after a bare label (the keyword alone, with or without ":"), and, since v0.54.0,
+    the one line after a hidden line not ending in "." or a firm suffix when it looks like the rest of a name (up to 4
+    words before a digit or ",", no ":", no hours or service word), is replaced by the marker "[the maintainer line is not shown: it can carry a person's name]". E-mails at
     gmail, hotmail, yahoo and other private domains, and mobiles, are dropped by the unchanged filters; the kept
     e-mails are unit mailboxes at `educacao.curitiba.pr.gov.br`. The note says the listing does not confirm
     Vale-Creche accreditation and points to `city_service_guide` (`creche`, `vale_creche`); no link is added.

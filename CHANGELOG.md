@@ -2,6 +2,14 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.54.0 - 2026-11-26
+
+Hardens the `cei contratado` maintainer filter from 0.53.0. 27 tools. Publishes nothing.
+
+- `cei contratado`: the marker also replaces "Mantida pela/pelo", "MEI", "Responsável" and "Diretora" lines, a bare
+  label without ":" and the line after it, and one more line of a split name (a third stays visible). Hide only.
+- No contract change, no new host or link. Eval: 127 of 131, unchanged.
+
 ## 0.53.0 - 2026-11-26
 
 Municipal schools, CMEIs, CMAEEs and contracted CEIs, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
