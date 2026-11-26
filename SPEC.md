@@ -44,8 +44,10 @@ What the read showed and how this version handles it:
    - `cei contratado` (79), aliases `ceis contratados`, `centro de educacao infantil contratado`, `creche contratada`.
    No bare `escola` (state and private schools are not in these layers) or `creche` (it could mean `cmei` or `cei
    contratado`); both stay unresolved (tested).
-2. **Maintainer lines**: `cei contratado` sets `hideLine: isMaintainerLine` (a plain `/mantenedora/i` test, linear)
-   and `hiddenLineMarker` "[the maintainer line is not shown: it can carry a person's name]".
+2. **Maintainer lines**: `cei contratado` sets `hideLine: isMaintainerLine` and `hiddenLineMarker` "[the maintainer
+   line is not shown: it can carry a person's name]". `isMaintainerLine` matches `mantenedor`, `mantido/a por`,
+   `proprietário/a`, `eireli`, `ltda` (any case) or the word `ME` (plain regexes, linear). In `hourLines` (every type
+   with `hideLine`), a hidden line that ends with ":" (a bare label) also hides the next line.
 3. **Notes**: one shared note for the three municipal types (the units IPPUC lists, hours as published, see
    `updated`; enrolment and vacancies are not in the layer; escolas rarely publish hours, call the school). The CEI
    note says it is a private or non-profit centre contracted by the Prefeitura as listed by IPPUC, that this does not
@@ -67,7 +69,8 @@ fields; widening the contact filters; any new host or link.
 
 - `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases resolve to layers 80, 78,
   81 and 79; bare `escola` and `creche` do not resolve; a CEI maintainer line is replaced by the marker and its
-  person's name, mobile and gmail are absent from the JSON; the CEI note says it does not confirm Vale-Creche
+  person's name, mobile and gmail are absent from the JSON; the owner in another form (`Mantenedor`, `Mantida por`,
+  `Proprietária`, a firm suffix) or on the line after a bare `Mantenedora:` is hidden; the CEI note says it does not confirm Vale-Creche
   accreditation and names `vale_creche`; q131 answered.
 - `node scripts/eval-summary.mjs`: `answered 127 / 131`.
 - The built parser over the four reads: 0 records skipped, the Bracatinga CMEI with a landline and its hours line.

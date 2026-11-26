@@ -1326,6 +1326,22 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
     expect(out.note).toMatch(/does not confirm Vale-Creche accreditation/);
     expect(out.note).toMatch(/city_service_guide.*vale_creche/);
   });
+
+  it("a maintainer or owner named in another form, or on the line after a bare label, is hidden too", () => {
+    const cei = type("cei contratado");
+    const lines = (s: string) => hourLines(s, 30, false, cei.hideLine, cei.hiddenLineMarker);
+    for (const s of [
+      "Atendimento:\nMantenedora:\nFulana de Tal",
+      "Atendimento:\nMantenedor: Fulano de Tal",
+      "Atendimento:\nMantida por: Fulana de Tal",
+      "Atendimento:\nProprietária: Fulana de Tal",
+      "Atendimento:\nNome anterior: Fulana de Tal ME",
+      "Atendimento:\nNome anterior: Fulana de Tal Eireli",
+    ]) {
+      expect(lines(s)).toEqual(["Atendimento:", HIDDEN_MAINTAINER_LINE]);
+    }
+    expect(lines("Nome anterior: CEI Inventado.\n-2ª a 6ª feira, das 7h às 18h")).toEqual(["Nome anterior: CEI Inventado.", "-2ª a 6ª feira, das 7h às 18h"]);
+  });
 });
 
 describe("requests to the GeoCuritiba host", () => {

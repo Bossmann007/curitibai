@@ -196,14 +196,15 @@ const WOMEN_CENTRE_NOTE =
 const AFRO_CENTRE_NOTE = "The Centro de Referência Afro as listed by IPPUC, hours as published (see `updated`); call before going.";
 // v0.53.0.
 const SCHOOL_NOTE =
-  "Municipal units as listed by IPPUC, hours as published (see `updated`); escolas rarely publish hours: call. " +
+  "Municipal units as listed by IPPUC, hours as published (see `updated`); most escolas publish only `open_periods`: call. " +
   "Enrolment and vacancies are not in the layer.";
 const CEI_NOTE =
   "Private or non-profit centres contracted by the Prefeitura, as listed by IPPUC; this does not confirm Vale-Creche " +
   "accreditation (see city_service_guide `creche` and `vale_creche`). Hours as published; call before going.";
-/** Every CEI line naming its maintainer: some are sole proprietors (a person's name). */
+/** Every CEI line naming its maintainer or owner, or a firm (ME, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
-const isMaintainerLine = (line: string): boolean => /mantenedora/i.test(line);
+const isMaintainerLine = (line: string): boolean =>
+  /mantenedor|mantid[ao]s? por|propriet[aá]ri|eireli|ltda/i.test(line) || /\bME\b/.test(line);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -522,7 +523,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     hideLine: isMaintainerLine,
     hiddenLineMarker: HIDDEN_MAINTAINER_LINE,
   },
-  equipment("cemiterio", 114,"Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
+  equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
   { ...equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]), hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE },
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
   equipment("posto urbs", 156, "Posto de Atendimento URBS", ["posto de atendimento urbs", "urbs"]),
@@ -801,12 +802,18 @@ export function hourLines(
   const s = str(raw);
   if (s === null) return [];
   const lines: string[] = [];
+  let label = false; // the last line was a hidden bare label ("Mantenedora:"): its value follows
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      if (!hide || !(hide(t) || hide(cleanText(part, Infinity)))) lines.push(t);
-      else if (lines[lines.length - 1] !== marker) lines.push(marker);
+      if (!hide || !(label || hide(t) || hide(cleanText(part, Infinity)))) {
+        lines.push(t);
+        label = false;
+      } else {
+        label = t.endsWith(":") && !label;
+        if (lines[lines.length - 1] !== marker) lines.push(marker);
+      }
     }
   }
   if (hide && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
