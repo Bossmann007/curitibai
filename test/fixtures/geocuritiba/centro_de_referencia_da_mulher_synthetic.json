@@ -35,9 +35,9 @@
     "objectid": 2,
     "nome": "Reservado Não",
     "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Não",
-    "nome_rua": "R. SIGILOSA INVENTADA",
+    "nome_rua": "R. RESERVADA INVENTADA",
     "num_pred": "2108",
-    "compl_end": "Sala Sigilosa - CEP: 81.000-208",
+    "compl_end": "Sala Reservada - CEP: 81.000-208",
     "divulgar_endereco": "Não",
     "bairro": "Cidade Industrial de Curitiba",
     "regional": "CIC",
@@ -48,7 +48,7 @@
     "telefone": "(41) 3333-2108 / (41) 99999-2108",
     "email": "reservado@curitiba.pr.gov.br",
     "dt_atualiz": 1767614400000,
-    "observacao": "Atendimento:\r\n-Na Rua Sigilosa Inventada, 2108, fundos"
+    "observacao": "Atendimento:\r\n-Na Rua Reservada Inventada, 2108, fundos"
    },
    "geometry": {
     "x": -49.3456,
@@ -60,7 +60,7 @@
     "objectid": 3,
     "nome": "Reservado Vazio",
     "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Vazio",
-    "nome_rua": "R. SIGILOSA DOIS",
+    "nome_rua": "R. RESERVADA DOIS",
     "num_pred": "3108",
     "compl_end": "CEP: 81.000-308",
     "divulgar_endereco": null,
@@ -73,7 +73,7 @@
     "telefone": "(41) 3333-3108",
     "email": "reservado2@curitiba.pr.gov.br",
     "dt_atualiz": 1767614400000,
-    "observacao": "Atendimento perto da Praça Sigilosa"
+    "observacao": "Atendimento perto da Praça Reservada"
    },
    "geometry": {
     "x": -49.3111,
@@ -85,7 +85,7 @@
     "objectid": 4,
     "nome": "Reservado Minúsculo",
     "nome_completo": "Centro de Referência de Atendimento à Mulher Reservado Minúsculo",
-    "nome_rua": "R. SIGILOSA TRES",
+    "nome_rua": "R. RESERVADA TRES",
     "num_pred": "4108",
     "compl_end": "CEP: 81.000-408",
     "divulgar_endereco": "sim",
@@ -98,7 +98,7 @@
     "telefone": "",
     "email": "",
     "dt_atualiz": 1767614400000,
-    "observacao": "Ponto de referência sigiloso"
+    "observacao": "Ponto de referência reservado"
    },
    "geometry": {
     "x": -49.2911,

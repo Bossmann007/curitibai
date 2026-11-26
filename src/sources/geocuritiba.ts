@@ -167,18 +167,17 @@ const COURTHOUSE_NOTE =
 /** Social assistance (v0.52.0). Shelters and transit houses (layers 45, 46, 164) are never types. */
 const NO_SHELTERS = "Shelters and transit houses are not listed by this tool.";
 export const HIDDEN_SHELTER_LINE =
-  "[a line that mentions a shelter or transit house is not shown: this tool does not publish their addresses; ask the 156]";
+  "[a line that may point at a shelter, transit house or confidential unit is not shown; ask the 156]";
 export const PRIVATE_ADDRESS_LINE =
   "[the address of this place is not published: call its phone if one is shown, or the 180 or the 156]";
 const CREAS_NOTE =
   "The CREAS that IPPUC lists in Curitiba, hours as published (see `updated`). Each is named after a regional " +
   "(\"CIC\"): find it with `name`; `bairro` is where it is. Which bairros a CREAS serves is not in the layer: ask your " +
-  "CRAS (type `cras`) or the 156. Who is assisted is not in the layer: call before going. Mobiles are not shown. " +
+  "CRAS (type `cras`) or the 156. Who is assisted is not in the layer: call before going. " +
   NO_SHELTERS;
 const STREET_CENTRE_NOTE =
-  "The Centros POP (for people living on the street) that IPPUC lists in Curitiba, hours as published (see " +
-  "`updated`); as the layer publishes, requests for assistance go through the 156. Some units publish only a mobile " +
-  `number, which is not shown, so \`phones\` can be empty: call the 156. ${NO_SHELTERS}`;
+  "The Centros POP (for people living on the street) IPPUC lists, hours as published (see `updated`); as published, " +
+  `requests go through the 156. A unit with only a mobile has \`phones\` empty: call the 156. ${NO_SHELTERS}`;
 const SOCIAL_REFERRAL_NOTE =
   "The Central de Encaminhamento Social 24 Horas as listed by IPPUC (see `updated`); as the layer publishes, contact " +
   `is through the 156. ${NO_SHELTERS}`;
@@ -186,16 +185,14 @@ const ELDERLY_CENTRE_NOTE =
   "The Centros de Atividades para Idosos that IPPUC lists in Curitiba (named Espaço ConViver in the layer), hours as " +
   "published (see `updated`). Who can take part and how to join are not in the layer: call the unit or the 156 " +
   "before going.";
-/** 180 and 190 as on the Ministério das Mulheres' Ligue 180 page (read 2026-11-26; docs/sources.md). */
+/** As on the Ministério das Mulheres' Ligue 180 page (docs/sources.md). */
 export const WOMEN_EMERGENCY_NOTE =
   "Emergency: call 190 (Polícia Militar). Central de Atendimento à Mulher: 180 (24 hours, free call), both as " +
   "published by the Ministério das Mulheres. This tool lists places, it does not dispatch help.";
 const WOMEN_CENTRE_NOTE =
-  "The Centros de Referência de Atendimento à Mulher that IPPUC lists in Curitiba (the Casa da Mulher Brasileira " +
-  "among them), hours and the services inside as published (see `updated`). A record whose publisher does not mark " +
-  "its address as public (`divulgar_endereco` other than \"Sim\") comes back with its name and institutional phones " +
-  "only: no address, position, bairro, regional, hours or e-mail, so `bairro` and `near` never match it; call it or " +
-  `the 180. Who is assisted is not in this tool: call before going. ${NO_SHELTERS}`;
+  "The women's reference centres IPPUC lists (the Casa da Mulher Brasileira among them), hours and services as " +
+  "published (see `updated`). A record whose address is not marked public returns only its name and phones, so " +
+  `\`bairro\` and \`near\` never match it: call it or the 180. Who is assisted is not in this tool. ${NO_SHELTERS}`;
 const AFRO_CENTRE_NOTE = "The Centro de Referência Afro as listed by IPPUC, hours as published (see `updated`); call before going.";
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
@@ -242,9 +239,9 @@ export interface FacilityType {
   wrapLines?: true;
   /** True when an `observacao` line (after cleaning) is replaced by HIDDEN_NAME_LINE: a registry line that may carry a surname (v0.51.0). */
   hideLine?: (line: string) => boolean;
-  /** The marker shown instead of a hidden line (default HIDDEN_NAME_LINE). */
+  /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
-  /** `divulgar_endereco` not "Sim": name, institutional phones and PRIVATE_ADDRESS_LINE only (v0.52.0). */
+  /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
   privateAddress?: true;
 }
 
@@ -506,7 +503,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   },
   social("centro de referencia afro", 109, "Centro de Referência Afro", ["centros de referencia afro"], AFRO_CENTRE_NOTE),
   equipment("cemiterio", 114, "Cemitério Municipal", ["cemiterios", "cemiterio municipal"]),
-  equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]),
+  { ...equipment("cras", 34, "Centro de Referência de Assistência Social", ["centro de referencia de assistencia social"]), hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE },
   equipment("conselho tutelar", 68, "Conselho Tutelar", ["conselhos tutelares"]),
   equipment("posto urbs", 156, "Posto de Atendimento URBS", ["posto de atendimento urbs", "urbs"]),
   equipment("informacoes turisticas", 162, "Posto de Informações Turísticas", ["posto de informacoes turisticas", "turismo"]),
@@ -763,9 +760,11 @@ export function isRegistryNameLine(line: string): boolean {
   return /cart[oó]rio/iu.test(line);
 }
 
-/** A line that mentions a shelter or transit house (v0.52.0); linear; "acolhimento" alone is a service, kept. */
+/** Shelter, transit house or confidential unit (v0.52.0); linear. */
 export function isShelterLine(line: string): boolean {
-  return /casas? de passagem|abrigo|casas? de acolhida|unidades? de acolhimento/.test(fold(line));
+  return /casas? de passagem|abrigo|albergue|pernoite|sigilos|casas? lar|casas? de acolhi|unidades? de acolhimento|acolhimento institucional/.test(
+    fold(line).replace(/[\s-]+/g, " "),
+  );
 }
 
 /**
@@ -786,7 +785,7 @@ export function hourLines(
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
-      if (!hide?.(t)) lines.push(t);
+      if (!hide || !(hide(t) || hide(cleanText(part, Infinity)))) lines.push(t);
       else if (lines[lines.length - 1] !== marker) lines.push(marker);
     }
   }
@@ -824,6 +823,7 @@ function privateRecord(name: string, a: Record<string, unknown>): Facility {
 function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> | null, t: FacilityType): Facility | null {
   const name = clean(a.nome_completo, NAME_MAX) ?? clean(a.nome, NAME_MAX);
   if (name === null) return null;
+  if (t.hideLine === isShelterLine && [a.nome_completo, a.nome, a.nome_rua, a.compl_end].some((v) => typeof v === "string" && isShelterLine(v))) return null;
   // The publisher marks whether the address may be shown; anything but "Sim" hides the address and the position.
   const show = a.divulgar_endereco === "Sim";
   if (!show && t.privateAddress) return privateRecord(name, a);

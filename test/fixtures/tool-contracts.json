@@ -1528,7 +1528,7 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991,
-              "description": "Records of the layer left out: no name, or a bike lane not operational."
+              "description": "Records of the layer left out: no name, a bike lane not operational, or a social-assistance record whose name or address mentions a shelter."
             },
             "items": {
               "type": "array",

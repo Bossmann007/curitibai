@@ -50,18 +50,22 @@ What the read showed and how this version handles it:
      atendimento a mulher`, `centros de referencia de atendimento a mulher`, `casa da mulher brasileira`;
    - `centro de referencia afro` (109), alias `centros de referencia afro`.
    No `abrigo`, `casa de passagem` or `acolhimento` name. None of the new names is used by another type.
-2. **Shelter lines**: the six types set `hideLine: isShelterLine` and the new optional `hiddenLineMarker`
-   (`HIDDEN_SHELTER_LINE`, "[a line that mentions a shelter or transit house is not shown: this tool does not publish
-   their addresses; ask the 156]"). `isShelterLine` tests the folded line against `casas? de passagem|abrigo|casas? de
-   acolhida|unidades? de acolhimento`, a plain alternation of literals, linear. `hourLines` takes the marker as a
-   parameter (default `HIDDEN_NAME_LINE`, so the registry type is unchanged); consecutive markers are merged.
+2. **Shelter lines and records**: the six types and the existing `cras` set `hideLine: isShelterLine` and the new
+   optional `hiddenLineMarker` (`HIDDEN_SHELTER_LINE`, "[a line that may point at a shelter, transit house or
+   confidential unit is not shown; ask the 156]"). `isShelterLine` folds the text, turns runs of spaces and hyphens into
+   one space and tests `casas? de passagem|abrigo|albergue|pernoite|sigilos|casas? lar|casas? de acolhi|unidades? de
+   acolhimento|acolhimento institucional`, a plain alternation of literals, linear. `hourLines` takes the marker as a
+   parameter (default `HIDDEN_NAME_LINE`, so the registry type is unchanged), tests the whole cleaned line as well as
+   the 160-character cut (a word past the cut still hides it) and merges consecutive markers. A record of these types
+   whose `nome_completo`, `nome`, `nome_rua` or `compl_end` matches is left out and counted in `skipped_records` (its
+   output description says so; snapshot updated).
 3. **Private address** (new optional `privateAddress`, set only on `centro de referencia da mulher`): when
    `divulgar_endereco` is not exactly "Sim", the record returns its name, institutional phones, `updated` and one
    `hours` line `PRIVATE_ADDRESS_LINE` ("[the address of this place is not published: call its phone if one is shown,
    or the 180 or the 156]"); address, position, `bairro`, `regional`, e-mails and periods are null or empty, so
    `bairro` and `near` never match it. Other types keep the older rule (address and position hidden only).
 4. **Notes**: CREAS (named after a regional; coverage not in the layer, ask the CRAS or the 156; `bairro` is where a
-   unit is; mobiles not shown), Centro POP (requests through the 156; a mobile-only unit has no phone here), Central
+   unit is), Centro POP (requests through the 156; a mobile-only unit has no phone here), Central
    (contact through the 156), centres for older people (named Espaço ConViver; who can join not in the layer), women's
    centres (the private-address rule above; who is assisted not in this tool) and Afro centre; the CREAS, Centro POP,
    Central and women's notes say shelters and transit houses are not listed. The women's type leads with
@@ -90,8 +94,9 @@ any site; any new server host or link.
 
 - `npx vitest run test/cityFacilities.test.ts test/contracts.test.ts test/eval`: the aliases resolve to layers 38, 40,
   39, 36, 108 and 109; no type points at `.../MapServer/45`, `/46` or `/164` and no shelter name resolves;
-  `isShelterLine` matches the shelter words in any case or accent, keeps "acolhimento" alone and is fast on a long
-  line; the CREAS CIC answer has the mobile and the misspelt e-mail dropped and a note that claims no coverage; shelter
+  `isShelterLine` matches the shelter words in any case, accent or hyphenation, keeps "acolhimento" alone and is fast
+  on a long line; a shelter word past the 160-character cut still hides the line; a CREAS record whose address names a
+  shelter is skipped and counted; `cras` has the same line check; the CREAS CIC answer has the mobile and the misspelt e-mail dropped and a note that claims no coverage; shelter
   lines in a CREAS and a Centro POP replaced by one marker; a mobile-only Centro POP with no phone; a women's centre
   with "Não", null or "sim" returns only name, phones and the marker line (no fixture street, bairro, regional,
   coordinates or e-mail in the JSON) and never matches `bairro` or `near`, while the "Sim" record is shown in full; the

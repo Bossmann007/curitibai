@@ -1288,11 +1288,14 @@ changes (owner request, 2026-11-23: monthly and automatic).
     dropped by the unchanged allowlist.
   - 40: 3 Centros POP; "Solicitações de atendimento ou emergência são realizadas pelo telefone 156." Two publish only a
     mobile, so they come back with no phone (the note says to call the 156). **One record's text names a transit
-    house and its street address**: in these six types any `hours` line that mentions "casa(s) de passagem", "abrigo",
-    "casa(s) de acolhida" or "unidade(s) de acolhimento" (accents and case ignored; `isShelterLine`, a plain
-    alternation of literals, linear) is replaced by the marker "[a line that mentions a shelter or transit house is
-    not shown: this tool does not publish their addresses; ask the 156]"; consecutive markers are merged. "Acolhimento"
-    alone (a service, as in the Casa da Mulher Brasileira's list) is kept.
+    house and its street address**: in these six types and in `cras` any `hours` line that mentions "casa(s) de passagem", "abrigo",
+    "albergue", "pernoite", "casa(s) lar", "casa(s) de acolhida" or "de acolhimento", "unidade(s) de acolhimento",
+    "acolhimento institucional" or "sigiloso/a" (accents, case, hyphens and repeated spaces ignored; `isShelterLine`, a
+    plain alternation of literals, linear; the whole line is tested, not only its first 160 characters) is replaced
+    by the marker "[a line that may point at a shelter, transit house or confidential unit is not shown; ask the
+    156]"; consecutive markers are merged. "Acolhimento" alone (a service, as in the Casa da Mulher Brasileira's list)
+    is kept. A record of these types whose name, street or complement mentions one is left out and counted in
+    `skipped_records`; none did when read.
   - 39: 1 record, the Central de Encaminhamento Social 24 Horas: "Contato: disque 156" and the 156 site's address
     (kept as text, not linked).
   - 36: 5 records, named Espaço ConViver in `nome_completo`, "2ª a 6ª feira, das 8h às 17h" (one with a lunch break).

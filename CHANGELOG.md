@@ -6,25 +6,23 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Social assistance beyond the CRAS, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
 
-- `city_facilities_search`: new `type`s read live from IPPUC's GeoCuritiba layers (records on 2026-11-26): `creas`
-  (38, 10), `centro pop` (40, 3), `central de encaminhamento social` (39, 1), `centro de atividades para idosos` (36,
-  5; alias `espaco conviver`), `centro de referencia da mulher` (108, 2; alias `casa da mulher brasileira`) and
-  `centro de referencia afro` (109, 1), plus plurals and full names. Same fields, host gate, cache and contact filters
-  as the other layers; the CREAS note says which bairros a unit serves is not in the layer (ask the CRAS or the 156).
-  No note promises service, eligibility or free care.
-- Shelters and transit houses (layers 45, 46, 164) are never types, and no `abrigo`, `casa de passagem` or
-  `acolhimento` name resolves (tested). One Centro POP record named a transit house's address: in the six types, a line
-  that mentions a casa de passagem, abrigo, casa de acolhida or unidade de acolhimento is replaced by a visible marker
-  (`isShelterLine`, linear; new optional `hiddenLineMarker`).
-- Women's reference centres: when `divulgar_endereco` is not exactly "Sim", only the name, institutional phones and a
-  line saying to call are returned, so `bairro` and `near` never match (new optional `privateAddress`; tested with
-  "Sim", "Não", null and "sim"). The note leads with 190 (Polícia Militar) and 180 (Central de Atendimento à Mulher),
-  as published on the Ministério das Mulheres' Ligue 180 page (`www.gov.br`, read by hand; the server never contacts
-  it), and says the tool does not dispatch help.
-- Tool contract: the `type` description (snapshot updated). No new network host for the server; the link allowlist is
-  unchanged.
-- Citizen eval: new q130 ("Onde fica o CREAS que atende a CIC?") answered by `creas` with `name` `cic` on a synthetic
-  fixture. 126 of 130 answered. The Curitiba App table is unchanged.
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba layers (records on 2026-11-26): `creas` (38, 10),
+  `centro pop` (40, 3), `central de encaminhamento social` (39, 1), `centro de atividades para idosos` (36, 5; alias
+  `espaco conviver`), `centro de referencia da mulher` (108, 2; alias `casa da mulher brasileira`) and `centro de
+  referencia afro` (109, 1). Same fields, host gate, cache and contact filters as the other layers. The CREAS note says
+  which bairros a unit serves is not in the layer. No note promises service, eligibility or free care.
+- Shelters and transit houses (layers 45, 46, 164) are never types; no `abrigo`, `casa de passagem` or `acolhimento`
+  name resolves (tested). One Centro POP record named a transit house's address: in the six types and `cras`, a line
+  that may point at a shelter or a confidential unit is replaced by a marker, even past the 160-character cut
+  (`isShelterLine`, linear; new optional `hiddenLineMarker`), and a record whose name or address does is left out and
+  counted in `skipped_records`.
+- Women's centres: when `divulgar_endereco` is not exactly "Sim", only the name, institutional phones and a line saying
+  to call are returned, so `bairro` and `near` never match (new optional `privateAddress`; tested with "Sim", "Não",
+  null and "sim"). The note leads with 190 and 180, as on the Ministério das Mulheres' Ligue 180 page (`www.gov.br`,
+  read by hand; never contacted by the server), and says the tool does not dispatch help.
+- Tool contract: the `type` and `skipped_records` descriptions (snapshot updated). No new server host; the link
+  allowlist is unchanged.
+- Citizen eval: q130 ("Onde fica o CREAS que atende a CIC?") answered by `creas` with `name` `cic`. 126 of 130.
 
 ## 0.51.0 - 2026-11-26
 

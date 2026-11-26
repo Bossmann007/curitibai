@@ -1154,7 +1154,11 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
   });
 
   it("isShelterLine is a plain linear check: shelters and transit houses, any case or accent; a service called acolhimento is kept", () => {
-    for (const line of ["Casa de Passagem Inventada, Rua X, 1", "ABRIGO INVENTADO", "casas de passagem: ver 156", "Unidade de Acolhimento X", "Casa de Acolhida"]) {
+    for (const line of [
+      "Casa de Passagem Inventada, Rua X, 1", "ABRIGO INVENTADO", "casas de passagem: ver 156", "Unidade de Acolhimento X", "Casa de Acolhida",
+      "Casa-de-Passagem  Inventada", "Albergue Noturno Inventado", "Casa de Acolhimento Inventada", "acolhimento institucional", "Casa Lar X",
+      "pernoite na Rua Y", "unidade sigilosa",
+    ]) {
       expect(isShelterLine(line)).toBe(true);
     }
     for (const line of ["-Serviço de acolhimento e apoio psicossocial", "Atendimento:", "Emergências: Central 156."]) {
@@ -1164,6 +1168,20 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
     const start = performance.now();
     expect(isShelterLine(long)).toBe(false);
     expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it("a shelter word past the 160-character cut still hides the line", () => {
+    const line = `Atendimento na Rua Inventada Visível, 77, ${"bloco B, ".repeat(16)}junto à Casa de Passagem Inventada`;
+    expect(line.length).toBeGreaterThan(200);
+    expect(hourLines(line, 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE]);
+  });
+
+  it("a social record whose name or address mentions a shelter is left out and counted; the CRAS get the same line check", async () => {
+    stubFetch(route("creas", "creas_synthetic.json"));
+    const out = await search({ type: "creas" });
+    expect(out.data).toMatchObject({ total: 3, skipped_records: 1 });
+    expect(JSON.stringify(out)).not.toMatch(/ESCONDIDA|Anexo|Passagem Inventada/);
+    expect(resolveType("cras")).toMatchObject({ hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE });
   });
 
   it("answers \"Onde fica o CREAS que atende a CIC?\" by name; the mobile and the misspelt e-mail are dropped; the note does not claim coverage", async () => {
@@ -1203,7 +1221,7 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
     expect(pop.data.items[1]!.hours).toEqual([
       "Solicitações de atendimento ou emergência são realizadas pelo telefone 156.", "Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_SHELTER_LINE,
     ]);
-    expect(pop.note).toMatch(/`phones` can be empty: call the 156/);
+    expect(pop.note).toMatch(/`phones` empty: call the 156/);
     expect(JSON.stringify(pop)).not.toMatch(/Secreta|999\b|ACOLHIMENTO INVENTADA/);
   });
 
@@ -1231,13 +1249,13 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
       expect(i).toMatchObject({ address: null, bairro: null, regional: null, lat: null, lon: null, emails: [], open_periods: null, hours: [PRIVATE_ADDRESS_LINE] });
     }
     expect(hidden.map((i) => i.phones)).toEqual([["(41) 3333-2108"], ["(41) 3333-3108"], []]);
-    expect(JSON.stringify(hidden)).not.toMatch(/SIGILOSA|Sigilos|Cidade Industrial|Tatuquara|Pinheirinho|"CIC"|-49\.3|-25\.5|reservado2?@|99999/i);
+    expect(JSON.stringify(hidden)).not.toMatch(/RESERVADA|Reservada|Cidade Industrial|Tatuquara|Pinheirinho|"CIC"|-49\.3|-25\.5|reservado2?@|99999/i);
     for (const bairro of ["cidade industrial de curitiba", "tatuquara", "pinheirinho"]) {
       expect((await search({ type: "centro de referencia da mulher", bairro })).data.total).toBe(0);
     }
     const near = await search({ type: "centro de referencia da mulher", near: { lat: -25.4987, lon: -49.3456 }, radius_m: 3000 });
     expect(near.data.total).toBe(0);
-    expect(JSON.stringify(near.data)).not.toMatch(/Reservado|SIGILOSA/);
+    expect(JSON.stringify(near.data)).not.toMatch(/Reservado|RESERVADA/);
   });
 
   it("women's centres lead with 190 and 180 and say the tool does not dispatch help; other social types do not", async () => {

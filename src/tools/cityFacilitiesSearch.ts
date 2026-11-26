@@ -126,7 +126,7 @@ export const cityFacilitiesSearchOutput = z.object({
     total: z.number().int(),
     offset: z.number().int(),
     next_offset: z.number().int().nullable(),
-    skipped_records: z.number().int().describe("Records of the layer left out: no name, or a bike lane not operational."),
+    skipped_records: z.number().int().describe("Records of the layer left out: no name, a bike lane not operational, or a social-assistance record whose name or address mentions a shelter."),
     items: z.array(Item),
     types: z.array(TypeInfo).optional().describe("Only for \"list types\": every accepted type."),
   }),

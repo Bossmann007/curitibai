@@ -79,6 +79,31 @@
     "x": -49.24,
     "y": -25.5
    }
+  },
+  {
+   "attributes": {
+    "objectid": 4,
+    "nome": "Anexo",
+    "nome_completo": "Centro de Referência Especializado de Assistência Social Anexo",
+    "nome_rua": "R. INVENTADA ESCONDIDA",
+    "num_pred": "404",
+    "compl_end": "Anexo à Casa-de-Passagem Inventada - CEP: 81.000-004",
+    "divulgar_endereco": "Sim",
+    "bairro": "Portão",
+    "regional": "Portão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-3805",
+    "email": "creasanexo@curitiba.pr.gov.br",
+    "dt_atualiz": 1777435200000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h"
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.5
+   }
   }
  ]
 }
