@@ -53,6 +53,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   rodoviaria: "rodoviaria_synthetic.json",
   cohab: "cohab_synthetic.json",
   "mesa solidaria": "mesa_solidaria_synthetic.json",
+  sine: "sine_synthetic.json",
 };
 
 /** Invented events (titles, places and addresses made up), dated around NOW. */

@@ -49,7 +49,8 @@ export const cityFacilitiesSearchInput = {
         "\"central de encaminhamento social\", \"centro de atividades para idosos\", \"centro de referencia da mulher\", " +
         "\"centro de referencia afro\", \"escola municipal\", \"cmei\", \"cmaee\", \"cei contratado\", " +
         "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\", \"cohab\", " +
-        "\"mesa solidaria\", \"horta comunitaria\", \"fazenda urbana\", \"nucleo de seguranca alimentar\". Fire " +
+        "\"mesa solidaria\", \"horta comunitaria\", \"fazenda urbana\", \"nucleo de seguranca alimentar\", " +
+        "\"sine\", \"agencia do trabalhador\", \"liceu de oficios\", \"inss\". Fire " +
         "stations and Polícia Militar units: places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),

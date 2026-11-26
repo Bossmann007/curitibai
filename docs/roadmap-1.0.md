@@ -252,3 +252,9 @@ At v0.63.0 the community-garden filter is an allowlist: a line is shown only whe
 label, an hours line, the body that keeps the garden, the programme, a partner, the secretariat e-mail line) and names
 no one, so a lower-case name is hidden and the hours after the secretariat e-mail line stay. Social-assistance types
 carry an explicit `shelter` flag. The citizen eval still answers 131 of 135 questions.
+
+At v0.64.0 (phase B) `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss` read
+IPPUC's urban-equipment layers 150, 151, 149 and 152 (12 SINE units, the state Agência do Trabalhador, 16 Liceus de
+Ofícios, 4 INSS agencies), address, hours and public contacts as published; the notes say vacancies, courses and
+INSS benefits are not in this tool and name Meu INSS and the 135 as text. 18 Curitiba App rows, 16 covered (7 data, 9
+guide). The citizen eval answers 132 of 136 questions; 4 are gaps (real-time buses 2, other cities 2).

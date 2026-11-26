@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.64.0 - 2026-11-26
+
+Work services, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba urban-equipment layers, read on 2026-11-26: `sine`
+  (layer 150, 12 records; aliases include `sine municipal`, `unidades do sine`), `agencia do trabalhador` (151, 1),
+  `liceu de oficios` (149, 16; aliases `liceu`, `liceus`) and `inss` (152, 4; aliases `agencia do inss`, `agencia da
+  previdencia social`). Address, hours and public contacts as published, with the offices' person-line filter. The
+  SINE note says units are named after their Rua da Cidadania, not always the bairro, so search by `name`
+  ("pinheirinho"); that when read the layer published no address for the SINE Móvel, which moves daily; and that vacancies and anyone's
+  registration are not in this tool. When read, the Agência do Trabalhador's e-mail was not a city address and was not shown. A
+  Liceu hours line over 160 characters is split at commas, not cut. The INSS lead note says it is a federal service
+  whose benefits and appointments go through Meu INSS or the 135 (named, not linked) and that the tool does not
+  book; the 135 is kept in `phones`.
+- Tool contract: the `type` description (snapshot updated).
+- Citizen eval: q136 ("Onde tem SINE perto do Pinheirinho?") answered, with a synthetic fixture; 132 of 136.
+- No new network host, no new link, no new dependency.
+
 ## 0.63.0 - 2026-11-26
 
 The community-garden line filter becomes an allowlist, a follow-up of the 0.61.0 and 0.62.0 reviews. 27 tools.
