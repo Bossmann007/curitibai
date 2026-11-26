@@ -2,6 +2,37 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.63.0 - 2026-11-26
+
+The community-garden line filter becomes an allowlist, a follow-up of the 0.61.0 and 0.62.0 reviews. 27 tools.
+Publishes nothing.
+
+- `city_facilities_search` `horta comunitaria`: a line in `hours` is shown only when it is a known public kind: a
+  public label (atendimento, horário, funcionamento, endereço, bairro, pomar, cultivo, área de plantio or lavoura,
+  jardins de mel), an hours or number line (a digit or a weekday, after an optional hours label and "de", "das" or
+  "aos"; "Horário de funcionamento:", "Sábados"), the body that keeps
+  or runs the garden ("Mantida pela Associação …", "A SMSAN coordena …"), the city programme, a partner ("Parceria com
+  …"), "Horta com N canteiros", or exactly "Contato pelo e-mail da secretaria". A known kind with a person in it (a
+  contact, a volunteer, an honorific, a name before "cuida", in any case) is still hidden. Any other line is hidden
+  with the same marker as before. Three rules replace eight.
+- Fixed: a lower-case name passed ("maria cuida da horta", "Pomar: dona maria"); it is hidden now. Fixed: the hours
+  line after "Contato pelo e-mail da secretaria." ("Atendimento 8h às 17h") hid the whole field; both lines stay now.
+  The whole-field test (a keyword split across lines) and the split-name tail rule are skipped for an allowlist,
+  where each line is already judged, so a public line after a hidden one stays. "Secretária Fulana" is read as a
+  person, not the body "secretaria".
+- Known limits, as before: a name in the rest of a line that starts as a known kind ("Parceria com …", a label's
+  value) is caught only by the person words above; a public sentence wrapped onto a second line loses the second
+  line (hidden, never shown).
+- Behaviour change on purpose: free text of no known kind ("Horta bonita perto da praça") is now hidden. Run over the
+  56 community gardens as read on 2026-11-26 (26 with an `observacao`), no line is hidden.
+- `src/sources/geocuritiba.ts`: social-assistance types carry an explicit `shelter` flag, and the garden an
+  `allowlist` flag, in place of a check on which filter function a type uses (two places in `equipmentRecord`).
+  Tests pin which types carry each flag.
+- Tests: each allowlisted kind, alone and all in one field; hours after the secretariat e-mail line; lower-case names;
+  an unknown line. "Titular da conta" (an office line) is now checked against the office person filter, which keeps
+  it; the garden allowlist hides it. Tool contract snapshot unchanged. Citizen eval 131 of 135, as in 0.62.0.
+- No new network host, no new dependency.
+
 ## 0.62.0 - 2026-11-26
 
 A simpler text key and line filter, the follow-ups of the 0.60.1 review. 27 tools. Publishes nothing. No tool, input,

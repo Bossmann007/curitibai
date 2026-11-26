@@ -37,7 +37,7 @@ What the read showed and how this version handles it:
   user input, 56 records when tried); the note gives the other two counts as not listed and says `source_url` is the whole layer. None of the 56 has a phone,
   30 have no `observacao` and none publishes hours: the note says there is no phone or hours and gives the published
   e-mail (the same city address on every record). Some lines name the association that keeps the garden ("Mantida
-  pela Associação de Moradores …"): kept. A line naming who is in charge is hidden with the offices' person filter, and (Change Reviewer) also a line with "contato" anywhere, "voluntário/a" or "cuidado/a por", and a one-word label followed by ':' and a capitalised word ("Contato: Dona Maria", "Zeladora: Fulana"; not the atendimento, horário, funcionamento or endereço labels); since v0.61 also "quem cuida/coordena", "coordenado/a" or "cuidado/a" por/pelo/pela unless a body follows ("pela Associação" stays), a capitalised word right before cuida(m) or coordena(m) ("Dona Maria cuida da horta"; not a body word or an acronym) and Dona, Seu, Sr(a). or Senhor(a) before a capitalised word, while the bairro, pomar and cultivo labels and "Contato pelo e-mail da secretaria" stay (unless a name follows it).
+  pela Associação de Moradores …"): kept. Other lines are filtered by an allowlist since v0.63 (see docs/sources.md): a line is shown only when it is a public label (atendimento, horário, funcionamento, endereço, bairro, pomar, cultivo, área de plantio or lavoura, jardins de mel), an hours or number line (a digit or a weekday, after an optional hours label and de, das or aos), the body that keeps or runs the garden ("Mantida pela Associação …", "A SMSAN coordena …"), the city programme, a partner ("Parceria com …"), "Horta com N canteiros" or exactly "Contato pelo e-mail da secretaria", and has no person in it ("contato", "voluntário/a", "quem cuida/coordena", cuidado/coordenado por or pelo/pela a person, Dona, Seu, Sr(a). or Senhor(a), a word other than a body before cuida(m) or coordena(m), any case, and the offices' person filter); any other line, a lower-case name included, is hidden.
 - **Fazenda Urbana (10)**: three farms with hours. One lists a landline and two mobiles, one only a mobile (dropped,
   as always), one nothing: the note says to use the e-mail. Their hours say enrolment in activities is through two
   city pages, given as published text (never fetched); the note says this tool does not enrol.
@@ -52,7 +52,7 @@ What the read showed and how this version handles it:
    - `mesa solidaria` (7), aliases `mesas solidarias`, `mesa solidaria curitiba`; `wrapLines`.
    - `horta comunitaria` (9), aliases `hortas comunitarias`, `horta comunitaria urbana`, `hortas comunitarias urbanas`,
      `horta urbana`, `hortas urbanas`; fixed `where` on `tipo_equi`; garden person filter
-     (`isGardenPersonLine`: the office filter plus contacts, volunteers and "<label>: <Name>").
+     (`isGardenPersonLine`: since v0.63 an allowlist of public line kinds, plus the office filter and person words).
    - `fazenda urbana` (10), alias `fazendas urbanas`; person filter.
    - `nucleo de seguranca alimentar` (1), aliases `nucleos de seguranca alimentar`, `nucleo regional de seguranca
      alimentar`, `nucleo regional de seguranca alimentar e nutricional`, `nucleos regionais de seguranca alimentar`;

@@ -1799,9 +1799,11 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
     ]) {
       expect(hide(l)).toBe(true);
     }
-    for (const l of ["Titular da conta", "Mantido pelo Lar Inventado", "Mantida pela Associação de Moradores Inventada."]) {
+    for (const l of ["Mantido pelo Lar Inventado", "Mantida pela Associação de Moradores Inventada."]) {
       expect(hide(l)).toBe(false);
     }
+    // v0.63.0: the garden filter is an allowlist and hides this office line (no garden kind); the person filter keeps it
+    expect(isPersonInChargeLine("Titular da conta")).toBe(false);
   });
 
   it("review: WhatsApp written with a dash, Whats or Zap is read too", () => {
@@ -1814,7 +1816,7 @@ describe("v0.60.0: Mesa Solidária, community gardens, Fazenda Urbana and Núcle
 describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () => {
   it("a garden hides a contact, a volunteer, who cares for it and a name after a one-word label; public lines stay", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
     for (const who of [
       "Contato: Dona Maria (41) 99999-1111",
       "Voluntária: Fulana de Tal",
@@ -1833,7 +1835,7 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
 
   it("v0.61.0: a garden hides who cares for or coordinates it, and keeps the bairro, pomar, cultivo and secretariat e-mail lines", () => {
     const t = type("horta comunitaria");
-    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines);
+    const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
     const head = "Mantida pela Associação de Moradores da Vila Inventada.";
     for (const who of ["Quem cuida: Fulana", "Coordenada por Fulana", "Dona Maria cuida da horta", "Seu João e Dona Maria cuidam da horta", "Fulano coordena os mutirões", "Quem cuida:\nFulana de Tal"]) {
       const out = lines(`${head}\n${who}\n-Área de plantio em canteiros: 590 m²`);
@@ -1884,5 +1886,95 @@ describe("v0.60.0 Change Reviewer: garden contacts and CEI service lines", () =>
       }
       expect(lines(`${label}\nSecretária Fulana`)).toEqual([HIDDEN_MAINTAINER_LINE]);
     }
+  });
+});
+
+describe("v0.63.0: the garden filter is an allowlist; social types carry a shelter flag", () => {
+  const t = type("horta comunitaria");
+  const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+
+  it("each kind of line the allowlist knows is shown, one by one and all in one field", () => {
+    const kinds = [
+      // a public label
+      "Atendimento: Segunda a sexta",
+      "Horário: 8h às 17h",
+      "Funcionamento: diário",
+      "Endereço: Rua Inventada, 10",
+      "Bairro: Centro",
+      "-Pomar: citrus",
+      "Cultivo: Hortaliças",
+      "-Área de plantio em canteiros: 590 m²",
+      "-Área de lavoura: 1.350 m²",
+      "-Jardins de mel: 1 colmeia de abelhas sem ferrão",
+      // an hours or number line
+      "Segunda a sexta, das 8h às 17h",
+      "-2ª a 6ª feira, das 8h às 17h",
+      "8h às 12h",
+      "Horário de funcionamento: 8h às 17h",
+      "Das 8h às 17h",
+      "De segunda a sexta",
+      "Sábados das 8h às 12h",
+      "Atendimento de segunda a sexta",
+      "• Horário: 8h",
+      // the body that keeps or runs the garden
+      "Mantida pela Associação de Moradores da Vila Inventada.",
+      "Mantido pela Associação de Moradores e Amigos Inventados.",
+      "Coordenada pela Associação de Moradores Inventada",
+      "Cuidada pela comunidade",
+      "A coordenação da horta é da associação",
+      "A Associação de Moradores cuida da horta",
+      "A SMSAN coordena os mutirões",
+      // the city programme, a partner, the garden itself, the contact channel
+      "Programa Integrado de Desenvolvimento Sustentável Inventado - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Horta com 20 canteiros",
+      "Contato pelo e-mail da secretaria.",
+    ];
+    for (const l of kinds) expect(lines(l), l).toEqual([l]);
+    expect(lines(kinds.join("\n"))).toEqual(kinds);
+    expect(lines("–Área de plantio: 590 m²")).toEqual([cleanText("–Área de plantio: 590 m²", 160)]);
+    // after a hidden line, a short public line is not read as the end of a split name
+    for (const l of kinds) expect(lines(`fulana de tal\n${l}`), l).toEqual([HIDDEN_PERSON_LINE, l]);
+  });
+
+  it("garden hours after the secretariat e-mail line stay visible", () => {
+    for (const contact of ["Contato pelo e-mail da secretaria.", "Contato pelo e-mail da secretaria"]) {
+      for (const next of ["Atendimento 8h às 17h", "Segunda-feira a sexta, 8h às 17h", "Atendimento: Segunda a sexta", "Horário: 8h às 17h"]) {
+        expect(lines(`${contact}\n${next}`)).toEqual([contact, next]);
+      }
+    }
+  });
+
+  it("a lower-case name is hidden, alone or after a public label", () => {
+    for (const who of [
+      "maria cuida da horta",
+      "dona maria cuida da horta",
+      "seu joão e dona maria cuidam da horta",
+      "fulana de tal",
+      "Pomar: dona maria",
+      "Bairro: centro, maria cuida",
+      "Bairro: centro, cuidada por maria",
+      "coordenada pela maria souza",
+      "Coordenada pela secretária Maria Souza",
+    ]) {
+      expect(lines(`Mantida pela Associação Inventada.\n${who}\n-Pomar: citrus`), who).toEqual([
+        "Mantida pela Associação Inventada.",
+        HIDDEN_PERSON_LINE,
+        "-Pomar: citrus",
+      ]);
+    }
+  });
+
+  it("a line of no known kind is hidden (fail closed)", () => {
+    for (const l of ["Horta bonita perto da praça", "Associação de Moradores cuida da horta", "Canteiro: Dona Maria", "Secretaria Fulana"]) {
+      expect(lines(l), l).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("the shelter flag, not which hideLine a type uses, skips a shelter record and drops shelter e-mails", () => {
+    const flagged = FACILITY_TYPES.filter((f) => f.shelter === true).map((f) => f.id);
+    expect(flagged).toEqual(FACILITY_TYPES.filter((f) => f.hideLine === isShelterLine).map((f) => f.id));
+    expect(flagged).toContain("cras");
+    expect(FACILITY_TYPES.filter((f) => f.allowlist === true).map((f) => f.id)).toEqual(["horta comunitaria"]);
   });
 });
