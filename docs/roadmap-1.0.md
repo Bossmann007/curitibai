@@ -171,3 +171,9 @@ At v0.49.0 (phase B) `city_facilities_search` `delegacia`, `policia federal`, `p
 every answer starts with 190 (Polícia Militar), 197 (Polícia Civil) or 191 (Polícia Rodoviária Federal) and says the
 tool does not file police reports. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval answers 123 of
 127 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.50.0 (phase B) `city_facilities_search` `instituto de identificacao` (aliases `rg`, `carteira de identidade`)
+reads IPPUC's layer 168 (12 records), with days, hours and the appointment line as published; the note says
+appointments are booked through the Paraná state Instituto de Identificação's channels (not linked) and that a record
+with no appointment line does not mean none is needed. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen
+eval answers 124 of 128 questions; 4 are gaps (real-time buses 2, other cities 2).

@@ -1,0 +1,84 @@
+{
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 4326,
+    "latestWkid": 4326
+  },
+  "features": [
+    {
+      "attributes": {
+        "objectid": 1,
+        "nome": "990 - Rua da Cidadania Inventada Sul",
+        "nome_completo": "Posto de Atendimento 990 - Rua da Cidadania Inventada Sul",
+        "nome_rua": "R. INVENTADA DO SUL",
+        "num_pred": "1680",
+        "compl_end": "Térreo",
+        "divulgar_endereco": "Sim",
+        "bairro": "Tatuquara",
+        "regional": "Tatuquara",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1680",
+        "email": "inventado_sul@ii.pr.gov.br",
+        "dt_atualiz": 1760375549000,
+        "observacao": "Atendimento:\r\n-2ª e 6ª feira, das 8h às 17h\r\nNecessário agendamento prévio para atendimento."
+      },
+      "geometry": {
+        "x": -49.33,
+        "y": -25.57
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 2,
+        "nome": "991 - Rua da Cidadania Inventada Leste",
+        "nome_completo": "Posto de Atendimento 991 - Rua da Cidadania Inventada Leste",
+        "nome_rua": "AV. INVENTADA DO LESTE",
+        "num_pred": "1681",
+        "compl_end": "Sala 1",
+        "divulgar_endereco": "Sim",
+        "bairro": "Capão Raso",
+        "regional": "Pinheirinho",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1681",
+        "email": null,
+        "dt_atualiz": 1760375150000,
+        "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nNecessário agendamento prévio para atendimento."
+      },
+      "geometry": {
+        "x": -49.29,
+        "y": -25.51
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 3,
+        "nome": "Instituto Inventado de Identificação",
+        "nome_completo": "Instituto Inventado de Identificação",
+        "nome_rua": "R. INVENTADA DO CENTRO",
+        "num_pred": "1682",
+        "compl_end": "",
+        "divulgar_endereco": "Sim",
+        "bairro": "Centro",
+        "regional": "Matriz",
+        "func_manha": "Sim",
+        "func_tarde": "Sim",
+        "func_noite": "Não",
+        "func_24hr": "Não",
+        "telefone": "(41) 3333-1682",
+        "email": "inventado@ii.pr.gov.br",
+        "dt_atualiz": 1760375974000,
+        "observacao": "Atendimento administrativo:\r\n-2ª a 6ª feira, das 8h às 18h"
+      },
+      "geometry": {
+        "x": -49.27,
+        "y": -25.43
+      }
+    }
+  ]
+}
