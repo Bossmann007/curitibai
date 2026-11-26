@@ -175,8 +175,8 @@ describe("contact fields", () => {
     expect(institutionalPhones("(41) 99917-8271")).toEqual([]);
     expect(institutionalPhones("0800 000 0000")).toEqual(["0800 000 0000"]);
     expect(institutionalPhones("(41) 3221-0000 / 0800 041 0000")).toEqual(["(41) 3221-0000", "0800 041 0000"]);
-    expect(institutionalPhones("0800-414141 / 0800 6437373")).toEqual(["0800 414 141", "0800 643 7373"]);
-    for (const p of ["0300 000 0000", "0900 000 0000", "0800 00 00", "0800 000 00000", "0800 000 0000 ramal 2", "(41) 0800 000 0000"]) {
+    expect(institutionalPhones("0800-414141 / 0800 6437373 / 0800 41 4141")).toEqual(["0800 414 141", "0800 643 7373"]);
+    for (const p of ["0300 000 0000", "0900 000 0000", "0800 00 00", "0800 000 00000", "0800 000 0000 ramal 2", "(41) 0800 000 0000", "0800 643 7373 (ligação gratuita)"]) {
       expect(institutionalPhones(p)).toEqual([]);
     }
     expect(institutionalPhones("(11) 3333-4444")).toEqual([]);
@@ -1581,11 +1581,29 @@ describe("v0.59.0: COHAB agencies, 0800 numbers and person lines in office hours
       "Administrador Regional: Fulano de Tal",
       "Administrador(a):\nFulana de Tal",
       "Responsável:\nFulano de Tal",
+      "Administrador Regional:\nFulana Maria de Souza Santos",
+      "Responsável pela unidade:\nFulano José da Silva Pereira",
+      "-Coordenadora: Fulana de Tal",
     ]) {
       const out = lines(`Atendimento Geral:\n-2ª a 6ª feira, das 8h às 18h.\n${who}\n${bairros}`);
       expect(out.slice(0, 3)).toEqual(["Atendimento Geral:", "-2ª a 6ª feira, das 8h às 18h.", HIDDEN_PERSON_LINE]);
       expect(out.slice(3).join(" ")).toBe(bairros);
       expect(out.join(" ")).not.toMatch(/Fulan/);
+    }
+  });
+
+  it("office service lines that mention MEI, Ltda or a responsible person are kept", () => {
+    for (const t of ["administracao regional", "cohab"]) {
+      const hide = type(t).hideLine!;
+      for (const l of [
+        "Sala do Empreendedor: atendimento ao MEI",
+        "Documentos: RG e CPF do responsável familiar",
+        "Atendimento a empresas Ltda e ME.",
+        "Atendimento Geral:",
+        "Administração Regional Inventada",
+      ]) {
+        expect(hide(l)).toBe(false);
+      }
     }
   });
 

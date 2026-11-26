@@ -12,11 +12,14 @@ COHAB agencies, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
   in-person service through the Agenda Online and this tool does not book (`city_service_guide` `agenda_online`),
   that housing applications, the applicant queue and anyone's registration are not in this tool, and to search by
   `name`, since agencies are named after their Rua da Cidadania, not always their bairro.
-- `phones` (every `city_facilities_search` type) now keeps toll-free numbers, formatted "0800 XXX XXXX"; they were
+- `phones` (every `city_facilities_search` type) now keeps toll-free numbers, formatted "0800 XXX XXXX" (or
+  "0800 XXX XXX"); they were
   dropped before. A toll-free number is never a person's own; mobiles and other area codes are still dropped.
-- `administracao regional` and `cohab`: a `hours` line naming who is in charge ("Responsável:", "Diretor(a):",
-  "Administrador(a):" with a name, or the name on the next line) is replaced by a marker, with the `cei contratado`
-  maintainer filter, whose words now include `administrador` (v0.58 review). No such line was in the live layers.
+- `administracao regional` and `cohab`: a `hours` line that starts with who is in charge or has "<role>:"
+  ("Responsável: Fulana", "Administrador Regional:", "Diretor(a):"), and the name on the line after such a label, is
+  replaced by a marker (v0.58 review). It reuses the `cei contratado` label handling with a narrower word list, so an
+  office line about MEI or "o responsável" stays. The CEI word list gains `administrador`. No such line was in the
+  live layers.
 - Tool contract: the `type` description and the `phones` description (snapshot updated); the general note says phones
   keep 0800 numbers.
 - Citizen eval: q134 ("Onde fica a agência da COHAB no Tatuquara e que horas abre?") answered, with a synthetic

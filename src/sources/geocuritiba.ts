@@ -231,6 +231,14 @@ export const HIDDEN_PERSON_LINE = "[a line naming who is in charge is not shown:
 const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
 const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
 const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b/.test(line) || /\bmei\b/i.test(line);
+/**
+ * v0.59.0, offices (Administração Regional, COHAB): a line that starts with who is in charge, or has "<role>:"
+ * anywhere ("Responsável: Fulana", "Administrador Regional: Fulano", "Diretor(a):"). Narrower than isMaintainerLine,
+ * whose MEI, ME, Ltda and "responsável" anywhere rules would hide office service lines ("atendimento ao MEI").
+ */
+const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe";
+const PERSON_IN_CHARGE = new RegExp(`^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`, "u");
+export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(fold(line));
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
@@ -581,7 +589,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     ]),
     note: REGIONAL_OFFICE_NOTE,
     wrapLines: true,
-    hideLine: isMaintainerLine,
+    hideLine: isPersonInChargeLine,
     hiddenLineMarker: HIDDEN_PERSON_LINE,
   },
   // COHAB agencies, added in v0.59.0 (read on 2026-11-26 UTC: 9 records, no line naming a person; hidden if one comes).
@@ -591,7 +599,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
       "agencias de atendimento da cohab",
     ]),
     note: COHAB_NOTE,
-    hideLine: isMaintainerLine,
+    hideLine: isPersonInChargeLine,
     hiddenLineMarker: HIDDEN_PERSON_LINE,
   },
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
@@ -774,7 +782,8 @@ function inside(lat: unknown, lon: unknown): { lat: number; lon: number } | null
 
 /**
  * Institutional phone numbers only, formatted "(41) XXXX-XXXX", plus three-digit public service numbers ("156") and,
- * since v0.59.0, toll-free numbers ("0800 XXX XXXX": a company's or public body's line, never a person's own).
+ * since v0.59.0, toll-free numbers ("0800 XXX XXXX", or "0800 XXX XXX" for six digits: a company's or public body's
+ * line, never a person's own), however their digits are grouped.
  * A Curitiba landline (DDD 41 or none, 8 digits starting 2–5) is kept; a mobile or another DDD, and any part not
  * understood, is dropped: a mobile in this field can be a person's own number.
  */
@@ -788,9 +797,9 @@ export function institutionalPhones(raw: unknown): string[] {
       out.push(p);
       continue;
     }
-    const free = /^0800[-\s]?(\d{3})[-\s]?(\d{3,4})$/.exec(p);
-    if (free) {
-      out.push(`0800 ${free[1]} ${free[2]}`);
+    if (/^0800(?:[-\s]?\d){6,7}$/.test(p)) {
+      const d = p.replace(/\D/g, "");
+      out.push(`0800 ${d.slice(4, 7)} ${d.slice(7)}`);
       continue;
     }
     if (!/^(?:\(41\)\s?)?\d{4}[-\s]?\d{4}$/.test(p)) continue;
@@ -882,9 +891,11 @@ export function hourLines(
         lines.push(t);
         label = rest = false;
       } else {
-        const m = hide === isMaintainerLine;
+        const m = hide === isMaintainerLine || hide === isPersonInChargeLine;
         rest = m && (label || !tail) && !/\.$|\b(ltda|eireli|mei?)$/i.test(t);
-        label = m ? MAINTAINER_LABEL.test(fold(t)) : t.endsWith(":") && !label;
+        // v0.59.0: a hidden line ending in ':' with no comma ("Administrador Regional:") is a label too: its value,
+        // however long, follows. "Responsável pelo atendimento, horário:" is not: the hours after it stay.
+        label = m ? MAINTAINER_LABEL.test(fold(t)) || (!label && /^[^,]*:$/.test(t)) : t.endsWith(":") && !label;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }

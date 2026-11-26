@@ -24,7 +24,8 @@ What the read showed and how this version handles it:
 
 - One agency in each of nine Ruas da Cidadania; hours "2ª a 6ª feira, das 8h às 17h" (four with a 12h–13h break).
 - Every record has the same `telefone`, a landline and a toll-free 0800 number, which the phone filter dropped. A
-  toll-free number is never a person's own, so `institutionalPhones` now keeps it ("0800 XXX XXXX") for every type;
+  toll-free number is never a person's own, so `institutionalPhones` now keeps it ("0800 XXX XXXX", or "0800 XXX
+  XXX" for six digits, however grouped) for every type;
   mobiles and other area codes are still dropped. Every record has the same e-mail: the note says these are central
   contacts.
 - Every `observacao` ends with a line saying in-person service is booked through the Agenda Online ("Saiba Mais", a
@@ -42,9 +43,12 @@ What the read showed and how this version handles it:
 2. **Note** for `cohab`: central contacts; booking through the Agenda Online, not in this tool; housing applications,
    the applicant queue and anyone's registration not in this tool; search by `name`.
 3. **0800 numbers** kept in `phones` (all types); the output `phones` description and the general note say so.
-4. **Person lines** (v0.58 review): `administracao regional` and `cohab` pass the `cei contratado` maintainer filter
-   (`isMaintainerLine`, the same function, so a bare label with the name on the next line is hidden too) with the
-   marker "[a line naming who is in charge is not shown: it can carry a person's name]". The filter's words gain
+4. **Person lines** (v0.58 review): `administracao regional` and `cohab` hide, with the marker "[a line naming who is
+   in charge is not shown: it can carry a person's name]", a line that starts with a role (responsável, diretor(a),
+   administrador(a), gerente, coordenador(a), chefe) or has "<role>:", via `isPersonInChargeLine`. `hourLines` gives
+   it the `cei contratado` label and split-name handling, and a hidden label with no comma ending in ":"
+   ("Administrador Regional:") hides the next line whatever its length. Not the CEI word list itself: its MEI, ME,
+   Ltda and "responsável anywhere" rules would hide office service lines (found in review, tested). The CEI list gains
    `administrador`, and a bare label may end in "(a)" ("Diretor(a):").
 5. **Eval**: new q134 → `city_facilities_search` `{type: "cohab", name: "tatuquara"}`, synthetic fixture
    `test/fixtures/geocuritiba/cohab_synthetic.json`. Tool contract snapshot updated (`type` and `phones`

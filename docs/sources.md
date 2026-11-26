@@ -1415,10 +1415,12 @@ changes (owner request, 2026-11-23: monthly and automatic).
     Bacacheri), so the note says to search by `name`. The note also says housing applications, the applicant queue
     and anyone's registration are not in this tool; the `PretendentesCohab` dataset stays avoided (below).
   - No person's name, mobile or personal e-mail in the 9 records, and none in the 10 `observacao` texts of layer 15.
-    Still, since v0.59 `cohab` and `administracao regional` replace a line naming who is in charge ("Responsável:",
-    "Diretor(a):", "Administrador(a):" with a name, or the name on the line after a bare label) with the marker
-    "[a line naming who is in charge is not shown: it can carry a person's name]", using the `cei contratado`
-    maintainer filter (whose words now include `administrador`). Aliases: `cohab ct`, `cohab curitiba`, `agencia da
+    Still, since v0.59 `cohab` and `administracao regional` replace a line that starts with who is in charge or has
+    "<role>:" (responsável, diretor(a), administrador(a), gerente, coordenador(a), chefe), and the name on the line
+    after such a label however long, with the marker "[a line naming who is in charge is not shown: it can carry a
+    person's name]". This reuses the `cei contratado` label and split-name handling in `hourLines` but not its word
+    list: that list also hides any line with MEI, ME, Ltda, Eireli or "responsável" anywhere, which would hide office
+    service lines ("Sala do Empreendedor: atendimento ao MEI"; tested). The CEI list gains `administrador`. Aliases: `cohab ct`, `cohab curitiba`, `agencia da
     cohab`, `agencias da cohab`, `agencia de atendimento da cohab`, `agencias de atendimento da cohab`. No new host for
     the server and the link allowlist is unchanged (no Agenda Online or COHAB link is added).
 - **Query:** one fixed URL per layer: `where=1=1`, a fixed `outFields` list (`indfiscal`, `dep_admin`, `site`,
@@ -1448,7 +1450,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
   addresses (e.g. a `firstname.lastname@` university address); CRAS, Mercado Municipal, Sacolão and Biblioteca list
   mobiles next to landlines; Feira has one typo domain (`curitiba.pr.gpv.br`). Kept: three-digit service numbers
   ("156"), Curitiba landlines (DDD 41 or none, 8 digits starting 2–5), formatted "(41) XXXX-XXXX", and (since
-  v0.59) toll-free numbers, "0800" and 6 or 7 digits, formatted "0800 XXX XXXX" (a company's or public body's line,
+  v0.59) toll-free numbers, "0800" and 6 or 7 digits however grouped, formatted "0800 XXX XXXX" or "0800 XXX XXX" (a company's or public body's line,
   never a person's own; the COHAB agencies publish one), at most 8 in all;
   e-mails at `curitiba.pr.gov.br` or a subdomain, lowercased, at most 3. Dropped: mobiles, other area
   codes, any part not understood, and every other e-mail domain (state and federal government addresses too). A
