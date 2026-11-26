@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada (999 Setor Zulu)",
+    "nome_completo": "Junta de Serviço Militar Inventada (999 Setor Zulu)",
+    "nome_rua": "AV. INVENTADA DO LESTE",
+    "num_pred": "2625",
+    "compl_end": "Loja 1",
+    "divulgar_endereco": "Sim",
+    "bairro": "Cristo Rei",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-0999 / (41) 3333-0998",
+    "email": "jsm999@curitiba.pr.gov.br",
+    "dt_atualiz": 1685620800000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 12h e das 13h às 17h.\r\nPara fazer o alistamento online é necessário possuir CPF.\r\nAtende aos bairros: Bairro Inventado Um, Bairro Inventado Dois, Bairro Inventado Três, Bairro Inventado Quatro, Centro, Bairro Inventado Cinco, Bairro Inventado Seis, Bairro Inventado Sete, Bairro Inventado Oito, Bairro Inventado Nove e Bairro Inventado Dez."
+   },
+   "geometry": {
+    "x": -49.245,
+    "y": -25.433
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Sul (998 Setor Yankee)",
+    "nome_completo": "Junta de Serviço Militar Sul (998 Setor Yankee)",
+    "nome_rua": "AV. INVENTADA DO SUL",
+    "num_pred": "8430",
+    "compl_end": "Rua da Cidadania Inventada, Sala 42",
+    "divulgar_endereco": "Sim",
+    "bairro": "Boqueirão",
+    "regional": "Boqueirão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-0997",
+    "email": "jsm998@curitiba.pr.gov.br",
+    "dt_atualiz": 1685620800000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 12h e das 13h às 17h.\r\nAtende aos bairros: Boqueirão, Hauer e Xaxim."
+   },
+   "geometry": {
+    "x": -49.237,
+    "y": -25.501
+   }
+  }
+ ]
+}

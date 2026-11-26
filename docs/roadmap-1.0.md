@@ -177,3 +177,10 @@ reads IPPUC's layer 168 (12 records), with days, hours and the appointment line 
 appointments are booked through the Paraná state Instituto de Identificação's channels (not linked) and that a record
 with no appointment line does not mean none is needed. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen
 eval answers 124 of 128 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.51.0 (phase B) `city_facilities_search` `cartorio de registro civil` (alias `registro civil`), `junta militar`,
+`defensoria publica` and `forum` read IPPUC's layers 99, 21, 105 and 106 (4, 3, 14 and 9 records), hours as
+published; the registry note says the list is what the layer publishes, not necessarily every office, and that prices,
+deadlines and which office holds a record are not in it; the registry offices' trade-name line (a surname) is replaced by a
+visible marker, and long bairro lists are split, not cut. 18 Curitiba App rows, 16 covered (7 data, 9 guide). The citizen eval
+answers 125 of 129 questions; 4 are gaps (real-time buses 2, other cities 2).

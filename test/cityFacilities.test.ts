@@ -4,6 +4,8 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
+  HIDDEN_NAME_LINE,
+  hourLines,
   institutionalEmails,
   institutionalPhones,
   layerQueryUrl,
@@ -804,6 +806,158 @@ describe("city_facilities_search", () => {
     expect(all.data.total).toBe(3);
     const office = all.data.items.find((i: { name: string }) => i.name === "Instituto Inventado de Identificação");
     expect(office).toMatchObject({ hours: ["Atendimento administrativo:", "-2ª a 6ª feira, das 8h às 18h"], emails: [] });
+  });
+
+  it.each([
+    ["cartório de registro civil", "cartorio de registro civil", 99],
+    ["Registro Civil", "cartorio de registro civil", 99],
+    ["certidão de nascimento", "cartorio de registro civil", 99],
+    ["Cartório de Registro Civil das Pessoas Naturais", "cartorio de registro civil", 99],
+    ["junta militar", "junta militar", 21],
+    ["Junta de Serviço Militar", "junta militar", 21],
+    ["alistamento militar", "junta militar", 21],
+    ["Defensoria Pública", "defensoria publica", 105],
+    ["defensoria", "defensoria publica", 105],
+    ["fórum", "forum", 106],
+    ["fóruns", "forum", 106],
+  ] as const)("v0.51.0: %s maps to %s (layer %i)", (input, id, layer) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${layer}` });
+  });
+
+  it("v0.51.0: bare \"cartorio\", \"certidao\", \"junta\", \"justica\" and \"tribunal\" are not types", () => {
+    for (const name of ["cartorio", "cartorios", "certidao", "segunda via", "junta", "justica", "tribunal"]) {
+      expect(resolveType(name)).toBeNull();
+    }
+  });
+
+  it("v0.51.0: registry offices in Centro come back with hours as published, the office's trade-name line replaced by a marker and personal contacts dropped", async () => {
+    const calls = stubFetch(route("cartorio de registro civil", "cartorio_de_registro_civil_synthetic.json"));
+    const out = await search({ type: "cartorio de registro civil", bairro: "centro" });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/99`);
+    expect(out.data).toMatchObject({ type: "cartorio de registro civil", label: "Cartório de Registro Civil", total: 2, skipped_records: 0 });
+    expect(out.data.items[0]).toMatchObject({
+      name: "9º Cartório de Registro Civil das Pessoas Naturais de Curitiba",
+      address: "R. INVENTADA DO CENTRO, 101 - Loja 1",
+      bairro: "Centro",
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", HIDDEN_NAME_LINE],
+      phones: ["(41) 3333-0101"],
+      emails: [],
+      updated: "2023-09-29",
+    });
+    // A "Cartório ..." line is replaced by the marker even with hours in it; the mobile and the gmail address are dropped.
+    expect(out.data.items[1]).toMatchObject({
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h", HIDDEN_NAME_LINE],
+      phones: ["(41) 3333-0202"],
+      emails: [],
+    });
+    expect(out.note).toMatch(/not necessarily every registry office in Curitiba/);
+    expect(out.note).toMatch(/Prices, deadlines and which office holds a given record are not in the layer/);
+    const all = await search({ type: "registro civil" });
+    const civico = all.data.items.find((i: { bairro: string | null }) => i.bairro === "Centro Cívico");
+    expect(civico).toMatchObject({ hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", HIDDEN_NAME_LINE], phones: [], emails: [] });
+    expect(JSON.stringify(all)).not.toMatch(/Inventado\.|Souza|maria|gmail|9999|9888/i);
+  });
+
+  it("v0.51.0: any registry line that mentions the cartório is replaced by a visible marker, on any line; other lines stay", () => {
+    const t = type("cartorio de registro civil");
+    const hours = (obs: string) => hourLines(obs, 30, false, t.hideLine);
+    for (const line of [
+      "Cartório Inventado.", "Cartório Fictício de Souza.", "Cartório Maria das Dores Souza Lima.", "CARTÓRIO INVENTADO.",
+      "Cartório Inventado ;", "Cartório: Inventado.", "Cartório Fechner.", "Cartório J. Taborda.", "Cartório d'Ávila.",
+      "Cartório Taborda (Centro).", "-Cartório Taborda.", "• Cartório Taborda.", "\"Cartório Taborda.\"",
+      "Cartório Souza - plantão aos sábados, das 9h às 12h.", "Cartório Taborda - 2º Ofício.", "Cartorio Taborda.",
+      "Cartório Fechado.", "Cartório de plantão aos sábados.",
+    ]) {
+      expect(hours(`Atendimento:\n${line}`)).toEqual(["Atendimento:", HIDDEN_NAME_LINE]);
+    }
+    expect(hours("Atendimento:\nCartório Taborda.\nAtualizado em março.")).toEqual(["Atendimento:", HIDDEN_NAME_LINE, "Atualizado em março."]);
+    expect(hours("Atendimento:\n-2ª a 6ª feira, das 8h30 às 17h30\nPlantão aos sábados.")).toEqual([
+      "Atendimento:", "-2ª a 6ª feira, das 8h30 às 17h30", "Plantão aos sábados.",
+    ]);
+    expect(hours("Cartório Taborda.\nCartório de plantão aos sábados.\nAtendimento:\nCartório Fechado.")).toEqual([
+      HIDDEN_NAME_LINE, "Atendimento:", HIDDEN_NAME_LINE,
+    ]);
+    expect(HIDDEN_NAME_LINE.length).toBeLessThanOrEqual(160);
+  });
+
+  it("v0.51.0: the registry line check stays fast on long ambiguous lines (regression guard: the first dropLine regex was exponential)", () => {
+    const t = type("cartorio de registro civil");
+    const start = performance.now();
+    for (const filler of [" DE", " E", " de", " e", " De", " Da Da"]) {
+      for (const head of ["CARTÓRIO", "Cartório", "Atendimento"]) {
+        const l = `${head}${filler.repeat(60)}`.slice(0, 150) + " x";
+        expect(hourLines(l, 30, false, t.hideLine)).toEqual([head === "Atendimento" ? l.replace(/\s+/g, " ") : HIDDEN_NAME_LINE]);
+      }
+    }
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it.each([
+    ["cartorio de registro civil", "cartorio_de_registro_civil_synthetic.json"],
+    ["junta militar", "junta_militar_synthetic.json"],
+    ["defensoria publica", "defensoria_publica_synthetic.json"],
+    ["forum", "forum_synthetic.json"],
+  ] as const)("v0.51.0: %s: synthetic personal e-mails and mobiles are dropped; only city e-mails and landlines stay", async (t, file) => {
+    stubFetch(route(t, file));
+    const out = await search({ type: t });
+    expect(out.data.total).toBeGreaterThan(1);
+    for (const item of out.data.items) {
+      for (const p of item.phones) expect(p).toMatch(/^\(41\) [2-5]\d{3}-\d{4}$/);
+      for (const e of item.emails) expect(e).toMatch(/@curitiba\.pr\.gov\.br$/);
+    }
+    expect(JSON.stringify(out.data)).not.toMatch(/gmail|defensoria\.pr\.def\.br|trt9\.jus\.br|cartorioinventado|registroinventado|9\d{4}-\d{4}/);
+    // No promise of a price, free service or same-day documents.
+    expect(out.note).not.toMatch(/\bfree\b|gratuit|same[- ]day|mesmo dia|no (fee|cost)/i);
+  });
+
+  it("v0.51.0: a junta's long bairro list is split after commas, not cut, and the bairro filter is where the junta is", async () => {
+    stubFetch(route("junta militar", "junta_militar_synthetic.json"));
+    const none = await search({ type: "junta militar", bairro: "centro" });
+    expect(none.data.total).toBe(0);
+    const out = await search({ type: "junta de servico militar" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/21`);
+    const zulu = out.data.items.find((i: { name: string }) => i.name.includes("999"))!;
+    expect(zulu.emails).toEqual(["jsm999@curitiba.pr.gov.br"]);
+    expect(zulu.phones).toEqual(["(41) 3333-0999", "(41) 3333-0998"]);
+    const coverage = zulu.hours.slice(3);
+    expect(coverage[0]).toMatch(/^Atende aos bairros: /);
+    expect(coverage.length).toBeGreaterThan(1);
+    for (const line of coverage) expect(line.length).toBeLessThanOrEqual(160);
+    expect(coverage.join(" ")).toContain("Centro, Bairro Inventado Cinco");
+    expect(coverage.join(" ")).toMatch(/Bairro Inventado Nove e Bairro Inventado Dez\.$/);
+    expect(coverage.join(" ")).not.toContain("…");
+    const semi = hourLines(`Bairros de abrangência: ${Array.from({ length: 30 }, (_, i) => `Bairro Inventado ${i}`).join("; ")}.`, 30, true);
+    expect(semi.length).toBeGreaterThan(1);
+    for (const line of semi) expect(line.length).toBeLessThanOrEqual(160);
+    expect(semi.join(" ")).toMatch(/Bairro Inventado 29\.$/);
+    expect(out.note).toMatch(/`bairro` filters by where a junta is, not by the bairros it serves/);
+  });
+
+  it("v0.51.0: a Defensoria post with only a mobile comes back with no phone, and the note says so", async () => {
+    stubFetch(route("defensoria publica", "defensoria_publica_synthetic.json"));
+    const out = await search({ type: "defensoria", bairro: "sitio cercado" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/105`);
+    expect(out.data.items[0]).toMatchObject({ phones: [], emails: [], hours: ["Atendimento:", "-2ª a 6ª feira, das 13h às 17h"] });
+    expect(out.note).toMatch(/a post can come back with no phone/);
+    expect(out.note).toMatch(/not linked by this tool/);
+    expect(out.note).not.toMatch(/https?:|www\.|def\.br/);
+    const central = await search({ type: "defensoria publica", bairro: "centro" });
+    expect(central.data.items[0]!.phones).toEqual(["(41) 3333-0066"]);
+    expect(central.data.items[0]!.hours.at(-1)).toMatch(/Bairro Inventado Sete\.$/);
+  });
+
+  it("v0.51.0: a fórum comes back with the courts it houses as published, its non-city e-mail dropped", async () => {
+    stubFetch(route("forum", "forum_synthetic.json"));
+    const out = await search({ type: "forum", bairro: "centro" });
+    expect(out.source_url).toBe(`${EQUIPMENT}/106`);
+    expect(out.data.items[0]).toMatchObject({ name: "Fórum Inventado da Justiça do Trabalho", emails: [], updated: "2019-07-04" });
+    const sul = await search({ type: "foruns", bairro: "sitio cercado" });
+    expect(sul.data.items[0]!.hours).toEqual([
+      "Atendimento:", "-2ª a 6ª feira, das 12h às 18h.", "Abriga:", "-Juizados Especiais;", "-Vara da Família e Sucessões.",
+      "Bairros de abrangência: Sítio Cercado e Umbará.",
+    ]);
+    expect(sul.note).toMatch(/type `defensoria publica`/);
   });
 
   it("v0.44.0: health unit hours come back as published, mobiles dropped, with the check-before-going note", async () => {

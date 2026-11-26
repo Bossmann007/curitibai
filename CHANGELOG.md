@@ -2,6 +2,47 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.51.0 - 2026-11-26
+
+Cartórios de registro civil, Junta Militar, Defensoria Pública and fóruns, phase B of the 1.0 roadmap. 27 tools.
+Publishes nothing.
+
+- `city_facilities_search`: new `type`s, read live from IPPUC's GeoCuritiba urban-equipment layers with the same
+  fields, filters, host gate, cache and phone and e-mail allowlist as the other layers (records when read on
+  2026-11-26 UTC in brackets):
+  - `cartorio de registro civil` (layer 99, 4 records; aliases `cartorios de registro civil`, `registro civil`,
+    `cartorio de registro civil das pessoas naturais`, `cartorios de registro civil das pessoas naturais`,
+    `certidao de nascimento`, `certidao de casamento`, `certidao de obito`);
+  - `junta militar` (layer 21, 3; aliases `juntas militares`, `junta de servico militar`, `juntas de servico militar`,
+    `alistamento militar`);
+  - `defensoria publica` (layer 105, 14; aliases `defensoria`, `defensorias`, `defensorias publicas`,
+    `defensoria publica do parana`, `defensoria publica do estado`);
+  - `forum` (layer 106, 9; alias `foruns`).
+  No bare `cartorio`, `certidao`, `junta`, `justica` or `tribunal` alias; none of the new names was used by another
+  type.
+- Notes: the registry note says these are the offices IPPUC's layer lists, as published, not necessarily every registry
+  office in Curitiba, and that prices, deadlines and which office holds a given record are not in the layer, so call
+  the office before going. The junta, Defensoria and fórum notes say `bairro` filters by where an office is, not by
+  the bairros it serves (those are in `hours`). The Defensoria note says who can be assisted is not in the layer, that
+  a post can come back with no phone, and to reach the Defensoria Pública do Paraná through its own channels (not
+  linked). No note names a price, free service or a same-day document (tested).
+- Each registry record ends with "Cartório <surname>." (the office's trade name after a person): in `hours`, any line that mentions "cartório" (any case, anywhere) is replaced by the marker "[a line about the cartório is not shown: it can carry a person's name or a notice; ask the office]" (new optional `hideLine`; a plain substring regex, linear, replacing the exponential one of the first review round; consecutive markers merged), so no surname is shown and nothing is cut silently; a notice that mentions the cartório ("Cartório Fechado.", "Cartório de plantão aos sábados, das 9h às 12h.") is hidden the same visible way. When read, only the trade-name lines mentioned it (tested, also for speed on long ambiguous lines). The bairro lists of the juntas, Defensoria posts and fóruns run
+  to about 500 characters: for these types a line over 160 characters is split after its commas into several lines
+  instead of being cut with "…" (new optional `wrapLines`; also after semicolons). Other types are unchanged.
+- Privacy filters unchanged: the registry offices' own-domain e-mails (one with a person's name), the Defensoria's
+  `defensoria.pr.def.br` and gmail addresses and its mobile numbers (8 of 14 posts; two publish only a mobile and come
+  back with no phone), and the Justiça do Trabalho's `trt9.jus.br` address are dropped; synthetic fixtures with a
+  personal-name e-mail, a gmail and mobiles prove it per type. The juntas' `curitiba.pr.gov.br` unit mailboxes are
+  kept.
+- The `type` parameter description names the four types (snapshot updated); the tool descriptions are unchanged.
+- No new network host: `geocuritiba.ippuc.org.br` was already contacted; robots.txt rechecked (404) on 2026-11-26.
+  Nine hand requests to it that day (robots.txt, one whole-layer read and the metadata of each layer), recorded in
+  [docs/sources.md](docs/sources.md). The link allowlist is unchanged.
+- Citizen eval: new q129 ("Onde tiro a segunda via da certidão de nascimento no Centro?") answered by
+  `city_facilities_search` `cartorio de registro civil` with `bairro`, on a synthetic fixture: the office's name,
+  address, hours, phone and the note. 125 of 129 answered. The Curitiba App table has no row for these services and is
+  unchanged.
+
 ## 0.50.0 - 2026-11-25
 
 Where to get an RG (Instituto de Identificação), phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
