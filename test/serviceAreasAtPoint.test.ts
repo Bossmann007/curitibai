@@ -444,6 +444,7 @@ describe("service_areas_at_point cache", () => {
       ...placeOnly("zoning_decree", EMPTY),
       ...placeOnly("zoning_law", EMPTY),
       ...placeOnly("street", JSON.stringify({ spatialReference: { wkid: 4326 }, features: [] })),
+      ...placeOnly("pgv", EMPTY),
     });
     vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
     const client = await connectClient();
