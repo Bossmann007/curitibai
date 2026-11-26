@@ -164,7 +164,7 @@ const COURTHOUSE_NOTE =
   "`bairro` filters by where a fórum is, not by the bairros it covers. Call before going. The Defensoria Pública's " +
   "posts are type `defensoria publica`.";
 
-/** Social assistance (v0.52.0). Shelters and transit houses (layers 45, 46, 164) are never types. */
+// v0.52.0: shelters (layers 45, 46, 164) are never types.
 const NO_SHELTERS = "Shelters and transit houses are not listed by this tool.";
 export const HIDDEN_SHELTER_LINE =
   "[a line that may point at a shelter, transit house or confidential unit is not shown; ask the 156]";
@@ -480,7 +480,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     wrapLines: true,
   },
   { ...equipment("forum", 106, "Fórum", ["foruns"]), note: COURTHOUSE_NOTE, wrapLines: true },
-  // Social assistance, v0.52.0. Shelters and transit houses (layers 45, 46, 164) are never types.
+  // v0.52.0.
   social("creas", 38, "Centro de Referência Especializado de Assistência Social", [
     "centro de referencia especializado de assistencia social", "centros de referencia especializados de assistencia social",
   ], CREAS_NOTE),
@@ -659,7 +659,7 @@ export interface Facility {
 
 export interface FacilityLayer {
   facilities: Facility[];
-  /** Records left out: no name, or (bike) not operational. */
+  /** Records left out: no name, (bike) not operational, or (social) naming a shelter. */
   skipped: number;
 }
 
@@ -762,8 +762,8 @@ export function isRegistryNameLine(line: string): boolean {
 
 /** Shelter, transit house or confidential unit (v0.52.0); linear. */
 export function isShelterLine(line: string): boolean {
-  return /casas? de passagem|abrigo|albergue|pernoite|sigilos|casas? lar|casas? de acolhi|unidades? de acolhimento|acolhimento institucional/.test(
-    fold(line).replace(/[\s-]+/g, " "),
+  return /casas? de passagem|abrigo|albergue|pernoite|sigilos|casas? lar|casas? de acolhi|unidades? de acolhi|residencias? inclusivas?|acolhimento institucional/.test(
+    fold(line).replace(/\p{Cf}/gu, "").replace(/[\s-]+/g, " "),
   );
 }
 
@@ -789,6 +789,7 @@ export function hourLines(
       else if (lines[lines.length - 1] !== marker) lines.push(marker);
     }
   }
+  if (hide && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
@@ -845,7 +846,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
-    emails: institutionalEmails(a.email),
+    emails: institutionalEmails(a.email).filter((e) => t.hideLine !== isShelterLine || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
     updated: updated(a.dt_atualiz),
     length_km: null,
     area: null,

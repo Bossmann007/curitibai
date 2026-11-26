@@ -14,15 +14,12 @@ Social assistance beyond the CRAS, phase B of the 1.0 roadmap. 27 tools. Publish
 - Shelters and transit houses (layers 45, 46, 164) are never types; no `abrigo`, `casa de passagem` or `acolhimento`
   name resolves (tested). One Centro POP record named a transit house's address: in the six types and `cras`, a line
   that may point at a shelter or a confidential unit is replaced by a marker, even past the 160-character cut
-  (`isShelterLine`, linear; new optional `hiddenLineMarker`), and a record whose name or address does is left out and
-  counted in `skipped_records`.
+  (`isShelterLine`, linear), and a record whose name or address does is skipped.
 - Women's centres: when `divulgar_endereco` is not exactly "Sim", only the name, institutional phones and a line saying
   to call are returned, so `bairro` and `near` never match (new optional `privateAddress`; tested with "Sim", "Não",
   null and "sim"). The note leads with 190 and 180, as on the Ministério das Mulheres' Ligue 180 page (`www.gov.br`,
   read by hand; never contacted by the server), and says the tool does not dispatch help.
-- Tool contract: the `type` and `skipped_records` descriptions (snapshot updated). No new server host; the link
-  allowlist is unchanged.
-- Citizen eval: q130 ("Onde fica o CREAS que atende a CIC?") answered by `creas` with `name` `cic`. 126 of 130.
+- Contract: `type` and `skipped_records` descriptions. No new server host or link. Eval: q130 answered; 126 of 130.
 
 ## 0.51.0 - 2026-11-26
 

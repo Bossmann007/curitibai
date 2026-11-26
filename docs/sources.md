@@ -1289,16 +1289,24 @@ changes (owner request, 2026-11-23: monthly and automatic).
   - 40: 3 Centros POP; "Solicitações de atendimento ou emergência são realizadas pelo telefone 156." Two publish only a
     mobile, so they come back with no phone (the note says to call the 156). **One record's text names a transit
     house and its street address**: in these six types and in `cras` any `hours` line that mentions "casa(s) de passagem", "abrigo",
-    "albergue", "pernoite", "casa(s) lar", "casa(s) de acolhida" or "de acolhimento", "unidade(s) de acolhimento",
-    "acolhimento institucional" or "sigiloso/a" (accents, case, hyphens and repeated spaces ignored; `isShelterLine`, a
-    plain alternation of literals, linear; the whole line is tested, not only its first 160 characters) is replaced
+    "albergue", "pernoite", "casa(s) lar", "casa(s)" or "unidade(s)" "de acolhida" or "de acolhimento", "residência(s)
+    inclusiva(s)", "acolhimento institucional" or "sigiloso/a" (accents, case, invisible format characters, hyphens and
+    repeated spaces ignored; `isShelterLine`, a plain alternation of literals, linear; the whole line is tested, not
+    only its first 160 characters, and when such a phrase is split over two lines the whole `hours` becomes the
+    marker) is replaced
     by the marker "[a line that may point at a shelter, transit house or confidential unit is not shown; ask the
     156]"; consecutive markers are merged. "Acolhimento" alone (a service, as in the Casa da Mulher Brasileira's list)
-    is kept. A record of these types whose name, street or complement mentions one is left out and counted in
+    is kept. A city e-mail whose address holds "passagem", "abrigo", "albergue", "acolhi", "pernoite" or "sigilos" is
+    dropped. A record of these types whose name, street or complement mentions one is left out and counted in
     `skipped_records`; none did when read. After the review fixes widened this check, the final build re-read layers
     34 (`cras`, 39 records), 36, 38, 39, 40, 108 and 109 on 2026-11-26, seven more GET requests at least 5 s apart
     (01:13:09 to 01:13:43 UTC, same User-Agent, the server's fixed query): 0 records skipped in any layer, and the only
-    hidden line in all seven is the Centro POP transit-house line above (no CRAS line changes). The reads were deleted.
+    hidden line in all seven is the Centro POP transit-house line above (no CRAS line changes). The reads were deleted. After
+    the second review widened it again, a third round on 2026-11-26: layers 34, 36, 38 and 39 at 01:17:39, 01:17:44,
+    01:17:50 and 01:17:57 UTC; layer 40 at 01:18:03 timed out with no bytes; after a pause of more than 60 s, layers
+    108 and 109 at 01:19:33 and 01:19:39, then 40, 108 and 109 again at 01:19:55, 01:20:00 and 01:20:06 (ten requests,
+    all 200 except the timeout). Same result: 0 records skipped, the Centro POP line the only hidden one, no `hours`
+    hidden whole, no e-mail dropped. The reads were deleted.
   - 39: 1 record, the Central de Encaminhamento Social 24 Horas: "Contato: disque 156" and the 156 site's address
     (kept as text, not linked).
   - 36: 5 records, named Espaço ConViver in `nome_completo`, "2ª a 6ª feira, das 8h às 17h" (one with a lunch break).

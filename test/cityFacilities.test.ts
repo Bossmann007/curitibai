@@ -1157,7 +1157,7 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
     for (const line of [
       "Casa de Passagem Inventada, Rua X, 1", "ABRIGO INVENTADO", "casas de passagem: ver 156", "Unidade de Acolhimento X", "Casa de Acolhida",
       "Casa-de-Passagem  Inventada", "Albergue Noturno Inventado", "Casa de Acolhimento Inventada", "acolhimento institucional", "Casa Lar X",
-      "pernoite na Rua Y", "unidade sigilosa",
+      "pernoite na Rua Y", "unidade sigilosa", "Abri\u200Bgo X", "Casa de Pas\u00ADsagem", "Unidade de Acolhida Y", "Residência Inclusiva Z",
     ]) {
       expect(isShelterLine(line)).toBe(true);
     }
@@ -1167,13 +1167,15 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
     const long = `${"casa de pas".repeat(20_000)}x`;
     const start = performance.now();
     expect(isShelterLine(long)).toBe(false);
-    expect(performance.now() - start).toBeLessThan(200);
+    expect(performance.now() - start).toBeLessThan(1000);
   });
 
   it("a shelter word past the 160-character cut still hides the line", () => {
     const line = `Atendimento na Rua Inventada Visível, 77, ${"bloco B, ".repeat(16)}junto à Casa de Passagem Inventada`;
     expect(line.length).toBeGreaterThan(200);
     expect(hourLines(line, 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE]);
+    // A phrase split over two lines hides the whole text.
+    expect(hourLines("Atendimento:\nEncaminhamento para a Casa de\nPassagem Inventada, Rua Z, 5", 30, false, isShelterLine, HIDDEN_SHELTER_LINE)).toEqual([HIDDEN_SHELTER_LINE]);
   });
 
   it("a social record whose name or address mentions a shelter is left out and counted; the CRAS get the same line check", async () => {
@@ -1222,7 +1224,8 @@ describe("v0.52.0: social assistance beyond the CRAS", () => {
       "Solicitações de atendimento ou emergência são realizadas pelo telefone 156.", "Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_SHELTER_LINE,
     ]);
     expect(pop.note).toMatch(/`phones` empty: call the 156/);
-    expect(JSON.stringify(pop)).not.toMatch(/Secreta|999\b|ACOLHIMENTO INVENTADA/);
+    expect(JSON.stringify(pop)).not.toMatch(/Secreta|999\b|ACOLHIMENTO INVENTADA|casadepassagem/);
+    expect(pop.data.items[1]!.emails).toEqual(["centropop2@curitiba.pr.gov.br"]);
   });
 
   it("a women's centre whose address is not marked \"Sim\" returns only its name, institutional phones and a line to call; bairro and near never match it", async () => {

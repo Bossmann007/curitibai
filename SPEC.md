@@ -53,10 +53,13 @@ What the read showed and how this version handles it:
 2. **Shelter lines and records**: the six types and the existing `cras` set `hideLine: isShelterLine` and the new
    optional `hiddenLineMarker` (`HIDDEN_SHELTER_LINE`, "[a line that may point at a shelter, transit house or
    confidential unit is not shown; ask the 156]"). `isShelterLine` folds the text, turns runs of spaces and hyphens into
-   one space and tests `casas? de passagem|abrigo|albergue|pernoite|sigilos|casas? lar|casas? de acolhi|unidades? de
-   acolhimento|acolhimento institucional`, a plain alternation of literals, linear. `hourLines` takes the marker as a
+   one space (after removing format characters) and tests `casas? de passagem|abrigo|albergue|pernoite|sigilos|casas?
+   lar|casas? de acolhi|unidades? de acolhi|residencias? inclusivas?|acolhimento institucional`, a plain alternation of
+   literals, linear; "república" is left out (it would match street names such as Av. República Argentina). `hourLines` takes the marker as a
    parameter (default `HIDDEN_NAME_LINE`, so the registry type is unchanged), tests the whole cleaned line as well as
-   the 160-character cut (a word past the cut still hides it) and merges consecutive markers. A record of these types
+   the 160-character cut (a word past the cut still hides it), merges consecutive markers, and returns only the marker
+   when the whole text matches but no single line does (a phrase split over two lines). A city e-mail holding a
+   shelter word ("passagem", "abrigo", "albergue", "acolhi", "pernoite", "sigilos") is dropped for these types. A record of these types
    whose `nome_completo`, `nome`, `nome_rua` or `compl_end` matches is left out and counted in `skipped_records` (its
    output description says so; snapshot updated).
 3. **Private address** (new optional `privateAddress`, set only on `centro de referencia da mulher`): when
