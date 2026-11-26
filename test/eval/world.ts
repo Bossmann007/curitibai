@@ -118,6 +118,8 @@ function pointRoutes(lat: number, lon: number): Record<string, Route> {
     pm_company: attrs([{ nm_batalhao: "99º Batalhão", sg_batalhao: "99º BPM", nm_companhia: "1ª Companhia", sg_companhia: "1ª CIA", data_atualizacao: "09/2025", fonte: "PMPR TESTE" }]),
     civil_district: attrs([{ nm_divisao: "Divisão Teste", nm_distrito: "99º Distrito Policial", sg_distrito: "99º DP", fonte: "PCPR TESTE" }]),
     fire_platoon: attrs([{ batalhao: "Batalhão Teste", companhia: "Companhia Teste", pelotao: "Pelotão Teste", sigla: "9ª Pel. BM", fonte: "CBMPR TESTE" }]),
+    property_registry: attrs([{ circunscricao: "9ª CIRCUNSCRIÇÃO", fonte: "Tribunal Teste, 1900" }]),
+    civil_registry: attrs([{ servicos: "9º SERVIÇO DE REGISTRO CIVIL", fonte: "Lei Estadual Teste 1/1900" }]),
     census_sector: attrs([{ cd_setor: "410690205010084", nm_bairro: CENSUS_BAIRRO, v0001: 231, v0007: 129, area_km2: 0.19, dens_pop_km2: 1229.99, renda_media: 4583.33 }]),
   };
   const out: Record<string, Route> = {};

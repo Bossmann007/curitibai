@@ -97,6 +97,8 @@ describe("service_areas_at_point answers", () => {
       police_military: null,
       police_civil: null,
       fire: null,
+      property_registry: null,
+      civil_registry: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
@@ -217,6 +219,8 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
       police_military: [{ battalion: "99º Batalhão", battalion_code: "99º BPM", company: "1ª Companhia", company_code: "1ª CIA", reference_date: "09/2025", source_agency: "PMPR TESTE" }],
       police_civil: [{ district: "99º Distrito Policial", district_code: "99º DP", division: "Divisão Teste", source_agency: "PCPR TESTE" }],
       fire: [{ platoon: "Pelotão Teste", platoon_code: "9ª Pel. BM", company: "Companhia Teste", battalion: "Batalhão Teste", source_agency: "CBMPR TESTE" }],
+      property_registry: null,
+      civil_registry: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (PMPR, PCPR e CBMPR)");
@@ -262,6 +266,83 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
 
   it("an unknown areas value is refused", async () => {
     expect((await call({ ...AT, areas: "police" })).isError).toBe(true);
+  });
+});
+
+// Synthetic, with the real fields of layers 15 and 16 as read on 2026-11-26 (invented values).
+type RegistryLayer = Extract<PointLayer, "bairro" | "property_registry" | "civil_registry">;
+const rkey = (layer: RegistryLayer) => `GET ${pointQueryUrl(layer, P)}`;
+const LEGAL = "Leis Estaduais 1111/1960, 2222/1961, 3333/1962, 4444/1963, 5555/1964 e Acordo 66666/2000, texto longo de teste";
+const PROPERTY = attrs([{ circunscricao: "9ª CIRCUNSCRIÇÃO", fonte: "Tribunal Teste, 1900" }]);
+const CIVIL_REG = attrs([{ servicos: "9º SERVIÇO DE REGISTRO CIVIL", fonte: LEGAL }]);
+function registryRoutes(over: Partial<Record<RegistryLayer, Route>> = {}): Record<string, Route> {
+  const base: Record<RegistryLayer, Route> = { bairro: { body: BAIRRO }, property_registry: { body: PROPERTY }, civil_registry: { body: CIVIL_REG } };
+  const out: Record<string, Route> = {};
+  for (const layer of Object.keys(base) as RegistryLayer[]) out[rkey(layer)] = { contentType: JSON_TYPE, ...base[layer], ...over[layer] };
+  return out;
+}
+
+describe("place_at_point service_areas, areas: registry (v0.57.0)", () => {
+  it("asks layers 15 and 16 for the shown fields only: never created_user, last_edited_user or nome", () => {
+    const layers: [Exclude<RegistryLayer, "bairro">, number, string][] = [
+      ["property_registry", 15, "circunscricao,fonte"],
+      ["civil_registry", 16, "servicos,fonte"],
+    ];
+    for (const [layer, id, fields] of layers) {
+      const u = new URL(pointQueryUrl(layer, P));
+      expect(u.pathname.endsWith(`/Publico_Interno_GeoCuritiba_BaseTematica/MapServer/${id}/query`)).toBe(true);
+      expect(u.searchParams.get("geometry")).toBe("-49.2713,-25.4296");
+      expect(u.searchParams.get("outFields")).toBe(fields);
+      expect(u.toString()).not.toMatch(/created_user|last_edited_user|nome/);
+    }
+  });
+
+  it("returns the circunscrição imobiliária and the registro civil serviço with their legal basis in 2 requests", async () => {
+    const calls = stubFetch(registryRoutes());
+    const res = await call({ ...AT, areas: "registry" });
+    const out = pointPart(res.structuredContent, "service_areas");
+    expect(out.data).toEqual({
+      lat: -25.4296,
+      lon: -49.2713,
+      areas: "registry",
+      inside_curitiba: true,
+      health_units: null,
+      cras: null,
+      police_military: null,
+      police_civil: null,
+      fire: null,
+      property_registry: [{ circumscription: "9ª CIRCUNSCRIÇÃO", legal_basis: "Tribunal Teste, 1900" }],
+      civil_registry: [{ service: "9º SERVIÇO DE REGISTRO CIVIL", legal_basis: LEGAL }],
+      partial: false,
+    });
+    expect(out.note).toMatch(/does not replace a certidão/);
+    expect(out.note).toMatch(/cartorio de registro civil/);
+    expect(calls.map((c) => c.url)).toEqual([rkey("property_registry"), rkey("civil_registry")].map((k) => k.slice(4)));
+  });
+
+  it("no property area: the bairro layer decides; outside Curitiba the civil layer is not asked", async () => {
+    const calls = stubFetch(registryRoutes({ property_registry: { body: EMPTY }, bairro: { body: EMPTY } }));
+    const out = await areas({ ...AT, areas: "registry" });
+    expect(out.data).toMatchObject({ inside_curitiba: false, property_registry: [], civil_registry: null, partial: false });
+    expect(calls.map((c) => c.url)).toEqual([rkey("property_registry"), rkey("bairro")].map((k) => k.slice(4)));
+  });
+
+  it("a failing civil layer is partial and keeps the property area", async () => {
+    stubFetch(registryRoutes({ civil_registry: { status: 500 } }));
+    const out = await areas({ ...AT, areas: "registry" });
+    expect(out.data).toMatchObject({ partial: true, civil_registry: null, property_registry: [{ circumscription: "9ª CIRCUNSCRIÇÃO" }] });
+    expect(out.note).toMatch(/Partial: the registro civil layer could not be read now/);
+  });
+
+  it("a failing property layer is source_unavailable", async () => {
+    stubFetch(registryRoutes({ property_registry: { status: 500 } }));
+    expect(errorOf(await call({ ...AT, areas: "registry" }))).toMatchObject({ error: "source_unavailable" });
+  });
+
+  it("care and safety lists are null for registry, and registry lists null for care", async () => {
+    stubFetch(routes());
+    const out = await areas();
+    expect(out.data).toMatchObject({ property_registry: null, civil_registry: null });
   });
 });
 

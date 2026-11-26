@@ -4342,11 +4342,12 @@
           }
         },
         "areas": {
-          "description": "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia Civil district and fire (Corpo de Bombeiros) platoon areas. \"all\": both.",
+          "description": "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia Civil district and fire (Corpo de Bombeiros) platoon areas. \"registry\": circunscrição imobiliária (registro de imóveis) and registro civil serviço. \"all\": care and safety.",
           "type": "string",
           "enum": [
             "care",
             "safety",
+            "registry",
             "all"
           ]
         }
@@ -4537,13 +4538,14 @@
                       "enum": [
                         "care",
                         "safety",
+                        "registry",
                         "all"
                       ],
-                      "description": "Which areas were asked."
+                      "description": "Which areas were asked (`all`: care and safety)."
                     },
                     "inside_curitiba": {
                       "type": "boolean",
-                      "description": "True when the first layer asked (health unit area, or Polícia Militar company for `safety`) or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
+                      "description": "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for `registry`) or a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
                     },
                     "health_units": {
                       "anyOf": [
@@ -4848,6 +4850,76 @@
                       ],
                       "description": "`safety`: fire platoon areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
+                    "property_registry": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "circumscription": {
+                                "description": "Circunscrição imobiliária (registro de imóveis) as published (`circunscricao`), e.g. \"6ª CIRCUNSCRIÇÃO\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "legal_basis": {
+                                "description": "`fonte` as published: the legal basis of the area, e.g. \"Tribunal de Justiça, 1968\"; it may have changed since.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "circumscription",
+                              "legal_basis"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`registry`: circunscrição imobiliária areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                    },
+                    "civil_registry": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "service": {
+                                "description": "Registro civil serviço as published (`servicos`), e.g. \"4º SERVIÇO DE REGISTRO CIVIL\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "legal_basis": {
+                                "description": "`fonte` as published: the legal basis of the area, e.g. \"Tribunal de Justiça, 1968\"; it may have changed since.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "service",
+                              "legal_basis"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`registry`: registro civil serviço areas containing the point (at most 3). Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
+                    },
                     "partial": {
                       "type": "boolean",
                       "description": "True when a layer of a group asked could not be read; its list is then null."
@@ -4874,6 +4946,8 @@
                     "police_military",
                     "police_civil",
                     "fire",
+                    "property_registry",
+                    "civil_registry",
                     "partial",
                     "source",
                     "source_url",
