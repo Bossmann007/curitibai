@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.85.0 - 2026-11-27
+
+Ouvidoria anonymity wording, fourth pass (the Security Reviewer's R1-R4 on 0.83.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "para continuar anônimo, deixe de fora …" becomes "para reduzir o risco
+  de ser identificado, deixe de fora o que a denúncia não precisa: …", and the list adds "nomes ou rostos de outras
+  pessoas, placas de carro, números de documentos, e-mail, datas ou lugares e qualquer detalhe que só você conheça".
+  "o que a denúncia não precisa" keeps who, when and where in the denúncia.
+- Step 4, "a forma anônima não garante anonimato" becomes "o CuritibAI não pode garantir que a forma anônima proteja
+  a sua identidade", still marked as the CuritibAI's own observation. The summary (`what`) says it of "a identidade do
+  cidadão", with the same marker; the `note` names both places.
+- The hedge test that covered step 5 now also covers `what` and step 4: each sentence naming anonymity or
+  identification carries the 2024-guide hedge or the CuritibAI-observation marker. The hedge must sit in the same
+  clause as the 2024-guide claim. Step 4's two "Pelo guia de 2024" sentences become one with one hedge, and the
+  summary's denúncia clause gains "(o CuritibAI não conferiu isso hoje no site)".
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.84.0 - 2026-11-27
 
 Person-name filter, seventh pass (the Security Reviewer's R1-R3 on 0.82.0). 27 tools. Publishes nothing.

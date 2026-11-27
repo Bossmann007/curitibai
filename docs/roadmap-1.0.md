@@ -379,3 +379,10 @@ only as a detail when útil/úteis, corridos, antes or "de antecedência/prazo" 
 hidden; "com um dia de antecedência" stays), and "senha de atendimento" and "senha numerada" stay. No new question,
 source or host; the layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
 answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.85.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 says leaving details out reduces the risk
+of being identified (not that it keeps the citizen anonymous) and adds other people's names or faces, car plates,
+document numbers, e-mail and any detail only the citizen knows; the summary and step 4 say, as the project's own
+observation, that the CuritibAI cannot guarantee the anonymous form protects the citizen's identity. No new question,
+source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions
+(no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
