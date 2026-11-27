@@ -82,9 +82,18 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
 const GUARDED_WORD = "gente|regional|coordenacao|rh";
-const GUARDED_UNIT =
-  `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
-  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b){0,40}(?<![,;])(?:$|\\n))";
+/** One step of a guarded word's rest: a non-letter, "[masked]", a unit or channel word, "empresa", "site" or a connector. */
+const REST_STEP =
+  `[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
+  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b";
+/**
+ * v0.81.0: the rest is read for at most 100 steps (a 400 KB line of guarded words was quadratic, seconds in 0.80.0) and
+ * may not end in ',' or ';' (a long Liceu line cut at commas, "…, Falar com a gente," then "Fulana"); it ends at the
+ * end or at a line break (two lines joined by the split check). A longer rest is not a unit: hidden, on the safe side.
+ */
+const GUARDED_UNIT = `(?:${GUARDED_WORD})\\b(?=(?:${REST_STEP}){0,100}(?<![,;])(?:$|\\n))`;
+/** A whole line made only of rest steps ("pelo 156", "3350-0000", "WhatsApp", "ou pelo telefone"). */
+const REST_ONLY = new RegExp(`^(?:${REST_STEP})*$`, "u");
 const personNext = (guarded: string): string =>
   `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${guarded}))\\p{L}`;
 const PERSON_NEXT = personNext(GUARDED_UNIT);
@@ -119,8 +128,9 @@ const SERVICE_VALUE = new RegExp(
 const APPOINTMENT_DETAIL =
   "no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|horario|marcacao|retirada|" +
   "documentos?|documentacao|comprovantes?|carteira|cpf|rg|" +
-  // v0.81.0: words that can also be a name ("Dias", "Hora") count only when a word or number follows them.
-  "(?:um|uma|dias?|hora|senha)(?=\\s+[\\p{L}\\d])";
+  // v0.81.0: words that can also be a name ("Dias", "Hora") count only before a number or a detail ("uma semana", "dias
+  // úteis", "hora marcada", "senha retirada"); "agendamento com Dias" and "com Dias Ferreira" are a name.
+  "(?:um|uma|dias?|hora|senha)(?=\\s+(?:\\d|(?:d[aeo]s?|semanas?|horas?|minutos?|uteis|marcad[ao]s?|retirad[ao]s?|previ[ao]s?|n[ao]|pel[ao]|antecedencia)\\b))";
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);
@@ -177,26 +187,23 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 /**
  * v0.81.0: a line whose contact phrase or "agendamento com" names a guarded unit word ("Falar com o RH", "Fale com a
  * gente pelo 156", "Telefone da Regional:", "E-mail da coordenação", "Agendamento com o RH") may have the name on the
- * next line (0.79.0 hid it with the whole field). That next line is hidden unless what comes
- * before its first digit, "[masked]" or ':' (after a leading dash or bullet) is empty, reads as hours or a service
- * value, or starts with a service or address word (SERVICE_LINE) or a unit, channel or connector word ("Segunda a
- * sexta …", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana
- * (41) 3350-0000", "- Fulana", "Fulana, telefone …" and "Fulana: segunda a sexta" are hidden). Known limits: a line
- * of any other words is hidden too ("Térreo do prédio"); "Presencial com Fulana" passes (it reads as hours); a
- * guarded phrase itself split over two lines ("Telefone da" / "Regional" / "Fulana") is not read.
+ * next line (0.79.0 hid it with the whole field). That next line is hidden unless what comes before its first digit,
+ * "[masked]" or ':' (after a leading dash or bullet) reads as hours or a service value or starts with a service or
+ * address word (SERVICE_LINE), or the whole line is made of rest steps (REST_ONLY): "Segunda a sexta …", "3350-0000",
+ * "pelo 156", "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000", "-
+ * Fulana", "3350-0000 - Fulana", "pelo 156 ou com a Fulana" and "Fulana: segunda a sexta" are hidden. The phrase may
+ * itself span two lines ("Tratar com" / "o RH" / "Fulana": hourLines reads three lines). Known limits: a line of any
+ * other words is hidden too ("Térreo do prédio"); "Presencial com Fulana" passes (it reads as hours).
  */
 const GUARDED_NEXT = `(?:(?:an?|o|as|os)\\s+)?${GUARDED_UNIT}`;
 const GUARDED_END = new RegExp(`${namedChannel(GUARDED_NEXT).source}|\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+${GUARDED_NEXT}`, "u");
-const NOT_A_NAME_START = new RegExp(
-  `^[^\\p{L}]*(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
-    "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|e|ou|com)\\b",
-  "u",
-);
 const isNameAfterGuarded = (f: string, prev: string): boolean => {
   if (!GUARDED_END.test(prev)) return false;
   const head = (f.replace(/^[-–•*\s]+/, "").split(/\d|\[masked\]|:/)[0] ?? "").trim();
-  return head !== "" && !isServiceValue(head) && !SERVICE_LINE.test(head) && !NOT_A_NAME_START.test(head);
+  return !isServiceValue(f) && !isServiceValue(head) && !SERVICE_LINE.test(head) && !REST_ONLY.test(f);
 };
+/** v0.81.0: the line ends in a guarded contact phrase, so hourLines reads the next line with it even if it starts with a number. */
+export const isGuardedContact = (line: string): boolean => GUARDED_END.test(fold(line));
 /**
  * `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count;
  * or two lines joined by a line break (hourLines' split check), where a name after a guarded contact phrase is read.
@@ -209,7 +216,7 @@ export const isWorkPersonLine = (line: string, prev?: string | null): boolean =>
   if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
   if (prev !== null) return isContactPerson(f) || isServiceValuePerson(f, prev);
   // hourLines' split check (v0.81.0) joins a line to the one before it with a line break.
-  const br = f.indexOf("\n");
+  const br = f.lastIndexOf("\n");
   return br >= 0 && isNameAfterGuarded(f.slice(br + 1), f.slice(0, br));
 };
 /**

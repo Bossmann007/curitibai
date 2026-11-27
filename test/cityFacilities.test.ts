@@ -2788,8 +2788,24 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     }
   });
 
+  it.each(WORK)("review: %s reads the whole next line after a guarded phrase, and a phrase split over two lines", (id) => {
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 - Fulana"], ["Falar com o RH", "(41) 3350-0000 Fulana"], ["Fale com a gente", "pelo 156 ou com a Fulana"],
+      ["Fale com a gente", "WhatsApp da Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b, c] of [["Tratar com", "o RH", "Fulana"], ["Telefone da", "Regional:", "Fulano de Tal"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}\n${c}`), `${id}: ${a} / ${b} / ${c}`).toEqual([HOURS, a, b, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Fale com a\ngente\nSra. Fulana").join("\n"), "'Fale com a' alone already hides, and the name after it").not.toMatch(/Fulana/);
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 ou 3350-0001"], ["Fale com a gente", "pelo 156 ou pelo e-mail"], ["Fale com a gente", "Equipe do RH"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace(/3350-000\d/g, "[masked]")]);
+    }
+    expect(isWorkPersonLine("Telefone da Regional: 156 e 3350 e 3351 e 3352 e 3353 e 3354 e 3355"), "a rest of up to 100 steps is a unit").toBe(false);
+  });
+
   it.each(WORK)("%s hides 'agendamento com' and a word that is also a name at the end of the line", (id) => {
-    for (const v of ["agendamento com Dias", "agendamento com Uma", "agendamento com hora", "agendamento com senha", "agendamento com o Dias"]) {
+    for (const v of ["agendamento com Dias", "agendamento com Uma", "agendamento com hora", "agendamento com senha", "agendamento com o Dias", "agendamento com Dias Ferreira",
+      "agendamento com Senha Fulana"]) {
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
     }
     for (const v of ["agendamento com hora marcada", "agendamento com uma semana de antecedência", "agendamento com 2 dias de antecedência", "agendamento com senha retirada no local"]) {
@@ -2797,7 +2813,7 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     }
   });
 
-  it("a guarded word's rest is read for at most 40 steps, so a 400 KB line is fast", () => {
+  it("a guarded word's rest is read for at most 100 steps, so a 400 KB line is fast", () => {
     const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
       `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000)];
     const start = performance.now();
@@ -2807,7 +2823,7 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
       lines("sine", s);
     }
     expect(performance.now() - start).toBeLessThan(2000);
-    expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 40 steps is not a unit word: hidden, on the safe side").toBe(true);
+    expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 100 steps is not a unit word: hidden, on the safe side").toBe(true);
   });
 
   it("the split check stays fast on 50 KB of short lines", () => {

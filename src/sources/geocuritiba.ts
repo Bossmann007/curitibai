@@ -10,6 +10,7 @@ import {
   isGardenPersonLine,
   isMaintainerLine,
   isPersonInChargeLine,
+  isGuardedContact,
   isServiceText,
   isWorkPersonLine,
   MAINTAINER_LABEL,
@@ -978,6 +979,7 @@ export function hourLines(
   // responsável:" is hidden.
   let soft = false;
   let prev: string | undefined; // the last non-empty line, shown or hidden
+  let prev2: string | undefined; // the one before it
   // v0.81.0: a line hidden on its own rules (not by the split check below, nor only as the value or the rest of a name
   // after one): only then is the whole-field check skipped, as before, so a keyword split over three lines is still
   // caught after the split check hid one half.
@@ -988,15 +990,20 @@ export function hourLines(
       if (t === "") continue;
       const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
-      const full = cleanText(part, Infinity);
-      const before = prev;
-      prev = full; // v0.81.0: uncut, so a contact phrase past the cut still reaches the next line's checks
+      const full = hide ? cleanText(part, Infinity) : t;
+      const [before, before2] = [prev, prev2];
+      [prev, prev2] = [full, prev]; // v0.81.0: uncut, so a contact phrase past the cut still reaches the next line's checks
       // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
-      // whole-field check below (prev null) on this line and the one before, which must not hide alone; that one stays.
-      // A line that reads as hours or a service ("Horário: 8h", "por agendamento") is not read with the one before.
-      const split = names !== undefined && !allowlist && before !== undefined && !isServiceText(t);
+      // whole-field check below (prev null) on this line and the one before, which must not hide alone, and then on the
+      // last three lines ("Tratar com" / "o RH" / "Fulana"); the lines before stay. A line that reads as hours or a
+      // service ("Horário: 8h", "por agendamento") is read so only after a guarded contact phrase ("Telefone da
+      // Regional:" / "3350-0000 - Fulana").
+      const pair = (joined: string, head: string): boolean => hide !== undefined && hide(joined, null) && !hide(head, null);
+      const split = (): boolean =>
+        names !== undefined && !allowlist && before !== undefined && (!isServiceText(t) || isGuardedContact(before)) &&
+        (pair(`${before}\n${full}`, before) || (before2 !== undefined && pair(`${before2}\n${before}\n${full}`, `${before2}\n${before}`)));
       const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(full, before));
-      if (!hide || !(label || named || tail || direct || (split && hide(`${before}\n${full}`, null) && !hide(before, null)))) {
+      if (!hide || !(label || named || tail || direct || split())) {
         lines.push(t);
         label = rest = soft = false;
       } else {

@@ -17,13 +17,17 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   - A name alone on the line after a phrase that goes on after the unit word ("Fale com a gente pelo 156", "Tratar
     com o RH da empresa", "Agendamento com o RH"), also past the 160-character cut (the line before is now read
     uncut).
-  On a generated set of 11,760 such lines (four work types, seven lead-in lengths, twelve phrases, seven separators,
-  five names), 0.79.0 shows the name in 704, 0.80.0 in 3,440 and 0.81.0 in none; nothing 0.79.0 hid is shown.
-- Performance regression of 0.80.0: a guarded word's rest is read for at most 40 steps. A 400 KB line of "telefone
+  - A name after a number or a connector on that next line ("Telefone da Regional:" / "3350-0000 - Fulana", "Fale
+    com a gente" / "pelo 156 ou com a Fulana"), and a phrase itself split over two lines with the name on a third
+    ("Tratar com" / "o RH" / "Fulana"): the whole next line is read, and the split check also reads three lines.
+  On a generated set of 23,100 such lines (four work types, seven lead-in lengths, fifteen phrases, eleven separators,
+  five names), 0.79.0 shows the name in 1,432, 0.80.0 in 12,680 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+- Performance regression of 0.80.0: a guarded word's rest is read for at most 100 steps. A 400 KB line of "telefone
   da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
-  longer than 40 steps is not read as a unit, so that line is hidden, on the safe side.
+  longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
 - "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
-  um/uma, dia(s), hora and senha count as appointment details only when a word or number follows them.
+  um/uma, dia(s), hora and senha count as appointment details only before a number or a detail word ("uma semana",
+  "dias úteis", "hora marcada", "senha retirada"), so "agendamento com Dias Ferreira" is hidden too.
 
 - `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
   regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
@@ -48,8 +52,8 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   as hours or a service value, or starts with a service or address word or a unit, channel or connector word
   ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua XV de
   Novembro, 100", "Com agendamento"). Known limits: any other words on that line are hidden too, on the safe side;
-  "Presencial com Fulana" passes (it reads as hours); after a guarded phrase itself split over two lines ("Telefone
-  da" / "Regional" / "Fulana"), a name on the third line still passes.
+  "Presencial com Fulana" passes (it reads as hours); a guarded phrase that ends in ',' or ';' with no name after it
+  ("Fale com a gente," / hours) is hidden, on the safe side.
 - "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
   carteira de trabalho" stay shown, also before the hours and after a hidden line.
 - Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306

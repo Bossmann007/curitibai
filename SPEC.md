@@ -43,7 +43,8 @@ line filter, and only `cei contratado` reads maintainer lines.
    value (`isServiceValue`), or starts with a service or address word (`SERVICE_LINE`) or a unit, channel or
    connector word (`NOT_A_NAME_START`). Being part of the split check, it leaves the whole-field check on. Known
    limits: other words there are hidden too; "Presencial com Fulana" passes; after a guarded phrase itself split over
-   two lines a name on the third line still passes; when the line before hides on its own, the pair is not read.
+   two lines is read over three lines; a guarded phrase ending in ',' or ';' is hidden; when the line before hides on
+   its own, the pair is not read.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.81.0 block): the split keyword after a hidden line, per type that
    uses each pattern; L1 hidden and kept lines for the four work types; the pair check does not drag a line after
    one that hides alone, nor hours or a service after a keyword; a three-line split still hides the whole field; the
@@ -51,12 +52,13 @@ line filter, and only `cei contratado` reads maintainer lines.
 5. **Docs and version**: docs/sources.md (a v0.81.0 paragraph), docs/tools.md (the `city_facilities_search` row),
    docs/roadmap-1.0.md, CHANGELOG 0.81.0, version 0.81.0 in `package.json`, `package-lock.json`, `server.json`.
 
-6. **Regressions of 0.80.0 (Security Reviewer, priority)**: `GUARDED_UNIT` reads at most 40 steps and its rest may not
+6. **Regressions of 0.80.0 (Security Reviewer, priority)**: `GUARDED_UNIT` reads at most 100 steps and its rest may not
    end in ',' or ';' (O1, wrapped Liceu lines; the 400 KB quadratic case). `isWorkPersonLine` in the split check's
    mode (a line break in the text) uses the guarded `NAMED_CHANNEL`/`APPOINTMENT_NAMED`, not the `*_JOINED` ones
    (O2). `GUARDED_END` is any channel, "falar com" or "agendamento com" anchor followed by a guarded unit, so a name
    after "Fale com a gente pelo 156" is hidden; `hourLines` keeps the uncut line as `prev`. `um/uma/dia(s)/hora/senha`
-   are appointment details only before another word or number. Checked on 11,760 generated lines against 0.79.0
+   are appointment details only before another word or number. A name anywhere on the next line is read (`REST_ONLY`), and the split
+   check also reads the last three lines. Checked on 23,100 generated lines against 0.79.0
    (no line 0.79.0 hid is shown) and timed on 400 KB lines.
 
 ## Out of scope
