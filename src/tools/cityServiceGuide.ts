@@ -610,7 +610,8 @@ export const GUIDES = {
       "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
-      "para denúncias, o guia de 2024 prevê a forma anônima no Portal Curitiba Ouve; para reclamação comum isso não " +
+      "para denúncias, o guia de 2024 prevê a forma anônima (sem resposta nem acompanhamento) no Portal Curitiba " +
+      "Ouve; para reclamação comum isso não " +
       "foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia aparece nele (observação do " +
       "CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
@@ -648,7 +649,9 @@ export const GUIDES = {
         action:
           "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
-          "anexar fotos e documentos.",
+          "anexar fotos e documentos. A forma anônima só dispensa o cadastro: o que o cidadão escreve ou anexa (nome, " +
+          "endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo) pode identificá-lo; para " +
+          "continuar anônimo, deixe isso de fora (observação do CuritibAI, não do guia de 2024).",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",
@@ -659,7 +662,8 @@ export const GUIDES = {
           `Para denunciar ato ilícito contra a Prefeitura ou conduta antiética de servidor: o cidadão escreve, do seu ` +
           `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail. O e-mail não é um canal anônimo: o ` +
           "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
-          "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4).",
+          "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4), segundo o guia de 2024, que o CuritibAI " +
+          "não conferiu hoje no site.",
         consent:
           `O cidadão escreve e envia a mensagem só no seu próprio programa de e-mail, para ${CGM_EMAIL}, não nesta ` +
           "conversa. O assistente não escreve nem envia nada.",
@@ -669,7 +673,7 @@ export const GUIDES = {
         action:
           "Dizer ao cidadão as três formas que o guia de 2024 descreve: identificada (cadastro no e-Cidadão e protocolo " +
           "na Central 156), sigilosa (também com e-Cidadão, mas os dados pessoais de quem denuncia ficam em sigilo e a " +
-          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é apurada, mas sem resposta nem " +
+          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é registrada, mas sem resposta nem " +
           "acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
           "identificada e anônima. Cadastro: pelo guia de 2024, a identificada e a sigilosa pedem cadastro no e-Cidadão e a " +
           "anônima não; o que o site pede hoje não foi verificado (o CuritibAI não o abriu). O registro " +
@@ -685,7 +689,8 @@ export const GUIDES = {
       {
         action:
           "Dizer ao cidadão o prazo que o guia de 2024 dá: a CGM tem 30 dias para responder (Lei federal " +
-          "13.460/2017), prorrogáveis por igual período quando informado. Não prometa prazo menor.",
+          "13.460/2017), prorrogáveis por igual período quando informado (não vale para a forma anônima, que não recebe " +
+          "resposta). Não prometa prazo menor.",
       },
       {
         action: "Abrir o guia de uso da Ouvidoria da CGM (PDF de 2024 da Prefeitura).",

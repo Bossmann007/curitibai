@@ -311,3 +311,9 @@ name with a one-letter first word, digits after a name word or "-" between the w
 keep an address (no real address newly hidden when checked on 2026-11-27). No new question, source or host. The
 Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to
 v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.75.0 (phase B) the `city_service_guide` `ouvidoria` guide says the anonymous denúncia is registered (not
+"investigated"), gets no answer or follow-up and is outside the 30 days, hedges the anonymous form in step 5 as the
+2024 guide's, and adds the project's own warning that what the citizen writes or attaches can identify them. No new
+question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
+questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
