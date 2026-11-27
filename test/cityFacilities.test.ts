@@ -2211,6 +2211,14 @@ describe("v0.70.0: the work types hide a teacher, instructor, attendant or conta
       "Contato: Fulana 3333-0000",
       "Cursos com a professora Fulana",
       "-Contatos: Fulano",
+      "Contato com a Fulana",
+      "Prof.ª Fulana de Tal",
+      "Profa. Fulana de Tal",
+      "Prof. Fulano de Tal",
+      "Monitora: Fulana",
+      "Orientador Fulano de Tal",
+      "Educadoras: Fulana e Fulana",
+      "Tutor: Fulano",
     ]) {
       const out = lines(id, `Atendimento:\n-2ª a 6ª feira, das 8h às 17h\n${who}`);
       expect(out, `${id}: ${who}`).toEqual(["Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_PERSON_LINE]);
@@ -2235,6 +2243,9 @@ describe("v0.70.0: the work types hide a teacher, instructor, attendant or conta
       "Nome anterior: Liceu de Ofícios Cidadania Boqueirão",
       "Antigo Centro de Criatividades de Curitiba, readequado para Liceu das Artes após a inauguração do Memorial Paranista em 2021.",
       "Atendimento ao público e contratação",
+      "O Liceu de Ofícios Criativos oferece cursos gratuitos voltados exclusivamente para artesãos e profissionais da Economia Criativa",
+      "Para cursos, entre em contato pelo 156",
+      "Contato pelo e-mail da unidade",
     ]) {
       expect(isWorkPersonLine(l), l).toBe(false);
     }
@@ -2248,6 +2259,12 @@ describe("v0.70.0: the work types hide a teacher, instructor, attendant or conta
     }
     expect(isPersonInChargeLine("Contato: 3350-0000")).toBe(false);
   });
+
+  it("a contact channel line does not hide the hours after it", () => {
+    expect(lines("sine", "Para cursos, entre em contato pelo 156\nSegunda a sexta, das 8h às 17h")).toEqual([
+      "Para cursos, entre em contato pelo 156", "Segunda a sexta, das 8h às 17h",
+    ]);
+  });
 });
 
 describe("v0.70.0: a garden partner or programme line needs an entity word after the keyword", () => {
@@ -2255,7 +2272,10 @@ describe("v0.70.0: a garden partner or programme line needs an entity word after
   const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
 
   it("hides a partner or programme named after no entity", () => {
-    for (const l of ["Parceria com Fulana de Tal", "Parceria com a Fulana", "Programa Fulano de Tal", "Programa do Fulano", "Parceria com Maria da Associação"]) {
+    for (const l of [
+      "Parceria com Fulana de Tal", "Parceria com a Fulana", "Programa Fulano de Tal", "Programa do Fulano", "Parceria com Maria da Associação",
+      "Programa Hortas da Fulana", "Parceria com ONG Fulana", "Parceria com projeto Fulana Silva", "Programa de Hortas Comunitárias",
+    ]) {
       expect(isGardenPersonLine(l), l).toBe(true);
       expect(lines(l)).toEqual([HIDDEN_PERSON_LINE]);
     }
@@ -2270,7 +2290,8 @@ describe("v0.70.0: a garden partner or programme line needs an entity word after
       "Parceria com o Instituto Inventado",
       "Parceria com a Universidade Inventada",
       "Programa Municipal de Agricultura Urbana",
-      "Programa de Hortas Comunitárias",
+      "Parceria com: Associação de Moradores Inventada",
+      "Programa: Integrado Inventado",
     ]) {
       expect(isGardenPersonLine(l), l).toBe(false);
     }

@@ -322,12 +322,17 @@ const PERSON_IN_CHARGE = new RegExp(
 );
 export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
 /**
- * v0.70.0, work types (SINE, Agência do Trabalhador, Liceu, INSS): the offices' rule, or a teacher, instructor,
- * attendant or contact word anywhere in the line ("Atendimento: atendente Fulana" has it after the colon). Broader than
- * a role or label on purpose: a name may follow; "atendimento" is not "atendente". Only these types use it, so an office
- * line such as "Contato: 3350-0000" stays.
+ * v0.70.0, work types (SINE, Agência do Trabalhador, Liceu, INSS): the offices' rule, or a teacher, instructor, monitor,
+ * tutor, attendant or contact word anywhere in the line ("Atendimento: atendente Fulana" has it after the colon),
+ * "Prof.", "Profa." and "Prof.ª" included. Broader than a role or label on purpose: a name may follow; "atendimento" is
+ * not "atendente". "Contato" followed by a channel ("entre em contato pelo 156") is not a person, so the hours after it
+ * are not read as the rest of a name. Only these types use it, so an office line such as "Contato: 3350-0000" stays.
  */
-const WORK_PERSON = /\b(?:professor(?:a|es|as)?|instrutor(?:a|es|as)?|atendentes?|contatos?)\b/;
+const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor";
+const WORK_PERSON = new RegExp(
+  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
+    "|\\bcontatos?\\b(?!\\s+(?:pel[ao]s?|por|via|atraves|n[ao]s?)\\b)",
+);
 export const isWorkPersonLine = (line: string): boolean => isPersonInChargeLine(line) || WORK_PERSON.test(fold(line));
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
@@ -340,21 +345,21 @@ export const isWorkPersonLine = (line: string): boolean => isPersonInChargeLine(
  */
 const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja|lar|smsan";
 /**
- * v0.70.0: what "Parceria com" and "Programa" must name right after the keyword (and an article or "de"), else the line
- * is of no known kind and hidden: a body, an organisation, a programme word, or a public company the layer named when
- * read (2026-11-27: "Parceria com COPEL.", "Programa Integrado … Eletrosul"). No capital-letter rule: a name in capitals
- * would pass.
+ * v0.70.0: what "Parceria com" and "Programa" must name right after the keyword (and an optional ':', article or "de"),
+ * else the line is of no known kind and hidden: a body, an organisation, a public scope (integrado, municipal, estadual,
+ * federal), or a public company the layer named when read (2026-11-27: "Parceria com COPEL.", "Programa Integrado …
+ * Eletrosul"). Generic words a name can follow (projeto, ONG, hortas) are left out, and there is no capital-letter rule
+ * (a name in capitals would pass).
  */
 const ENTITY =
-  `${BODY}|empresa|instituto|universidade|fundacao|cooperativa|ong|projeto|integrado|municipal|estadual|federal` +
-  "|desenvolvimento|hortas?|agricultura|copel|sanepar|eletrosul";
+  `${BODY}|empresa|instituto|universidade|fundacao|cooperativa|integrado|municipal|estadual|federal|copel|sanepar|eletrosul`;
 const GARDEN_LINE = new RegExp(
   "^(?:" +
     [
       "(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|area de (?:plantio|lavoura)[a-z ]*|jardins? de mel)\\s*:",
       "(?:(?:atendimento|horarios?(?: de funcionamento)?|funcionamento)\\s*:?\\s*)?(?:(?:de|das?|aos?) )?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?\\b)",
       `(?:(?:mantid|coordenad|cuidad)[ao]s? pel[ao]|a coordenacao da horta e d[ao]|an?|o) (?:${BODY})\\b`,
-      `(?:programa|parceria com)(?: (?:d[aeo]s?|an?|o|as|os))? (?:${ENTITY})\\b`,
+      `(?:programa|parceria com)\\s*:?\\s*(?:(?:d[aeo]s?|an?|o|as|os) )?(?:${ENTITY})\\b`,
       "horta com \\d",
     ].join("|") +
     ")",

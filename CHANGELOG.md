@@ -7,16 +7,19 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Name filter for the work types, a follow-up of the 0.64.0 and 0.63.0 reviews. 27 tools. Publishes nothing.
 
 - `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: besides a line naming who
-  is in charge, a line with professor/a, instrutor/a, atendente or contato (plurals too) anywhere in it is hidden with
-  the same marker, and so is the line after such a bare label ("Instrutora:"). Broader on purpose than a role or a
+  is in charge, a line with professor/a, "Prof.", "Profa." or "Prof.ª", instrutor/a, monitor/a, orientador/a,
+  educador/a, tutor/a, atendente or contato (plurals too) anywhere in it is hidden with the same marker, and so is the
+  line after such a bare label ("Instrutora:"). "Contato" followed by a channel ("entre em contato pelo 156") stays,
+  so the hours after it are not read as the rest of a name. Broader on purpose than a role or a
   label before ':': "Atendimento: atendente Fulana" has the word after the colon. "Atendimento" stays. The other
   office types (regional offices, COHAB, fazenda urbana, núcleos, mesa solidária, chess club) keep the narrower
   filter; tested.
 - `horta comunitaria`: a "Parceria com …" or "Programa …" line is a known kind only when a body, an organisation
-  (empresa, instituto, universidade, fundação, cooperativa, ONG, projeto), a programme word (integrado, municipal,
-  estadual, federal, desenvolvimento, hortas, agricultura) or COPEL, Sanepar or Eletrosul follows the keyword (after
-  an optional article or "de"); otherwise it is hidden ("Parceria com Fulana", "Programa do Fulano"). Known limit: a
-  name after that word still passes, caught only by the person words.
+  (empresa, instituto, universidade, fundação, cooperativa), a public scope (integrado, municipal, estadual, federal)
+  or COPEL, Sanepar or Eletrosul follows the keyword (after an optional ':', article or "de"); otherwise it is hidden
+  ("Parceria com Fulana", "Programa do Fulano", "Parceria com ONG Fulana"). Generic words a name can follow (projeto,
+  ONG, hortas) are left out on purpose. Known limit: a name after an entity word still passes, caught only by the
+  person words.
 - Checked against the layers as read on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only): no line named a
   person, and no record's `hours` changed against 0.69.0. No licence or terms found, as before.
 - Citizen eval: q142 ("Onde fica o SINE do Pinheirinho? (sem expor nome de pessoa)") answered; the synthetic SINE

@@ -23,16 +23,17 @@ metadata (no terms, no licence text). No new host, no new link.
 ## Changes
 
 1. **Work person filter** (`src/sources/geocuritiba.ts`): `isWorkPersonLine` = the offices' `isPersonInChargeLine`, or
-   the words professor/a, instrutor/a, atendente or contato (plurals and "(a)" included) anywhere in the line,
-   word-bounded. Broader on purpose than "as a role or a label before ':'": "Atendimento: atendente Fulana" has the
+   the words professor/a ("Prof.", "Profa.", "Prof.ª"), instrutor/a, monitor/a, orientador/a, educador/a, tutor/a,
+   atendente or contato (plurals and "(a)" included) anywhere in the line, word-bounded; "contato" followed by a
+   channel ("entre em contato pelo 156") is kept, so the hours after it are not read as the rest of a name. Broader on purpose than "as a role or a label before ':'": "Atendimento: atendente Fulana" has the
    word after the colon. "Atendimento" is not "atendente". The four work types use it; the other `HIDE_PERSON` types
    (regional offices, COHAB, fazenda urbana, núcleos, mesa solidária, chess club) keep `isPersonInChargeLine`. The
    label rule of `hourLines` is unchanged, so after a hidden "Instrutora:" the next line is hidden too.
 2. **Garden allowlist** (`isGardenPersonLine`): "Parceria com" and "Programa" are a known kind only when an entity
-   word follows right after the keyword (and an optional article or "de"): a body (`BODY`), an organisation word
-   (empresa, instituto, universidade, fundação, cooperativa, ONG, projeto), a programme word (integrado, municipal,
-   estadual, federal, de desenvolvimento, de hortas, de agricultura) or a named public company seen in the layer
-   (COPEL, Sanepar, Eletrosul). Otherwise the line is of no known kind and hidden. Known limit: a name after the
+   word follows right after the keyword (and an optional ':', article or "de"): a body (`BODY`), an organisation
+   word (empresa, instituto, universidade, fundação, cooperativa), a public scope (integrado, municipal, estadual,
+   federal) or a named public company (COPEL, Sanepar, Eletrosul). Generic words a name can follow (projeto, ONG,
+   hortas) are left out. Otherwise the line is of no known kind and hidden. Known limit: a name after the
    entity word still passes ("Parceria com a Associação e Fulana"), caught only by the existing person words.
 3. **Tests** (`test/cityFacilities.test.ts`): the role words in each position, a label then a name on the next line,
    "Atendimento:" kept; the other person types unchanged; garden "Parceria com Fulana" and "Programa Fulana" hidden,
