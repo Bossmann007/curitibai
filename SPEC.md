@@ -19,9 +19,11 @@ None new. No request is made; synthetic lines only.
 ## Changes
 
 1. **R1** (`APPOINTMENT_DETAIL`): after "agendamento com", um/uma before dia(s) or hora(s) is a detail only when
-   `DAY_DETAIL` follows (útil/úteis, corridos, antes, "de antecedência/prazo"), the same list dia(s) already used, now
-   one constant. "com Uma Dias", "com Uma Dias Silva", "com Uma Dias de Souza" and "com Um Hora" are hidden.
-2. **R2**: senha is also a detail before "de atendimento" and "numerada".
+   `DAY_DETAIL` follows (útil/úteis, corrido(s), antes, "de antecedência/prazo"), the list dia(s) already used, now
+   one constant, or hora(s) marcada/agendada or "e meia de antecedência/prazo". "com Uma Dias", "com Uma Dias Silva",
+   "com Uma Dias de Souza" and "com Um Hora" are hidden.
+2. **R2**: senha is also a detail before "de atendimento" and "numerada", only before the end of the line, a digit or
+   punctuation, so "senha numerada Fulana" stays hidden (review of this PR).
 3. **R3**: no behaviour change. "30 dias" and "1 dia" alone after a guarded phrase stay hidden; "10 horas" reads as
    hours there (as "24 horas" since 0.82.0). Stated as a known limit in a code comment and CHANGELOG, and tested.
 4. **Tests** (`test/cityFacilities.test.ts`, v0.84.0 block): each hidden and kept case, every line the 0.82.0 review
