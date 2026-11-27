@@ -1240,6 +1240,7 @@ export type PointLayer =
   | "fire_platoon"
   | "property_registry"
   | "civil_registry"
+  | "electoral_zone"
   | "census_sector";
 
 const ZONING_FIELDS = "sg_zona,nm_zona,legislacao,data_versao";
@@ -1262,6 +1263,8 @@ export const POINT_LAYERS: Record<PointLayer, { service: string; id: number; fie
   // created_user or last_edited_user (layer 15's editor fields hold user names).
   property_registry: { service: THEMATIC_SERVICE_URL, id: 15, fields: "circunscricao,fonte" },
   civil_registry: { service: THEMATIC_SERVICE_URL, id: 16, fields: "servicos,fonte" },
+  // v0.66.0, read on 2026-11-27 UTC: 10 electoral zones (TRE-PR). Never num_eleitores (same rule as the voting places).
+  electoral_zone: { service: THEMATIC_SERVICE_URL, id: 13, fields: "zona_eleitoral,num_locais,num_secoes,data_alteracao" },
   // IBGE 2022 census sector (3,190 sectors): never v0005, v0006 (household-level averages) or nm_fcu.
   census_sector: { service: THEMATIC_SERVICE_URL, id: 43, fields: "cd_setor,nm_bairro,v0001,v0007,area_km2,dens_pop_km2,renda_media" },
 };

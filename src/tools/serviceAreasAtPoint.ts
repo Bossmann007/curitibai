@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cleanPointField, THEMATIC_SERVICE_URL, type Point, type PointFeature, type PointReads } from "../sources/geocuritiba.js";
+import { cleanPointField, THEMATIC_SERVICE_URL, VOTING_CREDIT, type Point, type PointFeature, type PointReads } from "../sources/geocuritiba.js";
 import { FACILITIES_LICENSE_NOTE } from "./cityFacilitiesSearch.js";
 import { OutOfTimeError } from "../hostGate.js";
 import { SourceRefusedError } from "../http.js";
@@ -69,6 +69,14 @@ const CivilRegistryArea = z.object({
   legal_basis: legalBasis,
 });
 
+const count = z.number().int().nullable();
+const ElectoralZone = z.object({
+  zone: z.string().nullable().describe("Electoral zone as published (`zona_eleitoral`), e.g. \"174ª\"."),
+  polling_places: count.describe("Voting places in the zone as published (`num_locais`)."),
+  sections: count.describe("Voting sections in the zone as published (`num_secoes`)."),
+  reference_date: z.string().nullable().describe("`data_alteracao` as published, day/month/year, e.g. \"31/08/2026\"; the counts are as of that date."),
+});
+
 const UNREAD_FIRST = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
 const UNREAD = " Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`).";
 
@@ -76,12 +84,12 @@ export const serviceAreasAtPointOutput = z.object({
   data: z.object({
     lat: z.number().describe("The point rounded to 4 decimals (about 11 m): the only precision sent to the source."),
     lon: z.number(),
-    areas: z.enum(["care", "safety", "registry", "all"]).describe("Which areas were asked (`all`: care and safety)."),
+    areas: z.enum(["care", "safety", "registry", "civic", "all"]).describe("Which areas were asked (`all`: care and safety)."),
     inside_curitiba: z
       .boolean()
       .describe(
         "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for " +
-          "`registry`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a " +
+          "`registry`; electoral zone for `civic`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a " +
           "neighbouring city), and then no other layer is asked.",
       ),
     health_units: z.array(HealthArea).nullable().describe(`\`care\`: health unit areas containing the point (distinct, by name, at most ${MAX_AREAS}).${UNREAD_FIRST}`),
@@ -91,6 +99,7 @@ export const serviceAreasAtPointOutput = z.object({
     fire: z.array(FireArea).nullable().describe(`\`safety\`: fire platoon areas containing the point (at most ${MAX_AREAS}).${UNREAD}`),
     property_registry: z.array(PropertyRegistryArea).nullable().describe(`\`registry\`: circunscrição imobiliária areas containing the point (at most ${MAX_AREAS}); null with \`all\` (ask \`registry\`).${UNREAD_FIRST}`),
     civil_registry: z.array(CivilRegistryArea).nullable().describe(`\`registry\`: registro civil serviço areas containing the point (at most ${MAX_AREAS}); null with \`all\`.${UNREAD}`),
+    electoral_zones: z.array(ElectoralZone).nullable().describe(`\`civic\`: TRE-PR electoral zones containing the point (at most ${MAX_AREAS}); null with \`all\` (ask \`civic\`).${UNREAD_FIRST}`),
     partial: z.boolean().describe("True when a layer of a group asked could not be read; its list is then null."),
   }),
   source: z.string(),
@@ -108,6 +117,7 @@ type CivilOut = z.infer<typeof PoliceCivilArea>;
 type FireOut = z.infer<typeof FireArea>;
 type PropertyOut = z.infer<typeof PropertyRegistryArea>;
 type CivilRegOut = z.infer<typeof CivilRegistryArea>;
+type ZoneOut = z.infer<typeof ElectoralZone>;
 
 const NOTE =
   "Care areas (by SMS and FAS): each area is as of its `reference_date` and may have changed since: confirm with the " +
@@ -122,6 +132,11 @@ const REGISTRY_NOTE =
   "circunscrição imobiliária (registro de imóveis) and which registro civil serviço cover the point, not the office's " +
   "address, and this does not replace a certidão from the registry itself. Registro civil offices: city_facilities_search " +
   "type \"cartorio de registro civil\".";
+
+const CIVIC_NOTE =
+  "Electoral zone (TRE-PR) whose area contains the point, as IPPUC publishes it; counts as of `reference_date`. It is " +
+  "not necessarily the zone where a person votes: that is the zone and section on their título de eleitor. A bairro " +
+  "can span more than one zone. Voting places: city_facilities_search type \"local de votacao\".";
 
 const approx = (v: unknown): boolean | null => (v === 1 ? true : v === 0 ? false : null);
 
@@ -215,6 +230,19 @@ function civilRegistryOf(features: PointFeature[]): CivilRegOut[] {
   return distinct(rows, (r) => r.service);
 }
 
+/** A count as published (a double such as 45.0): a non-negative whole number, else null. */
+const wholeCount = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
+
+function zonesOf(features: PointFeature[]): ZoneOut[] {
+  const rows = features.map(({ attributes: a }) => ({
+    zone: cleanPointField(a.zona_eleitoral, 20),
+    polling_places: wholeCount(a.num_locais),
+    sections: wholeCount(a.num_secoes),
+    reference_date: cleanPointField(a.data_alteracao, 50),
+  }));
+  return distinct(rows, (r) => r.zone);
+}
+
 /** Same rule as place_at_point: inside when the bairro layer names a neighbourhood or a regional at the point. */
 const insideCuritiba = (features: PointFeature[]): boolean =>
   features.some(({ attributes: a }) => cleanPointField(a.nome, 100) !== null || cleanPointField(a.nm_regional, 100) !== null);
@@ -223,9 +251,10 @@ const insideCuritiba = (features: PointFeature[]): boolean =>
  * Health area first (a Curitiba health unit area means the point is inside the city). Only when it has none is the
  * bairro layer asked, so the common call stays at 2 requests and a gap in the bairro layer never hides an area.
  */
-export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" | "safety" | "registry" = "care"): Promise<Output> {
+export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" | "safety" | "registry" | "civic" = "care"): Promise<Output> {
   if (areas === "safety") return safetyAreasAt(p, reads);
   if (areas === "registry") return registryAreasAt(p, reads);
+  if (areas === "civic") return civicAreasAt(p, reads);
   const healthRes = await reads.layer("health_area");
   const times = [healthRes.fetchedAt];
   const health = healthOf(healthRes.value);
@@ -267,6 +296,7 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
       fire: null,
       property_registry: null,
       civil_registry: null,
+      electoral_zones: null,
       partial,
     },
     source: SERVICE_AREAS_SOURCE,
@@ -339,6 +369,7 @@ async function safetyAreasAt(p: Point, reads: PointReads): Promise<Output> {
       fire,
       property_registry: null,
       civil_registry: null,
+      electoral_zones: null,
       partial: missing.length > 0,
     },
     source: SAFETY_AREAS_SOURCE,
@@ -396,6 +427,7 @@ async function registryAreasAt(p: Point, reads: PointReads): Promise<Output> {
       fire: null,
       property_registry: property,
       civil_registry: civil,
+      electoral_zones: null,
       partial: failure !== null,
     },
     source: REGISTRY_AREAS_SOURCE,
@@ -403,5 +435,45 @@ async function registryAreasAt(p: Point, reads: PointReads): Promise<Output> {
     checked_at: times.reduce((a, c) => (c < a ? c : a)),
     license_note: FACILITIES_LICENSE_NOTE,
     note: [REGISTRY_NOTE, ...extra].join(" "),
+  };
+}
+
+/** The electoral zone (10 areas, Curitiba only); when it has none, the bairro layer decides whether the point is in Curitiba. */
+async function civicAreasAt(p: Point, reads: PointReads): Promise<Output> {
+  const zoneRes = await reads.layer("electoral_zone");
+  const times = [zoneRes.fetchedAt];
+  const zones = zonesOf(zoneRes.value);
+  let inside = zones.length > 0;
+  if (!inside) {
+    const bairroRes = await reads.layer("bairro");
+    times.push(bairroRes.fetchedAt);
+    inside = insideCuritiba(bairroRes.value);
+  }
+  const extra = [
+    inside ? "" : "No electoral zone and no Curitiba neighbourhood (IPPUC cadastral map) contains this point: it may be in a neighbouring city.",
+    inside && zones.length === 0 ? "No electoral zone found here (not covered by the layer)." : "",
+    zones.filter((z) => z.zone !== null).length > 1 ? "The point is on a boundary: more than one area is listed." : "",
+  ].filter(Boolean);
+  return {
+    data: {
+      lat: p.lat,
+      lon: p.lon,
+      areas: "civic",
+      inside_curitiba: inside,
+      health_units: null,
+      cras: null,
+      police_military: null,
+      police_civil: null,
+      fire: null,
+      property_registry: null,
+      civil_registry: null,
+      electoral_zones: zones,
+      partial: false,
+    },
+    source: VOTING_CREDIT,
+    source_url: THEMATIC_SERVICE_URL,
+    checked_at: times.reduce((a, c) => (c < a ? c : a)),
+    license_note: FACILITIES_LICENSE_NOTE,
+    note: [CIVIC_NOTE, ...extra].join(" "),
   };
 }

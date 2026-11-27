@@ -263,3 +263,8 @@ At v0.65.0 (phase B) `place_at_point` part `place` has a `pgv` field: the IPTU P
 micro-region of a point (fiscal zone, micro-bairro and micro-region codes as published, IPPUC's PGV layer 0); never a
 land or property value (`vukt` is not read) and never a lot. The citizen eval answers 133 of 137 questions; 4 are gaps
 (real-time buses 2, other cities 2).
+
+At v0.66.0 (phase B) `place_at_point` `service_areas` has `areas: "civic"`: the TRE-PR electoral zone whose area
+contains a point (IPPUC's thematic layer 13, 10 zones), with its counts of voting places and sections as published;
+never the number of voters, and not a given voter's own zone. The citizen eval answers 134 of 138 questions; 4 are
+gaps (real-time buses 2, other cities 2).

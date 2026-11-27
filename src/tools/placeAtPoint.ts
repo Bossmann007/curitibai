@@ -29,12 +29,12 @@ export const placeAtPointInput = {
   lon: z.number().min(-180).max(180).describe("Longitude in decimal degrees, inside Curitiba (-49.45 to -49.15)."),
   include: z.array(z.enum(PARTS)).min(1).optional().describe("Parts to answer; default all three."),
   areas: z
-    .enum(["care", "safety", "registry", "all"])
+    .enum(["care", "safety", "registry", "civic", "all"])
     .optional()
     .describe(
       "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia " +
         "Civil district and fire (Corpo de Bombeiros) platoon areas. \"registry\": circunscrição imobiliária " +
-        "(registro de imóveis) and registro civil serviço. \"all\": care and safety.",
+        "(registro de imóveis) and registro civil serviço. \"civic\": TRE-PR electoral zone. \"all\": care and safety.",
     ),
 };
 
@@ -284,7 +284,7 @@ interface Job {
   run: () => Promise<Result>;
 }
 
-type Areas = "care" | "safety" | "registry" | "all";
+type Areas = "care" | "safety" | "registry" | "civic" | "all";
 
 function jobsFor(include: readonly Part[], areas: Areas, p: Point, reads: PointReads): Job[] {
   const groups = areas === "all" ? (["care", "safety"] as const) : [areas];
@@ -362,9 +362,9 @@ export const placeAtPoint: ToolDef<typeof placeAtPointInput, typeof placeAtPoint
   title: "Place, service areas and census of a point in Curitiba (IPPUC GeoCuritiba)",
   description:
     "Where is a point in Curitiba, who serves it, who lives there? `include`: place (bairro, " +
-    "regional, zoning, nearest street, IPTU PGV micro-region), service_areas (`areas`: care, safety, registry, all) and census (IBGE 2022; sectors " +
+    "regional, zoning, nearest street, IPTU PGV micro-region), service_areas (`areas`: care, safety, registry, civic, all) and census (IBGE 2022; sectors " +
     `under ${MIN_HOUSEHOLDS} households withheld). Live from IPPUC's GeoCuritiba (not affiliated); only the point ` +
-    "rounded to 4 decimals is sent. Cold calls may be partial: retry. Read-only.",
+    "rounded to 4 decimals is sent. If partial, call again. Read-only.",
   inputSchema: placeAtPointInput,
   outputSchema: placeAtPointOutput,
   handler: async (args) => {
