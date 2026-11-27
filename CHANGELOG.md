@@ -2,6 +2,40 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.72.0 - 2026-11-27
+
+Name filter for the work types, second pass (the lows of the 0.70.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: the value of each
+  "Atendimento:", "Atendimento ao público:" or "Horário de atendimento:" label at the start of the line or of a
+  sentence is kept only when it reads as hours (a digit; "de/das/às" and a digit; a weekday, its abbreviation, "dia"
+  or "feriado" that goes on as hours or has a digit later; "diariamente", "presencial", "online"; an appointment, a
+  "não é/há …" or a "fechado" sentence), on the same line or, after a bare label (with or without ':'), on the next
+  one; otherwise the line is hidden ("Atendimento: Fulana", "Atendimento: Domingos da Silva"). "Local de
+  atendimento: Rua …" is not such a label. Docente and facilitador/a (plurals too) hide a line anywhere in it; agente
+  and técnico/a before ':', or at the start or after an article or "com/pelo/pela" when a word other than "de", "em",
+  "para" … follows: "Técnica Fulana" and "com o agente Fulano" are hidden, "aperfeiçoar técnicas" (layer 149) and "a
+  técnica de solda" stay, and "Agentes comunitários" is hidden on the safe side.
+- "Contato" is a person unless a channel follows: "Contato: 3350-0000" (only phones, channel words and punctuation
+  after the ':', then the end or hours that start with a word: "Contato: 3350-0000 - segunda a sexta 8h") and "contato pelo/via/no 156, telefone, e-mail, site …" stay; "Contato pela Fulana", "Contato via
+  Fulano", "Contato: 3350-0000 Fulana" and a bare "Contato:" (its value follows) are hidden. 0.70.0 hid "Contato:
+  3350-0000" and kept "Contato pela Fulana". The hours after a contact phone stay, also after a bare "Contato:" and
+  its hidden value: an hours line that starts with a weekday and has a digit is never read as the rest of a name (every
+  type that hides names). The whole field read joined checks only the words, not what follows a label. Known limit: a
+  name later in an hours or channel line ("das 8h às 17h com a Fulana", "contato pelo telefone com Fulana") passes,
+  caught only by the role words.
+- `horta comunitaria`: a "Parceria com …" or "Programa …" later in the line needs an entity word too ("Horta com 20
+  canteiros - Parceria com Fulana" is hidden), and "mantida pela" not followed by an entity word hides the line
+  anywhere in it.
+  A sentence split was tried and dropped: it missed " - " and ", " and hid public lines with an abbreviation.
+- Checked against the layers as read twice on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only; the second read
+  after the review fixes): the new filters changed no record's `hours` against 0.71.0 (78 records with an
+  `observacao`). No licence or terms found, as before.
+- Citizen eval: q144 ("Onde fica o Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)") answered from a
+  new synthetic Liceu fixture with a name after "Atendimento:", a contact phone and a docente line. 139 of 143. Tool
+  contract snapshot unchanged.
+- No new network host, no new link, no new dependency.
+
 ## 0.71.0 - 2026-11-27
 
 PGV codes as number or text, a follow-up of the 0.65.0 review. 27 tools. Publishes nothing.

@@ -293,3 +293,10 @@ publishes them as a number or as text (a blank is never the code 0); this answer
 XV de Novembro, 1000?" at a point on that street. No new source or host. The Curitiba App rows are unchanged (18, 16
 covered). The citizen eval answers 138 of 142 questions (q143; q140 is left to v0.68.0, PR #83); 4 are gaps
 (real-time buses 2, other cities 2).
+
+At v0.72.0 (phase B) the `city_facilities_search` work types also hide a name after "Atendimento:", the roles docente,
+facilitador/a, técnico/a and agente and "Contato pela/via <nome>", while "Contato: 3350-0000" and the hours after it
+stay; the `horta comunitaria` allowlist checks a partner or programme later in the line too. This answers "Onde fica o
+Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are
+unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q144; q140 is left to v0.68.0, PR #83); 4
+are gaps (real-time buses 2, other cities 2).
