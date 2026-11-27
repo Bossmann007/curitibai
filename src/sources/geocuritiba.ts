@@ -1024,9 +1024,14 @@ export function institutionalPhones(raw: unknown): string[] {
 
 const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitiba\.pr\.gov\.br$/;
 
-/** v0.67.0: a local part of two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva") is a person's. */
-const PERSON_LOCAL = /^[a-z]{2,}(?:[._][a-z]{2,})+$/;
-/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); kept. */
+/**
+ * A local part shaped like a person's name is a person's: alphabetic words joined by ".", "_" or "-" ("fulana.silva"),
+ * since v0.74.0 the first of any length ("j.silva"), each word with optional trailing digits ("maria2.souza",
+ * "maria.souza2", "ana-lima") and an optional number at the end ("maria.souza.2", "maria_souza_01"). Each word after
+ * the first has 2+ letters. A single word ("falecomacgm") or a word and a number ("sec.2") never matches.
+ */
+const PERSON_LOCAL = /^[a-z]+\d*(?:[._-][a-z]{2,}\d*)+(?:[._-]\d+)?$/;
+/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); checked first, kept. */
 const UNIT_PREFIXES = new Set([
   "biblioteca", "caps", "casadepassagem", "ccz", "cei", "cmae", "cmaee", "cmei", "cras", "creas", "escola", "farol",
   "nrgm", "regional", "ruadacidadania", "sine", "ubs", "upa", "us", "visa",
@@ -1034,7 +1039,7 @@ const UNIT_PREFIXES = new Set([
 
 function isPersonShaped(email: string): boolean {
   const local = email.slice(0, email.indexOf("@"));
-  return PERSON_LOCAL.test(local) && !UNIT_PREFIXES.has(local.split(/[._]/)[0]!);
+  return !UNIT_PREFIXES.has(local.split(/[._-]/)[0]!.replace(/\d+$/, "")) && PERSON_LOCAL.test(local);
 }
 
 /**

@@ -205,6 +205,24 @@ describe("contact fields", () => {
     }
     expect(institutionalEmails("fulana.silva@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
   });
+
+  it("v0.74.0: also drops an initial before the surname, digits after a name word or at the end, and '-' as a separator", () => {
+    for (const e of ["j.silva@curitiba.pr.gov.br", "m_souza@sme.curitiba.pr.gov.br", "maria.souza2@curitiba.pr.gov.br",
+      "j.souza12@sms.curitiba.pr.gov.br", "ana-lima@curitiba.pr.gov.br", "Maria-Clara.Souza3@FCC.curitiba.pr.gov.br",
+      "maria2.souza@curitiba.pr.gov.br", "maria.souza.2@curitiba.pr.gov.br", "maria_souza_01@sme.curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([]);
+    }
+    expect(institutionalEmails("joão.silva@curitiba.pr.gov.br"), "an accented local part never passes the city shape").toEqual([]);
+  });
+
+  it("v0.74.0: generic sector and unit addresses stay, '-' after a unit word included", () => {
+    for (const e of ["falecomacgm@curitiba.pr.gov.br", "sine@curitiba.pr.gov.br", "cras.boqueirao@curitiba.pr.gov.br",
+      "goe@curitiba.pr.gov.br", "ccz@sms.curitiba.pr.gov.br", "ouvidoria@sms.curitiba.pr.gov.br", "cras-cajuru@curitiba.pr.gov.br",
+      "us-bairroalto@sms.curitiba.pr.gov.br", "regional3.cic@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br",
+      "ouvidoria@curitiba.pr.gov.br", "sec.2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([e]);
+    }
+  });
 });
 
 describe("parseLayer", () => {
