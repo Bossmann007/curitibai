@@ -2801,6 +2801,17 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
       expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace(/3350-000\d/g, "[masked]")]);
     }
     expect(isWorkPersonLine("Telefone da Regional: 156 e 3350 e 3351 e 3352 e 3353 e 3354 e 3355"), "a rest of up to 100 steps is a unit").toBe(false);
+    for (const [a, b] of [["Fale com a gente", "156 - Fulana"], ["Telefone da Regional:", "2º andar - Fulana"], ["Falar com o RH", "8h às 17h com Fulana"],
+      ["Fale com a gente", "Presencial com Fulana"], ["Fale com a gente", "Segunda a sexta com Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, `${HOURS}\nTratar com\no RH\n156 Fulana`)).toEqual([HOURS, "Tratar com", "o RH", HIDDEN_PERSON_LINE]);
+    for (const [a, b, c] of [["Fale com a gente", "pelo 156", "Sala de leitura infantil"], ["Telefone da Regional:", "3350-0000", "Térreo do prédio"]] as const) {
+      expect(lines(id, `${a}\n${b}\n${c}`), `${id}: a complete phrase, a contact line, then ${c}`).toEqual([a, b.replace("3350-0000", "[masked]"), c]);
+    }
+    for (const [a, b] of [["Falar com o RH", "Segunda a sexta, das 8h às 17h, com agendamento"], ["Fale com a gente", "Horário: 8h às 17h"], ["Fale com a gente", "Rua XV de Novembro, 100"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
   });
 
   it.each(WORK)("%s hides 'agendamento com' and a word that is also a name at the end of the line", (id) => {
@@ -2815,7 +2826,9 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
 
   it("a guarded word's rest is read for at most 100 steps, so a 400 KB line is fast", () => {
     const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
-      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000)];
+      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000),
+      "Telefone da Regional: " + "whats app ".repeat(40_000) + "Fulana", "Fale com a gente\n" + "whats app e-mail segunda as 8h ".repeat(13_000) + "Fulana"];
+    expect(isWorkPersonLine("Telefone da Regional: " + "whats app ".repeat(50) + "Fulana"), "review: 'whats app' reads one way only").toBe(true);
     const start = performance.now();
     for (const s of shapes) {
       isWorkPersonLine(s);

@@ -1586,9 +1586,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
     skipped only when a line hid on its own rules (not by the split check), so a keyword split over three lines still hides the whole field. The
     garden allowlist already hid both halves and is unchanged. Work types: after a line whose contact phrase ends in "a
     gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the split check hides the
-    next line unless what comes before its first digit, "[masked]" or ':' (after a leading dash) is empty, reads as
-    hours or a service value, or starts with a service or address word or a unit, channel or connector word. Known
-    limits: other words on that line are hidden too, on the safe side; "Presencial com Fulana" passes; after a guarded
+    next line unless it is made only of channel, unit, connector and hours words, numbers and punctuation, or is a
+    street address. Known limits: other words on that line are hidden too, on the safe side; after a guarded
     phrase ending in ',' or ';' with no name after it the line is hidden, on the safe side; when the line
     before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima", "Coordenadora" / "geral:
     Fulana") the pair is not read and the name passes, as in 0.80.0. Checked on 2026-11-27 (UTC) with the server's own
@@ -1602,8 +1601,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
     guard ("Telefone da" / "Regional Fulana"); a name on the line after any guarded contact phrase or "agendamento com
     o RH" is hidden, the line before read uncut; "agendamento com Dias/Uma/hora/senha" at the end of a line is hidden.
     The whole next line is read ("3350-0000 - Fulana", "pelo 156 ou com a Fulana"), and the split check also reads
-    three lines ("Tratar com" / "o RH" / "Fulana"). On 23,100 generated lines 0.79.0 shows a name in 1,432, 0.80.0
-    in 12,680 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+    three lines ("Tratar com" / "o RH" / "Fulana"); that line is kept only when it is made of channel, unit,
+    connector and hours words, numbers and punctuation, or is a street address. "whats app" now reads one way only (a
+    line of repeated "whats app" backtracked exponentially in 0.80.0). On 29,400 generated lines 0.79.0 shows a name
+    in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid is shown.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67

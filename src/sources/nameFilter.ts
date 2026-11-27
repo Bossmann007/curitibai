@@ -62,7 +62,8 @@ const WORK_PERSON = new RegExp(
     `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?:\\s+[a-z]+)?\\s*:`,
   "u",
 );
-const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|ramal|sms";
+// v0.81.0: "whats" never before "app", so "whats app" reads one way only (two ways backtracked exponentially).
+const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats(?! ?app\\b)|e-?mails?|ramal|sms";
 /**
  * v0.76.0: the next word is a person unless it is a unit or channel word ("da unidade", "do Sine", "com DDD"), after
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
@@ -93,7 +94,17 @@ const REST_STEP =
  */
 const GUARDED_UNIT = `(?:${GUARDED_WORD})\\b(?=(?:${REST_STEP}){0,100}(?<![,;])(?:$|\\n))`;
 /** A whole line made only of rest steps ("pelo 156", "3350-0000", "WhatsApp", "ou pelo telefone"). */
-const REST_ONLY = new RegExp(`^(?:${REST_STEP})*$`, "u");
+/**
+ * Hours words that are not rest steps (each alternative matches different text, so a line reads one way only and the
+ * check stays linear): weekdays, "h", "às", "até", "de", "horário", "atendimento", "fechado", "agendamento" …
+ */
+const HOURS_STEP =
+  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|dias?|uteis|ate|de|h|hs|" +
+  "horas?|horarios?|atendimento|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
+  "todas|presencial|online|agendamento|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
+const REST_ONLY = new RegExp(`^(?:${REST_STEP}|${HOURS_STEP})*$`, "u");
+/** A street address ("Rua XV de Novembro, 100", "Av. …"): kept after a guarded contact phrase. */
+const ADDRESS_START = /^(?:rua|r|av|avenida|travessa|alameda|praca|rodovia|estrada)\b/;
 const personNext = (guarded: string): string =>
   `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${guarded}))\\p{L}`;
 const PERSON_NEXT = personNext(GUARDED_UNIT);
@@ -187,20 +198,19 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 /**
  * v0.81.0: a line whose contact phrase or "agendamento com" names a guarded unit word ("Falar com o RH", "Fale com a
  * gente pelo 156", "Telefone da Regional:", "E-mail da coordenação", "Agendamento com o RH") may have the name on the
- * next line (0.79.0 hid it with the whole field). That next line is hidden unless what comes before its first digit,
- * "[masked]" or ':' (after a leading dash or bullet) reads as hours or a service value or starts with a service or
- * address word (SERVICE_LINE), or the whole line is made of rest steps (REST_ONLY): "Segunda a sexta …", "3350-0000",
- * "pelo 156", "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000", "-
- * Fulana", "3350-0000 - Fulana", "pelo 156 ou com a Fulana" and "Fulana: segunda a sexta" are hidden. The phrase may
- * itself span two lines ("Tratar com" / "o RH" / "Fulana": hourLines reads three lines). Known limits: a line of any
- * other words is hidden too ("Térreo do prédio"); "Presencial com Fulana" passes (it reads as hours).
+ * next line (0.79.0 hid it with the whole field). That next line is hidden unless it is made only of rest and hours
+ * steps (REST_ONLY) or is a street address (ADDRESS_START): "Segunda a sexta, das 8h …", "3350-0000", "pelo 156",
+ * "WhatsApp", "Atendimento presencial", "Horário: 8h", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000",
+ * "3350-0000 - Fulana", "156 - Fulana", "pelo 156 ou com a Fulana", "8h às 17h com Fulana" and "Presencial com
+ * Fulana" are hidden. The phrase may itself span two lines ("Tratar com" / "o RH" / "Fulana": hourLines reads three
+ * lines), but not be complete on the first of three. Known limit: a line of any other words is hidden too ("Térreo do
+ * prédio", "2º andar"), on the safe side.
  */
 const GUARDED_NEXT = `(?:(?:an?|o|as|os)\\s+)?${GUARDED_UNIT}`;
 const GUARDED_END = new RegExp(`${namedChannel(GUARDED_NEXT).source}|\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+${GUARDED_NEXT}`, "u");
 const isNameAfterGuarded = (f: string, prev: string): boolean => {
   if (!GUARDED_END.test(prev)) return false;
-  const head = (f.replace(/^[-–•*\s]+/, "").split(/\d|\[masked\]|:/)[0] ?? "").trim();
-  return !isServiceValue(f) && !isServiceValue(head) && !SERVICE_LINE.test(head) && !REST_ONLY.test(f);
+  return !REST_ONLY.test(f) && !ADDRESS_START.test(f.replace(/^[-–•*\s]+/, ""));
 };
 /** v0.81.0: the line ends in a guarded contact phrase, so hourLines reads the next line with it even if it starts with a number. */
 export const isGuardedContact = (line: string): boolean => GUARDED_END.test(fold(line));
@@ -217,7 +227,10 @@ export const isWorkPersonLine = (line: string, prev?: string | null): boolean =>
   if (prev !== null) return isContactPerson(f) || isServiceValuePerson(f, prev);
   // hourLines' split check (v0.81.0) joins a line to the one before it with a line break.
   const br = f.lastIndexOf("\n");
-  return br >= 0 && isNameAfterGuarded(f.slice(br + 1), f.slice(0, br));
+  if (br < 0) return false;
+  // Three lines: the phrase must end on the middle one ("Tratar com" / "o RH"), not be complete on the first.
+  const first = f.slice(0, f.indexOf("\n"));
+  return (first.length === br || !GUARDED_END.test(first)) && isNameAfterGuarded(f.slice(br + 1), f.slice(0, br));
 };
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in

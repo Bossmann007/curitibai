@@ -20,11 +20,18 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   - A name after a number or a connector on that next line ("Telefone da Regional:" / "3350-0000 - Fulana", "Fale
     com a gente" / "pelo 156 ou com a Fulana"), and a phrase itself split over two lines with the name on a third
     ("Tratar com" / "o RH" / "Fulana"): the whole next line is read, and the split check also reads three lines.
-  On a generated set of 23,100 such lines (four work types, seven lead-in lengths, fifteen phrases, eleven separators,
-  five names), 0.79.0 shows the name in 1,432, 0.80.0 in 12,680 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+  The line after such a phrase is kept only when it is made of channel, unit, connector and hours words, numbers and
+  punctuation ("pelo 156", "Segunda a sexta, das 8h às 17h", "Horário: 8h às 17h") or is a street address, so "156 -
+  Fulana", "8h às 17h com Fulana" and "Presencial com Fulana" are hidden there.
+  On a generated set of 29,400 such lines (four work types, seven lead-in lengths, fifteen phrases, fourteen
+  separators, five names), 0.79.0 shows the name in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid
+  is shown.
 - Performance regression of 0.80.0: a guarded word's rest is read for at most 100 steps. A 400 KB line of "telefone
   da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
   longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
+  "whats app" could be read two ways ("whats app" or "whats" then "app"), so a line of repeated "whats app" after a
+  guarded word backtracked exponentially (0.80.0: 22 repeats 153 ms, 50 repeats over a minute); it reads one way now
+  (50 repeats: under 1 ms).
 - "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
   um/uma, dia(s), hora and senha count as appointment details only before a number or a detail word ("uma semana",
   "dias úteis", "hora marcada", "senha retirada"), so "agendamento com Dias Ferreira" is hidden too.
@@ -47,13 +54,13 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
 - Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after a line whose contact phrase ends in
   "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Fale com a gente", "Telefone da Regional:"), a
   name on the next line is hidden ("Fulano de Tal", "Sra. Fulana", "- Fulana", "Fulana (41) 3350-0000", "Fulana,
-  telefone …", "Fulana: segunda a sexta"); this is read by the split check, so the whole-field check still runs. The
-  next line is kept when what comes before its first digit, "[masked]" or ':' (after a leading dash) is empty, reads
-  as hours or a service value, or starts with a service or address word or a unit, channel or connector word
-  ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua XV de
-  Novembro, 100", "Com agendamento"). Known limits: any other words on that line are hidden too, on the safe side;
-  "Presencial com Fulana" passes (it reads as hours); a guarded phrase that ends in ',' or ';' with no name after it
-  ("Fale com a gente," / hours) is hidden, on the safe side.
+  telefone …", "Fulana: segunda a sexta", "156 - Fulana", "8h às 17h com Fulana"); this is read by the split check,
+  so the whole-field check still runs. The next line is kept only when it is made of channel, unit, connector and
+  hours words, numbers and punctuation ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp",
+  "Atendimento presencial", "Horário: 8h às 17h", "Com agendamento") or is a street address ("Rua XV de Novembro,
+  100"). Known limits, on the safe side: any other words on that line are hidden too ("Sala de leitura", "2º
+  andar"), unless the phrase was complete on an earlier line; a guarded phrase that ends in ',' or ';' with no name
+  after it ("Fale com a gente," / hours) is hidden.
 - "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
   carteira de trabalho" stay shown, also before the hours and after a hidden line.
 - Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
