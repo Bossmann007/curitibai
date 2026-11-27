@@ -240,7 +240,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(text(o)).not.toMatch(/(segundo|pelo) (o )?(guia|PDF)[^.]*endereço de quem envia/i);
     expect(step(5)).toMatch(/forma anônima no Portal Curitiba Ouve \(passo 4\)/);
     // Anonymity is settled for denúncias only; the summary hedges a plain reclamação the same way step 6 does.
-    expect(o.data.what).toMatch(/para denúncias, o guia de 2024 prevê a forma anônima no Portal Curitiba Ouve; para reclamação comum isso não foi verificado/);
+    expect(o.data.what).toMatch(/para denúncias, o guia de 2024 prevê a forma anônima \(sem resposta nem acompanhamento\) no Portal Curitiba Ouve; para reclamação comum isso não foi verificado/);
     // Registration: e-Cidadão for identificada and sigilosa; what the site asks today is not verified.
     expect(step(6)).toMatch(/identificada e a sigilosa pedem cadastro no e-Cidadão/);
     expect(step(6)).toMatch(/o que o site pede hoje não foi verificado/);
@@ -248,6 +248,31 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(step(6)).toMatch(/reclamação comum[^.]*não foi verificado/);
     expect(o.note).toMatch(/e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own observation/);
     expect(o.note).toMatch(/not verified[^.]*registration/i);
+  });
+
+  it("hedges each step 5 sentence that sends the citizen to the anonymous form (since 0.75.0)", async () => {
+    const o = await guide();
+    // Sentences end at a period followed by a space; the e-mail address and "13.460" have no space after their dots.
+    const sentences = allSteps(o).find((s) => s.step === 5)!.action.split(/(?<=\.)\s+/);
+    const anonymous = sentences.filter((s) => /forma anônima/.test(s));
+    expect(anonymous.length).toBeGreaterThan(0);
+    for (const s of anonymous) expect(s).toContain("segundo o guia de 2024, que o CuritibAI não conferiu hoje no site");
+  });
+
+  it("anonymous form wording stays inside the record of the 2024 guide (since 0.75.0)", async () => {
+    const o = await guide();
+    const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
+    // R1: what the citizen writes or attaches can identify them; the project's own observation.
+    expect(step(4)).toMatch(
+      /A forma anônima dispensa o cadastro, mas o que o cidadão escreve ou anexa \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) pode identificá-lo; para continuar anônimo, deixe isso de fora \(observação do CuritibAI, não do guia de 2024\)/,
+    );
+    // R3: the record says a denúncia is registered, not that it is investigated.
+    expect(step(6)).toMatch(/anônima \(sem cadastro; a denúncia é registrada, mas sem resposta nem acompanhamento\)/);
+    expect(text(o)).not.toMatch(/apurad/);
+    // R4: the 30 days do not apply to the anonymous form.
+    expect(step(8)).toMatch(/\(não vale para a forma anônima, que não recebe resposta\)/);
+    expect(o.data.what).toMatch(/forma anônima \(sem resposta nem acompanhamento\)/);
+    expect(o.note).toMatch(/writes or attaches to an anonymous denúncia can identify them \(step 4\) is also this project's own observation/);
   });
 
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {

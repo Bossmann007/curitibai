@@ -2077,6 +2077,23 @@ above:
 - That an e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own
   observation, not a fact from the PDF; the guide's `what`, step 5 and `note` say so.
 
+Ouvidoria anonymity wording (`ouvidoria`, since 0.75.0, written 2026-11-27; the Security Reviewer's R1-R5 on
+0.69.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence rests on the 0.43.0 record above or is marked as the project's own:
+
+- Step 6, "a denúncia é registrada, mas sem resposta nem acompanhamento" (was "é apurada"): the record says a denúncia
+  "can also be registered" and the anonymous form has "no account, no answer or follow-up"; it does not say the
+  denúncia is investigated.
+- `what`, "forma anônima (sem resposta nem acompanhamento)", and step 8, "(não vale para a forma anônima, que não
+  recebe resposta)" after the 30 days: the record's "anonymous: no account, no answer or follow-up".
+- Step 5, "segundo o guia de 2024, que o CuritibAI não conferiu hoje no site": the record's anonymous form is the
+  PDF's; the site was not opened (the "Not opened" line above).
+- Step 4 and the `note`, that the anonymous form skips the registration but what the citizen writes or attaches (name,
+  address, phone, a face, the location saved in a photo, the file name) can identify them: this project's own
+  observation, marked "(observação do CuritibAI, não do guia de 2024)"; the record only says photos and documents
+  may be attached.
+
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
 Ouvidoria tool was made: the change is one guide entry in an existing table.
