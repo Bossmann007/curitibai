@@ -401,9 +401,9 @@ promise of anonymity in the guide. No new question, source or host. The Curitiba
 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
 buses 2, other cities 2).
 
-At v0.88.0 (phase B) the work-type person-name filter hides a weekday word alone after "agendamento com senha
-numerada" ("senha numerada Domingo"); a weekday next to "a/às", a digit or "fechado" stays. The 0.86.0 docs now say
-the split check reads up to the third line after such a line, and a name on the fourth line, when another line hid
-on its own rules, is a stated and tested known limit. No new question, source or host. The Curitiba App rows are
-unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are
-gaps (real-time buses 2, other cities 2).
+At v0.88.0 (phase B) the 0.86.0 docs now say the work-type split check reads up to the third line after
+"agendamento com senha numerada", and two known limits are stated and tested: a name on the fourth line when another
+line hid on its own rules, and a weekday word alone after "senha numerada" (a narrower weekday rule hid ordinary
+schedules and was dropped). No behaviour change, no new question, source or host. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps
+(real-time buses 2, other cities 2).

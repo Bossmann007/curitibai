@@ -6,21 +6,19 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 Person-name filter after "senha numerada", follow-ups of the 0.86.0 reviews (PR #101). 27 tools. Publishes nothing.
 
-- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after "agendamento com senha numerada"
-  or "… senha de atendimento", a weekday word counts as hours only after "a/ao/aos/às" or before "a/ao/aos/às/e", a
-  digit, "das" and a digit, or "fechado". "senha numerada Domingo", "…, Domingo", "… Sexta" and a line "Domingo"
-  after such a line were shown (0.86.0 known limit) and are now hidden; "de segunda a sexta", "seg. a sex., 8h",
-  "segunda e quarta, 8h", "domingo fechado" and "Segunda a sexta, 8h às 17h" on the next line stay. Only this rest
-  changes; the line after a guarded contact phrase ("Fale com a gente") reads weekdays as before.
 - Docs match the code: the 0.86.0 CHANGELOG note and docs/sources.md said that, when another line hid on its own
-  rules, only the line after "senha numerada" was read. The split check reads the next two lines, up to the third
-  line from it; both texts are corrected.
+  rules, only the line after "agendamento com senha numerada" was read. The split check reads the next two lines, up
+  to the third line from it; both texts are corrected. No behaviour change.
 - Known limit, now stated and tested: in that case a name on the fourth line or later, after two schedule lines
   ("Responsável: Beltrano." / "Agendamento com senha numerada" / "Segunda a sexta" / "das 8h às 17h" / "Fulana"), is
   shown, the same class as the 0.81.0 limit. With no other hidden line the whole field is hidden, as before.
 - Code: the senha rest is interpolated into the appointment-detail pattern directly, not with a `.replace` on a
-  placeholder; before the weekday change the three patterns built from it had the same source as in 0.87.0. A new
-  test times the weekday shapes repeated (200 KB each).
+  placeholder, so a renamed marker cannot silently drop it. The three patterns built from it have the same source as
+  in 0.87.0 (dumped and compared); the 0.86.0 timing test still covers them.
+- Not done: reading a weekday word after "senha numerada" as hours only next to "a/às", a digit or "fechado", to hide
+  "senha numerada, Domingo". The review of this change showed it hid ordinary schedules that 0.87.0 kept
+  ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)", "sábado e domingo"), so
+  it was dropped. A new test keeps those schedules visible; "senha numerada, Domingo" stays a tested known limit.
 - Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
 - No request made, no new network host, no new link, no new dependency.
 

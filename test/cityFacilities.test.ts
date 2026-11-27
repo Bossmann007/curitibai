@@ -3127,33 +3127,27 @@ describe("v0.86.0: name filter, eighth pass (the rest after 'senha numerada'; th
   });
 });
 
-describe("v0.88.0: senha follow-ups (a weekday alone after 'senha numerada'; the fourth-line known limit)", () => {
+describe("v0.88.0: senha follow-ups (the fourth-line known limit; weekday shapes after 'senha numerada')", () => {
   const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
   const lines = (id: string, s: string) => {
     const t = type(id);
     return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
   };
-  const SCHEDULE = "Segunda a sexta, 8h às 17h";
 
-  it.each(WORK)("%s hides a weekday word alone after 'senha numerada' (shown in 0.86.0)", (id) => {
-    for (const r of [" Domingo", ", Domingo", " Sexta", ". Sábado", " (Domingo)"]) {
-      const v = `agendamento com senha numerada${r}`;
-      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
-    }
-    for (const n of ["Domingo", "Sexta"]) {
-      expect(lines(id, `Agendamento com senha numerada\n${n}`).join("\n"), `${id}: next line ${n}`).not.toContain(n);
-    }
-  });
-
-  it.each(WORK)("%s keeps a weekday after 'a/às/ao' or before 'a/e', a digit or 'fechado'", (id) => {
-    for (const r of [", de segunda a sexta", ", seg. a sex., 8h", ", segunda e quarta, 8h", ", domingo fechado", ", sábado das 8h às 12h", ", 8h às 17h de segunda a sábado"]) {
+  it.each(WORK)("%s keeps weekday schedules after 'senha numerada' (a narrower weekday rule tried in 0.88.0 hid them)", (id) => {
+    for (const r of [", de segunda a sexta", ", de segunda-feira a sexta-feira, 8h às 17h", ", sábado de 8h às 12h", ", seg-sex, 8h", ", sábado (8h às 12h)",
+      ", segunda até sexta, 8h", ", sábado e domingo", ", segunda, quarta e sexta das 8h às 12h", ", domingo fechado"]) {
       const v = `agendamento com senha numerada${r}`;
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
     }
-    for (const d of ["Agendamento com senha numerada", "Agendamento com senha de atendimento"]) {
-      expect(lines(id, `${d}\n${SCHEDULE}`), `${id}: ${d}`).toEqual([d, SCHEDULE]);
-      expect(lines(id, `${d}\nSegunda a sexta\ndas 8h às 17h`), `${id}: ${d}`).toEqual([d, "Segunda a sexta", "das 8h às 17h"]);
+    for (const n of ["Segunda-feira a sexta-feira, 8h às 17h", "Sábado de 8h às 12h", "Sábado (8h às 12h)"]) {
+      expect(lines(id, `Agendamento com senha numerada\n${n}`), `${id}: ${n}`).toEqual(["Agendamento com senha numerada", n]);
     }
+  });
+
+  it.each(WORK)("%s, known limit: a weekday word alone after 'senha numerada' reads as hours and is shown", (id) => {
+    // Not fixed: a weekday is an hours step, and narrowing it hid the schedules above. Recorded in docs/sources.md.
+    expect(lines(id, "Atendimento: agendamento com senha numerada, Domingo")).toEqual(["Atendimento: agendamento com senha numerada, Domingo"]);
   });
 
   it.each(WORK)("%s, known limit: a name on the fourth line after 'senha numerada' is shown when another line hid on its own rules", (id) => {
@@ -3165,15 +3159,5 @@ describe("v0.88.0: senha follow-ups (a weekday alone after 'senha numerada'; the
     expect(lines(id, "Responsável: Beltrano.\nAgendamento com senha numerada\nSegunda a sexta\nFulana").join("\n")).not.toContain("Fulana");
     expect(lines(id, "Responsável: Beltrano.\nAgendamento com senha numerada\nFulana").join("\n")).not.toContain("Fulana");
     expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana")).toEqual([HIDDEN_PERSON_LINE]);
-  });
-
-  it("the weekday step stays fast: weekday shapes repeated, 200 KB", () => {
-    const start = performance.now();
-    for (const w of ["segunda a ", "a segunda ", "domingo ", "seg. a sex. ", "a domingo a ", "sexta e ", "domingo, 8h "]) {
-      isWorkPersonLine("Atendimento: agendamento com senha numerada " + w.repeat(20_000) + "x");
-      isWorkPersonLine("agendamento com senha numerada " + w.repeat(20_000) + "x", null);
-      lines("sine", "Agendamento com senha numerada\n" + w.repeat(20_000) + "x");
-    }
-    expect(performance.now() - start).toBeLessThan(2000);
   });
 });
