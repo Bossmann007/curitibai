@@ -105,6 +105,8 @@ const HOURS_STEP =
   // "dia(s)", "hora(s)" and "útil/úteis" can be a name ("Dias", "Hora", "Util"). v0.82.0: "dia(s) útil/úteis" is one
   // step; "dia(s)" after a number only before "de" ("2 dias de antecedência"; "8 Dias" alone is a
   // name); "hora(s)" only after a one- or two-digit number ("24 horas"; "156 Hora" is a name). Disjoint paths.
+  // v0.84.0, known limit: "30 dias" and "1 dia" alone on the line after a guarded phrase are hidden, on the safe side
+  // (no "de" follows); "10 horas" reads as hours there, like "24 horas".
   "dias?\\s+(?:util|uteis)|(?<=\\d\\s?)dias?(?=\\s+de\\b)|(?<=(?<!\\d)\\d{1,2}\\s?)horas?|" +
   "horarios?|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
   "todas|presencial|online|agendamento|antecedencia|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
@@ -133,6 +135,8 @@ const SERVICE_ITEM =
 const SERVICE_VALUE = new RegExp(
   `^[-–•*\\s]*(?:${SERVICE_ITEM})(?:(?:\\s*[,;/]\\s*|\\s+e\\s+|\\s+)(?:${SERVICE_ITEM}))*\\s*\\.?\\s*$`,
 );
+/** What must follow dia(s), or um/uma and dia(s)/hora(s), after "agendamento com" for it to be a detail. */
+const DAY_DETAIL = "(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))";
 /**
  * v0.80.0, anywhere in the line (like NAMED_CHANNEL): "agendamento", an optional "prévio", then "," "(" ":" or "-" if
  * any, "com" and a word that is not a unit or channel word or an appointment detail: "Atendimento: agendamento com
@@ -149,10 +153,12 @@ const APPOINTMENT_DETAIL =
   // v0.81.0: words that can also be a name ("Dias", "Hora") count only before a detail; "agendamento com Dias" and "com
   // Dias Ferreira" are a name. v0.82.0: each word has its own details, and a connector counts only with the noun after
   // it ("dias de antecedência", "senha na recepção"), so "com Dias de Souza", "com Hora pelo 156", "com Uma 3350-0000"
-  // and "com Dias marcados" are a name too.
-  "(?:um|uma)(?=\\s+(?:semanas?|dias?|horas?|minutos?|mes|antecedencia|prazo)\\b)|dias?(?=\\s+(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))\\b)" +
+  // and "com Dias marcados" are a name too. v0.84.0: um/uma before dia(s) or hora(s) only when DAY_DETAIL follows them
+  // ("um dia de antecedência", "uma hora antes"), so "com Uma Dias", "com Uma Dias Silva" and "com Uma Dias de Souza"
+  // are a name; senha also before "de atendimento" and "numerada".
+  `(?:um|uma)(?=\\s+(?:semanas?|minutos?|mes|antecedencia|prazo|(?:dias?|horas?)\\s+${DAY_DETAIL})\\b)|dias?(?=\\s+${DAY_DETAIL}\\b)` +
   "|hora(?=\\s+(?:marcada|agendada)\\b)" +
-  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|local|balcao|guiche|totem|hora|site|internet|telefone|aplicativo|app|156))\\b)";
+  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|numerada|de\\s+atendimento|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|local|balcao|guiche|totem|hora|site|internet|telefone|aplicativo|app|156))\\b)";
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);

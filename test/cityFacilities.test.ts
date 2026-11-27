@@ -2955,3 +2955,51 @@ describe("v0.82.0: name filter, sixth pass (a name-like appointment word; 'N Dia
     expect(performance.now() - start).toBeLessThan(1000);
   });
 });
+
+describe("v0.84.0: name filter, seventh pass ('com Uma Dias'; 'senha de atendimento', 'senha numerada')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides um/uma and dia(s)/hora(s) after 'agendamento com' unless a detail follows", (id) => {
+    for (const v of ["agendamento com Uma Dias", "agendamento com Uma Dias Silva", "agendamento com Uma Dias de Souza", "agendamento com Um Hora",
+      "agendamento com Um Horas Ferreira", "agendamento com Uma Dia", "agendamento com um dia", "agendamento com uma hora"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps the appointment details the 0.82.0 review lists, and the new senha details", (id) => {
+    for (const v of ["agendamento com uma semana de antecedência", "agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com senha retirada",
+      "agendamento com um dia antes", "agendamento com uma hora antes", "agendamento com um dia útil de antecedência", "agendamento com uma hora de antecedência",
+      "agendamento com uma antecedência mínima de 48h", "agendamento com 48 horas de antecedência", "agendamento com senha de atendimento", "agendamento com senha numerada"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const b of ["2 dias úteis", "48 horas de antecedência"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+    // Known limit, as for "senha retirada": only the words right after senha are read, so a name after them passes.
+    expect(lines(id, "Atendimento: agendamento com senha de atendimento Fulana")).toEqual(["Atendimento: agendamento com senha de atendimento Fulana"]);
+    expect(lines(id, "Atendimento: agendamento com senha de Souza")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s: known limit, '30 dias' and '1 dia' alone after a guarded phrase are hidden; '10 horas' reads as hours", (id) => {
+    for (const b of ["30 dias", "1 dia"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nTratar com\no RH\n${b}`).join("\n"), `${id}: three lines: ${b}`).not.toContain(b);
+    }
+    expect(lines(id, `${HOURS}\nTelefone da Regional:\n10 horas`)).toEqual([HOURS, "Telefone da Regional:", "10 horas"]);
+    expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n10 horas`)).toEqual([HOURS, "Fale com a gente pelo 156", "10 horas"]);
+  });
+
+  it("the new alternatives stay fast repeated after 'agendamento com'", () => {
+    const start = performance.now();
+    for (const w of ["uma dias ", "uma dias de ", "um hora ", "um dia de ", "senha de ", "senha numerada "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    isWorkPersonLine("Atendimento: agendamento com " + "uma dias ".repeat(5_000) + "x");
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
