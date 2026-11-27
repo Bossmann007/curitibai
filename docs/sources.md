@@ -1770,7 +1770,8 @@ changes (owner request, 2026-11-23: monthly and automatic).
   above); the tool never sends a `where` query to this layer. Example (Portão, -25.4766, -49.2925): `EE` "EIXO
   ESTRUTURAL", PORTÃO, micro-bairro 27.0, micro-region 0. Since 0.71.0 the tool also reads `cd_microbairro` as a
   number (returned in its JSON form, 27.0 as "27") and `cd_microrregiao` as text of 1 to 6 digits; the layer's field
-  types were not re-read for this (no host contacted).
+  types were not re-read for this (no host contacted). Since 0.77.0 the `microbairro` field description gives that
+  returned form ("27"), not "27.0" (no host contacted).
 
 ### `service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)
 
