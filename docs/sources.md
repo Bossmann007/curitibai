@@ -1563,18 +1563,18 @@ changes (owner request, 2026-11-23: monthly and automatic).
   - **Name filter, fourth pass, v0.80.0** (the lows of the 0.76.0 review). Lines the third pass hid by mistake stay
     visible: "a gente", "Regional", "coordenação" and "RH" are unit words after a channel word or "falar/fale/tratar
     com" ("Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "E-mail da coordenação", "Tratar com o RH
-    da empresa"), but only before the end, a phone, "pelo/por/via" and a channel, or "da/do" and a unit word or
-    "empresa" ("Falar com o RH Fulano", "Tratar com o RH da Fulana" and "Telefone da Regional: Fulana" are still
-    hidden), and "emissão de carteira de trabalho" is a service phrase after
-    "Atendimento:". "Fale com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana" are still hidden.
-    "agendamento", an optional ",", then "com" and a word that is not a unit or channel word or an appointment detail
-    (antecedência, hora marcada, documentos, CPF, RG, senha), anywhere in an attendance value or a "Contato" line,
-    hides the line: "Atendimento: agendamento com Fulana" and "presencial com agendamento com Fulana" are hidden;
-    "agendamento com a equipe", "agendamento com antecedência" and "agendamento pelo 156" stay. Known
-    limits: "agendamento pela Fulana", "presencial com Fulana", a name later in an hours line and an "Agendamento
-    com Fulana" line that is not an attendance value still pass; "agendamento com um dia de antecedência" is hidden. No
-    request was made for this version (the layers were not re-read): the change is tested on synthetic lines only.
-    No new host for the server and the link allowlist is unchanged.
+    da empresa"), but only when the rest of the line holds nothing but numbers, "[masked]", punctuation, channel and
+    unit words, "empresa" and connectors; any other word keeps the line hidden, as in 0.79.0 ("Tratar com o RH da
+    Fulana", "Telefone da Regional: 3350-0000 - Fulana", "Telefone da Regional: 156, de segunda a sexta").
+    "Telefone da coordenação: 3350-0000" stays hidden (the "coordenação:" label of who is in charge). "emissão de
+    carteira de trabalho" is a service phrase after "Atendimento:". "agendamento" (optionally "prévio" and ",", "(",
+    ":" or "-"), then "com" and a word that is not a unit or channel word or an appointment detail (um/uma, no/pelo,
+    até, mínimo, antecedência, hora, horário, documentos, comprovante, carteira, CPF, RG, senha), anywhere in the
+    line, hides it: "Atendimento: agendamento com Fulana" and a line "Agendamento com Fulana" are hidden;
+    "agendamento com a equipe", "agendamento com antecedência", "com no mínimo 48h" and "agendamento pelo 156" stay.
+    Known limits: "agendamento pela Fulana", "agendamento com uma Fulana", "presencial com Fulana" and a name later in
+    an hours line still pass. No request was made for this version (the layers were not re-read): the change is
+    tested on synthetic lines only. No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
