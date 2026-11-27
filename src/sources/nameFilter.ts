@@ -101,9 +101,11 @@ const GUARDED_UNIT = `(?:${GUARDED_WORD})\\b(?=(?:${REST_STEP}){0,100}(?<![,;])(
  * test/cityFacilities.test.ts times every word of both lists repeated.
  */
 const HOURS_STEP =
-  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|util|uteis|ate|de|h|hs|" +
-  // "dia(s)" and "hora(s)" can be a name ("Dias"): only after a number, or "dia(s)" before "útil/úteis" (disjoint paths).
-  "dias?(?=\\s+(?:util|uteis)\\b)|(?<=\\d\\s?)(?:dias?(?!\\s+(?:util|uteis)\\b)|horas?)|" +
+  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|ate|de|h|hs|" +
+  // "dia(s)", "hora(s)" and "útil/úteis" can be a name ("Dias", "Hora", "Util"). v0.82.0: "dia(s) útil/úteis" is one
+  // step; "dia(s)" after a number only before "de" ("2 dias de antecedência"; "8 Dias" alone is a
+  // name); "hora(s)" only after a one- or two-digit number ("24 horas"; "156 Hora" is a name). Disjoint paths.
+  "dias?\\s+(?:util|uteis)|(?<=\\d\\s?)dias?(?=\\s+de\\b)|(?<=(?<!\\d)\\d{1,2}\\s?)horas?|" +
   "horarios?|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
   "todas|presencial|online|agendamento|antecedencia|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
 const REST_ONLY = new RegExp(`^(?:${REST_STEP}|${HOURS_STEP})*$`, "u");
@@ -137,15 +139,20 @@ const SERVICE_VALUE = new RegExp(
  * Fulana", "presencial com agendamento com a Fulana", "mediante agendamento prévio com a Fulana", "agendamento (com
  * Fulana)" and a line "Agendamento com Fulana" are a name; "agendamento com a equipe", "com antecedência", "com no
  * mínimo 48h", "com uma semana de antecedência", "com comprovante de residência" and "agendamento pelo 156" are not.
- * Known limits: only the first word after "com" is checked, so "agendamento pela Fulana", "agendamento com uma
- * Fulana" and "agendamento com antecedência, Fulana" pass; a detail word missing from the list hides the line.
+ * Known limits: only the first word after "com" is checked (the second only after um/uma, dia(s), hora and senha,
+ * v0.82.0), so "agendamento pela Fulana", "agendamento com a Fulana Souza" after a detail word and "agendamento com
+ * antecedência, Fulana" pass; a detail word missing from the list hides the line.
  */
 const APPOINTMENT_DETAIL =
   "no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|horario|marcacao|retirada|" +
   "documentos?|documentacao|comprovantes?|carteira|cpf|rg|" +
-  // v0.81.0: words that can also be a name ("Dias", "Hora") count only before a number or a detail ("uma semana", "dias
-  // úteis", "hora marcada", "senha retirada"); "agendamento com Dias" and "com Dias Ferreira" are a name.
-  "(?:um|uma|dias?|hora|senha)(?=\\s+(?:\\d|(?:d[aeo]s?|semanas?|horas?|minutos?|uteis|marcad[ao]s?|retirad[ao]s?|previ[ao]s?|n[ao]|pel[ao]|antecedencia)\\b))";
+  // v0.81.0: words that can also be a name ("Dias", "Hora") count only before a detail; "agendamento com Dias" and "com
+  // Dias Ferreira" are a name. v0.82.0: each word has its own details, and a connector counts only with the noun after
+  // it ("dias de antecedência", "senha na recepção"), so "com Dias de Souza", "com Hora pelo 156", "com Uma 3350-0000"
+  // and "com Dias marcados" are a name too.
+  "(?:um|uma)(?=\\s+(?:semanas?|dias?|horas?|minutos?|mes)\\b)|dias?(?=\\s+(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))\\b)" +
+  "|hora(?=\\s+(?:marcada|agendada)\\b)" +
+  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|site|internet|telefone|aplicativo|app|156))\\b)";
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);

@@ -2895,3 +2895,56 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     expect(performance.now() - start).toBeLessThan(2000);
   });
 });
+
+describe("v0.82.0: name filter, sixth pass (a name-like appointment word; 'N Dias' and 'Úteis' after a guarded phrase)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'agendamento com' that starts with um/uma, dia(s), hora or senha", (id) => {
+    // The five brief cases (already hidden on 0.81.0), then the second word a name can bring (shown on 0.81.0).
+    for (const v of ["agendamento com Dias", "agendamento com Uma Costa", "agendamento com hora Fulana", "agendamento com dias Fulana", "agendamento com senha Fulana",
+      "agendamento com Dias de Souza", "agendamento com Uma de Souza", "agendamento com Hora da Silva", "agendamento com Dias 3350-0000", "agendamento com Hora 8h às 17h",
+      "agendamento com Uma 3350-0000", "agendamento com Dias no balcão", "agendamento com Hora pelo 156", "agendamento com Dias marcados", "agendamento com senha pela Fulana"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps those words as appointment details", (id) => {
+    for (const v of ["agendamento com dias de antecedência", "agendamento com dias úteis de antecedência", "agendamento com uma semana de antecedência", "agendamento com um dia de antecedência",
+      "agendamento com uma hora de antecedência", "agendamento com hora marcada", "agendamento com senha retirada", "agendamento com senha prévia", "agendamento com senha na recepção",
+      "agendamento com senha pelo site", "agendamento com 2 dias de antecedência", "agendamento com pelo menos 2 dias de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it.each(WORK)("%s hides 'N Dias', 'NNN Hora' and 'Úteis' alone after a guarded phrase, two or three lines", (id) => {
+    for (const b of ["156 Dias", "8 Dias", "156 Hora", "156 Horas", "Util", "Úteis", "Útil, das 8h às 17h"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nTratar com\no RH\n${b}`).join("\n"), `${id}: three lines: ${b}`).not.toContain(b);
+    }
+    for (const b of ["Dias úteis, das 8h às 17h", "dia útil", "2 dias úteis", "2 dias de antecedência", "24 horas", "1 hora", "Segunda a sexta, 8 horas por dia útil", "Segunda a sexta, dias úteis"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("every new alternative read repeated after a guarded phrase or 'agendamento com' stays fast", () => {
+    for (const w of ["dia util", "dias uteis", "2 dias uteis", "2 dias de", "24 horas", "156 horas", "util", "uteis", "1 hora"]) {
+      const s = "Fale com o RH\n" + `${w} `.repeat(30) + "x";
+      const start = performance.now();
+      isWorkPersonLine(s, null);
+      isWorkPersonLine(`Telefone da Regional: ${w} `.repeat(30) + "x");
+      lines("sine", s);
+      expect(performance.now() - start, w).toBeLessThan(200);
+    }
+    const start = performance.now();
+    for (const w of ["uma ", "dias ", "hora ", "senha ", "senha na ", "dias de ", "um dia "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    isWorkPersonLine("Fale com o RH\n" + "dias uteis ".repeat(5_000) + "x", null);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});

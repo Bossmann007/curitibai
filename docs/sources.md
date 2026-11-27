@@ -1607,6 +1607,15 @@ changes (owner request, 2026-11-23: monthly and automatic).
     connector and hours words, numbers and punctuation, or is a street address. "whats app" now reads one way only (a
     line of repeated "whats app" backtracked exponentially in 0.80.0). The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said: it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone, and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested). On 29,400 generated lines 0.79.0 shows a name
     in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+  - **Name filter, sixth pass, v0.82.0** (work types). After "agendamento com", um/uma, dia(s), hora and senha count
+    as appointment details only before their own detail words (um/uma: semana, dia, hora, minuto, mês; dia(s):
+    útil/úteis, corridos, antes, "de antecedência/prazo"; hora: marcada/agendada; senha: retirada, prévia, "na/pela"
+    and a place or channel), so "agendamento com Dias de Souza", "com Hora pelo 156" and "com Uma 3350-0000" are
+    hidden. On the line after a guarded phrase, "dia(s)" after a number counts as hours only before "de", "hora(s)"
+    only after a one- or two-digit number, and "útil/úteis" only after "dia(s)": "156 Dias", "8 Dias", "156 Hora",
+    "Util" and "Úteis" are hidden there; "2 dias de antecedência", "24 horas" and "Dias úteis" stay. Known limits:
+    "8 Hora" still reads as hours; "2 dias" alone there is hidden, on the safe side. No request was made for this
+    version (synthetic lines only). No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
