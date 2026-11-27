@@ -24,7 +24,7 @@ apart, through the server's own `fetchText` (its User-Agent, same-host redirects
 
 1. **`PERSON_LOCAL`** (`src/sources/geocuritiba.ts`): separators may repeat (`[._-]+`); a middle word may be a
    single letter when the last word has 2+ letters ("ana.c.lima", "j.p.silva", "joao.e.silva"); a final single letter (digits or a number may follow) is a surname
-   initial when the first word has 2+ letters and every word between them is a name ("maria.s", "maria.silva.s",
+   initial when the first word and the word just before it have 2+ letters ("maria.s", "maria.silva.s",
    "joao.p.silva.r", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). Unchanged: the unit prefixes are checked first and keep the
    address; a single word, a word and a number ("sec.2", "sec..2") and exactly two single letters ("a.b", "a1.b")
    never match. The local part is at most 64 characters (`CITY_EMAIL` runs first), so the regex has no long-input
@@ -38,7 +38,8 @@ apart, through the server's own `fetchText` (its User-Agent, same-host redirects
 
 ## Out of scope
 
-A trailing separator ("maria.silva.") and a one-word name ("fulanasilva") still pass, and a connector address
+A trailing separator ("maria.silva."), two initials at the end ("joao.p.s"), a word starting with a number
+("2maria.silva") and a one-word name ("fulanasilva") still pass, and a connector address
 ("esporte.e.lazer"), a word and one letter ("sala.a", "sme.d") or a word, a letter and a number ("sec.e.2") is
 dropped, failing closed (known limits, written down);
 sector words in the unit list; any new type, host, link or question.

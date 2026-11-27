@@ -879,7 +879,7 @@ const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitib
  * "maria.souza2", "ana-lima") and an optional number at the end ("maria.souza.2", "maria_souza_01"). Since v0.78.0
  * separators may repeat ("maria..silva"), a middle word may be a single letter when the last has 2+ ("ana.c.lima",
  * "joao.e.silva"; "esporte.e.lazer" is dropped too, failing closed), and a final single letter is a surname initial
- * when the first word has 2+ letters and every word between them is a name ("maria.s", "maria.silva.s",
+ * when the first word and the word just before it have 2+ letters ("maria.s", "maria.silva.s",
  * "joao.p.silva.r", "maria.s2", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). A single word
  * ("falecomacgm"), a word and a number ("sec.2") or exactly two single letters ("a.b", "a1.b") never match.
  */

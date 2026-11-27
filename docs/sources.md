@@ -1592,13 +1592,13 @@ changes (owner request, 2026-11-23: monthly and automatic).
     digits ("maria2.souza", "maria.souza2"), a number may close it ("maria.souza.2", "maria_souza_01") and "-" is a
     separator too ("ana-lima"). Since v0.78.0 separators may repeat ("maria..silva"), a middle word may be a single
     letter when the last has 2+ letters ("ana.c.lima", "joao.e.silva"), and a final
-    single letter is a surname initial when the first word has 2+ letters and every word between is a name
+    single letter is a surname initial when the first word and the word just before it have 2+ letters
     ("maria.s", "maria.silva.s", "maria.s.2"; letter codes such as "sme.d.p.e" stay);
     exactly two single letters ("a.b") or a word and a number ("sec.2") never match. The unit prefixes are checked first and
     keep an address whose first word (trailing digits ignored) they are (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
     nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). Known limits: a one-letter code before a sector
     word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a", "ti.a", "sme.d"), a word, a letter and a number ("sec.e.2") or a connector address ("esporte.e.lazer") are dropped like names (none was read). A one-word local part shaped like a name
-    ("fulanasilva") or one ending in a separator ("maria.silva.") or starting with a number ("2maria.silva") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
+    ("fulanasilva") or one ending in a separator ("maria.silva.") , ending in two initials ("joao.p.s", read like the letter code "fas.n.s") or with a word starting with a number ("2maria.silva", "maria.2silva") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
     checked on 2026-11-27 against a re-read of the 89 urban-equipment layers (2,167 records, 1,765 city e-mails, 776
     distinct, one request per layer, read again for the final rule with the same counts): 1,763 are kept before and
     after, none newly hidden. The v0.78.0 shapes were checked the same way on 2026-11-27 (one re-read, same counts): 1,763 kept
