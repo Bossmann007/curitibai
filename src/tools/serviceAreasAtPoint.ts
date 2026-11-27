@@ -110,6 +110,29 @@ export const serviceAreasAtPointOutput = z.object({
 });
 
 type Output = z.infer<typeof serviceAreasAtPointOutput>;
+type Data = Output["data"];
+type Lists = Omit<Data, "lat" | "lon" | "areas" | "inside_curitiba" | "partial">;
+
+/** Every list not read is null; a group sets only its own. Key order is the schema's (an override keeps its place). */
+const NO_LISTS: Lists = {
+  health_units: null,
+  cras: null,
+  police_military: null,
+  police_civil: null,
+  fire: null,
+  property_registry: null,
+  civil_registry: null,
+  electoral_zones: null,
+};
+const areasData = (p: Point, areas: Data["areas"], inside: boolean, lists: Partial<Lists>, partial: boolean): Data => ({
+  lat: p.lat,
+  lon: p.lon,
+  areas,
+  inside_curitiba: inside,
+  ...NO_LISTS,
+  ...lists,
+  partial,
+});
 type HealthOut = z.infer<typeof HealthArea>;
 type CrasOut = z.infer<typeof CrasArea>;
 type PmOut = z.infer<typeof PoliceMilitaryArea>;
@@ -284,21 +307,7 @@ export async function serviceAreasAt(p: Point, reads: PointReads, areas: "care" 
     partial ? `Partial: the CRAS layer could not be read now. ${missingNote([failure])}` : "",
   ].filter(Boolean);
   return {
-    data: {
-      lat: p.lat,
-      lon: p.lon,
-      areas: "care",
-      inside_curitiba: inside,
-      health_units: health,
-      cras,
-      police_military: null,
-      police_civil: null,
-      fire: null,
-      property_registry: null,
-      civil_registry: null,
-      electoral_zones: null,
-      partial,
-    },
+    data: areasData(p, "care", inside, { health_units: health, cras }, partial),
     source: SERVICE_AREAS_SOURCE,
     source_url: THEMATIC_SERVICE_URL,
     checked_at: times.reduce((a, c) => (c < a ? c : a)),
@@ -357,21 +366,7 @@ async function safetyAreasAt(p: Point, reads: PointReads): Promise<Output> {
     missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now. ${missingNote(errors)}` : "",
   ].filter(Boolean);
   return {
-    data: {
-      lat: p.lat,
-      lon: p.lon,
-      areas: "safety",
-      inside_curitiba: inside,
-      health_units: null,
-      cras: null,
-      police_military: pm,
-      police_civil: civil,
-      fire,
-      property_registry: null,
-      civil_registry: null,
-      electoral_zones: null,
-      partial: missing.length > 0,
-    },
+    data: areasData(p, "safety", inside, { police_military: pm, police_civil: civil, fire }, missing.length > 0),
     source: SAFETY_AREAS_SOURCE,
     source_url: THEMATIC_SERVICE_URL,
     checked_at: times.reduce((a, c) => (c < a ? c : a)),
@@ -415,21 +410,7 @@ async function registryAreasAt(p: Point, reads: PointReads): Promise<Output> {
     failure !== null ? `Partial: the registro civil layer could not be read now. ${missingNote([failure])}` : "",
   ].filter(Boolean);
   return {
-    data: {
-      lat: p.lat,
-      lon: p.lon,
-      areas: "registry",
-      inside_curitiba: inside,
-      health_units: null,
-      cras: null,
-      police_military: null,
-      police_civil: null,
-      fire: null,
-      property_registry: property,
-      civil_registry: civil,
-      electoral_zones: null,
-      partial: failure !== null,
-    },
+    data: areasData(p, "registry", inside, { property_registry: property, civil_registry: civil }, failure !== null),
     source: REGISTRY_AREAS_SOURCE,
     source_url: THEMATIC_SERVICE_URL,
     checked_at: times.reduce((a, c) => (c < a ? c : a)),
@@ -455,21 +436,7 @@ async function civicAreasAt(p: Point, reads: PointReads): Promise<Output> {
     zones.filter((z) => z.zone !== null).length > 1 ? "The point is on a boundary: more than one area is listed." : "",
   ].filter(Boolean);
   return {
-    data: {
-      lat: p.lat,
-      lon: p.lon,
-      areas: "civic",
-      inside_curitiba: inside,
-      health_units: null,
-      cras: null,
-      police_military: null,
-      police_civil: null,
-      fire: null,
-      property_registry: null,
-      civil_registry: null,
-      electoral_zones: zones,
-      partial: false,
-    },
+    data: areasData(p, "civic", inside, { electoral_zones: zones }, false),
     source: VOTING_CREDIT,
     source_url: THEMATIC_SERVICE_URL,
     checked_at: times.reduce((a, c) => (c < a ? c : a)),

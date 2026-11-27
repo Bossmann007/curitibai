@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer } from "../src/sources/geocuritiba.js";
+import { pointQueryUrl, roundPoint, THEMATIC_SERVICE_URL, type PointLayer, type PointReads } from "../src/sources/geocuritiba.js";
 import { OutOfTimeError } from "../src/hostGate.js";
 import { SourceRefusedError, SourceUnavailableError } from "../src/http.js";
-import { missingNote } from "../src/tools/serviceAreasAtPoint.js";
+import { missingNote, serviceAreasAt, serviceAreasAtPointOutput } from "../src/tools/serviceAreasAtPoint.js";
 import { connectClient, errorOf, pointPart, stubFetch, type Route } from "./helpers.js";
 
 // Synthetic answers only (invented names and dates, the real fields and shapes of layers 19 and 5 as read on 2026-11-23).
@@ -540,5 +540,21 @@ describe("place_at_point service_areas, areas: civic (v0.66.0)", () => {
   it("a failing zone layer is source_unavailable", async () => {
     stubFetch(civicRoutes({ electoral_zone: { status: 500 } }));
     expect(errorOf(await call({ ...AT, areas: "civic" }))).toMatchObject({ error: "source_unavailable" });
+  });
+});
+
+describe("service areas data shape (0.73.0)", () => {
+  it("every group answers every list, in the schema's key order; lists of other groups are null", async () => {
+    const reads: PointReads = {
+      layer: async (layer) => ({ value: layer === "bairro" ? [{ attributes: { nome: "BAIRRO TESTE" }, paths: null }] : [], fetchedAt: "2026-01-01T00:00:00.000Z" }),
+      censusBairro: () => null,
+    };
+    const own = { care: ["health_units", "cras"], safety: ["police_military", "police_civil", "fire"], registry: ["property_registry", "civil_registry"], civic: ["electoral_zones"] };
+    for (const g of ["care", "safety", "registry", "civic"] as const) {
+      const { data } = await serviceAreasAt({ lat: P.lat, lon: P.lon }, reads, g);
+      expect(Object.keys(data)).toEqual(Object.keys(serviceAreasAtPointOutput.shape.data.shape));
+      const lists = Object.entries(data).filter(([, v]) => Array.isArray(v)).map(([k]) => k);
+      expect(lists).toEqual(own[g]);
+    }
   });
 });
