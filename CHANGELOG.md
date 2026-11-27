@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.79.0 - 2026-11-27
+
+Ouvidoria anonymity wording, second pass (the Security Reviewer's R1-R3 on 0.75.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "Pelo guia de 2024, a forma anônima não pede cadastro e não recebe
+  resposta nem acompanhamento (o CuritibAI não conferiu isso hoje no site)" is now its own sentence, apart from the
+  CuritibAI's own warning that the text and the attachments can identify the citizen (before, the "no registration"
+  part sat inside the sentence marked as the CuritibAI's observation).
+- `what` and step 5 (e-mail) add the same warning, marked as the CuritibAI's own observation, not the 2024 guide's;
+  the `note` says so for the summary and steps 4 and 5.
+- Tested: each step 5 sentence that names anonymity or identification carries the 2024-guide hedge or the
+  CuritibAI's own marker; step 4 has no sentence that mixes the registration with the CuritibAI's observation.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.78.0 - 2026-11-27
 
 E-mail filter, third pass (the low of the 0.74.0 review). 27 tools. Publishes nothing.

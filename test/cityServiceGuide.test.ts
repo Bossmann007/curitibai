@@ -250,29 +250,47 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(o.note).toMatch(/not verified[^.]*registration/i);
   });
 
-  it("hedges each step 5 sentence that sends the citizen to the anonymous form (since 0.75.0)", async () => {
+  it("marks where each step 5 sentence about anonymity or identification comes from (since 0.79.0)", async () => {
     const o = await guide();
     // Sentences end at a period followed by a space; the e-mail address and "13.460" have no space after their dots.
     const sentences = allSteps(o).find((s) => s.step === 5)!.action.split(/(?<=\.)\s+/);
-    const anonymous = sentences.filter((s) => /forma anônima/.test(s));
-    expect(anonymous.length).toBeGreaterThan(0);
-    for (const s of anonymous) expect(s).toContain("segundo o guia de 2024, que o CuritibAI não conferiu hoje no site");
+    const aboutAnonymity = sentences.filter((s) => /anônim|identific/.test(s));
+    expect(aboutAnonymity.length).toBeGreaterThan(1);
+    for (const s of aboutAnonymity) {
+      // Either the 2024 guide's, hedged as not checked on the site today, or the CuritibAI's own observation.
+      expect(s).toMatch(/segundo o guia de 2024, que o CuritibAI não conferiu hoje no site|\(observação do CuritibAI, não do guia de 2024\)/);
+    }
+    for (const s of sentences.filter((s) => /forma anônima/.test(s))) {
+      expect(s).toContain("segundo o guia de 2024, que o CuritibAI não conferiu hoje no site");
+    }
   });
 
   it("anonymous form wording stays inside the record of the 2024 guide (since 0.75.0)", async () => {
     const o = await guide();
     const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
-    // R1: what the citizen writes or attaches can identify them; the project's own observation.
+    const ownTextWarning = /o texto e os anexos[^.]* podem identificar o cidadão/;
+    // 0.79.0: step 4 keeps what the 2024 guide says (no registration, no answer or follow-up; site not checked)
+    // apart from the CuritibAI's own warning that the text and the attachments can identify the citizen.
     expect(step(4)).toMatch(
-      /A forma anônima dispensa o cadastro, mas o que o cidadão escreve ou anexa \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) pode identificá-lo; para continuar anônimo, deixe isso de fora \(observação do CuritibAI, não do guia de 2024\)/,
+      /Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem acompanhamento \(o CuritibAI não conferiu isso hoje no site\)\./,
     );
+    expect(step(4)).toMatch(
+      /Observação do CuritibAI, não do guia de 2024: o texto e os anexos \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) podem identificar o cidadão; para continuar anônimo, deixe isso de fora\./,
+    );
+    for (const s of step(4).split(/(?<=\.)\s+/)) {
+      expect(/cadastro|resposta/.test(s) && /Observação do CuritibAI/i.test(s)).toBe(false);
+    }
+    // 0.79.0: the summary and the e-mail step give the same warning, marked as the CuritibAI's own.
+    expect(o.data.what).toMatch(/Mesmo na forma anônima, o texto e os anexos podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
+    expect(step(5)).toMatch(/O texto e os anexos do e-mail também podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
+    expect(o.data.what).toMatch(ownTextWarning);
     // R3: the record says a denúncia is registered, not that it is investigated.
     expect(step(6)).toMatch(/anônima \(sem cadastro; a denúncia é registrada, mas sem resposta nem acompanhamento\)/);
     expect(text(o)).not.toMatch(/apurad/);
     // R4: the 30 days do not apply to the anonymous form.
     expect(step(8)).toMatch(/\(não vale para a forma anônima, que não recebe resposta\)/);
     expect(o.data.what).toMatch(/forma anônima \(sem resposta nem acompanhamento\)/);
-    expect(o.note).toMatch(/writes or attaches to an anonymous denúncia can identify them \(step 4\) is also this project's own observation/);
+    expect(o.note).toMatch(/the text and the attachments a citizen sends can identify them \(the summary, steps 4 and 5\) is also this project's own observation/);
   });
 
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {

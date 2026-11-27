@@ -2122,7 +2122,25 @@ sentence rests on the 0.43.0 record above or is marked as the project's own:
 - Step 4 and the `note`, that the anonymous form skips the registration but what the citizen writes or attaches (name,
   address, phone, a face, the location saved in a photo, the file name) can identify them: this project's own
   observation, marked "(observação do CuritibAI, não do guia de 2024)"; the record only says photos and documents
-  may be attached.
+  may be attached. Since 0.79.0 step 4 says the "no registration" part in its own sentence, as the 2024 guide's
+  (below).
+
+Ouvidoria anonymity wording, second pass (`ouvidoria`, since 0.79.0, written 2026-11-27; the Security Reviewer's
+R1-R3 on 0.75.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence rests on the 0.43.0 record above or is marked as the project's own:
+
+- Step 4, "Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o CuritibAI
+  não conferiu isso hoje no site)": the record's "anonymous: no account, no answer or follow-up". It is the 2024
+  guide's, not the project's; the Curitiba Ouve site was not opened, so what it asks today is not verified.
+- Step 4, a separate sentence that starts "Observação do CuritibAI, não do guia de 2024": the text and the
+  attachments (name, address, phone, a face, the location saved in a photo, the file name) can identify the
+  citizen. This project's own observation; the record only says photos and documents may be attached.
+- `what` ("Mesmo na forma anônima, o texto e os anexos podem identificar o cidadão") and step 5 ("O texto e os anexos
+  do e-mail também podem identificar o cidadão"): the same observation, marked "(observação do CuritibAI, não do
+  guia de 2024)"; the `note` says it is the project's own for the summary and steps 4 and 5.
+- Tested: each step 5 sentence that names anonymity or identification (`/anônim|identific/`) carries either the
+  2024-guide hedge or the project's own marker.
 
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an

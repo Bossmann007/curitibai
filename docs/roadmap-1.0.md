@@ -338,3 +338,10 @@ regional addresses stay, and a re-read of the 89 urban-equipment layers on 2026-
 question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other
 cities 2).
+
+At v0.79.0 (phase B) the `city_service_guide` `ouvidoria` guide says in step 4, as the 2024 guide's and not checked
+on the site, that the anonymous form needs no registration and gets no answer or follow-up, in a sentence apart from
+the project's own warning that the text and the attachments can identify the citizen; the summary and step 5 give
+that warning too. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen
+eval answers 139 of 143 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).

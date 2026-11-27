@@ -611,8 +611,9 @@ export const GUIDES = {
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
       "para denúncias, o guia de 2024 prevê a forma anônima (sem resposta nem acompanhamento) no Portal Curitiba " +
-      "Ouve; para reclamação comum isso não foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia aparece nele (observação do " +
-      "CuritibAI, não do guia de 2024).",
+      "Ouve; para reclamação comum isso não foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia " +
+      "aparece nele (observação do CuritibAI, não do guia de 2024). Mesmo na forma anônima, o texto e os anexos podem " +
+      "identificar o cidadão (observação do CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
     // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
     carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"], ["curitiba", "ouve"]],
@@ -634,7 +635,7 @@ export const GUIDES = {
       "e-mail is not an anonymous channel, is this project's own observation, not the PDF's. Not verified: what " +
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
       "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
-      "That what a citizen writes or attaches to an anonymous denúncia can identify them (step 4) is also this " +
+      "That the text and the attachments a citizen sends can identify them (the summary, steps 4 and 5) is also this " +
       "project's own observation, not the PDF's. ",
     steps: [
       FIRST_STEP,
@@ -650,9 +651,10 @@ export const GUIDES = {
         action:
           "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
-          "anexar fotos e documentos. A forma anônima dispensa o cadastro, mas o que o cidadão escreve ou anexa (nome, " +
-          "endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo) pode identificá-lo; para " +
-          "continuar anônimo, deixe isso de fora (observação do CuritibAI, não do guia de 2024).",
+          "anexar fotos e documentos. Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem " +
+          "acompanhamento (o CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
+          "o texto e os anexos (nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo) " +
+          "podem identificar o cidadão; para continuar anônimo, deixe isso de fora.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",
@@ -662,7 +664,8 @@ export const GUIDES = {
         action:
           `Para denunciar ato ilícito contra a Prefeitura ou conduta antiética de servidor: o cidadão escreve, do seu ` +
           `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail. O e-mail não é um canal anônimo: o ` +
-          "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
+          "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). O texto e os anexos do " +
+          "e-mail também podem identificar o cidadão (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
           "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4), segundo o guia de 2024, que o CuritibAI " +
           "não conferiu hoje no site.",
         consent:
