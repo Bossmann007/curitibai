@@ -2,6 +2,42 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.86.0 - 2026-11-27
+
+Person-name filter, eighth pass (the 0.84.0 Change Reviewer's Lows and the Security Reviewer's R1-R3). 27 tools.
+Publishes nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com senha numerada" and
+  "… senha de atendimento": 0.84.0 counted them as a detail when the next character was punctuation or a digit, so
+  "agendamento com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)", "… senha de atendimento,
+  Fulana" and "… numerada 3350-0000 Fulana" showed the name (0.83.0 hid them). The rest of the line must now be made
+  only of numbers, punctuation, channel, unit and hours words and connectors (a step is one word or one character,
+  at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h", "com senha de atendimento, de segunda a
+  sexta" and "(com senha numerada)" stay; the five forms above are hidden.
+- "Agendamento com senha numerada" followed by a schedule line ("Segunda a sexta, 8h às 17h") hid the whole field
+  (the whole-field check joins lines with spaces and read only the next character). That check now reads the rest
+  the same way, so a field whose lines after these words are only hours and numbers stays, and a name on any later
+  line hides it when that check runs (it is skipped when another line hid on its own rules; then only the next line
+  is read, as before). The split check also reads the line after such a line (with or without an article, "com a senha
+  numerada") even when it starts with a number, so "… senha numerada," / "3350-0000 Fulana" hides the name line when
+  another line hid on its own rules and the whole-field check is skipped. Known limits: any other word in the rest
+  hides the line or the field, on the safe side: "exceto feriados", "sábados", "domingos" (plural weekdays are not
+  read as hours: "Domingos" is a name) and a later line such as "Documentos: RG" (0.84.0 hid the field too when the
+  next line started with a word). A name made only of such words ("Domingo", "Sexta", "Central", "Regional") reads
+  as hours and is shown after "senha numerada" (Security Reviewer, LOW; ", Domingo" was shown in 0.85.0 too).
+- "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido", kept in 0.84.0, is
+  now hidden, on the safe side. Since 0.84.0, "agendamento com uma hora" and "agendamento com um dia" with nothing
+  after are hidden too (0.83.0 showed them); tested.
+- Every line the 0.82.0 and 0.84.0 tests list as legitimate is tested as kept. Timing: "senha numerada, " repeated
+  after "agendamento com", 50 KB and 400 KB lines of the new shapes, under 2 s; the earlier 50 KB and 400 KB timing
+  tests are unchanged and green.
+- Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
+  records, 253 with an `observacao`) and replayed offline with 0.85.0 and 0.86.0: 131 hidden-line markers in each,
+  and every record's `hours` is identical.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new host, link or dependency.
+
 ## 0.85.0 - 2026-11-27
 
 Ouvidoria anonymity wording, fourth pass (the Security Reviewer's R1-R4 on 0.83.0). 27 tools. Publishes nothing.

@@ -2981,7 +2981,7 @@ describe("v0.84.0: name filter, seventh pass ('com Uma Dias'; 'senha de atendime
     for (const b of ["2 dias úteis", "48 horas de antecedência"]) {
       expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
     }
-    for (const v of ["agendamento com uma hora marcada", "agendamento com uma hora agendada", "agendamento com uma hora e meia de antecedência", "agendamento com um dia corrido",
+    for (const v of ["agendamento com uma hora marcada", "agendamento com uma hora agendada", "agendamento com uma hora e meia de antecedência",
       "agendamento com senha numerada.", "agendamento com senha de atendimento, das 8h às 17h", "agendamento (com senha numerada)"]) {
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
     }
@@ -2992,8 +2992,8 @@ describe("v0.84.0: name filter, seventh pass ('com Uma Dias'; 'senha de atendime
     for (const v of ["agendamento com senha numerada", "agendamento com uma hora marcada"]) {
       expect(lines(id, `Atendimento:\n${v}\n${HOURS}`), `${id}: next line: ${v}`).toEqual(["Atendimento:", v, HOURS]);
     }
-    // Known limit: the whole field is joined with spaces, so a next line that starts with a word hides it (as on 0.83.0).
-    expect(lines(id, "Atendimento:\nagendamento com senha numerada\nSegunda a sexta, 8h")).toEqual([HIDDEN_PERSON_LINE]);
+    // v0.86.0: the whole field takes any word after the senha detail, so the schedule line stays (0.84.0 hid the field).
+    expect(lines(id, "Atendimento:\nagendamento com senha numerada\nSegunda a sexta, 8h")).toEqual(["Atendimento:", "agendamento com senha numerada", "Segunda a sexta, 8h"]);
     // Known limits: only the words right after um/uma, dia(s) and senha are read, so a name after a full detail passes
     // (as on 0.83.0); an um/uma phrase with another detail ("de tolerância") is hidden, on the safe side.
     expect(lines(id, "Atendimento: agendamento com um dia de antecedência Fulana")).toEqual(["Atendimento: agendamento com um dia de antecedência Fulana"]);
@@ -3015,5 +3015,114 @@ describe("v0.84.0: name filter, seventh pass ('com Uma Dias'; 'senha de atendime
     for (const w of ["uma dias ", "uma dias de ", "um hora ", "um dia de ", "senha de ", "senha numerada ", "uma hora e meia de ", "um dia corrido ", "uma horas marcada "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
     isWorkPersonLine("Atendimento: agendamento com " + "uma dias ".repeat(5_000) + "x");
     expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.86.0: name filter, eighth pass (the rest after 'senha numerada'; the schedule after it; 'um dia corrido')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+  const SCHEDULE = "Segunda a sexta, 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'senha numerada' or 'senha de atendimento' and punctuation or a number (shown in 0.84.0)", (id) => {
+    for (const d of ["senha numerada", "senha de atendimento"]) {
+      for (const r of [", Fulana", ". Fulana", " (Fulana)", " 3350-0000 Fulana", ", das 8h às 17h com Fulana", " - Fulana de Tal", "; Fulana"]) {
+        const v = `agendamento com ${d}${r}`;
+        expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+        expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+        expect(isWorkPersonLine(`Atendimento: ${v}`), `${id}: per line: ${v}`).toBe(true);
+      }
+    }
+  });
+
+  it.each(WORK)("%s keeps 'senha numerada' and 'senha de atendimento' before the end, punctuation, a number or hours", (id) => {
+    for (const d of ["senha numerada", "senha de atendimento"]) {
+      for (const r of ["", ".", ", das 8h às 17h", " (das 8h às 17h)", ", de segunda a sexta", ", segunda a sexta, 8h", " 3350-0000", ", pelo 156", ", na recepção", " - 2ª a 6ª feira"]) {
+        const v = `agendamento com ${d}${r}`;
+        expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`.replace("3350-0000", "[masked]")]);
+      }
+    }
+    expect(lines(id, "Atendimento: agendamento (com senha numerada)")).toEqual(["Atendimento: agendamento (com senha numerada)"]);
+    // Review of this PR: a long hours rest stays (a step is one character or word, at most 300).
+    const long = "agendamento com senha numerada, segunda a sexta, das 8h às 12h e das 13h às 17h, sábado das 8h às 12h, domingo fechado";
+    expect(lines(id, `Atendimento: ${long}`)).toEqual([`Atendimento: ${long}`]);
+    // Known limits: a word that is not a step hides the line, on the safe side ("Domingos" is a name, so no plural weekdays).
+    for (const v of ["agendamento com senha numerada, das 8h às 17h, exceto feriados", "agendamento com senha numerada, sábados das 8h às 12h"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta, 8h às 17h\nDocumentos: RG")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s keeps a schedule line after 'Agendamento com senha numerada' (0.84.0 hid the field)", (id) => {
+    for (const d of ["Agendamento com senha numerada", "Agendamento com senha de atendimento"]) {
+      expect(lines(id, `${d}\n${SCHEDULE}`), `${id}: ${d}`).toEqual([d, SCHEDULE]);
+      expect(lines(id, `Atendimento:\n${d}\n${SCHEDULE}`), `${id}: label: ${d}`).toEqual(["Atendimento:", d, SCHEDULE]);
+      expect(lines(id, `${d}\n${HOURS}`), `${id}: ${d}`).toEqual([d, HOURS]);
+      expect(lines(id, `${d}\n${SCHEDULE}\nTelefone: 3350-0000`), `${id}: three lines: ${d}`).toEqual([d, SCHEDULE, "Telefone: [masked]"]);
+    }
+  });
+
+  it.each(WORK)("%s hides a name on the line after 'senha numerada', also when it starts with a number", (id) => {
+    for (const d of ["Agendamento com senha numerada", "Agendamento com senha numerada,", "Agendamento com senha de atendimento."]) {
+      for (const n of ["Fulana", "Fulana de Tal", "3350-0000 Fulana", "8h às 17h com Fulana", "(Fulana)"]) {
+        expect(lines(id, `${d}\n${n}`).join("\n"), `${id}: ${d} / ${n}`).not.toContain("Fulana");
+        expect(lines(id, `Atendimento:\n${d}\n${n}`).join("\n"), `${id}: label: ${d} / ${n}`).not.toContain("Fulana");
+      }
+      expect(lines(id, `${d}\n${SCHEDULE}\nFulana`).join("\n"), `${id}: third line: ${d}`).not.toContain("Fulana");
+    }
+    // Review of this PR: a name on the fourth line, after two schedule lines, hides the field (as in 0.84.0).
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana").join("\n")).not.toContain("Fulana");
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nTelefone: 3350-0000")).toEqual(["Agendamento com senha numerada", "Segunda a sexta", "das 8h às 17h", "Telefone: [masked]"]);
+    // Review of this PR: with an article ("com a senha numerada") too, also when another line hid on its own rules.
+    for (const n of ["8h às 17h com Fulana", "3350-0000 Fulana", "Fulana"]) {
+      expect(lines(id, `Agendamento com a senha numerada\n${n}`).join("\n"), `${id}: article / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com a senha numerada\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com senha numerada,\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
+    }
+    // A detail split over two lines: the first line hides on its own, and the rest of the name after it too.
+    expect(lines(id, "Agendamento com senha\nnumerada Fulana").join("\n")).not.toContain("Fulana");
+  });
+
+  it.each(WORK)("%s: 'corrido' alone is no longer a day detail; 'dias corridos' stays", (id) => {
+    for (const v of ["agendamento com um dia corrido", "agendamento com dia corrido", "agendamento com Uma Dia Corrido"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com um dia útil de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    // Since 0.84.0, um/uma and dia/hora with nothing after are hidden (0.83.0 showed them).
+    for (const v of ["agendamento com um dia", "agendamento com uma hora"]) expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s still keeps every line the 0.82.0 and 0.84.0 tests list as legitimate", (id) => {
+    for (const v of ["agendamento com uma semana de antecedência", "agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com senha retirada",
+      "agendamento com um dia antes", "agendamento com uma hora antes", "agendamento com uma hora marcada", "agendamento com uma hora agendada",
+      "agendamento com uma hora e meia de antecedência", "agendamento com senha prévia", "agendamento com senha na recepção", "agendamento com hora marcada",
+      "agendamento com senha de atendimento, das 8h às 17h", "agendamento com senha numerada.", "agendamento com 48 horas de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const b of ["2 dias úteis", "48 horas de antecedência"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("the senha rest stays fast: 'senha numerada, ' repeated, 50 KB and 400 KB", () => {
+    const start = performance.now();
+    const shapes = ["Atendimento: agendamento com senha numerada, " + "senha numerada, ".repeat(3_200) + "x",
+      "Atendimento: " + "agendamento com senha numerada, ".repeat(1_600) + "x",
+      "Atendimento: agendamento com senha numerada" + ", 8h".repeat(12_500) + " Fulana",
+      "agendamento com senha numerada, ".repeat(12_500), "agendamento com senha de atendimento " + "das 8h ".repeat(57_000) + "x",
+      "Agendamento com senha numerada\n" + "senha numerada, \n".repeat(3_000)];
+    for (const s of shapes) {
+      isWorkPersonLine(s);
+      isWorkPersonLine(s, null);
+      lines("sine", s);
+      lines("liceu de oficios", s);
+    }
+    for (const w of ["senha numerada, ", "senha de atendimento, ", "senha numerada 1 ", "um dia corrido "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    expect(performance.now() - start).toBeLessThan(2000);
   });
 });
