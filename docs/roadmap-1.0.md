@@ -393,3 +393,11 @@ anything else is hidden ("senha numerada, Fulana"); a schedule line after such a
 no longer a detail. No new question, source or host; the 12 person-hiding layers were re-read once for the check
 (131 hidden-line markers before and after). The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
 answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+
+At v0.87.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 leaves out only dates or places that
+identify the citizen, step 5 repeats, as the project's own observation, that the CuritibAI cannot guarantee the
+anonymous form protects the citizen's identity, the guide speaks of "o cidadão" throughout, and a test fails on any
+promise of anonymity in the guide. No new question, source or host. The Curitiba App rows are unchanged (18, 16
+covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
+buses 2, other cities 2).

@@ -637,9 +637,9 @@ export const GUIDES = {
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
       "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
       "That the text and the attachments a citizen sends can identify them (the summary, steps 4 and 5) is also this " +
-      "project's own observation, not the PDF's. So is step 4's \"o CuritibAI não pode garantir que a forma anônima " +
-      "proteja a sua identidade\", said of \"a identidade do cidadão\" in the summary too: this project does not know what the Curitiba Ouve site records about " +
-      "the visit. ",
+      "project's own observation, not the PDF's. So is \"o CuritibAI não pode garantir que a forma anônima proteja a " +
+      "identidade do cidadão\", said in the summary and steps 4 and 5: this project does not know what the Curitiba " +
+      "Ouve site records about the visit. ",
     steps: [
       FIRST_STEP,
       {
@@ -656,11 +656,12 @@ export const GUIDES = {
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
           "anexar fotos e documentos, e a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o " +
           "CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
-          "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, deixe de fora " +
-          "o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome do " +
-          "arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou lugares " +
-          "e qualquer detalhe que só você conheça. Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma " +
-          "anônima proteja a sua identidade, e não sabe o que o site registra sobre o acesso.",
+          "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, ele pode deixar " +
+          "de fora o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome " +
+          "do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou " +
+          "lugares que identifiquem o cidadão e qualquer detalhe que só ele conheça. Observação do CuritibAI, não do " +
+          "guia de 2024: o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão, e não sabe " +
+          "o que o site registra sobre o acesso.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",
@@ -673,7 +674,8 @@ export const GUIDES = {
           "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). O texto e os anexos do " +
           "e-mail também podem identificar o cidadão (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
           "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4), segundo o guia de 2024, que o CuritibAI " +
-          "não conferiu hoje no site.",
+          "não conferiu hoje no site; o CuritibAI não pode garantir que a forma anônima proteja a identidade do " +
+          "cidadão (observação do CuritibAI, não do guia de 2024).",
         consent:
           `O cidadão escreve e envia a mensagem só no seu próprio programa de e-mail, para ${CGM_EMAIL}, não nesta ` +
           "conversa. O assistente não escreve nem envia nada.",
