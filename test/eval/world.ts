@@ -117,6 +117,7 @@ function pointRoutes(lat: number, lon: number): Record<string, Route> {
       spatialReference: { wkid: 4326 },
       features: [{ attributes: { gtm_nm_logradouro: "RUA TESTE" }, geometry: { paths: [[[p.lon + 0.0001, p.lat - 0.001], [p.lon + 0.0001, p.lat + 0.001]]] } }],
     }),
+    pgv: attrs([{ sg_zona: "ZF", nm_zona: "ZONA FISCAL TESTE", nm_bairro: "CENTRO", cd_microbairro: "99.0", cd_microrregiao: 0 }]),
     health_area: attrs([{ nome: "US TESTE", distrito: "DISTRITO TESTE", data: "março/2022", fonte: "SMS-PMC", geometriaaproximada: 0 }]),
     cras_territory: attrs([{ nome: "CRAS TESTE", tipo: "CRAS", regional: "MATRIZ", data: "MAR-2019", fonte: "FAS", geometriaaproximada: 0 }]),
     pm_company: attrs([{ nm_batalhao: "99º Batalhão", sg_batalhao: "99º BPM", nm_companhia: "1ª Companhia", sg_companhia: "1ª CIA", data_atualizacao: "09/2025", fonte: "PMPR TESTE" }]),

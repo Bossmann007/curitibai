@@ -1222,6 +1222,8 @@ export function getFacilityLayer(t: FacilityType): Promise<Cached<FacilityLayer>
 
 /** IPPUC's cadastral map service (the GeoCuritiba/ folder: the root-level name answers 499 "Token Required"). */
 export const CADASTRAL_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritiba_MapaCadastral/MapServer`;
+/** IPPUC's Planta Genérica de Valores service (v0.65.0): layer 0 only (PGV 2025 micro-regions), never the lots. */
+export const PGV_SERVICE_URL = `${SERVICES}/GeoCuritiba/Publico_GeoCuritiba_Planta_Generica_Valores/MapServer`;
 /** Streets are looked for within this distance of the point. */
 export const STREET_RADIUS_M = 100;
 
@@ -1230,6 +1232,7 @@ export type PointLayer =
   | "zoning_decree"
   | "zoning_law"
   | "street"
+  | "pgv"
   | "health_area"
   | "cras_territory"
   | "pm_company"
@@ -1246,6 +1249,9 @@ export const POINT_LAYERS: Record<PointLayer, { service: string; id: number; fie
   zoning_decree: { service: CADASTRAL_SERVICE_URL, id: 41, fields: ZONING_FIELDS },
   zoning_law: { service: CADASTRAL_SERVICE_URL, id: 36, fields: ZONING_FIELDS },
   street: { service: CADASTRAL_SERVICE_URL, id: 12, fields: "gtm_nm_logradouro" },
+  // v0.65.0, read on 2026-11-26: 1,062 micro-regions (PGV 2025). Never vukt or cod_vukt (a land unit value whose unit
+  // and use the layer does not publish), never chave (it repeats these codes).
+  pgv: { service: PGV_SERVICE_URL, id: 0, fields: "sg_zona,nm_zona,nm_bairro,cd_microbairro,cd_microrregiao" },
   health_area: { service: THEMATIC_SERVICE_URL, id: 19, fields: "nome,distrito,data,fonte,geometriaaproximada" },
   cras_territory: { service: THEMATIC_SERVICE_URL, id: 5, fields: "nome,tipo,regional,data,fonte,geometriaaproximada" },
   // v0.27.0, read on 2026-11-24: Polícia Militar companies (13 areas), Polícia Civil districts (13), fire platoons (9).

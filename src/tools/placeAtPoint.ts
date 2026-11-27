@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   CADASTRAL_SERVICE_URL,
   cleanPointField,
+  PGV_SERVICE_URL,
   inCuritibaBox,
   POINT_LAYERS,
   pointReads,
@@ -45,6 +46,14 @@ const Zone = z.object({
   layer: z.number().int().describe("41 (zoning with Decree 297/2026 areas) or 36 (zoning, Lei 15.511/2019) when 41 has nothing here."),
 });
 
+const MicroRegion = z.object({
+  zone_code: z.string().nullable().describe("PGV fiscal zone code as published (sg_zona), e.g. \"EE\"; not the zoning of `zoning`."),
+  zone_name: z.string().nullable().describe("PGV fiscal zone name as published (nm_zona)."),
+  bairro: z.string().nullable().describe("Bairro as the PGV layer names it (nm_bairro)."),
+  microbairro: z.string().nullable().describe("Micro-bairro code as published (cd_microbairro), e.g. \"27.0\"."),
+  microregion: z.number().int().nullable().describe("Micro-region code inside the zone and micro-bairro (cd_microrregiao); 0 is a code."),
+});
+
 const placeResult = z.object({
   data: z.object({
     lat: z.number().describe("The point rounded to 4 decimals (about 11 m): the only precision sent to the source."),
@@ -58,7 +67,14 @@ const placeResult = z.object({
       .object({ name: z.string(), distance_m: z.number().int() })
       .nullable()
       .describe(`Nearest street line within ${STREET_RADIUS_M} m, straight-line distance; null when none.`),
-    partial: z.boolean().describe("True when the zoning or street layer could not be read; that field is then null."),
+    pgv: z
+      .object({
+        micro_regions: z.array(MicroRegion).describe("Distinct rows, at most 5 (more than one on a boundary); empty when no polygon contains the point."),
+        source_url: z.string().url(),
+      })
+      .nullable()
+      .describe("IPTU Planta Genérica de Valores 2025 micro-region (IPPUC layer 0); null when not read or not asked (outside Curitiba)."),
+    partial: z.boolean().describe("True when the zoning, street or PGV layer could not be read; that field is then null."),
   }),
   source: z.string(),
   source_url: z.string().url(),
@@ -69,6 +85,7 @@ const placeResult = z.object({
 
 type PlaceResult = z.infer<typeof placeResult>;
 type ZoneOut = z.infer<typeof Zone>;
+type MicroRegionOut = z.infer<typeof MicroRegion>;
 
 const NOTE = "Place: zoning is informative, not an official zoning certificate: confirm with the Prefeitura before any decision.";
 
@@ -103,6 +120,34 @@ function zonesOf(features: PointFeature[], layer: number): ZoneOut[] {
   return out.slice(0, MAX_ZONES);
 }
 
+function microRegionsOf(features: PointFeature[]): MicroRegionOut[] {
+  const out: MicroRegionOut[] = [];
+  const seen = new Set<string>();
+  for (const { attributes: a } of features) {
+    const code = a.cd_microrregiao;
+    const r: MicroRegionOut = {
+      zone_code: cleanPointField(a.sg_zona, 50),
+      zone_name: cleanPointField(a.nm_zona, 255),
+      bairro: cleanPointField(a.nm_bairro, 100),
+      microbairro: cleanPointField(a.cd_microbairro, 10),
+      microregion: typeof code === "number" && Number.isInteger(code) ? code : null,
+    };
+    if (Object.values(r).every((v) => v === null)) continue;
+    const k = JSON.stringify(r);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out.slice(0, MAX_ZONES);
+}
+
+const PGV_NOTE =
+  "PGV: the micro-region is the point's place in the IPTU Planta Genérica de Valores 2025 as IPPUC publishes it, " +
+  "not a property value or an IPTU amount (this tool reads neither); a bairro has several micro-regions.";
+
+/** "a", "a and b", "a, b and c". */
+const listed = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
+
 function nearestStreet(p: Point, features: PointFeature[]): { name: string; distance_m: number } | null {
   let best: { name: string; distance_m: number } | null = null;
   for (const f of features) {
@@ -130,6 +175,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
   };
   let zoning: ZoneOut[] | null = null;
   let street: { name: string; distance_m: number } | null = null;
+  let pgv: PlaceResult["data"]["pgv"] = null;
   if (inside) {
     try {
       const decree = await reads.layer("zoning_decree");
@@ -151,12 +197,24 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
     } catch (err) {
       failed("street", err);
     }
+    // Last: the call budget cuts it first.
+    try {
+      const m = await reads.layer("pgv");
+      times.push(m.fetchedAt);
+      pgv = { micro_regions: microRegionsOf(m.value), source_url: PGV_SERVICE_URL };
+    } catch (err) {
+      failed("PGV", err);
+    }
   }
   const extra = [
     inside ? "" : "No Curitiba neighbourhood contains this point (it may be in a neighbouring city); nothing else was asked.",
     b.boundary ? "The point is on a neighbourhood boundary; `bairro` is the first by name." : "",
     (zoning?.length ?? 0) > 1 ? "The point touches more than one zone (a boundary)." : "",
-    missing.length > 0 ? `Partial: the ${missing.join(" and ")} layer could not be read now. ${missingNote(errors)}` : "",
+    pgv === null ? "" : pgv.micro_regions.length === 0 ? "No PGV micro-region polygon contains this point." : PGV_NOTE,
+    (pgv?.micro_regions.length ?? 0) > 1 ? "The point touches more than one PGV micro-region (a boundary)." : "",
+    missing.length > 0
+      ? `Partial: the ${listed(missing)} ${missing.length > 1 ? "layers" : "layer"} could not be read now. ${missingNote(errors)}`
+      : "",
   ].filter(Boolean);
   return {
     data: {
@@ -168,6 +226,7 @@ async function placeAt(p: Point, reads: PointReads): Promise<PlaceResult> {
       boundary: b.boundary,
       zoning,
       nearest_street: street,
+      pgv,
       partial: missing.length > 0,
     },
     source: PLACE_SOURCE,
@@ -198,7 +257,7 @@ export const placeAtPointOutput = z.object({
     point: z
       .object({ lat: z.number(), lon: z.number() })
       .describe("The point rounded to 4 decimals (about 11 m): the only precision sent to the source."),
-    place: PlacePart.nullable().describe(`Bairro, regional, zoning and nearest street${notRead}`),
+    place: PlacePart.nullable().describe(`Bairro, regional, zoning, nearest street and IPTU PGV micro-region${notRead}`),
     service_areas: AreasPart.nullable().describe(`Areas that cover the point${notRead}`),
     census: CensusPart.nullable().describe(`IBGE 2022 census sector and neighbourhood${notRead}`),
     partial: z
@@ -302,10 +361,10 @@ export const placeAtPoint: ToolDef<typeof placeAtPointInput, typeof placeAtPoint
   name: "place_at_point",
   title: "Place, service areas and census of a point in Curitiba (IPPUC GeoCuritiba)",
   description:
-    "Where is this point in Curitiba, who serves it, who lives around? `include` (default all): place (bairro, " +
-    "regional, zoning, nearest street), service_areas (`areas`: care, safety, registry, all) and census (IBGE 2022; sectors " +
+    "Where is a point in Curitiba, who serves it, who lives there? `include`: place (bairro, " +
+    "regional, zoning, nearest street, IPTU PGV micro-region), service_areas (`areas`: care, safety, registry, all) and census (IBGE 2022; sectors " +
     `under ${MIN_HOUSEHOLDS} households withheld). Live from IPPUC's GeoCuritiba (not affiliated); only the point ` +
-    "rounded to 4 decimals is sent. A cold call can be partial: call again. Read-only.",
+    "rounded to 4 decimals is sent. Cold calls may be partial: retry. Read-only.",
   inputSchema: placeAtPointInput,
   outputSchema: placeAtPointOutput,
   handler: async (args) => {

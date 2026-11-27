@@ -20,6 +20,7 @@ const BODIES: Record<PointLayer, string> = {
   zoning_decree: attrs([{ sg_zona: "ZT-1", nm_zona: "ZONA TESTE 1", legislacao: "DECRETO TESTE", data_versao: "2020-08" }]),
   zoning_law: EMPTY,
   street: STREETS,
+  pgv: attrs([{ sg_zona: "ZF-T", nm_zona: "ZONA FISCAL TESTE", nm_bairro: "BAIRRO TESTE", cd_microbairro: "99.0", cd_microrregiao: 0 }]),
   health_area: attrs([{ nome: "US TESTE", distrito: "DISTRITO TESTE", data: "março/2022", fonte: "SMS-PMC", geometriaaproximada: 0 }]),
   cras_territory: attrs([{ nome: "CRAS TESTE", tipo: "CRAS", regional: "REGIONAL TESTE", data: "MAR-2019", fonte: "FAS", geometriaaproximada: 0 }]),
   pm_company: attrs([{ nm_batalhao: "99º Batalhão", sg_batalhao: "99º BPM", nm_companhia: "1ª Companhia", sg_companhia: "1ª CIA", data_atualizacao: "09/2025", fonte: "PMPR TESTE" }]),
@@ -160,9 +161,9 @@ describe("place_at_point call budget", () => {
     ]);
     expect(answered(out)).toEqual(["place", "service_areas", "census"]);
     expect(out.data.partial).toBe(true);
-    expect(out.data.place).toMatchObject({ zoning: [{ code: "ZT-1" }], nearest_street: null, partial: true });
+    expect(out.data.place).toMatchObject({ zoning: [{ code: "ZT-1" }], nearest_street: null, pgv: null, partial: true });
     expect(out.data.census).toMatchObject({ sector: { households: 129 }, neighbourhood: null, partial: true });
-    expect(out.notes.join(" ")).toMatch(/street layer could not be read now. It was not asked: the call's time budget ran out/);
+    expect(out.notes.join(" ")).toMatch(/street and PGV layers could not be read now. It was not asked: the call's time budget ran out/);
     expect(out.notes.join(" ")).not.toMatch(/host was busy or failing/);
   });
 
