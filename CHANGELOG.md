@@ -2,6 +2,27 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.78.0 - 2026-11-27
+
+E-mail filter, third pass (the low of the 0.74.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` (every type): a `curitiba.pr.gov.br` address shaped like a person's name is now also
+  dropped when a middle word is a single letter ("ana.c.lima", "joao.p.silva", "j.p.silva"), when the surname is an
+  initial ("maria.s", "maria.c.s") and when a separator repeats ("maria..silva", "maria__silva"). A middle word may
+  have one letter when the last has two or more; the last may have one letter when the first has two or more. The
+  unit words are checked first and keep the address ("regional.c.cic", "cras..cajuru", "sine.s"); the list is
+  unchanged. Ouvidoria, sine, falecomacgm and bare regional names ("boqueirao", "cic") stay; two single letters
+  ("a.b", "a1.b") or a word and a number ("sec.2", "sec..2") never match. Tested for each new shape and for the
+  addresses that stay. The local part is at most 64 characters (checked first), so the rule has no long-input cost.
+- Known limits: a word and a single letter ("sala.a") is dropped like a name (none was read); a trailing separator
+  ("maria.silva.") and a one-word name ("fulanasilva") still pass.
+- Checked against the real records: the 89 urban-equipment layers the tool reads, re-read once on 2026-11-27
+  (2,167 records, 1,765 city e-mails, 776 distinct), keep 1,763 e-mails with the old and the new rule; none is newly
+  hidden and no distinct address changes.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
 ## 0.77.0 - 2026-11-27
 
 PGV micro-bairro description and the service areas list type (the lows of the 0.73.0 review). 27 tools. Publishes

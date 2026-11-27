@@ -225,6 +225,26 @@ describe("contact fields", () => {
       expect(institutionalEmails(e), e).toEqual([e]);
     }
   });
+
+  it("v0.78.0: also drops a middle initial, a surname as an initial and a repeated separator", () => {
+    for (const e of ["ana.c.lima@curitiba.pr.gov.br", "joao.p.silva@sme.curitiba.pr.gov.br", "maria.s@curitiba.pr.gov.br",
+      "maria..silva@curitiba.pr.gov.br", "j.p.silva@curitiba.pr.gov.br", "Ana_C_Lima@FCC.curitiba.pr.gov.br",
+      "maria-s@sms.curitiba.pr.gov.br", "maria.s.2@curitiba.pr.gov.br", "maria.c.s@curitiba.pr.gov.br", "ana.c.lima2@curitiba.pr.gov.br",
+      "maria__silva@curitiba.pr.gov.br", "maria.-silva@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([]);
+    }
+  });
+
+  it("v0.78.0: institutional, unit and regional addresses stay; two single letters or a word and a number are not a name", () => {
+    for (const e of ["ouvidoria@curitiba.pr.gov.br", "sine@curitiba.pr.gov.br", "falecomacgm@curitiba.pr.gov.br",
+      "boqueirao@curitiba.pr.gov.br", "cic@curitiba.pr.gov.br", "regional.boqueirao@curitiba.pr.gov.br", "regional.c.cic@curitiba.pr.gov.br", "regional3.cic@curitiba.pr.gov.br",
+      "cras.boqueirao@curitiba.pr.gov.br", "cras..cajuru@curitiba.pr.gov.br", "us.b.alto@sms.curitiba.pr.gov.br",
+      "sine.s@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br", "a.b@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br",
+      "sec.2@curitiba.pr.gov.br", "sec..2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([e]);
+    }
+    expect(institutionalEmails("ana.c.lima@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
+  });
 });
 
 describe("parseLayer", () => {
