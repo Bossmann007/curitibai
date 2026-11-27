@@ -360,3 +360,9 @@ leaks 0.80.0 introduced (long Liceu lines, names on the line after a guarded wor
 once for the check, no shown line changed. No new question, source or host. The Curitiba App rows are unchanged (18,
 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
 buses 2, other cities 2).
+
+At v0.82.0 (phase B) the work-type person-name filter reads the word after um/uma, dia(s), hora and senha in
+"agendamento com …" ("agendamento com Dias de Souza" is hidden; "com dias de antecedência" stays), and on the line after
+a guarded phrase "156 Dias", "8 Dias", "156 Hora" and "Úteis" alone are hidden. No new question, source or host; the
+layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
+questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).

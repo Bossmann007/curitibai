@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.82.0 - 2026-11-27
+
+Person-name filter, sixth pass (follow-ups of the 0.80.0 and 0.81.0 Security Reviewer notes). 27 tools. Publishes
+nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com" followed by a word that
+  can also be a name: the five forms the 0.80.0 review named ("agendamento com Dias", "com Uma Costa", "com hora
+  Fulana", "com dias Fulana", "com senha Fulana") were already hidden on 0.81.0 and are now tested. The word after
+  them still let a name through, and is now read per word: um/uma only before semana, dia, hora, minuto or mês;
+  dia(s) only before útil/úteis, corridos, antes or "de antecedência/prazo"; hora only before marcada/agendada; senha
+  only before retirada, prévia or "na/pela" and a place or channel (recepção, portaria, unidade, site, internet,
+  telefone, aplicativo, 156, local, balcão, guichê, totem, hora); um/uma also before antecedência or prazo.
+  "agendamento com Dias de Souza", "com Uma de Souza", "com Hora da Silva", "com Dias
+  3350-0000", "com Hora 8h às 17h", "com Dias no balcão", "com Hora pelo 156", "com Dias marcados" and "com senha pela
+  Fulana" are hidden (all shown on 0.81.0); "com dias de antecedência", "com uma semana de antecedência", "com hora
+  marcada", "com senha retirada" and "com senha na recepção" stay. A number right after one of these words no longer
+  makes it a detail.
+- Work types, the line after a guarded phrase ("Telefone da Regional:", "Fale com a gente pelo 156", "Tratar com" /
+  "o RH"): a number before "Dias" or "Hora" counted as hours, so "156 Dias", "8 Dias" and "156 Hora" were shown there
+  (new in 0.81.0, two- and three-line forms). "Dia(s)" after a number now counts only before "de" ("2 dias de
+  antecedência"), and "hora(s)" only after a one- or two-digit number ("24 horas", "1 hora"). "Útil/úteis" alone
+  counted as hours, so "Util" or "Úteis" was shown there; it now counts only as "dia(s) útil/úteis" ("Dias úteis",
+  "2 dias úteis", "8 horas por dia útil" stay). Known limits: "8 Hora" (one or two digits, then "Hora") still reads
+  as hours; "100 horas" (three digits), "2 dias", "5 dias corridos" and "7 dias por semana" alone after a guarded
+  phrase are hidden, on the safe side ("100 horas" was shown on 0.81.0).
+- Each new hours word reads one way only (one word, one path); the timing test of 0.81.0 gains every new
+  alternative repeated 30 times, and 2,000 repeats of each name-like word after "agendamento com" run under 1 s.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No host contacted (the layers were not re-read; synthetic lines only); no new host, link or dependency.
+
 ## 0.81.0 - 2026-11-27
 
 Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing. **This version fixes
