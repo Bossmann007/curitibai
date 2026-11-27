@@ -11,14 +11,20 @@ Publishes nothing.
   "… senha de atendimento": 0.84.0 counted them as a detail when the next character was punctuation or a digit, so
   "agendamento com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)", "… senha de atendimento,
   Fulana" and "… numerada 3350-0000 Fulana" showed the name (0.83.0 hid them). The rest of the line must now be made
-  only of numbers, punctuation, channel, unit and hours words and connectors (at most 100 steps): "com senha
-  numerada.", "com senha numerada, das 8h às 17h", "com senha de atendimento, de segunda a sexta" and "(com senha
-  numerada)" stay; the five forms above are hidden.
+  only of numbers, punctuation, channel, unit and hours words and connectors (a step is one word or one character,
+  at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h", "com senha de atendimento, de segunda a
+  sexta" and "(com senha numerada)" stay; the five forms above are hidden.
 - "Agendamento com senha numerada" followed by a schedule line ("Segunda a sexta, 8h às 17h") hid the whole field
-  (the whole-field check joins lines with spaces). That check now takes any word after these words, since each line
-  was already checked, and the split check reads the next line even when it starts with a number: the schedule stays,
-  and "… senha numerada," / "3350-0000 Fulana" or "… senha numerada" / "Fulana" hides the name line. Known limit: any
-  other line right after it ("Documentos: RG") is hidden, on the safe side, as in 0.84.0.
+  (the whole-field check joins lines with spaces and read only the next character). That check now reads the rest
+  the same way, so a field whose lines after these words are only hours and numbers stays, and a name on any later
+  line hides it when that check runs (it is skipped when another line hid on its own rules; then only the next line
+  is read, as before). The split check also reads the line after such a line (with or without an article, "com a senha
+  numerada") even when it starts with a number, so "… senha numerada," / "3350-0000 Fulana" hides the name line when
+  another line hid on its own rules and the whole-field check is skipped. Known limits: any other word in the rest
+  hides the line or the field, on the safe side: "exceto feriados", "sábados", "domingos" (plural weekdays are not
+  read as hours: "Domingos" is a name) and a later line such as "Documentos: RG" (0.84.0 hid the field too when the
+  next line started with a word). A name made only of such words ("Domingo", "Sexta", "Central", "Regional") reads
+  as hours and is shown after "senha numerada" (Security Reviewer, LOW; ", Domingo" was shown in 0.85.0 too).
 - "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido", kept in 0.84.0, is
   now hidden, on the safe side. Since 0.84.0, "agendamento com uma hora" and "agendamento com um dia" with nothing
   after are hidden too (0.83.0 showed them); tested.

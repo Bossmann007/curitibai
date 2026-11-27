@@ -3046,6 +3046,14 @@ describe("v0.86.0: name filter, eighth pass (the rest after 'senha numerada'; th
       }
     }
     expect(lines(id, "Atendimento: agendamento (com senha numerada)")).toEqual(["Atendimento: agendamento (com senha numerada)"]);
+    // Review of this PR: a long hours rest stays (a step is one character or word, at most 300).
+    const long = "agendamento com senha numerada, segunda a sexta, das 8h às 12h e das 13h às 17h, sábado das 8h às 12h, domingo fechado";
+    expect(lines(id, `Atendimento: ${long}`)).toEqual([`Atendimento: ${long}`]);
+    // Known limits: a word that is not a step hides the line, on the safe side ("Domingos" is a name, so no plural weekdays).
+    for (const v of ["agendamento com senha numerada, das 8h às 17h, exceto feriados", "agendamento com senha numerada, sábados das 8h às 12h"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta, 8h às 17h\nDocumentos: RG")).toEqual([HIDDEN_PERSON_LINE]);
   });
 
   it.each(WORK)("%s keeps a schedule line after 'Agendamento com senha numerada' (0.84.0 hid the field)", (id) => {
@@ -3064,6 +3072,15 @@ describe("v0.86.0: name filter, eighth pass (the rest after 'senha numerada'; th
         expect(lines(id, `Atendimento:\n${d}\n${n}`).join("\n"), `${id}: label: ${d} / ${n}`).not.toContain("Fulana");
       }
       expect(lines(id, `${d}\n${SCHEDULE}\nFulana`).join("\n"), `${id}: third line: ${d}`).not.toContain("Fulana");
+    }
+    // Review of this PR: a name on the fourth line, after two schedule lines, hides the field (as in 0.84.0).
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana").join("\n")).not.toContain("Fulana");
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nTelefone: 3350-0000")).toEqual(["Agendamento com senha numerada", "Segunda a sexta", "das 8h às 17h", "Telefone: [masked]"]);
+    // Review of this PR: with an article ("com a senha numerada") too, also when another line hid on its own rules.
+    for (const n of ["8h às 17h com Fulana", "3350-0000 Fulana", "Fulana"]) {
+      expect(lines(id, `Agendamento com a senha numerada\n${n}`).join("\n"), `${id}: article / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com a senha numerada\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com senha numerada,\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
     }
     // A detail split over two lines: the first line hides on its own, and the rest of the name after it too.
     expect(lines(id, "Agendamento com senha\nnumerada Fulana").join("\n")).not.toContain("Fulana");

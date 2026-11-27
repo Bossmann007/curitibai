@@ -21,12 +21,13 @@ script, to replay the filter on the real records; the reads were deleted. Tests 
 
 1. **Leak** (`SENHA_REST`): after "agendamento com senha numerada" or "… senha de atendimento", the rest of the line
    must be made only of rest and hours steps (numbers, punctuation, channel, unit and hours words, connectors, line
-   breaks; at most 100 steps). "senha numerada, Fulana", ". Fulana", "(Fulana)" and "3350-0000 Fulana" are hidden;
-   "senha numerada, das 8h às 17h" stays.
-2. **Over-hiding**: the whole-field check (lines joined with spaces) takes any word after these words, and
-   `readsNextLine` (was `isGuardedContact`) makes hourLines' split check read the line after a line ending in them,
-   even when it starts with a number. A schedule line after "Agendamento com senha numerada" stays; a name line is
-   hidden. The nameFilter.ts comment "as on 0.83.0" is replaced.
+   breaks; a step is one word or one character, at most 300). "senha numerada, Fulana", ". Fulana", "(Fulana)" and
+   "3350-0000 Fulana" are hidden; "senha numerada, das 8h às 17h" stays.
+2. **Over-hiding**: the whole-field check (lines joined with spaces) reads the rest the same way, so a schedule line
+   after "Agendamento com senha numerada" stays and a name on any later line hides the field (review of this PR:
+   taking any word there showed a name on the fourth line). `readsNextLine` (was `isGuardedContact`) makes hourLines'
+   split check read the line after a line ending in them (with or without an article), even when it starts with a
+   number, for fields where the whole-field check is skipped. The nameFilter.ts comment "as on 0.83.0" is replaced.
 3. **DAY_DETAIL**: "corrido" alone is dropped ("corridos" stays); "agendamento com um dia corrido" is hidden.
 4. **CHANGELOG**: says "com uma hora" / "com um dia" alone are hidden since 0.84.0.
 5. **Tests** (`test/cityFacilities.test.ts`, v0.86.0 block): each hidden and kept case, every line the 0.82.0 and
