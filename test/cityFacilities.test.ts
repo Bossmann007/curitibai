@@ -21,7 +21,7 @@ import {
   WOMEN_EMERGENCY_NOTE,
   type FacilityType,
 } from "../src/sources/geocuritiba.js";
-import { cityFacilitiesSearchOutput } from "../src/tools/cityFacilitiesSearch.js";
+import { cityFacilitiesSearchOutput, MIXED_NOTE } from "../src/tools/cityFacilitiesSearch.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
 const JSON_TYPE = "application/json; charset=UTF-8";
@@ -2073,5 +2073,80 @@ describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", (
     expect(l!.hours.slice(0, 2)).toEqual(["Atendimento:", "-2ª a 6ª feira, das 9 às 17h (exceto feriado)"]);
     expect(l!.hours.slice(2).every((x) => x.length <= 160)).toBe(true);
     expect(l!.hours.slice(2).join(" ")).toBe(long);
+  });
+});
+
+describe("v0.67.0: Casa da Leitura, Bondinho da Leitura, auditoriums, circus and chess club", () => {
+  const EQUIPMENT = "https://geocuritiba.ippuc.org.br/server/rest/services/Publico_GeoCuritiba_Equipamentos_Urbanos/MapServer";
+  const BAIRRO_ALTO = { lat: -25.4055, lon: -49.2035 };
+  const layer = (attributes: Record<string, unknown>) =>
+    JSON.stringify({
+      spatialReference: { wkid: 4326 },
+      features: [{ attributes: { objectid: 1, divulgar_endereco: "Sim", ...attributes }, geometry: { x: -49.27, y: -25.43 } }],
+    });
+
+  it.each([
+    ["Casa da Leitura", "casa da leitura", 61], ["casas de leitura", "casa da leitura", 61],
+    ["Bondinho da Leitura", "bondinho da leitura", 60], ["bondinho", "bondinho da leitura", 60],
+    ["Auditório", "auditorio", 52], ["auditorios", "auditorio", 52],
+    ["circo", "circo", 57], ["lona de circo", "circo", 57],
+    ["Clube de Xadrez", "clube de xadrez", 58], ["xadrez", "clube de xadrez", 58],
+  ])("%s maps to %s (layer %i)", (input, id, n) => {
+    expect(resolveType(input)).toMatchObject({ id, layerUrl: `${EQUIPMENT}/${n}` });
+  });
+
+  it("answers \"Tem Casa da Leitura perto do Bairro Alto?\" honestly: none within 3 km, and points at other reading places", async () => {
+    const calls = stubFetch(route("casa da leitura", "casa_da_leitura_synthetic.json"));
+    const out = await search({ type: "casa da leitura", near: BAIRRO_ALTO, radius_m: 3000 });
+    expect(calls).toHaveLength(1);
+    expect(out.source_url).toBe(`${EQUIPMENT}/61`);
+    expect(out.data).toMatchObject({ type: "casa da leitura", total: 0, items: [] });
+    expect(out.note).toMatch(/Within 3000 m/);
+    expect(out.note).toMatch(/`farol do saber` or `biblioteca`/);
+  });
+
+  it("a Casa da Leitura keeps its address, hours, landline and city e-mail", async () => {
+    stubFetch(route("casa da leitura", "casa_da_leitura_synthetic.json"));
+    const out = await search({ type: "casa da leitura", bairro: "bacacheri" });
+    expect(out.data.items[0]).toMatchObject({
+      name: "Casa da Leitura Inventada Norte",
+      address: "R. INVENTADA DO NORTE, 120 - CEP: 82.000-000",
+      phones: ["(41) 3333-6100"],
+      emails: ["clinventadanorte@curitiba.pr.gov.br"],
+      hours: ["Atendimento:", "-2ª a 6ª feira, das 8h30 às 12h e das 13h às 17h30", "Acervo: 5.000 obras."],
+    });
+  });
+
+  it("auditorio says the layer mixes owners and shows no e-mail, even a city address", async () => {
+    stubFetch({
+      [`GET ${url("auditorio")}`]: {
+        body: layer({
+          nome_completo: "Auditório Inventado", dep_admin: "Particular", telefone: "(41) 3333-4400",
+          email: "fulana.inventada@curitiba.pr.gov.br", observacao: "Atendimento:\r\n-3ª feira a domingo, das 10h às 19h",
+        }),
+        contentType: JSON_TYPE,
+      },
+    });
+    const out = await search({ type: "auditorio" });
+    expect(out.data.items[0]).toMatchObject({ phones: ["(41) 3333-4400"], emails: [] });
+    expect(out.note).toContain(MIXED_NOTE);
+    expect(out.note).toMatch(/E-mails are not shown for this type/);
+    expect(JSON.stringify(out)).not.toMatch(/fulana/);
+  });
+
+  it("clube de xadrez shows no e-mail; only auditorio and clube de xadrez set noEmails", () => {
+    const [c] = parseLayer(type("clube de xadrez"), layer({
+      nome_completo: "Clube de Xadrez Inventado", telefone: "(41) 3333-7800", email: "fulano@curitiba.pr.gov.br",
+      observacao: "Atendimento:\r\n-2ª a 6ª feira, das 12h às 21h",
+    })).facilities;
+    expect(c).toMatchObject({ phones: ["(41) 3333-7800"], emails: [] });
+    expect(FACILITY_TYPES.filter((t) => t.noEmails === true).map((t) => t.id)).toEqual(["auditorio", "clube de xadrez"]);
+  });
+
+  it("circo and bondinho da leitura keep their city e-mail", () => {
+    for (const id of ["circo", "bondinho da leitura"]) {
+      const [f] = parseLayer(type(id), layer({ nome_completo: "Inventado", email: "inventado@curitiba.pr.gov.br" })).facilities;
+      expect(f!.emails, id).toEqual(["inventado@curitiba.pr.gov.br"]);
+    }
   });
 });

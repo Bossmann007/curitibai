@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Inventada Norte",
+    "nome_completo": "Casa da Leitura Inventada Norte",
+    "nome_rua": "R. INVENTADA DO NORTE",
+    "num_pred": "120",
+    "compl_end": "CEP: 82.000-000",
+    "divulgar_endereco": "Sim",
+    "bairro": "Bacacheri",
+    "regional": "Boa Vista",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-6100",
+    "email": "clinventadanorte@curitiba.pr.gov.br",
+    "dt_atualiz": 1762867852000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h30 às 12h e das 13h às 17h30\r\nAcervo: 5.000 obras."
+   },
+   "geometry": {
+    "x": -49.235,
+    "y": -25.38
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Inventada Sul",
+    "nome_completo": "Casa da Leitura Inventada Sul",
+    "nome_rua": "AV. INVENTADA DO SUL",
+    "num_pred": "900",
+    "compl_end": "",
+    "divulgar_endereco": "Sim",
+    "bairro": "Capão da Imbuia",
+    "regional": "Cajuru",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-6200",
+    "email": "clinventadasul@curitiba.pr.gov.br",
+    "dt_atualiz": 1762867852000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h30 às 12h30 e das 13h30 às 17h30\r\n-Sábado, das 10h às 17h"
+   },
+   "geometry": {
+    "x": -49.24,
+    "y": -25.44
+   }
+  }
+ ]
+}
