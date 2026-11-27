@@ -1489,6 +1489,27 @@ changes (owner request, 2026-11-23: monthly and automatic).
     person's name in the hours lines of the 33 records: run through the parser, no line was hidden. The four types
     still use the offices' person-line filter (tested with a "Responsável:" line). No new host for the server and
     the link allowlist is unchanged.
+  - **Name filter, v0.70.0** (a follow-up of the 0.64.0 and 0.63.0 reviews). The four work types hide, besides the
+    offices' person lines, a line with professor/a, "Prof.", "Profa." or "Prof.ª", instrutor/a, monitor/a,
+    orientador/a, educador/a, tutor/a, atendente or contato (plurals too) anywhere in it, word-bounded ("contato"
+    followed by a channel, "entre em contato pelo 156", is kept, so the hours after it are not read as a name) ("Atendimento" is not "atendente"), and the line after such a bare label ("Instrutora:"). This is
+    broader on purpose than "a role, or a label before ':'": "Atendimento: atendente Fulana" has the word after the
+    colon. The other office types keep the narrower filter. The `horta comunitaria` allowlist now keeps a "Parceria
+    com …" or "Programa …" line only when, right after the keyword (and an optional ':', article or "de"), comes a
+    body word, an organisation (empresa, instituto, universidade, fundação, cooperativa), a public scope (integrado,
+    municipal, estadual, federal) or COPEL, Sanepar or Eletrosul. Generic words a name can follow (projeto, ONG,
+    hortas) are left out, and there is no capital-letter rule (a name in capitals would pass); a public partner not
+    in the list (a university by its acronym) is hidden, on the safe side. Known limit: a name after that word still passes,
+    caught only by the person words. Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.7
+    (+https://github.com/Bossmann007/curitibai)`, 7 GET requests by hand: `/robots.txt` at 02:06:33 (404,
+    `text/html; charset=utf-8`: no rules, RFC 9309), then one read of `objectid,observacao` (no geometry) of layers
+    150, 151, 149, 152 and 9, 5 s apart; then, after those reads, the MapServer metadata at 02:09:43 (`copyrightText`
+    and `description` empty: **no licence or terms found**, as before). Counts as read: 12, 1, 16 and 4 work records
+    and, in layer 9, 233 records of every kind, 45 with an `observacao` (the tool asks only the community gardens).
+    No line in them named a person or used a role word; the new filters, run on those reads, changed no record's
+    `hours` against 0.69.0. Layer 9 has one "Parceria com COPEL." and 17 "Programa Integrado de Desenvolvimento
+    Sustentável Eletrosul …" lines, all kept. The reads were inspected offline and deleted; the test fixture is
+    synthetic. No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
