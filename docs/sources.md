@@ -1614,7 +1614,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     hidden. On the line after a guarded phrase, "dia(s)" after a number counts as hours only before "de", "hora(s)"
     only after a one- or two-digit number, and "útil/úteis" only after "dia(s)": "156 Dias", "8 Dias", "156 Hora",
     "Util" and "Úteis" are hidden there; "2 dias de antecedência", "24 horas" and "Dias úteis" stay. Known limits:
-    "8 Hora" still reads as hours; "2 dias" alone there is hidden, on the safe side. No request was made for this
+    "8 Hora" still reads as hours; "100 horas" and "2 dias" alone there are hidden, on the safe side. No request was made for this
     version (synthetic lines only). No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58

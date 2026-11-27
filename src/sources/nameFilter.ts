@@ -150,9 +150,9 @@ const APPOINTMENT_DETAIL =
   // Dias Ferreira" are a name. v0.82.0: each word has its own details, and a connector counts only with the noun after
   // it ("dias de antecedência", "senha na recepção"), so "com Dias de Souza", "com Hora pelo 156", "com Uma 3350-0000"
   // and "com Dias marcados" are a name too.
-  "(?:um|uma)(?=\\s+(?:semanas?|dias?|horas?|minutos?|mes)\\b)|dias?(?=\\s+(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))\\b)" +
+  "(?:um|uma)(?=\\s+(?:semanas?|dias?|horas?|minutos?|mes|antecedencia|prazo)\\b)|dias?(?=\\s+(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))\\b)" +
   "|hora(?=\\s+(?:marcada|agendada)\\b)" +
-  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|site|internet|telefone|aplicativo|app|156))\\b)";
+  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|local|balcao|guiche|totem|hora|site|internet|telefone|aplicativo|app|156))\\b)";
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);

@@ -28,9 +28,9 @@ and `util|uteis` alone read "Util" and "Úteis" as hours, so these showed on the
 
 ## Changes
 
-1. **`APPOINTMENT_DETAIL`**: each name-like word has its own details. um/uma: semana, dia, hora, minuto, mês. dia(s):
+1. **`APPOINTMENT_DETAIL`**: each name-like word has its own details. um/uma: semana, dia, hora, minuto, mês, antecedência, prazo. dia(s):
    útil/úteis, corridos, antes, "de antecedência/prazo". hora: marcada/agendada. senha: retirada, prévia, or "na/pela"
-   and recepção, portaria, unidade, site, internet, telefone, aplicativo, app, 156. A number no longer counts.
+   and recepção, portaria, unidade, local, balcão, guichê, totem, hora, site, internet, telefone, aplicativo, app, 156. A number no longer counts.
 2. **`HOURS_STEP`**: "dia(s) útil/úteis" is one step and bare "útil/úteis" is gone; "dia(s)" after a number only before
    "de"; "hora(s)" only after a one- or two-digit number. The alternatives are disjoint (one word, one path).
 3. **Tests** (`test/cityFacilities.test.ts`, a v0.82.0 block): hidden and kept forms for the four work types, the
@@ -38,8 +38,8 @@ and `util|uteis` alone read "Util" and "Úteis" as hours, so these showed on the
 4. **Docs and version**: docs/sources.md (a v0.82.0 paragraph), docs/tools.md (the `city_facilities_search` row),
    docs/roadmap-1.0.md, CHANGELOG 0.82.0, version 0.82.0 in `package.json`, `package-lock.json`, `server.json`.
 
-Known limits: "8 Hora" (one or two digits) still reads as hours after a guarded phrase; "2 dias" alone there is
-hidden, on the safe side; only the second word after um/uma, dia(s), hora and senha is read.
+Known limits: "8 Hora" (one or two digits) still reads as hours after a guarded phrase; "100 horas", "2 dias" and
+"7 dias por semana" alone there are hidden, on the safe side ("100 horas" was shown on 0.81.0); only the second word after um/uma, dia(s), hora and senha is read.
 
 ## Out of scope
 

@@ -2917,7 +2917,7 @@ describe("v0.82.0: name filter, sixth pass (a name-like appointment word; 'N Dia
   it.each(WORK)("%s keeps those words as appointment details", (id) => {
     for (const v of ["agendamento com dias de antecedência", "agendamento com dias úteis de antecedência", "agendamento com uma semana de antecedência", "agendamento com um dia de antecedência",
       "agendamento com uma hora de antecedência", "agendamento com hora marcada", "agendamento com senha retirada", "agendamento com senha prévia", "agendamento com senha na recepção",
-      "agendamento com senha pelo site", "agendamento com 2 dias de antecedência", "agendamento com pelo menos 2 dias de antecedência"]) {
+      "agendamento com senha pelo site", "agendamento com uma antecedência mínima de 48h", "agendamento com senha no local", "agendamento com senha na hora", "agendamento com senha no balcão", "agendamento com 2 dias de antecedência", "agendamento com pelo menos 2 dias de antecedência"]) {
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
     }
   });
@@ -2929,6 +2929,13 @@ describe("v0.82.0: name filter, sixth pass (a name-like appointment word; 'N Dia
       expect(lines(id, `${HOURS}\nTratar com\no RH\n${b}`).join("\n"), `${id}: three lines: ${b}`).not.toContain(b);
     }
     for (const b of ["Dias úteis, das 8h às 17h", "dia útil", "2 dias úteis", "2 dias de antecedência", "24 horas", "1 hora", "Segunda a sexta, 8 horas por dia útil", "Segunda a sexta, dias úteis"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+    // Known limits (stated in CHANGELOG 0.82.0): a three-digit count before "horas" and "N dias" not before "de" are hidden, on the safe side.
+    for (const b of ["100 horas", "2 dias", "24 horas, 7 dias por semana"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["8 Hora"]) { // known limit: one or two digits, then "Hora", still reads as hours
       expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
     }
   });
