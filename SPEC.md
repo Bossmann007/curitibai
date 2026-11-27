@@ -61,6 +61,10 @@ line filter, and only `cei contratado` reads maintainer lines.
    steps read one way only. Checked on 29,400 generated lines against 0.79.0
    (no line 0.79.0 hid is shown) and timed on 400 KB lines.
 
+7. **The 0.80.0 "next line" limit, stated in full**: The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said:
+   it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone,
+   and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested).
+
 ## Out of scope
 
 A filter for `cmei`; the shelter types' split phrases; "agendamento pela …"; names later in an hours line; any new

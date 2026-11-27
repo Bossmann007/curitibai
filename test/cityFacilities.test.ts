@@ -2839,6 +2839,23 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 100 steps is not a unit word: hidden, on the safe side").toBe(true);
   });
 
+  it("Boss's repros (Security Reviewer MUST FIX on 0.80.0): the long Liceu line with wrapLines and the split forms stay hidden", () => {
+    expect(type("liceu de oficios").wrapLines).toBe(true);
+    const long = "Atendimento ao público de segunda a sexta, das 8h às 17h, com atendimento prioritário para idosos, gestantes e pessoas com deficiência, ";
+    for (const tail of ["Falar com a gente, Fulana", "Tratar com a gente, Fulana da Silva", "Telefone da gente, Fulana da Silva", "Telefone da Regional, Fulana da Silva"]) {
+      expect(`${long}${tail}`.length).toBeGreaterThan(160);
+      expect(lines("liceu de oficios", `${long}${tail}`).join("\n"), tail).not.toMatch(/Fulana/);
+    }
+    for (const id of WORK) {
+      for (const s of ["Telefone da\nRegional Fulana", "Telefone\nda Regional Fulana", "Fale com\no RH Fulano", "Tratar\ncom o RH Fulano", "E-mail da\ncoordenação Fulana",
+        "Assistente\nsocial Fulana", "Telefone da Regional\nFulana", "E-mail da coordenação\nFulana", "Telefone da Regional:\nFulana", "Fale com a gente pelo 156\nFulana",
+        "Telefone da Regional: 3350-0000\nFulana", "Fale com a gente\nFulana, das 8h às 17h", "Fale com a gente\nou com a Fulana"]) {
+        expect(lines(id, s).join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+        expect(lines(id, `${FIRST}\n${s}`).join("\n"), `${id}: after a hidden line: ${s}`).not.toMatch(/Fulan[ao](?!\.)/);
+      }
+    }
+  });
+
   it("the split check stays fast on 50 KB of short lines", () => {
     const start = performance.now();
     for (const id of ["cei contratado", "administracao regional", "sine"]) {

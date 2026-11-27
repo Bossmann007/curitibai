@@ -1603,7 +1603,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     The whole next line is read ("3350-0000 - Fulana", "pelo 156 ou com a Fulana"), and the split check also reads
     three lines ("Tratar com" / "o RH" / "Fulana"); that line is kept only when it is made of channel, unit,
     connector and hours words, numbers and punctuation, or is a street address. "whats app" now reads one way only (a
-    line of repeated "whats app" backtracked exponentially in 0.80.0). On 29,400 generated lines 0.79.0 shows a name
+    line of repeated "whats app" backtracked exponentially in 0.80.0). The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said: it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone, and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested). On 29,400 generated lines 0.79.0 shows a name
     in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid is shown.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58

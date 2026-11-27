@@ -26,6 +26,9 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   On a generated set of 29,400 such lines (four work types, seven lead-in lengths, fifteen phrases, fourteen
   separators, five names), 0.79.0 shows the name in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid
   is shown.
+- The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said:
+  it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone,
+  and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested).
 - Performance regression of 0.80.0: a guarded word's rest is read for at most 100 steps. A 400 KB line of "telefone
   da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
   longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
