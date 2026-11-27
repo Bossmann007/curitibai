@@ -2603,6 +2603,7 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
       expect(lines(id, `${HOURS}\n${l}`), `${id}: ${l}`).toEqual([HOURS, l]);
     }
     expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
+    expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
   });
 
   it.each(WORK)("%s still hides a name next to the new words", (id) => {
@@ -2617,6 +2618,11 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
       "Falar com o RH Fulano",
       "Fale com a gente Fulana",
       "Telefone da coordenação, Fulana",
+      "Tratar com o RH da Fulana",
+      "Telefone da Regional: Fulana",
+      "E-mail da coordenação. Fulana de Tal",
+      "Fale com a gente ou com a Fulana",
+      "Telefone da Regional e da Fulana",
     ]) {
       expect(lines(id, `${HOURS}\n${l}`), `${id}: ${l}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
     }
@@ -2641,7 +2647,9 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
   });
 
   it("the new rule stays fast on 50 KB of its worst shapes", () => {
-    const work = ["Atendimento: agendamento com " + "a ".repeat(25_000), "Atendimento: " + "agendamento com ".repeat(3_200) + "x"];
+    const work = ["Atendimento: agendamento com " + "a ".repeat(25_000), "Atendimento: " + "agendamento com ".repeat(3_200) + "x",
+      "Atendimento: agendamento, " + "com ".repeat(12_000), "falar com o rh" + " ".repeat(50_000) + "x", "telefone da regional " + "e ".repeat(25_000),
+      "telefone da regional pelo " + "o ".repeat(25_000)];
     const start = performance.now();
     for (const s of work) isWorkPersonLine(s);
     expect(performance.now() - start).toBeLessThan(1000);

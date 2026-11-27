@@ -1563,14 +1563,16 @@ changes (owner request, 2026-11-23: monthly and automatic).
   - **Name filter, fourth pass, v0.80.0** (the lows of the 0.76.0 review). Lines the third pass hid by mistake stay
     visible: "a gente", "Regional", "coordenação" and "RH" are unit words after a channel word or "falar/fale/tratar
     com" ("Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "E-mail da coordenação", "Tratar com o RH
-    da empresa"), but only before the end, a punctuation mark or a connector ("Falar com o RH Fulano" and "Telefone
-    da coordenação, Fulana" are still hidden), and "emissão de carteira de trabalho" is a service phrase after
+    da empresa"), but only before the end, a phone, "pelo/por/via" and a channel, or "da/do" and a unit word or
+    "empresa" ("Falar com o RH Fulano", "Tratar com o RH da Fulana" and "Telefone da Regional: Fulana" are still
+    hidden), and "emissão de carteira de trabalho" is a service phrase after
     "Atendimento:". "Fale com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana" are still hidden.
     "agendamento", an optional ",", then "com" and a word that is not a unit or channel word or an appointment detail
     (antecedência, hora marcada, documentos, CPF, RG, senha), anywhere in an attendance value or a "Contato" line,
     hides the line: "Atendimento: agendamento com Fulana" and "presencial com agendamento com Fulana" are hidden;
     "agendamento com a equipe", "agendamento com antecedência" and "agendamento pelo 156" stay. Known
-    limits: "agendamento pela Fulana", "presencial com Fulana" and a name later in an hours line still pass. No
+    limits: "agendamento pela Fulana", "presencial com Fulana", a name later in an hours line and an "Agendamento
+    com Fulana" line that is not an attendance value still pass; "agendamento com um dia de antecedência" is hidden. No
     request was made for this version (the layers were not re-read): the change is tested on synthetic lines only.
     No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):

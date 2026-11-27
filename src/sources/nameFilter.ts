@@ -68,13 +68,17 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
  * capital-letter rule: folded text has none.
  * v0.80.0: also gente, regional, coordenacao and rh ("Fale com a gente pelo 156", "Telefone da Regional", "E-mail da
- * coordenação", "Tratar com o RH da empresa"; "coordenadora" is not "coordenacao"), but only before the end, ":", ".",
- * ";", "?", "!" or a connector, so a name right after them is still hidden ("Falar com o RH Fulano", "Telefone da
- * coordenação, Fulana").
+ * coordenação", "Tratar com o RH da empresa"; "coordenadora" is not "coordenacao"), but only before the end, a phone
+ * or masked value (after an optional ":" or "-"), "pelo/por/via/no/em" and a phone or channel, or "da/do" and a unit
+ * word or "empresa". Anything else after them keeps 0.79.0's result: "Falar com o RH Fulano", "Tratar com o RH da
+ * Fulana", "Telefone da Regional: Fulana", "Fale com a gente ou com a Fulana" are hidden.
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
-const GUARDED_UNIT = "(?:gente|regional|coordenacao|rh)(?=\\s*$|\\s*[:.;?!]|\\s+(?:pel[ao]s?|por|via|n[ao]s?|em|d[aeo]s?|e|ou|para)\\b)";
+const GUARDED_UNIT =
+  "(?:gente|regional|coordenacao|rh)(?=\\s*(?:[.?!]\\s*)?$|\\s*(?:[:\\-–]\\s*)?(?:\\d|\\(|\\+|\\[masked\\])" +
+  `|\\s+(?:pel[ao]s?|por|via|n[ao]s?|em)\\s+(?:(?:o|a|um)\\s+)?(?:\\d|\\(|\\[masked\\]|(?:${CHANNEL_WORD}|site|portal|aplicativo|app)\\b)` +
+  `|\\s+d[ao]s?\\s+(?:${UNIT_WORD}|empresa)\\b)`;
 const NOT_UNIT_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${GUARDED_UNIT}))`;
 const PERSON_NEXT = `${NOT_UNIT_NEXT}\\p{L}`;
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */

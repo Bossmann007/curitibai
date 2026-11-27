@@ -9,16 +9,17 @@ Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publi
 - `city_facilities_search`, work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): "gente",
   "regional", "coordenação" and "RH" are unit words, so "Dúvidas? Fale com a gente pelo 156", "Telefone da Regional:
   …", "E-mail da coordenação" and "Tratar com o RH da empresa" are shown again (0.76.0 hid them as a name after a
-  channel word or "falar com"). They count only before the end, a punctuation mark or a connector, so "Falar com o
-  RH Fulano" and "Telefone da coordenação, Fulana" stay hidden, as do "Fale com a Fulana", "E-mail da coordenadora"
-  and "Coordenação: Fulana".
+  channel word or "falar com"). They count only before the end, a phone, "pelo" and a channel, or "da" and a unit
+  word or "empresa", so "Falar com o RH Fulano", "Tratar com o RH da Fulana" and "Telefone da Regional: Fulana" stay
+  hidden, as do "Fale com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana".
 - "emissão de carteira de trabalho" is a service phrase after "Atendimento:", so that line is shown again;
   "emissão de carteira de trabalho - Fulana" stays hidden.
 - "agendamento", an optional ",", then "com" and a word that is not a unit or channel word or an appointment detail
   (antecedência, hora marcada, documentos, CPF, RG, senha), anywhere in a value after "Atendimento:" or in a
   "Contato" line, hides the line: "Atendimento: agendamento com Fulana" and "presencial com agendamento com Fulana"
   are now hidden (0.76.0 showed them). "agendamento com a equipe", "agendamento com antecedência" and "agendamento
-  pelo 156" are shown. Known limits: "agendamento pela Fulana" and "presencial com Fulana" still pass.
+  pelo 156" are shown. Known limits: "agendamento pela Fulana", "presencial com Fulana" and an "Agendamento com
+  Fulana" line that is not an attendance value still pass; "agendamento com um dia de antecedência" is hidden.
 - Tested on synthetic lines for the four types, both sides, and a 50 KB timing case for the new rule.
 - Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
 - No request made, no new network host, no new link, no new dependency.
