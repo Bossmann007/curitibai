@@ -264,7 +264,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
     // R1: what the citizen writes or attaches can identify them; the project's own observation.
     expect(step(4)).toMatch(
-      /A forma anônima só dispensa o cadastro: o que o cidadão escreve ou anexa \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) pode identificá-lo; para continuar anônimo, deixe isso de fora \(observação do CuritibAI, não do guia de 2024\)/,
+      /A forma anônima dispensa o cadastro, mas o que o cidadão escreve ou anexa \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) pode identificá-lo; para continuar anônimo, deixe isso de fora \(observação do CuritibAI, não do guia de 2024\)/,
     );
     // R3: the record says a denúncia is registered, not that it is investigated.
     expect(step(6)).toMatch(/anônima \(sem cadastro; a denúncia é registrada, mas sem resposta nem acompanhamento\)/);
@@ -272,6 +272,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     // R4: the 30 days do not apply to the anonymous form.
     expect(step(8)).toMatch(/\(não vale para a forma anônima, que não recebe resposta\)/);
     expect(o.data.what).toMatch(/forma anônima \(sem resposta nem acompanhamento\)/);
+    expect(o.note).toMatch(/writes or attaches to an anonymous denúncia can identify them \(step 4\) is also this project's own observation/);
   });
 
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {

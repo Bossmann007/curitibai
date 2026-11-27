@@ -611,8 +611,7 @@ export const GUIDES = {
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
       "para denúncias, o guia de 2024 prevê a forma anônima (sem resposta nem acompanhamento) no Portal Curitiba " +
-      "Ouve; para reclamação comum isso não " +
-      "foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia aparece nele (observação do " +
+      "Ouve; para reclamação comum isso não foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia aparece nele (observação do " +
       "CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
     // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
@@ -634,7 +633,9 @@ export const GUIDES = {
       "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). That an e-mail shows the sender's address, so " +
       "e-mail is not an anonymous channel, is this project's own observation, not the PDF's. Not verified: what " +
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
-      "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). ",
+      "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
+      "That what a citizen writes or attaches to an anonymous denúncia can identify them (step 4) is also this " +
+      "project's own observation, not the PDF's. ",
     steps: [
       FIRST_STEP,
       {
@@ -649,7 +650,7 @@ export const GUIDES = {
         action:
           "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
-          "anexar fotos e documentos. A forma anônima só dispensa o cadastro: o que o cidadão escreve ou anexa (nome, " +
+          "anexar fotos e documentos. A forma anônima dispensa o cadastro, mas o que o cidadão escreve ou anexa (nome, " +
           "endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo) pode identificá-lo; para " +
           "continuar anônimo, deixe isso de fora (observação do CuritibAI, não do guia de 2024).",
         consent:
@@ -673,8 +674,8 @@ export const GUIDES = {
         action:
           "Dizer ao cidadão as três formas que o guia de 2024 descreve: identificada (cadastro no e-Cidadão e protocolo " +
           "na Central 156), sigilosa (também com e-Cidadão, mas os dados pessoais de quem denuncia ficam em sigilo e a " +
-          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é registrada, mas sem resposta nem " +
-          "acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
+          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é registrada, mas sem resposta " +
+          "nem acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
           "identificada e anônima. Cadastro: pelo guia de 2024, a identificada e a sigilosa pedem cadastro no e-Cidadão e a " +
           "anônima não; o que o site pede hoje não foi verificado (o CuritibAI não o abriu). O registro " +
           "do guia feito pelo CuritibAI não diz se essas formas valem também para uma reclamação comum: se ela pode " +

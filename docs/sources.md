@@ -2089,7 +2089,7 @@ sentence rests on the 0.43.0 record above or is marked as the project's own:
   recebe resposta)" after the 30 days: the record's "anonymous: no account, no answer or follow-up".
 - Step 5, "segundo o guia de 2024, que o CuritibAI não conferiu hoje no site": the record's anonymous form is the
   PDF's; the site was not opened (the "Not opened" line above).
-- Step 4, that the anonymous form only skips the registration and that what the citizen writes or attaches (name,
+- Step 4 and the `note`, that the anonymous form skips the registration but what the citizen writes or attaches (name,
   address, phone, a face, the location saved in a photo, the file name) can identify them: this project's own
   observation, marked "(observação do CuritibAI, não do guia de 2024)"; the record only says photos and documents
   may be attached.

@@ -20,8 +20,8 @@ from the 0.43.0 record in docs/sources.md; the rest is marked as the CuritibAI's
 
 ## Changes (`src/tools/cityServiceGuide.ts`, text only)
 
-1. **R1, step 4**: one sentence, marked "(observação do CuritibAI, não do guia de 2024)": the anonymous form only
-   skips the registration; what the citizen writes or attaches (name, address, phone, a face, the location saved in
+1. **R1, step 4**: one sentence, marked "(observação do CuritibAI, não do guia de 2024)": the anonymous form skips
+   the registration, but what the citizen writes or attaches (name, address, phone, a face, the location saved in
    a photo, the file name) can identify them, so they leave it out to stay anonymous.
 2. **R2, step 5**: the sentence that sends a citizen to the anonymous form carries the hedge "segundo o guia de 2024,
    que o CuritibAI não conferiu hoje no site".

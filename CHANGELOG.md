@@ -9,8 +9,8 @@ Ouvidoria anonymity wording (the Security Reviewer's R1-R5 on 0.69.0). 27 tools.
 - `city_service_guide` (`ouvidoria`): the anonymous denúncia "é registrada" (was "é apurada", which the record of
   the 2024 CGM guide does not say); `what` and step 8 say the anonymous form gets no answer or follow-up and the 30
   days do not apply to it; step 5 says the anonymous form is the 2024 guide's, not checked on the site today.
-- Step 4 adds one sentence marked as the CuritibAI's own observation: the anonymous form only skips the registration,
-  and what the citizen writes or attaches (name, address, phone, a face, photo location, file name) can identify them.
+- Step 4 adds one sentence marked as the CuritibAI's own observation: the anonymous form skips the registration, but
+  what the citizen writes or attaches (name, address, phone, a face, photo location, file name) can identify them.
 - Tested: each step 5 sentence that names the anonymous form carries the hedge; "apurad" appears nowhere.
 - Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
 - No request made, no new network host, no new link, no new dependency.
