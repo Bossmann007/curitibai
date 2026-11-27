@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.76.0 - 2026-11-27
+
+Name filter, third pass (the lows of the 0.72.0 review). 27 tools. Publishes nothing.
+
+- The person-name filters (role lists, person-line tests, the garden allowlist, the service-line words around a hidden
+  label) move from `src/sources/geocuritiba.ts` to `src/sources/nameFilter.ts`, in a commit of their own with no
+  behaviour change (tests unchanged and green).
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: a value after
+  "Atendimento:" that starts with a service phrase is shown again, on the same line or after a bare label
+  ("Atendimento: por ordem de chegada", "preferencial para idosos", "gratuito", "Carteira de trabalho,
+  seguro-desemprego"); "gratuito com a Fulana" and "Fulana, gratuito" stay hidden. Newly hidden: palestrante,
+  assistente social and psicólogo/a anywhere in a line ("Palestrante Fulano", "Assistente social Fulana", "Psicóloga
+  Fulana de Tal"), and a channel word followed by "da/do/com", or "falar com", and then a word that is not a unit or
+  channel word ("Contato no WhatsApp da Fulana", "Contato pelo telefone com Fulana", "Falar com Fulana de Tal").
+  "Contato pelo e-mail da unidade", "telefone do Sine" and "Atendimento psicológico" stay.
+- `horta comunitaria`: "e", "com" or "da/do" inside a partner or programme phrase must be followed by an entity word
+  too ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden; "Programa
+  Municipal de Agricultura Urbana" stays). On the safe side, "… da Vila Inventada" after a partner is hidden too.
+- Record for 0.72.0: its rule that an hours line starting with a weekday and holding a digit is never the rest of a
+  split name (NOT_A_NAME/WEEKDAY_START) reached every type that hides names line by line: `clube de xadrez`, `cei
+  contratado`, `administracao regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca
+  alimentar`, `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`. Not `horta comunitaria`: its allowlist
+  never reads a line as the rest of a name.
+- Checked against the real records: layers 150, 151, 149, 152 and 9, re-read once on 2026-11-27 (33 work records and
+  56 gardens, 59 with an `observacao`): 0 lines hidden before and 0 after; every record's `hours` is identical. A 50 KB
+  input of each new rule's worst shape is tested to run in under a second.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
 ## 0.75.0 - 2026-11-27
 
 Ouvidoria anonymity wording (the Security Reviewer's R1-R5 on 0.69.0). 27 tools. Publishes nothing.

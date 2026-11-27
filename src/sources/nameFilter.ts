@@ -1,8 +1,8 @@
 /**
- * Person-name line filters for `city_facilities_search` hours lines (v0.76.0: moved out of geocuritiba.ts, no
- * behaviour change): the maintainer and person-in-charge role lists, the work-type and community-garden person-line
- * tests, and the service-line words hourLines uses around a hidden label. Every regex is linear (no nested
- * quantifier over overlapping text).
+ * Person-name line filters for `city_facilities_search` hours lines, moved out of geocuritiba.ts in v0.76.0: the
+ * maintainer and person-in-charge role lists, the work-type and community-garden person-line tests, and the
+ * service-line words hourLines uses around a hidden label. The v0.72.0 and v0.76.0 rules are timed on 50 KB inputs of
+ * their worst shapes in test/cityFacilities.test.ts.
  */
 import { fold } from "../text.js";
 
@@ -57,12 +57,35 @@ const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor|facilit
 const NOT_A_NAME_NEXT = "de|do|da|dos|das|em|e|para|que|com|no|na|nos|nas|ao|aos|a|o|as|os|como";
 const CONTEXT_ROLE = "tecnic[ao]s?|agentes?";
 const WORK_PERSON = new RegExp(
-  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
+  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|palestrantes?|assistentes? socia(?:l|is)|psicolog[ao]s?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
     `|(?:^[^\\p{L}]*|\\b(?:an?|o|as|os|d[ao]s?|pel[ao]s?|n[ao]s?|com)\\s+)(?:${CONTEXT_ROLE})\\s+(?!(?:${NOT_A_NAME_NEXT})\\b)\\p{L}` +
     `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`,
   "u",
 );
 const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|ramal|sms";
+/**
+ * v0.76.0: the next word is a person unless it is a unit or channel word ("da unidade", "do Sine", "com DDD"), after
+ * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
+ * capital-letter rule: folded text has none.
+ */
+const UNIT_WORD = "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd";
+const PERSON_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD})\\b)\\p{L}`;
+/** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
+const NAMED_CHANNEL = new RegExp(
+  `\\b(?:${CHANNEL_WORD})\\s+(?:com|d[ao]s?)\\s+${PERSON_NEXT}|\\b(?:falar|fale|tratar|procurar|procure)\\s+com\\s+${PERSON_NEXT}`,
+  "u",
+);
+/**
+ * v0.76.0: a value after "Atendimento:" that starts with a service phrase is not a name ("por ordem de chegada",
+ * "preferencial para idosos", "gratuito", "Carteira de trabalho, seguro-desemprego"), unless "com" and a person
+ * follow ("gratuito com a Fulana"). Only the start counts: "Fulana, gratuito" is a name.
+ */
+const SERVICE_VALUE = new RegExp(
+  "^[-–•*\\s]*(?:(?:por )?ordem de chegada|preferencia(?:l|is)\\b|prioritari[ao]s?\\b|gratuit[ao]s?\\b" +
+    "|carteira de trabalho|seguro[- ]desemprego)",
+);
+const SERVICE_NAMED = new RegExp(`\\bcom\\s+${PERSON_NEXT}`, "u");
+const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || (SERVICE_VALUE.test(v) && !SERVICE_NAMED.test(v));
 /**
  * Hours (folded): a digit; "de/das/às/a partir de" and a digit; a weekday, its abbreviation, "dia" or "feriado" that
  * goes on as hours ("Segunda a sexta", "seg. a sex.", "Sábado, 8h", or a digit later: "Domingos da Silva" is not hours);
@@ -103,18 +126,18 @@ const BARE_SERVICE_LABEL = /^[-–•*\s]*(?:horarios? de )?atendimento(?: ao pu
 const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
   for (const m of f.matchAll(SERVICE_LABEL)) {
     const value = f.slice(m.index + m[0].length);
-    if (value !== "" && !HOURS_VALUE.test(value)) return true;
+    if (value !== "" && !isServiceValue(value)) return true;
   }
   if (prev === undefined || BARE_SERVICE_LABEL.test(f)) return false;
   const p = fold(prev);
   const last = [...p.matchAll(SERVICE_LABEL)].pop();
   const bare = BARE_SERVICE_LABEL.test(p) || (last !== undefined && last.index + last[0].length === p.length);
-  return bare && !HOURS_VALUE.test(f);
+  return bare && !isServiceValue(f);
 };
 /** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
-  if (isPersonInChargeLine(line) || WORK_PERSON.test(f)) return true;
+  if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || NAMED_CHANNEL.test(f)) return true;
   return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
 };
 /**
@@ -160,8 +183,17 @@ const GARDEN_PERSON = new RegExp(
  * Inventada" stays).
  */
 const GARDEN_PARTNER = new RegExp(`^\\s*:?\\s*(?:(?:d[aeo]s?|an?|o|as|os) )?(?:${ENTITY})\\b`);
+/**
+ * v0.76.0: inside the partner or programme phrase (up to ".", ";" or " - "), "e", "com" or "da/do/das/dos" must be
+ * followed by an entity word too: "Parceria com a comunidade e a Fulana" and "Programa Municipal da Fulana" are hidden;
+ * a bare "de" is not checked ("Programa Municipal de Agricultura Urbana" stays).
+ */
+const PARTNER_NAMED = new RegExp(`\\b(?:e|com|d[ao]s?)\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${ENTITY})\\b)\\p{L}`, "u");
 const hasUnknownPartner = (f: string): boolean =>
-  [...f.matchAll(/\b(?:programa|parceria com)\b/g)].some((m) => !GARDEN_PARTNER.test(f.slice(m.index + m[0].length)));
+  [...f.matchAll(/\b(?:programa|parceria com)\b/g)].some((m) => {
+    const rest = f.slice(m.index + m[0].length);
+    return !GARDEN_PARTNER.test(rest) || PARTNER_NAMED.test(rest.split(/[.;]|\s[-–]\s/)[0] ?? "");
+  });
 export const isGardenPersonLine = (line: string): boolean => {
   const f = roleFold(line).replace(/^[^\p{L}\p{N}]+/u, "").trim();
   if (GARDEN_CONTACT.test(f)) return false;

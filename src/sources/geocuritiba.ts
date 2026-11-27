@@ -16,7 +16,6 @@ import {
   roleFold,
   SERVICE_LINE,
 } from "./nameFilter.js";
-export { HIDDEN_MAINTAINER_LINE, HIDDEN_PERSON_LINE, isGardenPersonLine, isPersonInChargeLine, isWorkPersonLine };
 
 /** IPPUC's GeoCuritiba ArcGIS REST services (anonymous GET; robots.txt 404 when checked on 2026-11-21). */
 const SERVICES = "https://geocuritiba.ippuc.org.br/server/rest/services";
