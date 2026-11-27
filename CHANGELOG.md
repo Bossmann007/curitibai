@@ -2,6 +2,20 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.83.0 - 2026-11-27
+
+Ouvidoria anonymity wording, third pass (the Security Reviewer's R1-R2 on 0.79.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: the CuritibAI's own warning names what to leave out, "deixe de fora
+  nome, endereço, telefone, rosto, a localização gravada na foto e o nome do arquivo", instead of "deixe isso de fora"
+  after a list in parentheses.
+- Step 4 adds one sentence, marked as the CuritibAI's own observation, not the 2024 guide's: the anonymous form does
+  not guarantee anonymity, and the CuritibAI does not know what the site records about the visit. The `note` says so.
+- Tested: both step 4 sentences are pinned with their marker; no text of the guide says "deixe isso de fora". The
+  2024-guide hedges and the step 5 hedge test are unchanged.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.82.0 - 2026-11-27
 
 Person-name filter, sixth pass (follow-ups of the 0.80.0 and 0.81.0 Security Reviewer notes). 27 tools. Publishes

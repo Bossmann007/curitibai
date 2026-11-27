@@ -636,7 +636,8 @@ export const GUIDES = {
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
       "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
       "That the text and the attachments a citizen sends can identify them (the summary, steps 4 and 5) is also this " +
-      "project's own observation, not the PDF's. ",
+      "project's own observation, not the PDF's. So is step 4's \"a forma anônima não garante anonimato\": this " +
+      "project does not know what the Curitiba Ouve site records about the visit. ",
     steps: [
       FIRST_STEP,
       {
@@ -653,8 +654,9 @@ export const GUIDES = {
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
           "anexar fotos e documentos. Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem " +
           "acompanhamento (o CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
-          "o texto e os anexos (nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo) " +
-          "podem identificar o cidadão; para continuar anônimo, deixe isso de fora.",
+          "o texto e os anexos podem identificar o cidadão; para continuar anônimo, deixe de fora nome, endereço, " +
+          "telefone, rosto, a localização gravada na foto e o nome do arquivo. Observação do CuritibAI, não do guia " +
+          "de 2024: a forma anônima não garante anonimato, e o CuritibAI não sabe o que o site registra sobre o acesso.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",

@@ -2198,6 +2198,21 @@ sentence rests on the 0.43.0 record above or is marked as the project's own:
 - Tested: each step 5 sentence that names anonymity or identification (`/anônim|identific/`) carries either the
   2024-guide hedge or the project's own marker.
 
+Ouvidoria anonymity wording, third pass (`ouvidoria`, since 0.83.0, written 2026-11-27; the Security Reviewer's R1-R2
+on 0.79.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Both changed
+sentences are marked as the project's own:
+
+- Step 4, R1: the observation now names what to leave out instead of "deixe isso de fora": "o texto e os anexos podem
+  identificar o cidadão; para continuar anônimo, deixe de fora nome, endereço, telefone, rosto, a localização gravada
+  na foto e o nome do arquivo". The same list as the 0.79.0 sentence, still marked "Observação do CuritibAI, não do
+  guia de 2024"; the record only says photos and documents may be attached.
+- Step 4, R2, a new sentence: "Observação do CuritibAI, não do guia de 2024: a forma anônima não garante anonimato, e
+  o CuritibAI não sabe o que o site registra sobre o acesso." This project's own observation: the record describes
+  the anonymous form (no account, no answer or follow-up), not what the site logs, and the site was not opened. The
+  `note` says so.
+- Tested: the step 4 sentences are pinned with their marker, and no text of the guide says "deixe isso de fora".
+
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
 Ouvidoria tool was made: the change is one guide entry in an existing table.
