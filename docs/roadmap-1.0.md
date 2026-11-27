@@ -307,7 +307,7 @@ is "12"). No new question, source or host. The Curitiba App rows are unchanged (
 answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
 
 At v0.74.0 (phase B) the e-mail filter of `city_facilities_search` also hides a city address shaped like a person's
-name with a one-letter first word, digits after the surname or "-" between the words; unit and sector words still
+name with a one-letter first word, digits after a name word or "-" between the words; the unit words still
 keep an address (no real address newly hidden when checked on 2026-11-27). No new question, source or host. The
 Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to
 v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).

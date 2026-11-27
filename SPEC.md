@@ -16,16 +16,18 @@ Generic sector and unit addresses ("falecomacgm", "sine", "cras.boqueirao") stay
 ## Source
 
 No new source and no new host or link. To count what the new shape changes, the 89 urban-equipment layers the tool
-already reads were re-read once each from `geocuritiba.ippuc.org.br` (already allowed) by a one-off script, 6 s
+already reads were re-read twice each (first rule, rule after review) from `geocuritiba.ippuc.org.br` (already allowed) by a one-off script, 6 s
 apart, with the server's User-Agent and fixed query.
 
 ## Changes
 
-1. **Name shape** (`src/sources/geocuritiba.ts`, `PERSON_LOCAL`): `^[a-z]+(?:[._-][a-z]{2,}\d*)+$`. The first word
-   may be one letter; each later word has 2+ letters and optional trailing digits; ".", "_" and "-" join words. No
+1. **Name shape** (`src/sources/geocuritiba.ts`, `PERSON_LOCAL`): `^[a-z]+\d*(?:[._-][a-z]{2,}\d*)+(?:[._-]\d+)?$`.
+   The first word may be one letter; each later word has 2+ letters; each word may end in digits and a number may
+   close it; ".", "_" and "-" join words. No
    accent folding: `CITY_EMAIL` already rejects a non-ASCII local part, so such an address is dropped before.
-2. **Unit and sector words** (`UNIT_PREFIXES`), checked first: the first word (split on ".", "_" or "-") in the list
-   keeps the address. Added: atendimento, contato, falecom, ouvidoria, secretaria.
+2. **Unit words** (`UNIT_PREFIXES`), checked first: the first word (split on ".", "_" or "-", trailing digits
+   ignored) in the list keeps the address. The list is unchanged: adding sector words (secretaria, contato, ouvidoria,
+   ...) would show "secretaria.fulana", which 0.73.0 hides.
 3. **Tests** (`test/cityFacilities.test.ts`): each new hidden shape; generic sector and unit addresses kept,
    `cras.boqueirao` and `cras-cajuru` included; an accented local part dropped.
 4. **Docs and version**: docs/sources.md (the filter paragraph and the host row), docs/roadmap-1.0.md, CHANGELOG
@@ -33,9 +35,8 @@ apart, with the server's User-Agent and fixed query.
 
 ## Out of scope
 
-A rule for a unit word followed by a name ("secretaria.fulana", "cras.fulana"): Enzo's decision. Such an address is
-kept, and with the new words also when the first word is atendimento, contato, falecom, ouvidoria or secretaria (in
-0.73.0 those were dropped as name-shaped). A one-word name ("fulanasilva"). Any new question, source, host or link.
+A rule for a unit word followed by a name ("cras.fulana", kept as in 0.73.0) and new sector words in the unit list:
+Enzo's decision. Doubled or trailing separators ("maria..souza", kept as in 0.73.0). A one-word name ("fulanasilva"). Any new question, source, host or link.
 
 ## Check
 
