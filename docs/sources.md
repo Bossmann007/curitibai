@@ -1511,24 +1511,29 @@ changes (owner request, 2026-11-23: monthly and automatic).
     Sustentável Eletrosul …" lines, all kept. The reads were inspected offline and deleted; the test fixture is
     synthetic. No new host for the server and the link allowlist is unchanged.
   - **Name filter, second pass, v0.72.0** (the lows of the 0.70.0 review). The four work types also hide a value
-    after "Atendimento:" (or "Atendimento ao público:") that does not read as hours (a digit, a weekday or its
-    abbreviation, "de/das" and one of them, an appointment or "não" sentence), on the same line or, after a bare
-    "Atendimento:", on the next one; a line with docente, facilitador/a or agente anywhere, or técnico/a at the start,
-    before ':' or after an article or "pelo/pela" ("aperfeiçoar técnicas", read in layer 149, stays); and "contato"
-    not followed by a channel: "Contato: 3350-0000" (only phones, channel words and punctuation) and "contato
+    of an "Atendimento:", "Atendimento ao público:" or "Horário de atendimento:" label (at the start of the line or of a
+    sentence, every one in the line) that does not read as hours (a digit; "de/das/às" and a digit; a weekday, its
+    abbreviation, "dia" or "feriado" that goes on as hours or has a digit later, so "Domingos da Silva" is not hours;
+    an appointment, "não é/há …" or "fechado" sentence), on the same line or, after a bare label with or without ':',
+    on the next one ("Local de atendimento: Rua …" is not such a label); a line with docente or facilitador/a
+    anywhere, or agente or técnico/a before ':', or at the start or after an article or "com/pelo/pela" when a word
+    other than "de", "em", "para" … follows ("aperfeiçoar técnicas", read in layer 149, and "a técnica de solda"
+    stay; "Agentes comunitários" is hidden, on the safe side); and "contato" not followed by a channel: "Contato:
+    3350-0000" (only phones, channel words and punctuation, then the end or hours that start with a word) and "contato
     pelo/via/no 156, telefone, e-mail, site …" stay, "Contato pela Fulana" and "Contato via Fulano" are hidden (0.70.0
     did the opposite for both). An hours line that starts with a weekday and has a digit is never read as the rest of
     a split name, so the hours after "Contato:" and its hidden value stay. The whole field, read joined to catch a
     keyword split across lines, is checked for the words only. On the safe side: an address after a bare
     "Atendimento:" is hidden. Known limit: a name later in an hours or channel line passes, caught only by the role
     words. The `horta comunitaria` allowlist also checks a "Parceria com" or "Programa" later in the line (an entity
-    word must follow each), and "mantida pela" not followed by a body hides the line anywhere in it; splitting lines
+    word must follow each), and "mantida pela" not followed by an entity word hides the line anywhere in it; splitting lines
     into sentences was tried and dropped (it missed " - " and hid "R. Inventada"). Checked on 2026-11-27 (UTC) with
-    curl and User-Agent `curitibai-mcp/0.72 (+https://github.com/Bossmann007/curitibai)`, 7 GET requests by hand:
+    curl and User-Agent `curitibai-mcp/0.72 (+https://github.com/Bossmann007/curitibai)`, 12 GET requests by hand:
     `/robots.txt` at 02:45:18 (404, `text/html; charset=utf-8`: no rules, RFC 9309), then one read of
     `objectid,observacao` (no geometry) of layers 150, 151, 149, 152 and 9, about 5 s apart, until 02:45:51; then the
     MapServer metadata at 02:55:44 (`copyrightText`, `description` and `serviceDescription` empty: **no licence or
-    terms found**, as before). Counts as read: 12, 1, 16 and 4 work records and 45 layer-9 records with an
+    terms found**, as before); after the review fixes, the same five reads again from 03:02:02 to 03:02:24, same
+    sizes. Counts as read: 12, 1, 16 and 4 work records and 45 layer-9 records with an
     `observacao`; no line named a person, and the new filters, run on those reads, changed no record's `hours`
     against 0.71.0. The reads were inspected offline and deleted; the test fixture
     (`liceu_de_oficios_synthetic.json`) is synthetic. No new host for the server and the link allowlist is unchanged.

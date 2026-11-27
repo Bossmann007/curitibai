@@ -21,19 +21,22 @@ metadata (no terms, no licence text). No new host, no new link.
 
 ## Changes
 
-1. **"Atendimento:" value** (`src/sources/geocuritiba.ts`, `isWorkPersonLine`): the text after "Atendimento:" (or
-   "Atendimento ao público:") must read as hours (`HOURS_VALUE`), on the same line or, after a bare label, on the next
-   one. The hide predicate gains an optional `prev` argument (the line before, shown or not); `hourLines` passes it,
+1. **"Atendimento:" value** (`src/sources/geocuritiba.ts`, `isWorkPersonLine`): the value of each "Atendimento:",
+   "Atendimento ao público:" or "Horário de atendimento:" label at the start of the line or of a sentence must read as
+   hours (`HOURS_VALUE`: a weekday counts only when it goes on as hours or a digit follows), on the same line or,
+   after a bare label (with or without ':'), on the next one. The hide predicate gains an optional `prev` argument (the line before, shown or not); `hourLines` passes it,
    and passes `null` for the whole field read joined, where only the words count.
-2. **Roles**: docente, facilitador/a, agente anywhere; técnico/a at the start, before ':' or after an article or
-   "pelo/pela" ("aperfeiçoar técnicas" in layer 149 stays).
-3. **Contato**: a person unless a channel follows: "Contato: <phones only>" or "contato pelo/via/no <156, telefone,
+2. **Roles**: docente and facilitador/a anywhere; agente and técnico/a before ':', or at the start or after an article
+   or "com/pelo/pela" when a word other than "de", "em", "para" … follows ("aperfeiçoar técnicas" in layer 149 and "a
+   técnica de solda" stay).
+3. **Contato**: a person unless a channel follows: "Contato: <phones only>" (then the end or hours that start with a
+   word) or "contato pelo/via/no <156, telefone,
    e-mail, site …>". "Contato pela Fulana" and "Contato via Fulano" are hidden; "Contato: 3350-0000" stays.
 4. **Split-name tail** (`NOT_A_NAME`, every type with `nameLines`): an hours line that starts with a weekday and has a
    digit is not the rest of a name, so the hours after a bare "Contato:" and its hidden value stay. "Domingos da
    Silva" (no digit) is still hidden.
 5. **Garden allowlist**: each "Parceria com" or "Programa" in the line, not only at its start, needs an entity word
-   after it; "mantida pela" not followed by a body is a person anywhere (`GARDEN_PERSON`).
+   after it; "mantida pela" not followed by an entity word is a person anywhere (`GARDEN_PERSON`).
 6. **Tests** (`test/cityFacilities.test.ts`): each case above, the live lines kept, the other types unchanged.
 7. **Eval**: q144 → `city_facilities_search` `{type: "liceu de oficios", near: Portão, radius_m: 3000}` with a new
    synthetic fixture `liceu_de_oficios_synthetic.json`.
@@ -48,6 +51,7 @@ Name detection by capital letters, a name later in an hours or channel line (kno
 ## Check
 
 - `npx vitest run test/cityFacilities.test.ts test/eval`: new tests pass; q144 answers.
-- The new predicates over today's lines of layers 149–152 and 9: no record's `hours` changed against 0.71.0.
+- The new predicates over today's lines of layers 149–152 and 9 (read again after the review fixes): no record's
+  `hours` changed against 0.71.0.
 - `node scripts/eval-summary.mjs`: answered 139 / 143.
 - `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.

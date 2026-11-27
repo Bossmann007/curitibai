@@ -2330,8 +2330,38 @@ describe("v0.72.0: work names, second pass (a name after 'Atendimento:', more ro
     }
   });
 
-  it("keeps 'técnicas' as a noun, as layer 149 published it when read (2026-11-27)", () => {
-    expect(isWorkPersonLine("que já atuam na área e desejam aperfeiçoar técnicas, desenvolver novos produtos")).toBe(false);
+  it("keeps 'técnica' as a noun (layer 149, read 2026-11-27, and course text)", () => {
+    for (const l of [
+      "que já atuam na área e desejam aperfeiçoar técnicas, desenvolver novos produtos",
+      "Curso de aperfeiçoamento das técnicas de corte e costura",
+      "Aprenda a técnica de solda",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("a value after 'Atendimento:' is hours only when it goes on as hours", () => {
+    for (const v of ["Domingos da Silva", "Dia Fulana", "Seg Fulana", "Não Fulana", "Fechado Fulana", "Diana 8h"]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines("sine", `Atendimento:\n${v}`), v).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
+    }
+    for (const v of [
+      "às segundas e quartas, 14h", "às 8h", "por agendamento", "presencial e online", "Sábado, 8h", "24 horas", "diariamente",
+      "Fechado.", "temporariamente fechado para reforma", "Dias úteis, das 8h às 17h", "domingos e feriados das 8h às 12h",
+    ]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it("checks every attendance label in a line, a bare 'Atendimento' with no colon, and not a label mid-sentence", () => {
+    expect(lines("sine", "Atendimento: 8h às 17h; Atendimento ao público: Fulana")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Atendimento\nFulana")).toEqual(["Atendimento", HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Local de atendimento: Rua Inventada, 100")).toEqual(["Local de atendimento: Rua Inventada, 100"]);
+  });
+
+  it("a contact phone followed by hours on the same line stays; a phone followed by a name does not", () => {
+    expect(lines("sine", "Contato: 3350-0000 - segunda a sexta 8h")).toEqual(["Contato: [masked] - segunda a sexta 8h"]);
+    expect(lines("sine", "Contato: 156 Fulana")).toEqual([HIDDEN_PERSON_LINE]);
   });
 
   it.each(WORK)("%s hides 'Contato pela/via <nome>' and keeps a contact channel", (id) => {
@@ -2395,6 +2425,7 @@ describe("v0.72.0: a garden partner, programme or keeper later in the line needs
       "Mantida pela Associação de Moradores Inventada.",
       "Mantido pela Secretaria Municipal do Meio Ambiente.",
       "Endereço: R. Inventada, 10",
+      "Horta com 20 canteiros, mantida pela Universidade Inventada",
     ]) {
       expect(isGardenPersonLine(l), l).toBe(false);
     }
