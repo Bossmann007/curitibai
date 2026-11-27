@@ -2005,6 +2005,21 @@ server):
   channels are unchanged since 2024, and whether the "Ouvidoria da CGM" is what a citizen calls the
   "Ouvidoria-Geral do Município" (the PDF does not use that name).
 
+Ouvidoria anonymity follow-up (`ouvidoria`, since 0.69.0, written 2026-11-27). **No request was made**: no host was
+contacted, by hand or by the server, so no robots.txt or terms were re-read; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened. Everything comes from the 0.43.0 record
+above:
+
+- The CGM e-mail spelling `falecomacgm@curitiba.pr.gov.br` matches the 0.43.0 record (and the constant `CGM_EMAIL`
+  written from it); the PDF was not re-read.
+- Registration: the record says the identified and confidential forms need an e-Cidadão account and the anonymous form
+  none, and that the Curitiba Ouve site steps show only the identified and anonymous forms. The guide says so and
+  says what the site asks today was not verified.
+- The record gives the three forms with the denúncia channels; whether a plain reclamação (not a denúncia) can be
+  anonymous is not in it, and the guide says that was not verified.
+- That an e-mail shows the sender's address, so a denúncia by e-mail is not anonymous, is this project's own
+  observation, not a fact from the PDF; the guide's `note` says so.
+
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
 Ouvidoria tool was made: the change is one guide entry in an existing table.

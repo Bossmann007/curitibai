@@ -230,6 +230,23 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(t).toMatch(/30 dias para responder \(Lei federal 13\.460\/2017\)/);
   });
 
+  it("answers anonymity (since 0.69.0): e-mail identifies the sender, anonymity is the anonymous form on Curitiba Ouve", async () => {
+    const o = await guide();
+    const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
+    // The e-mail fact is the project's own observation, not attributed to the 2024 PDF.
+    expect(step(5)).toMatch(/Um e-mail mostra o endereço de quem envia: denúncia por e-mail não é anônima/);
+    expect(step(5)).not.toMatch(/guia de 2024[^.]*e-mail mostra/);
+    expect(step(5)).toMatch(/forma anônima no Portal Curitiba Ouve \(passo 4\)/);
+    expect(o.data.what).toMatch(/Sem se identificar: só pela forma anônima no Portal Curitiba Ouve; e-mail identifica quem envia/);
+    // Registration: e-Cidadão for identificada and sigilosa; what the site asks today is not verified.
+    expect(step(6)).toMatch(/identificada e a sigilosa pedem cadastro no e-Cidadão/);
+    expect(step(6)).toMatch(/o que o site pede hoje não foi verificado/);
+    // The 2024 guide describes the forms for denúncias; a plain reclamação is not settled by it.
+    expect(step(6)).toMatch(/reclamação comum[^.]*não foi verificado/);
+    expect(o.note).toMatch(/e-mail shows the sender's address[^.]*this project's own observation/);
+    expect(o.note).toMatch(/not verified[^.]*registration/i);
+  });
+
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {
     const o = await guide();
     const fixed = allSteps(o).filter((s) => s.link_source === "official_allowlist" && s.url !== CITY_SERVICES_SOURCE_URL);
