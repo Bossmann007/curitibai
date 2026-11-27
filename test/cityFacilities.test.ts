@@ -2461,15 +2461,17 @@ describe("v0.76.0: name filter, third pass (service values, names after a channe
   const HOURS = "-2ª a 6ª feira, das 8h às 17h";
 
   it.each(WORK)("%s keeps a service value after 'Atendimento:', on the same line or the next one", (id) => {
-    for (const v of ["por ordem de chegada", "Por ordem de chegada.", "preferencial para idosos", "Prioritário para gestantes", "gratuito", "Gratuita", "Carteira de trabalho, seguro-desemprego", "Seguro desemprego"]) {
+    for (const v of ["por ordem de chegada", "Por ordem de chegada.", "preferencial para idosos", "Prioritário para gestantes", "gratuito", "Gratuita", "Carteira de trabalho, seguro-desemprego", "Seguro desemprego", "gratuito com agendamento", "Preferencial com senha"]) {
       expect(lines(id, `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
       expect(lines(id, `Atendimento:\n${v}\n${HOURS}`), v).toEqual(["Atendimento:", v, HOURS]);
     }
   });
 
   it("a service word only counts at the start of the value, and the name rules still run after it", () => {
-    for (const v of ["Fulana de Tal, gratuito", "Fulana, por ordem de chegada", "gratuito com a Fulana", "preferencial: falar com Fulana", "gratuito, com a psicóloga Fulana"]) {
+    for (const v of ["Fulana de Tal, gratuito", "Fulana, por ordem de chegada", "gratuito com a Fulana", "preferencial: falar com Fulana", "gratuito, com a psicóloga Fulana",
+      "por ordem de chegada. Fulana de Tal", "gratuito pela Fulana", "gratuito, Fulana Inventada", "Carteira de trabalho - Fulana"]) {
       expect(lines("sine", `Atendimento: ${v}`), v).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines("sine", `Atendimento:\n${v}`), v).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
     }
   });
 
@@ -2505,6 +2507,8 @@ describe("v0.76.0: name filter, third pass (service values, names after a channe
       "Curso de Psicologia aplicada",
       "Palestras sobre empreendedorismo",
       "Serviço social da unidade",
+      "WhatsApp do CRAS",
+      "Telefone do atendimento",
     ]) {
       expect(isWorkPersonLine(l), l).toBe(false);
     }
@@ -2538,13 +2542,17 @@ describe("v0.76.0: name filter, third pass (service values, names after a channe
       "Parceria com a COPEL e a Sanepar",
       "Programa Municipal da Prefeitura de Curitiba",
       "Parceria com a Universidade Inventada. Horta com 20 canteiros e pomar",
+      "Parceria com a Universidade Federal do Paraná.",
+      "Parceria com a Secretaria Municipal do Meio Ambiente",
+      "Programa Municipal de Agricultura Urbana e Segurança Alimentar",
+      "Parceria com a Associação de Moradores da Vila Inventada",
     ]) {
       expect(isGardenPersonLine(l), l).toBe(false);
     }
   });
 
   it("the new rules stay fast on 50 KB of their worst shapes", () => {
-    const work = ["contato pelo telefone " + "e ".repeat(25_000), "falar com " + "a ".repeat(25_000), "Atendimento: " + "gratuito ".repeat(5_600)];
+    const work = ["contato pelo telefone " + "e ".repeat(25_000), "falar com " + "a ".repeat(25_000), "Atendimento: " + "gratuito ".repeat(5_600) + "x", "Atendimento: " + "gratuito, ".repeat(5_000) + "x"];
     const garden = ["Programa Municipal " + "da ".repeat(17_000), "Parceria com a comunidade " + "e a ".repeat(12_500), "Parceria com " + "parceria com ".repeat(3_900)];
     const start = performance.now();
     for (const s of work) isWorkPersonLine(s);

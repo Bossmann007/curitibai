@@ -68,7 +68,8 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
  * capital-letter rule: folded text has none.
  */
-const UNIT_WORD = "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd";
+const UNIT_WORD =
+  "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
 const PERSON_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD})\\b)\\p{L}`;
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
 const NAMED_CHANNEL = new RegExp(
@@ -76,16 +77,18 @@ const NAMED_CHANNEL = new RegExp(
   "u",
 );
 /**
- * v0.76.0: a value after "Atendimento:" that starts with a service phrase is not a name ("por ordem de chegada",
- * "preferencial para idosos", "gratuito", "Carteira de trabalho, seguro-desemprego"), unless "com" and a person
- * follow ("gratuito com a Fulana"). Only the start counts: "Fulana, gratuito" is a name.
+ * v0.76.0: a value after "Atendimento:" made only of service phrases is not a name ("por ordem de chegada",
+ * "preferencial para idosos", "gratuito", "Carteira de trabalho, seguro-desemprego", "gratuito com agendamento"):
+ * phrases joined by ",", ";", "/", "e" or a space, then the end (a final "." allowed). Anything else after them
+ * ("por ordem de chegada. Fulana", "gratuito pela Fulana") keeps the value a name, so the line is hidden.
  */
+const SERVICE_ITEM =
+  "(?:por )?ordem de chegada|(?:preferencia(?:l|is)|prioritari[ao]s?)(?: para (?:idos[ao]s|gestantes|pessoas com deficiencia|pcd))?" +
+  "|gratuit[ao]s?|carteira de trabalho(?: digital)?|seguro[- ]desemprego|(?:com|mediante|por) (?:agendamento|senha|hora marcada)";
 const SERVICE_VALUE = new RegExp(
-  "^[-–•*\\s]*(?:(?:por )?ordem de chegada|preferencia(?:l|is)\\b|prioritari[ao]s?\\b|gratuit[ao]s?\\b" +
-    "|carteira de trabalho|seguro[- ]desemprego)",
+  `^[-–•*\\s]*(?:${SERVICE_ITEM})(?:(?:\\s*[,;/]\\s*|\\s+e\\s+|\\s+)(?:${SERVICE_ITEM}))*\\s*\\.?\\s*$`,
 );
-const SERVICE_NAMED = new RegExp(`\\bcom\\s+${PERSON_NEXT}`, "u");
-const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || (SERVICE_VALUE.test(v) && !SERVICE_NAMED.test(v));
+const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || SERVICE_VALUE.test(v);
 /**
  * Hours (folded): a digit; "de/das/às/a partir de" and a digit; a weekday, its abbreviation, "dia" or "feriado" that
  * goes on as hours ("Segunda a sexta", "seg. a sex.", "Sábado, 8h", or a digit later: "Domingos da Silva" is not hours);
@@ -185,10 +188,17 @@ const GARDEN_PERSON = new RegExp(
 const GARDEN_PARTNER = new RegExp(`^\\s*:?\\s*(?:(?:d[aeo]s?|an?|o|as|os) )?(?:${ENTITY})\\b`);
 /**
  * v0.76.0: inside the partner or programme phrase (up to ".", ";" or " - "), "e", "com" or "da/do/das/dos" must be
- * followed by an entity word too: "Parceria com a comunidade e a Fulana" and "Programa Municipal da Fulana" are hidden;
- * a bare "de" is not checked ("Programa Municipal de Agricultura Urbana" stays).
+ * followed by an entity, place or topic word: "Parceria com a comunidade e a Fulana" and "Programa Municipal da Fulana"
+ * are hidden; "Universidade Federal do Paraná", "Secretaria Municipal do Meio Ambiente" and "… e Segurança Alimentar"
+ * stay. A bare "de" is not checked ("Programa Municipal de Agricultura Urbana" stays).
  */
-const PARTNER_NAMED = new RegExp(`\\b(?:e|com|d[ao]s?)\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${ENTITY})\\b)\\p{L}`, "u");
+const PLACE_OR_TOPIC =
+  "parana|curitiba|brasil|estado|municipio|cidade|vila|bairro|regiao|regional|jardim|meio ambiente|seguranca|" +
+  "agricultura|abastecimento|alimentacao|educacao|saude|desenvolvimento|sustentabilidade";
+const PARTNER_NAMED = new RegExp(
+  `\\b(?:e|com|d[ao]s?)\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${ENTITY}|${PLACE_OR_TOPIC})\\b)\\p{L}`,
+  "u",
+);
 const hasUnknownPartner = (f: string): boolean =>
   [...f.matchAll(/\b(?:programa|parceria com)\b/g)].some((m) => {
     const rest = f.slice(m.index + m[0].length);

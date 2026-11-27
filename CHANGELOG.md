@@ -10,16 +10,19 @@ Name filter, third pass (the lows of the 0.72.0 review). 27 tools. Publishes not
   label) move from `src/sources/geocuritiba.ts` to `src/sources/nameFilter.ts`, in a commit of their own with no
   behaviour change (tests unchanged and green).
 - `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: a value after
-  "Atendimento:" that starts with a service phrase is shown again, on the same line or after a bare label
+  "Atendimento:" made only of service phrases is shown again, on the same line or after a bare label
   ("Atendimento: por ordem de chegada", "preferencial para idosos", "gratuito", "Carteira de trabalho,
-  seguro-desemprego"); "gratuito com a Fulana" and "Fulana, gratuito" stay hidden. Newly hidden: palestrante,
+  seguro-desemprego", "gratuito com agendamento"); anything else in the value keeps it hidden ("por ordem de
+  chegada. Fulana", "gratuito pela Fulana", "Fulana, gratuito"). Newly hidden: palestrante,
   assistente social and psicólogo/a anywhere in a line ("Palestrante Fulano", "Assistente social Fulana", "Psicóloga
   Fulana de Tal"), and a channel word followed by "da/do/com", or "falar com", and then a word that is not a unit or
   channel word ("Contato no WhatsApp da Fulana", "Contato pelo telefone com Fulana", "Falar com Fulana de Tal").
-  "Contato pelo e-mail da unidade", "telefone do Sine" and "Atendimento psicológico" stay.
-- `horta comunitaria`: "e", "com" or "da/do" inside a partner or programme phrase must be followed by an entity word
-  too ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden; "Programa
-  Municipal de Agricultura Urbana" stays). On the safe side, "… da Vila Inventada" after a partner is hidden too.
+  "Contato pelo e-mail da unidade", "telefone do Sine", "WhatsApp do CRAS" and "Atendimento psicológico" stay.
+- `horta comunitaria`: "e", "com" or "da/do" inside a partner or programme phrase must be followed by an entity,
+  place or topic word ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden;
+  "Universidade Federal do Paraná", "Secretaria Municipal do Meio Ambiente" and "Programa Municipal de Agricultura
+  Urbana e Segurança Alimentar" stay). Known limit, as before: a name after a comma in the phrase ("Parceria com a
+  comunidade, Fulana") passes.
 - Record for 0.72.0: its rule that an hours line starting with a weekday and holding a digit is never the rest of a
   split name (NOT_A_NAME/WEEKDAY_START) reached every type that hides names line by line: `clube de xadrez`, `cei
   contratado`, `administracao regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca

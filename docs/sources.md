@@ -1539,20 +1539,21 @@ changes (owner request, 2026-11-23: monthly and automatic).
     (`liceu_de_oficios_synthetic.json`) is synthetic. No new host for the server and the link allowlist is unchanged.
   - **Name filter, third pass, v0.76.0** (the lows of the 0.72.0 review). The filters now live in
     `src/sources/nameFilter.ts` (moved first, with no behaviour change). The four work types keep a value after an
-    attendance label that starts with a service phrase ("por ordem de chegada", "preferencial", "prioritário",
-    "gratuito", "carteira de trabalho", "seguro-desemprego"), on the same line or after a bare label, unless "com" and
-    a word that is not a unit or channel word follow ("gratuito com a Fulana" is hidden); only the start counts
-    ("Fulana, gratuito" is hidden). They also hide a line with palestrante, assistente social or psicólogo/a anywhere
+    attendance label made only of service phrases ("por ordem de chegada", "preferencial/prioritário (para idosos,
+    gestantes …)", "gratuito", "carteira de trabalho", "seguro-desemprego", "com agendamento/senha") joined by ",",
+    ";", "/", "e" or a space, on the same line or after a bare label; anything else in the value keeps it hidden ("por
+    ordem de chegada. Fulana", "gratuito pela Fulana", "Fulana, gratuito"). They also hide a line with palestrante, assistente social or psicólogo/a anywhere
     ("Atendimento psicológico" and "Psicologia" stay), and a channel word followed by "da/do/com", or "falar/fale/
     tratar/procurar com", and then a word that is not a unit or channel word, after an optional article ("Contato no
     WhatsApp da Fulana", "Contato pelo telefone com Fulana", "Falar com Fulana de Tal" are hidden; "Contato pelo e-mail
-    da unidade", "telefone do Sine", "Telefone com DDD" and "Falar com a recepção" stay). The `horta comunitaria`
+    da unidade", "telefone do Sine", "WhatsApp do CRAS", "Telefone com DDD" and "Falar com a recepção" stay). The `horta comunitaria`
     allowlist checks the partner or programme phrase up to ".", ";" or " - ": "e", "com" or "da/do/das/dos" there must
-    be followed by an entity word ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are
-    hidden; "Parceria com a Associação de Moradores e a Prefeitura" and "Programa Municipal de Agricultura Urbana"
-    stay, a bare "de" is not checked). On the safe side, "Parceria com a Associação de Moradores da Vila Inventada" is
-    hidden ("da vila" is not an entity word). Known limits: a name later in an hours line ("das 8h às 17h com a
-    Fulana") still passes; the office types keep the narrower filter. Checked on 2026-11-27 (UTC) with curl and
+    be followed by an entity, place (Paraná, Curitiba, vila, bairro …) or topic word (meio ambiente, segurança,
+    agricultura …) ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden;
+    "Universidade Federal do Paraná", "Secretaria Municipal do Meio Ambiente" and "Programa Municipal de Agricultura
+    Urbana e Segurança Alimentar" stay; a bare "de" is not checked). Known limits: a name later in an hours line ("das
+    8h às 17h com a Fulana") or after a comma in a partner phrase ("Parceria com a comunidade, Fulana") still passes;
+    the office types keep the narrower filter. Checked on 2026-11-27 (UTC) with curl and
     User-Agent `curitibai-mcp/0.76 (+https://github.com/Bossmann007/curitibai)`, 6 GET requests by hand: `/robots.txt`
     at 15:15:58 (404, `text/html; charset=utf-8`: no rules, RFC 9309), then the server's own query (all its fields,
     with geometry) of layers 150, 151, 149, 152 and 9, about 5 s apart, until 15:16:26. Counts as read: 12, 1, 16 and
