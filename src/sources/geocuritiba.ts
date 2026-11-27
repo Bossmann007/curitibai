@@ -988,14 +988,15 @@ export function hourLines(
       if (t === "") continue;
       const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
+      const full = cleanText(part, Infinity);
       const before = prev;
-      prev = t;
+      prev = full; // v0.81.0: uncut, so a contact phrase past the cut still reaches the next line's checks
       // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
       // whole-field check below (prev null) on this line and the one before, which must not hide alone; that one stays.
       // A line that reads as hours or a service ("Horário: 8h", "por agendamento") is not read with the one before.
       const split = names !== undefined && !allowlist && before !== undefined && !isServiceText(t);
-      const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(cleanText(part, Infinity), before));
-      if (!hide || !(label || named || tail || direct || (split && hide(`${before}\n${t}`, null) && !hide(before, null)))) {
+      const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(full, before));
+      if (!hide || !(label || named || tail || direct || (split && hide(`${before}\n${full}`, null) && !hide(before, null)))) {
         lines.push(t);
         label = rest = soft = false;
       } else {

@@ -2731,7 +2731,9 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
       ["E-mail da coordenação", "ou pelo telefone"], ["Falar com o RH", "Atendimento presencial"], ["Fale com a gente", "WhatsApp"], ["Fale com a gente", "Com agendamento"]] as const) {
       expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace("3350-0000", "[masked]")]);
     }
-    expect(lines(id, "Fale com a gente pelo 156\nFulana"), "the phrase goes on after the unit word: 0.80.0's rule, the name line passes (known limit)").toEqual(["Fale com a gente pelo 156", "Fulana"]);
+    for (const a of ["Fale com a gente pelo 156", "Tratar com o RH da empresa", "Telefone da Regional: 156"]) {
+      expect(lines(id, `${a}\nFulana`), `${id}: the phrase goes on after the unit word (0.79.0 hid the name)`).toEqual([a, HIDDEN_PERSON_LINE]);
+    }
   });
 
   it("review: a split hidden by the new checks keeps the whole-field check, so a third line is caught too", () => {
@@ -2761,6 +2763,51 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     for (const b of ["Rua XV de Novembro, 100", "Av. Inventada", "Horário: 8h às 17h", "Telefone: 3350-0000"]) {
       expect(lines(id, `Fale com a gente\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente", b.replace("3350-0000", "[masked]")]);
     }
+  });
+
+  // Security Reviewer, after 0.80.0 merged: leaks 0.80.0 opened against 0.79.0.
+  const PAD = "Curso de solda, elétrica e marcenaria com certificado na unidade do bairro Inventado, turmas de manhã e de tarde, inscrições abertas";
+  it.each(WORK)("O1: %s hides a name after a guarded phrase in a line over 160 characters (cut at commas for liceu)", (id) => {
+    for (const ph of ["Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da coordenação", "Fale com a gente pelo 156", "Tratar com o RH da empresa", "Agendamento com o RH"]) {
+      for (const sep of [", ", "; ", " - ", "\n", ",\n"]) {
+        for (const nm of ["Fulana", "Fulano de Tal", "Sra. Fulana"]) {
+          const out = lines(id, `${PAD}, ${ph}${sep}${nm}`).join("\n");
+          expect(out, `${id}: ${ph}${JSON.stringify(sep)}${nm}`).not.toContain(nm);
+        }
+      }
+    }
+  });
+
+  it.each(WORK)("O2: %s hides a name after a guarded word on the next line (0.79.0 hid these)", (id) => {
+    for (const [a, b] of [["Telefone da", "Regional Fulana"], ["Fale com", "o RH Fulano"], ["Tratar", "com o RH Fulano"], ["E-mail da", "coordenação Fulana"], ["Agendamento", "com o RH Fulano"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: after a hidden line`).toEqual([HIDDEN_PERSON_LINE, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b] of [["Telefone da", "Regional: 156"], ["Fale com", "a gente pelo 156"], ["Tratar", "com o RH da empresa"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
+  });
+
+  it.each(WORK)("%s hides 'agendamento com' and a word that is also a name at the end of the line", (id) => {
+    for (const v of ["agendamento com Dias", "agendamento com Uma", "agendamento com hora", "agendamento com senha", "agendamento com o Dias"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com hora marcada", "agendamento com uma semana de antecedência", "agendamento com 2 dias de antecedência", "agendamento com senha retirada no local"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it("a guarded word's rest is read for at most 40 steps, so a 400 KB line is fast", () => {
+    const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
+      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000)];
+    const start = performance.now();
+    for (const s of shapes) {
+      isWorkPersonLine(s);
+      lines("liceu de oficios", s);
+      lines("sine", s);
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
+    expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 40 steps is not a unit word: hidden, on the safe side").toBe(true);
   });
 
   it("the split check stays fast on 50 KB of short lines", () => {
