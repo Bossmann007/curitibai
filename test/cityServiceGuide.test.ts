@@ -230,6 +230,138 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(t).toMatch(/30 dias para responder \(Lei federal 13\.460\/2017\)/);
   });
 
+  it("answers anonymity (since 0.69.0): e-mail identifies the sender, anonymity is the anonymous form on Curitiba Ouve", async () => {
+    const o = await guide();
+    const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
+    // The e-mail fact is the project's own observation, not attributed to the 2024 PDF.
+    const ownObservation = /O e-mail não é um canal anônimo: o endereço de quem envia aparece nele \(observação do CuritibAI, não do guia de 2024\)/;
+    expect(step(5)).toMatch(ownObservation);
+    expect(o.data.what).toMatch(ownObservation);
+    expect(text(o)).not.toMatch(/(segundo|pelo) (o )?(guia|PDF)[^.]*endereço de quem envia/i);
+    expect(step(5)).toMatch(/forma anônima no Portal Curitiba Ouve \(passo 4\)/);
+    // Anonymity is settled for denúncias only; the summary hedges a plain reclamação the same way step 6 does.
+    expect(o.data.what).toMatch(/para denúncias, o guia de 2024 prevê a forma anônima \(sem resposta nem acompanhamento\) no Portal Curitiba Ouve \(o CuritibAI não conferiu isso hoje no site\); para reclamação comum isso não foi verificado/);
+    // Registration: e-Cidadão for identificada and sigilosa; what the site asks today is not verified.
+    expect(step(6)).toMatch(/identificada e a sigilosa pedem cadastro no e-Cidadão/);
+    expect(step(6)).toMatch(/o que o site pede hoje não foi verificado/);
+    // The 2024 guide describes the forms for denúncias; a plain reclamação is not settled by it.
+    expect(step(6)).toMatch(/reclamação comum[^.]*não foi verificado/);
+    expect(o.note).toMatch(/e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own observation/);
+    expect(o.note).toMatch(/not verified[^.]*registration/i);
+  });
+
+  it("marks where each step 5 sentence about anonymity or identification comes from (since 0.79.0)", async () => {
+    const o = await guide();
+    // Sentences end at a period followed by a space; the e-mail address and "13.460" have no space after their dots.
+    const sentences = allSteps(o).find((s) => s.step === 5)!.action.split(/(?<=\.)\s+/);
+    const aboutAnonymity = sentences.filter((s) => /anônim|identific/.test(s));
+    expect(aboutAnonymity.length).toBeGreaterThan(1);
+    for (const s of aboutAnonymity) {
+      // Either the 2024 guide's, hedged as not checked on the site today, or the CuritibAI's own observation.
+      expect(s).toMatch(/segundo o guia de 2024, que o CuritibAI não conferiu hoje no site|\(observação do CuritibAI, não do guia de 2024\)/);
+    }
+    for (const s of sentences.filter((s) => /forma anônima/.test(s))) {
+      expect(s).toContain("segundo o guia de 2024, que o CuritibAI não conferiu hoje no site");
+    }
+  });
+
+  it("marks where each sentence about anonymity or identification in the summary and step 4 comes from (since 0.85.0)", async () => {
+    const o = await guide();
+    const step4 = allSteps(o).find((s) => s.step === 4)!.action;
+    // The 2024 guide's, with the caveat that the site was not checked today, or the CuritibAI's own observation.
+    // The hedge sits in the same clause as the 2024-guide claim (no ";" between them).
+    const guideHedge = /guia de 2024[^;]*o CuritibAI não conferiu (isso )?hoje no site/;
+    const ownMarker = /[Oo]bservação do CuritibAI, não do guia de 2024/;
+    for (const field of [o.data.what, step4]) {
+      const aboutAnonymity = field.split(/(?<=\.)\s+/).filter((s) => /anônim|identific/.test(s));
+      expect(aboutAnonymity.length).toBeGreaterThan(1);
+      for (const s of aboutAnonymity) expect(guideHedge.test(s) || ownMarker.test(s), s).toBe(true);
+    }
+  });
+
+  it("anonymous form wording stays inside the record of the 2024 guide (since 0.75.0)", async () => {
+    const o = await guide();
+    const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
+    // 0.79.0: step 4 keeps what the 2024 guide says (no registration, no answer or follow-up; site not checked)
+    // apart from the CuritibAI's own warning that the text and the attachments can identify the citizen.
+    expect(step(4)).toMatch(
+      /Pelo guia de 2024, [^.]*e a forma anônima não pede cadastro e não recebe resposta nem acompanhamento \(o CuritibAI não conferiu isso hoje no site\)\./,
+    );
+    // 0.83.0: the warning names what to leave out instead of "deixe isso de fora". 0.85.0 R1-R2: it promises a lower
+    // risk, not anonymity, and the list ends with any detail only the citizen knows. 0.87.0: only dates or places that
+    // identify the citizen are left out (the denúncia needs who, when and where), and the citizen is "o cidadão".
+    expect(step(4)).toMatch(
+      /Observação do CuritibAI, não do guia de 2024: o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, o cidadão pode deixar de fora o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou lugares que identifiquem o cidadão e qualquer detalhe que só o cidadão conheça\./,
+    );
+    expect(text(o)).not.toMatch(/deixe isso de fora|continuar anônimo|não garante anonimato/);
+    // 0.85.0 R4: the limit of the anonymous form is the CuritibAI's own observation, with its marker in the sentence.
+    const r4 = step(4).split(/(?<=\.)\s+/).filter((s) => /proteja a identidade do cidadão/.test(s));
+    expect(r4).toEqual([
+      "Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão, e não sabe o que o site registra sobre o acesso.",
+    ]);
+    // 0.85.0 R3: the summary says it too, marked the same way.
+    expect(o.data.what).toMatch(
+      /O CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão \(observação do CuritibAI, não do guia de 2024\)\./,
+    );
+    for (const s of step(4).split(/(?<=\.)\s+/)) {
+      expect(/cadastro|resposta|acompanhamento|guia de 2024 (prevê|diz)/.test(s) && /Observação do CuritibAI/i.test(s)).toBe(false);
+    }
+    // 0.79.0: the summary and the e-mail step give the same warning, marked as the CuritibAI's own.
+    expect(o.data.what).toMatch(/Mesmo na forma anônima, o texto e os anexos podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
+    expect(step(5)).toMatch(/O texto e os anexos do e-mail também podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
+    // R3: the record says a denúncia is registered, not that it is investigated.
+    expect(step(6)).toMatch(/anônima \(sem cadastro; a denúncia é registrada, mas sem resposta nem acompanhamento\)/);
+    expect(text(o)).not.toMatch(/apurad/);
+    // R4: the 30 days do not apply to the anonymous form.
+    expect(step(8)).toMatch(/\(não vale para a forma anônima, que não recebe resposta\)/);
+    expect(o.data.what).toMatch(/forma anônima \(sem resposta nem acompanhamento\)/);
+    expect(o.note).toMatch(/the text and the attachments a citizen sends can identify them \(the summary, steps 4 and 5\) is also this project's own observation/);
+    expect(o.note).toMatch(/So is "o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão", said in the summary and steps 4 and 5: this project does not know what the Curitiba Ouve site records/);
+  });
+
+  // 0.87.0: a promise of anonymity is wrong even inside a sentence that carries the CuritibAI mark.
+  // Indicative verbs only: "não pode garantir que … proteja" (infinitive, subjunctive) is the guide's own caveat.
+  const ANONYMITY_PROMISE =
+    /(garant(e|em|imos|irá|ido)|assegur(a|am|amos|ará|ado))\s+(o\s+)?(seu\s+)?anonimato|proteg(e|em|emos|erá)\s+(você|o cidadão|(a\s+)?(sua\s+)?identidade|(o\s+)?(seu\s+)?anonimato)|ninguém (saberá|vai saber)|totalmente anônim|100% anônim/iu;
+
+  it("promises anonymity nowhere in the guide, marked or not (since 0.87.0)", async () => {
+    const o = await guide();
+    expect("o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão").not.toMatch(ANONYMITY_PROMISE);
+    for (const promise of [
+      "a forma anônima garante o seu anonimato (observação do CuritibAI, não do guia de 2024)",
+      "garante seu anonimato",
+      "garante o anonimato",
+      "assegura o anonimato",
+      "protege sua identidade",
+      "protege a identidade do cidadão",
+      "ninguém vai saber",
+    ]) {
+      expect(promise).toMatch(ANONYMITY_PROMISE);
+    }
+    const fields = [o.data.title, o.data.what, o.note, ...allSteps(o).map((s) => `${s.action} ${s.consent ?? ""}`)];
+    for (const f of fields) expect(f).not.toMatch(ANONYMITY_PROMISE);
+  });
+
+  it("step 5 repeats that the CuritibAI cannot guarantee the anonymous form, as its own note (since 0.87.0)", async () => {
+    const step5 = allSteps(await guide()).find((s) => s.step === 5)!.action;
+    expect(step5).toMatch(
+      /; o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão \(observação do CuritibAI, não do guia de 2024\)\.$/,
+    );
+  });
+
+  it("speaks of the citizen as \"o cidadão\" in the summary and steps 4 and 5, never \"você\" (since 0.87.0)", async () => {
+    const o = await guide();
+    const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
+    // Not \b: in JS \b sees "ê" as a non-word character, so it would miss "só você conheça".
+    const secondPerson = /(?<!\p{L})(você|deixe|sua identidade|seu nome)(?!\p{L})/iu;
+    expect("qualquer detalhe que só você conheça").toMatch(secondPerson);
+    expect("para reduzir o risco, deixe de fora").toMatch(secondPerson);
+    for (const f of [o.data.what, step(4), step(5)]) {
+      expect(f).toMatch(/o cidadão/);
+      expect(f).not.toMatch(secondPerson);
+    }
+  });
+
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {
     const o = await guide();
     const fixed = allSteps(o).filter((s) => s.link_source === "official_allowlist" && s.url !== CITY_SERVICES_SOURCE_URL);

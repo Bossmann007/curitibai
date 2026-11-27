@@ -12,7 +12,7 @@ const ZONE_41 = attrs([{ sg_zona: "ZT-1", nm_zona: "ZONA TESTE 1", legislacao: "
 const ZONE_36 = attrs([{ sg_zona: "ZT-2", nm_zona: "ZONA TESTE 2", legislacao: "LEI TESTE / 2019", data_versao: "2020-08" }]);
 const EMPTY = attrs([]);
 const PGV = attrs([{ sg_zona: "ZF-T", nm_zona: "ZONA FISCAL TESTE", nm_bairro: "BAIRRO TESTE", cd_microbairro: "99.0", cd_microrregiao: 0 }]);
-const PGV_ROW = { zone_code: "ZF-T", zone_name: "ZONA FISCAL TESTE", bairro: "BAIRRO TESTE", microbairro: "99.0", microregion: 0 };
+const PGV_ROW = { zone_code: "ZF-T", zone_name: "ZONA FISCAL TESTE", bairro: "BAIRRO TESTE", microbairro: "99", microregion: 0 };
 // Two streets: one about 11 m east of the point, one about 55 m north.
 const STREETS = JSON.stringify({
   spatialReference: { wkid: 4326, latestWkid: 4326 },
@@ -213,6 +213,37 @@ describe("place_at_point answers", () => {
       { zone_code: "ZF-V", zone_name: null, bairro: null, microbairro: null, microregion: null },
     ]);
     expect(out.note).toMatch(/more than one PGV micro-region/);
+  });
+
+  it("PGV codes are read whether published as a number or as text (0.71.0)", async () => {
+    const row = (cd_microbairro: unknown, cd_microrregiao: unknown) => ({ sg_zona: "ZF-T", cd_microbairro, cd_microrregiao });
+    stubFetch(routes({
+      pgv: {
+        body: attrs([
+          row(27, "0"),
+          row(27.5, " 3 "),
+          row("28.0", ""),
+          row(29, " "),
+          row(30, "2.5"),
+        ]),
+      },
+    }));
+    const pgv = (await place()).data.pgv!.micro_regions.map((r) => [r.microbairro, r.microregion]);
+    expect(pgv).toEqual([["27", 0], ["27.5", 3], ["28", null], ["29", null], ["30", null]]);
+  });
+
+  it("a text micro-bairro drops a trailing \".0\" only, so text and number forms of one code are one row (0.73.0)", async () => {
+    const row = (cd_microbairro: unknown) => ({ sg_zona: "ZF-T", cd_microbairro, cd_microrregiao: 1 });
+    stubFetch(routes({ pgv: { body: attrs([row("12.0"), row(12), row(" 13.0 "), row("99.10"), row("12.0a"), row("0.0")]) } }));
+    const pgv = (await place()).data.pgv!.micro_regions.map((r) => r.microbairro);
+    expect(pgv).toEqual(["12", "13", "99.10", "12.0a", "0"]);
+  });
+
+  it("a PGV code number out of range (negative, 7 digits or more) is null, never masked text", async () => {
+    stubFetch(routes({ pgv: { body: attrs([{ sg_zona: "ZF-T", cd_microbairro: 12345678, cd_microrregiao: -1 }]) } }));
+    expect((await place()).data.pgv!.micro_regions).toEqual([
+      { zone_code: "ZF-T", zone_name: null, bairro: null, microbairro: null, microregion: null },
+    ]);
   });
 
   it("no PGV polygon at the point is an empty list, not partial", async () => {

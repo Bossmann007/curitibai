@@ -4,7 +4,7 @@ import { OutOfTimeError } from "../hostGate.js";
 import { getPlanCategories, getPlanUnits, PCA_UNITS_PAGE_SIZE, pcaUnitsUrl, PNCP_PLAN_LICENSE_NOTE, type PlanCategory } from "../sources/pncp.js";
 import { CALL_START_BUDGET_MS, failFrom, ok } from "./common.js";
 
-/** procurement_search mode "plan" (v0.68): a listed body's Plano de Contratações Anual (PCA) for one year. */
+/** procurement_search mode "plan" (v0.89): a listed body's Plano de Contratações Anual (PCA) for one year. */
 export const CITY_CNPJ = "76417005000186";
 
 const amounts = { item_count: z.number().int(), total_value: z.number() };

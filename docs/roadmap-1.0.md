@@ -275,8 +275,141 @@ Leitura, 26 auditoriums of every owner, 2 circus spaces, 1 chess club), hours as
 auditoriums and the chess club. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 135 of
 139 questions; 4 are gaps (real-time buses 2, other cities 2).
 
-At v0.68.0 (phase B) `procurement_search` has `mode: "plan"`: the Plano de Contratações Anual a listed Curitiba
-municipal body published in PNCP for a year, as planned totals per category and per requesting unit (Município de
-Curitiba 2027, read 2026-11-27: 31 units, 4,897 items, R$ 4.16 billion); never items or suppliers. The Curitiba App
-rows are unchanged (18, 16 covered). The citizen eval answers 136 of 140 questions; 4 are gaps (real-time buses 2,
+At v0.69.0 (phase B) the `city_service_guide` `ouvidoria` guide answers "Posso reclamar na Ouvidoria sem me
+identificar?": e-mail is not an anonymous channel; for denúncias the anonymous form is on the Portal Curitiba Ouve
+(not verified for a plain reclamação), and the registration that site asks today was not verified. No new source or host. The Curitiba App rows are
+unchanged (18, 16 covered). The citizen eval answers 136 of 140 questions (q141; q140 is left to v0.68.0, PR #83); 4
+are gaps (real-time buses 2, other cities 2).
+
+At v0.70.0 (phase B) the `city_facilities_search` work types (`sine`, `agencia do trabalhador`, `liceu de oficios`,
+`inss`) also hide a line with a teacher, instructor, attendant or contact word, and the `horta comunitaria` allowlist
+keeps a "Parceria com" or "Programa" line only when an entity word follows; this answers "Onde fica o SINE do
+Pinheirinho? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are unchanged (18, 16 covered).
+The citizen eval answers 137 of 141 questions (q142; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2,
 other cities 2).
+
+At v0.71.0 (phase B) `place_at_point` `place.pgv` reads the micro-bairro and micro-region codes whether the PGV layer
+publishes them as a number or as text (a blank is never the code 0); this answers "Qual a microrregião do IPTU na Rua
+XV de Novembro, 1000?" at a point on that street. No new source or host. The Curitiba App rows are unchanged (18, 16
+covered). The citizen eval answers 138 of 142 questions (q143; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).
+
+At v0.72.0 (phase B) the `city_facilities_search` work types also hide a name after "Atendimento:", the roles docente,
+facilitador/a, técnico/a and agente and "Contato pela/via <nome>", while "Contato: 3350-0000" and the hours after it
+stay; the `horta comunitaria` allowlist checks a partner or programme later in the line too. This answers "Onde fica o
+Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are
+unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q144; q140 is left to v0.68.0, PR #83); 4
+are gaps (real-time buses 2, other cities 2).
+
+At v0.73.0 (phase B) the `place_at_point` service areas build their answer through one helper that fills the lists of
+the other groups with null (no output change), and a PGV micro-bairro published as text drops a trailing ".0" ("12.0"
+is "12"). No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.74.0 (phase B) the e-mail filter of `city_facilities_search` also hides a city address shaped like a person's
+name with a one-letter first word, digits after a name word or "-" between the words; the unit words still
+keep an address (no real address newly hidden when checked on 2026-11-27). No new question, source or host. The
+Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to
+v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.75.0 (phase B) the `city_service_guide` `ouvidoria` guide says the anonymous denúncia is registered (not
+"investigated"), gets no answer or follow-up and is outside the 30 days, hedges the anonymous form in step 5 as the
+2024 guide's, and adds the project's own warning that what the citizen writes or attaches can identify them. No new
+question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
+questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.76.0 (phase B) the `city_facilities_search` person-name filter moves to its own module (`src/sources/nameFilter.ts`,
+a pure move first), the work types keep a service value after "Atendimento:" ("por ordem de chegada", "gratuito")
+and hide a name after a channel word or "falar com" and after palestrante, assistente social or psicólogo/a, and the
+community gardens hide a name after "e/com/da" in a partner or programme phrase. The five layers it reads, re-read on
+2026-11-27, show the same hours before and after. No new question, source or host. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).
+
+At v0.77.0 (phase B) the `place_at_point` PGV `microbairro` description gives the form the tool returns ("27", not
+the published "27.0"), and the service areas helper no longer accepts `undefined` for a list (a type change, no
+output change). No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen
+eval answers 139 of 143 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).
+
+At v0.78.0 (phase B) the `city_facilities_search` e-mail filter also drops a city address with a middle initial
+("ana.c.lima"), a surname initial ("maria.s") or a repeated separator ("maria..silva"); ouvidoria, sine, unit and
+regional addresses stay, and a re-read of the 89 urban-equipment layers on 2026-11-27 keeps the same 1,763 e-mails. No new
+question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
+questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other
+cities 2).
+
+At v0.79.0 (phase B) the `city_service_guide` `ouvidoria` guide says in step 4, as the 2024 guide's and not checked
+on the site, that the anonymous form needs no registration and gets no answer or follow-up, in a sentence apart from
+the project's own warning that the text and the attachments can identify the citizen; the summary and step 5 give
+that warning too. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen
+eval answers 139 of 143 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).
+
+At v0.80.0 (phase B) the `city_facilities_search` person-name filter of the work types keeps lines the v0.76.0 pass
+hid by mistake ("Fale com a gente pelo 156", "Telefone da Regional", "E-mail da coordenação", "Tratar com o RH da
+empresa", "Atendimento: emissão de carteira de trabalho") and hides "Atendimento: agendamento com Fulana", which
+passed as hours. No new question, source or host; the layers were not re-read. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version; q140 is left to
+v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.81.0 (phase B) the `city_facilities_search` person-name filter hides a keyword split over two lines ("Mantida" /
+"pela Fulana") even when another line of the record is already hidden, for every type that hides person lines, and,
+for the work types, a name alone on the line after "Falar com o RH" or "Fale com a gente". It also fixes the
+leaks 0.80.0 introduced (long Liceu lines, names on the line after a guarded word, a 400 KB slow case). On the 12 layers re-read
+once for the check, no shown line changed. No new question, source or host. The Curitiba App rows are unchanged (18,
+16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
+buses 2, other cities 2).
+
+At v0.82.0 (phase B) the work-type person-name filter reads the word after um/uma, dia(s), hora and senha in
+"agendamento com …" ("agendamento com Dias de Souza" is hidden; "com dias de antecedência" stays), and on the line after
+a guarded phrase "156 Dias", "8 Dias", "156 Hora" and "Úteis" alone are hidden. No new question, source or host; the
+layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
+questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.83.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 names what to leave out to stay anonymous
+(name, address, phone, a face, the location saved in a photo, the file name) and says, as the project's own
+observation, that the anonymous form does not guarantee anonymity and that the project does not know what the site
+records about the visit. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The
+citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other
+cities 2).
+
+At v0.84.0 (phase B) the work-type person-name filter reads um/uma before dia(s) or hora(s) in "agendamento com …"
+only as a detail when útil/úteis, corridos, antes or "de antecedência/prazo" follows ("agendamento com Uma Dias" is
+hidden; "com um dia de antecedência" stays), and "senha de atendimento" and "senha numerada" stay. No new question,
+source or host; the layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.85.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 says leaving details out reduces the risk
+of being identified (not that it keeps the citizen anonymous) and adds other people's names or faces, car plates,
+document numbers, e-mail and any detail only the citizen knows; the summary and step 4 say, as the project's own
+observation, that the CuritibAI cannot guarantee the anonymous form protects the citizen's identity. No new question,
+source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions
+(no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.86.0 (phase B) the work-type person-name filter reads the whole rest of the line after "agendamento com senha
+numerada" or "… senha de atendimento": numbers, punctuation and hours words stay ("senha numerada, das 8h às 17h"),
+anything else is hidden ("senha numerada, Fulana"); a schedule line after such a line stays, and "um dia corrido" is
+no longer a detail. No new question, source or host; the 12 person-hiding layers were re-read once for the check
+(131 hidden-line markers before and after). The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.87.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 leaves out only dates or places that
+identify the citizen, step 5 repeats, as the project's own observation, that the CuritibAI cannot guarantee the
+anonymous form protects the citizen's identity, the guide speaks of "o cidadão" throughout, and a test fails on any
+promise of anonymity in the guide. No new question, source or host. The Curitiba App rows are unchanged (18, 16
+covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
+buses 2, other cities 2).
+
+At v0.88.0 (phase B) the 0.86.0 docs now say the work-type split check reads up to the third line after
+"agendamento com senha numerada", and two known limits are stated and tested: a name on the fourth line when another
+line hid on its own rules, and a weekday word alone after "senha numerada" (a narrower weekday rule hid ordinary
+schedules and was dropped). No behaviour change, no new question, source or host. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps
+(real-time buses 2, other cities 2).
+
+At v0.89.0 (phase B; built as v0.68.0 in PR #83, renumbered after merging main) `procurement_search` has
+`mode: "plan"`: the Plano de Contratações Anual a listed Curitiba municipal body published in PNCP for a year, as
+planned totals per category and per requesting unit (Município de Curitiba 2027, read 2026-11-27: 31 units, 4,897
+items, R$ 4.16 billion); never items or suppliers. The Curitiba App rows are unchanged (18, 16 covered). The citizen
+eval answers 140 of 144 questions (q140); 4 are gaps (real-time buses 2, other cities 2).

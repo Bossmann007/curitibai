@@ -2,9 +2,10 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
-## 0.68.0 - 2026-11-27
+## 0.89.0 - 2026-11-27
 
-Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes nothing. Built as 0.68.0 in PR #83
+and renumbered after merging main (0.88.0).
 
 - `procurement_search`: new `mode` `plan` (default `search`, unchanged). It returns the Plano de Contratações Anual
   that one listed Curitiba municipal body published in PNCP for a `year` (default next year in Brasília, at most next
@@ -29,7 +30,510 @@ Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes n
   about 225 characters cut from other tools' descriptions.
 - Curitiba App table: the "extra" row says annual procurement plans too.
 - Citizen eval: q140 ("O que a Prefeitura planeja comprar em 2027?") answered with synthetic PCA fixtures (a planted
-  e-mail and phone in a unit name, a row of another body, one of another year and one without a value); 136 of 140.
+  e-mail and phone in a unit name, a row of another body, one of another year and one without a value); 140 of 144.
+- Licence (owner decision, 2026-11-27): the CC BY-ND 3.0 licence covers the gov.br site and the PNCP API has no
+  licence of its own; the plan mode returns only aggregate facts, credited to PNCP with the source link.
+- No new network host, no new link, no new dependency.
+
+## 0.88.0 - 2026-11-27
+
+Person-name filter after "senha numerada", follow-ups of the 0.86.0 reviews (PR #101). 27 tools. Publishes nothing.
+
+- Docs match the code: the 0.86.0 CHANGELOG note and docs/sources.md said that, when another line hid on its own
+  rules, only the line after "agendamento com senha numerada" was read. The split check reads the next two lines, up
+  to the third line from it; both texts are corrected. No behaviour change.
+- Known limit, now stated and tested: in that case a name on the fourth line or later, after two schedule lines
+  ("Responsável: Beltrano." / "Agendamento com senha numerada" / "Segunda a sexta" / "das 8h às 17h" / "Fulana"), is
+  shown, the same class as the 0.81.0 limit. With no other hidden line the whole field is hidden, as before.
+- Code: the senha rest is interpolated into the appointment-detail pattern directly, not with a `.replace` on a
+  placeholder, so a renamed marker cannot silently drop it. The three patterns built from it have the same source as
+  in 0.87.0 (dumped and compared); the 0.86.0 timing test still covers them.
+- Not done: reading a weekday word after "senha numerada" as hours only next to "a/às", a digit or "fechado", to hide
+  "senha numerada, Domingo". The review of this change showed it hid ordinary schedules that 0.87.0 kept
+  ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)", "sábado e domingo"), so
+  it was dropped. A new test keeps those schedules visible; "senha numerada, Domingo" stays a tested known limit.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.87.0 - 2026-11-27
+
+Ouvidoria anonymity wording, fifth pass (review follow-ups of 0.85.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "datas ou lugares" becomes "datas ou lugares que identifiquem o
+  cidadão"; the denúncia itself still needs who, when and where.
+- Step 5, after "Quem não quer se identificar usa a forma anônima …": "; o CuritibAI não pode garantir que a forma
+  anônima proteja a identidade do cidadão (observação do CuritibAI, não do guia de 2024)". The `note` names the
+  summary and steps 4 and 5.
+- One grammatical person, "o cidadão", in the summary and steps 4 and 5: step 4's "a sua identidade", "deixe de fora"
+  and "só você conheça" become "a identidade do cidadão", "o cidadão pode deixar de fora" and "só o cidadão conheça".
+- New test: no text of the guide (title, summary, note, every step) promises anonymity ("garante", "assegura" or
+  "protege" in the indicative before "anonimato", "você", "o cidadão" or "identidade", "ninguém saberá", "totalmente
+  anônim"), even in a sentence marked as the CuritibAI's own; shown to fail on a copy with "garante o seu anonimato"
+  in step 5. The summary and steps 4 and 5 never say "você", "deixe", "sua identidade" or "seu nome".
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.86.0 - 2026-11-27
+
+Person-name filter, eighth pass (the 0.84.0 Change Reviewer's Lows and the Security Reviewer's R1-R3). 27 tools.
+Publishes nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com senha numerada" and
+  "… senha de atendimento": 0.84.0 counted them as a detail when the next character was punctuation or a digit, so
+  "agendamento com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)", "… senha de atendimento,
+  Fulana" and "… numerada 3350-0000 Fulana" showed the name (0.83.0 hid them). The rest of the line must now be made
+  only of numbers, punctuation, channel, unit and hours words and connectors (a step is one word or one character,
+  at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h", "com senha de atendimento, de segunda a
+  sexta" and "(com senha numerada)" stay; the five forms above are hidden.
+- "Agendamento com senha numerada" followed by a schedule line ("Segunda a sexta, 8h às 17h") hid the whole field (the
+  whole-field check joins lines with spaces and read only the next character). That check now reads the rest the same
+  way, so a field whose lines after these words are only hours and numbers stays, and a name on any later line hides
+  it when that check runs (it is skipped when another line hid on its own rules; then the split check reads the next
+  two lines, up to the third line from the "senha numerada" line, and a name on the fourth line or later is shown:
+  corrected in 0.88.0, which first said "only the next line"). The split check also reads the line after such a line
+  (with or without an article, "com a senha numerada") even when it starts with a number, so "… senha numerada," /
+  "3350-0000 Fulana" hides the name line when another line hid on its own rules and the whole-field check is skipped.
+  Known limits: any other word in the rest hides the line or the field, on the safe side: "exceto feriados",
+  "sábados", "domingos" (plural weekdays are not read as hours: "Domingos" is a name) and a later line such as
+  "Documentos: RG" (0.84.0 hid the field too when the next line started with a word). A name made only of such words
+  ("Domingo", "Sexta", "Central", "Regional") reads as hours and is shown after "senha numerada" (Security Reviewer,
+  LOW; ", Domingo" was shown in 0.85.0 too).
+- "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido", kept in 0.84.0, is
+  now hidden, on the safe side. Since 0.84.0, "agendamento com uma hora" and "agendamento com um dia" with nothing
+  after are hidden too (0.83.0 showed them); tested.
+- Every line the 0.82.0 and 0.84.0 tests list as legitimate is tested as kept. Timing: "senha numerada, " repeated
+  after "agendamento com", 50 KB and 400 KB lines of the new shapes, under 2 s; the earlier 50 KB and 400 KB timing
+  tests are unchanged and green.
+- Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
+  records, 253 with an `observacao`) and replayed offline with 0.85.0 and 0.86.0: 131 hidden-line markers in each,
+  and every record's `hours` is identical.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new host, link or dependency.
+
+## 0.85.0 - 2026-11-27
+
+Ouvidoria anonymity wording, fourth pass (the Security Reviewer's R1-R4 on 0.83.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "para continuar anônimo, deixe de fora …" becomes "para reduzir o risco
+  de ser identificado, deixe de fora o que a denúncia não precisa: …", and the list adds "nomes ou rostos de outras
+  pessoas, placas de carro, números de documentos, e-mail, datas ou lugares e qualquer detalhe que só você conheça".
+  "o que a denúncia não precisa" keeps who, when and where in the denúncia.
+- Step 4, "a forma anônima não garante anonimato" becomes "o CuritibAI não pode garantir que a forma anônima proteja
+  a sua identidade", still marked as the CuritibAI's own observation. The summary (`what`) says it of "a identidade do
+  cidadão", with the same marker; the `note` names both places.
+- The hedge test that covered step 5 now also covers `what` and step 4: each sentence naming anonymity or
+  identification carries the 2024-guide hedge or the CuritibAI-observation marker. The hedge must sit in the same
+  clause as the 2024-guide claim. Step 4's two "Pelo guia de 2024" sentences become one with one hedge, and the
+  summary's denúncia clause gains "(o CuritibAI não conferiu isso hoje no site)".
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.84.0 - 2026-11-27
+
+Person-name filter, seventh pass (the Security Reviewer's R1-R3 on 0.82.0). 27 tools. Publishes nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com" followed by um/uma:
+  um/uma before dia(s) or hora(s) counted as an appointment detail with nothing after, so "agendamento com Uma Dias"
+  (first name Uma, surname Dias) was shown, and so was any word after it ("com Uma Dias Silva", "com Uma Dias de
+  Souza"). Um/uma before dia(s) or hora(s) now counts only when the detail words of dia(s) follow (útil/úteis,
+  corrido(s), antes, "de antecedência/prazo"), or hora(s) marcada/agendada or "e meia de antecedência/prazo". "com um
+  dia de antecedência", "com uma hora antes", "com uma hora marcada", "com uma hora e meia de antecedência", "com um
+  dia útil de antecedência" and "com uma semana de antecedência" stay; the three name forms and "com Um Hora" are
+  hidden. Known limits: um/uma and dia(s) or hora(s) followed by anything else ("com um dia", "com uma hora de
+  tolerância", "com um dia de espera") is hidden, on the safe side; a name after a full detail ("com um dia de
+  antecedência Fulana") passes, as on 0.83.0.
+- Senha also counts as a detail before "de atendimento" and "numerada", but only before the end of the line, a digit
+  or punctuation: "agendamento com senha de atendimento", "com senha numerada." and "com senha de atendimento, das 8h
+  às 17h" were hidden and now stay; "com senha numerada Fulana", "com senha de atendimento da Fulana" and "com senha de
+  Souza" are hidden. Known limit: the whole-field check joins lines with spaces, so "agendamento com senha numerada"
+  followed by a line that starts with a word ("Segunda a sexta, 8h") hides the field, as on 0.83.0.
+- Known limit, now stated and tested: "30 dias" and "1 dia" alone on the line after a guarded phrase ("Telefone da
+  Regional:", "Fale com a gente pelo 156", "Tratar com" / "o RH") are hidden, on the safe side (dia(s) after a number
+  counts as hours only before "de"). "10 horas" there reads as hours, like "24 horas" (since 0.82.0), and is shown.
+- Every line the 0.82.0 review lists as legitimate is tested as kept ("2 dias úteis", "48 horas de antecedência",
+  "agendamento com uma semana / dias corridos / um dia de antecedência / senha retirada"). 2,000 repeats of each new
+  alternative ("uma dias", "um hora", "senha numerada", "uma hora e meia de" …) after "agendamento com" run under 1 s; the
+  50 KB and 400 KB timing tests are unchanged and green.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No host contacted (synthetic lines only); no new host, link or dependency.
+
+## 0.83.0 - 2026-11-27
+
+Ouvidoria anonymity wording, third pass (the Security Reviewer's R1-R2 on 0.79.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: the CuritibAI's own warning names what to leave out, "deixe de fora
+  nome, endereço, telefone, rosto, a localização gravada na foto e o nome do arquivo", instead of "deixe isso de fora"
+  after a list in parentheses.
+- Step 4 adds one sentence, marked as the CuritibAI's own observation, not the 2024 guide's: the anonymous form does
+  not guarantee anonymity, and the CuritibAI does not know what the site records about the visit. The `note` says so.
+- Tested: both step 4 sentences are pinned with their marker; no text of the guide says "deixe isso de fora". The
+  2024-guide hedges and the step 5 hedge test are unchanged.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.82.0 - 2026-11-27
+
+Person-name filter, sixth pass (follow-ups of the 0.80.0 and 0.81.0 Security Reviewer notes). 27 tools. Publishes
+nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com" followed by a word that
+  can also be a name: the five forms the 0.80.0 review named ("agendamento com Dias", "com Uma Costa", "com hora
+  Fulana", "com dias Fulana", "com senha Fulana") were already hidden on 0.81.0 and are now tested. The word after
+  them still let a name through, and is now read per word: um/uma only before semana, dia, hora, minuto or mês;
+  dia(s) only before útil/úteis, corridos, antes or "de antecedência/prazo"; hora only before marcada/agendada; senha
+  only before retirada, prévia or "na/pela" and a place or channel (recepção, portaria, unidade, site, internet,
+  telefone, aplicativo, 156, local, balcão, guichê, totem, hora); um/uma also before antecedência or prazo.
+  "agendamento com Dias de Souza", "com Uma de Souza", "com Hora da Silva", "com Dias
+  3350-0000", "com Hora 8h às 17h", "com Dias no balcão", "com Hora pelo 156", "com Dias marcados" and "com senha pela
+  Fulana" are hidden (all shown on 0.81.0); "com dias de antecedência", "com uma semana de antecedência", "com hora
+  marcada", "com senha retirada" and "com senha na recepção" stay. A number right after one of these words no longer
+  makes it a detail.
+- Work types, the line after a guarded phrase ("Telefone da Regional:", "Fale com a gente pelo 156", "Tratar com" /
+  "o RH"): a number before "Dias" or "Hora" counted as hours, so "156 Dias", "8 Dias" and "156 Hora" were shown there
+  (new in 0.81.0, two- and three-line forms). "Dia(s)" after a number now counts only before "de" ("2 dias de
+  antecedência"), and "hora(s)" only after a one- or two-digit number ("24 horas", "1 hora"). "Útil/úteis" alone
+  counted as hours, so "Util" or "Úteis" was shown there; it now counts only as "dia(s) útil/úteis" ("Dias úteis",
+  "2 dias úteis", "8 horas por dia útil" stay). Known limits: "8 Hora" (one or two digits, then "Hora") still reads
+  as hours; "100 horas" (three digits), "2 dias", "5 dias corridos" and "7 dias por semana" alone after a guarded
+  phrase are hidden, on the safe side ("100 horas" was shown on 0.81.0).
+- Each new hours word reads one way only (one word, one path); the timing test of 0.81.0 gains every new
+  alternative repeated 30 times, and 2,000 repeats of each name-like word after "agendamento com" run under 1 s.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No host contacted (the layers were not re-read; synthetic lines only); no new host, link or dependency.
+
+## 0.81.0 - 2026-11-27
+
+Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing. **This version fixes
+leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 merge).
+
+- Regressions of 0.80.0, work types: after "Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da
+  coordenação" and the like, a name that 0.79.0 hid was shown in three shapes, and all three are hidden again:
+  - In a long `liceu de oficios` line (over 160 characters, cut at commas), "…, Falar com a gente, Fulana" showed
+    "Fulana". A guarded word's rest ("gente", "Regional", "coordenação", "RH") now may not end in ',' or ';'.
+  - A name on the line after the phrase ("Telefone da" / "Regional Fulana", "Fale com" / "o RH Fulano", "Tratar" /
+    "com o RH Fulano", "E-mail da" / "coordenação Fulana"). Two lines joined by a line break now keep the guard; only
+    the whole-field check, joined with spaces, reads the four words as plain unit words.
+  - A name alone on the line after a phrase that goes on after the unit word ("Fale com a gente pelo 156", "Tratar
+    com o RH da empresa", "Agendamento com o RH"), also past the 160-character cut (the line before is now read
+    uncut).
+  - A name after a number or a connector on that next line ("Telefone da Regional:" / "3350-0000 - Fulana", "Fale
+    com a gente" / "pelo 156 ou com a Fulana"), and a phrase itself split over two lines with the name on a third
+    ("Tratar com" / "o RH" / "Fulana"): the whole next line is read, and the split check also reads three lines.
+  The line after such a phrase is kept only when it is made of channel, unit, connector and hours words, numbers and
+  punctuation ("pelo 156", "Segunda a sexta, das 8h às 17h", "Horário: 8h às 17h") or is a street address, so "156 -
+  Fulana", "8h às 17h com Fulana" and "Presencial com Fulana" are hidden there.
+  On a generated set of 29,400 such lines (four work types, seven lead-in lengths, fifteen phrases, fourteen
+  separators, five names), 0.79.0 shows the name in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid
+  is shown.
+- The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said:
+  it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone,
+  and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested).
+- Performance regression of 0.80.0: a guarded word's rest is read for at most 100 steps. A 400 KB line of "telefone
+  da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
+  longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
+  "whats app" could be read two ways ("whats app" or "whats" then "app"), so a line of repeated "whats app" after a
+  guarded word backtracked exponentially (0.80.0: 22 repeats 153 ms, 50 repeats over a minute); it reads one way now
+  (50 repeats: under 1 ms). The same held for "atendimento" (a unit word and, in a first draft of this version, an
+  hours word): no word is now both, and a test times every word of both lists repeated 30 times.
+- "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
+  um/uma, dia(s), hora and senha count as appointment details only before a number or a detail word ("uma semana",
+  "dias úteis", "hora marcada", "senha retirada"), so "agendamento com Dias Ferreira" is hidden too.
+
+- `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
+  regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
+  trabalhador`, `liceu de oficios`, `inss`): a keyword split over two lines ("Mantida" / "pela Fulana de Tal" in a
+  contracted CEI; "Mantida" / "por Fulana", "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano", "Técnica"
+  / "Fulana" for the office and work types) is hidden on its second line
+  even when another line of the record is already hidden. Before, only the whole-field check caught it, and that
+  check is skipped once a line is hidden, so the name showed. Each line is now read together with the one before it,
+  the way the whole-field check reads the record, and is hidden when the pair hides and the line before does not
+  hide alone; the first half stays. A second line that reads as hours or a service ("Horário: 8h", "por
+  agendamento") is not read with the one before. The multi-word patterns accept a line break wherever they had a
+  space. The whole-field check is now skipped only when a line hid on its own rules (not by the split check), so a
+  keyword split over three lines ("Mantido" / "por" / "Fulano de Tal Souza Lima") still hides the whole field, as before. `horta comunitaria`
+  is unchanged (its allowlist already hid both halves). Known limit: when the line before hides on its own
+  ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima"), the pair is not read and a name of five or more
+  words on the next line passes, and so does "Coordenadora" / "geral: Fulana" (as in 0.80.0).
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after a line whose contact phrase ends in
+  "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Fale com a gente", "Telefone da Regional:"), a
+  name on the next line is hidden ("Fulano de Tal", "Sra. Fulana", "- Fulana", "Fulana (41) 3350-0000", "Fulana,
+  telefone …", "Fulana: segunda a sexta", "156 - Fulana", "8h às 17h com Fulana"); this is read by the split check,
+  so the whole-field check still runs. The next line is kept only when it is made of channel, unit, connector and
+  hours words, numbers and punctuation ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp",
+  "Atendimento presencial", "Horário: 8h às 17h", "Com agendamento") or is a street address ("Rua XV de Novembro,
+  100"). "Dia(s)" and "hora(s)" count as hours only after a number or before "útil/úteis" ("2 dias", "Dias úteis",
+  "24 horas"), so "Dias" or "Hora" alone is hidden there. Known limits: any other words on that line are hidden too,
+  on the safe side ("Sala de leitura", "2º andar"); a guarded phrase that ends in ',' or ';' with no name after it
+  ("Fale com a gente," / hours) is hidden, on the safe side; and a guarded phrase complete on the first of three
+  lines, then a contact line, then the name ("Telefone da Regional:" / "3350-0000" / "- Fulana") shows the name
+  (only the line right after the phrase, or the third line of a phrase split over two, is read).
+- "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
+  carteira de trabalho" stay shown, also before the hours and after a hidden line.
+- Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
+  records, 253 with an `observacao`) and replayed offline with 0.79.0, 0.80.0 and 0.81.0: 131 hidden-line markers in
+  each, and every record's `hours` is identical. Timing tests: 50 KB of short lines and five 400 KB lines, each set
+  under 2 s.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new host, link or dependency.
+
+## 0.80.0 - 2026-11-27
+
+Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search`, work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): "gente",
+  "regional", "coordenação" and "RH" are unit words when the rest of the line holds only numbers, "[masked]",
+  punctuation, channel and unit words, "empresa" and connectors, so "Dúvidas? Fale com a gente pelo 156", "Telefone
+  da Regional: …", "E-mail da coordenação" and "Tratar com o RH da empresa" are shown again (0.76.0 hid them as a name
+  after a channel word or "falar com"). "Falar com o RH Fulano", "Tratar com o RH da Fulana", "Telefone da Regional:
+  3350-0000 - Fulana", "Fale com a gente pelo 156 ou com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana"
+  stay hidden, and so do "Telefone da Regional: 156, de segunda a sexta" and "Telefone da coordenação: 3350-0000" (the
+  "coordenação:" label), on the safe side. In the whole-field check (lines joined with spaces) the four words are
+  plain unit words, so these lines stay shown before the hours. Known limit: a name alone on the next line after "Fale com a gente" is shown.
+- "emissão de carteira de trabalho" is a service phrase after "Atendimento:", so that line is shown again;
+  "emissão de carteira de trabalho - Fulana" stays hidden.
+- "agendamento" (optionally "prévio" and ",", "(", ":" or "-"), then "com" and a word that is not a unit or channel
+  word or an appointment detail (um/uma, no/pelo, até, mínimo, antecedência, hora, horário, documentos, comprovante,
+  carteira, CPF, RG, senha), anywhere in the line, hides it: "Atendimento: agendamento com Fulana", "presencial com
+  agendamento com Fulana", "mediante agendamento prévio com a Fulana" and a line "Agendamento com Fulana" are now
+  hidden (0.76.0 showed them). "agendamento com a equipe", "com antecedência", "com no mínimo 48h", "com comprovante
+  de residência", "com prazo de 48h" and "agendamento pelo 156" are shown. Known limits: only the first word after
+  "com" is checked ("agendamento pela Fulana", "agendamento com antecedência, Fulana" pass), and "presencial com
+  Fulana" still passes.
+- Tested on synthetic lines for the four types, both sides, and a 50 KB timing case for the new rule.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.79.0 - 2026-11-27
+
+Ouvidoria anonymity wording, second pass (the Security Reviewer's R1-R3 on 0.75.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "Pelo guia de 2024, a forma anônima não pede cadastro e não recebe
+  resposta nem acompanhamento (o CuritibAI não conferiu isso hoje no site)" is now its own sentence, apart from the
+  CuritibAI's own warning that the text and the attachments can identify the citizen (before, the "no registration"
+  part sat inside the sentence marked as the CuritibAI's observation).
+- `what` and step 5 (e-mail) add the same warning, marked as the CuritibAI's own observation, not the 2024 guide's;
+  the `note` says so for the summary and steps 4 and 5.
+- Tested: each step 5 sentence that names anonymity or identification carries the 2024-guide hedge or the
+  CuritibAI's own marker; step 4 has no sentence that mixes the registration with the CuritibAI's observation.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.78.0 - 2026-11-27
+
+E-mail filter, third pass (the low of the 0.74.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` (every type): a `curitiba.pr.gov.br` address shaped like a person's name is now also
+  dropped when a middle word is a single letter ("ana.c.lima", "joao.p.silva", "j.p.silva"), when the surname is an
+  initial ("maria.s") and when a separator repeats ("maria..silva", "maria__silva"). A middle initial is any letter
+  and needs a last word of two or more letters ("joao.e.silva" too); a final letter is a surname initial when the first
+  word and the word just before it have two or more letters ("maria.silva.s", "joao.p.silva.r", "maria.s2",
+  "maria.s.2" are dropped; letter codes such as "sme.d.p.e" and "fas.n.s" stay). The unit words are checked first and keep
+  the address ("regional.c.cic", "cras..cajuru", "sine.s"); the list is unchanged. Ouvidoria, sine, falecomacgm
+  and bare regional names ("boqueirao", "cic") stay; exactly two single letters ("a.b", "a1.b") or a word and a
+  number ("sec.2", "sec..2") never match. Tested for each new shape and for the addresses that stay. The local part is at most 64 characters (checked first), so the rule has no long-input cost.
+- Known limits: a word and a single letter ("sala.a", "ti.a", "sme.d"), a word, a letter and a number ("sec.e.2")
+  and a connector address ("esporte.e.lazer",
+  "saude.a.domicilio") are dropped like names, failing closed (none was read); a trailing separator
+  ("maria.silva."), two initials at the end ("joao.p.s", read like the letter code "fas.n.s"), a word that starts
+  with a number ("2maria.silva", "maria.2silva") and a one-word name ("fulanasilva") still pass.
+- Checked against the real records: the 89 urban-equipment layers the tool reads, re-read once on 2026-11-27
+  (2,167 records, 1,765 city e-mails, 776 distinct), keep 1,763 e-mails with the old rule and with the first draft
+  of this one; none is newly hidden. The final rule drops less than that draft and more than the old rule, so the
+  count holds without another read.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
+## 0.77.0 - 2026-11-27
+
+PGV micro-bairro description and the service areas list type (the lows of the 0.73.0 review). 27 tools. Publishes
+nothing.
+
+- `place_at_point` `place.pgv`: the `microbairro` description now gives the form the tool returns, "27", and how it is
+  made (a number in its JSON form; text of 1 to 6 digits without a trailing ".0"; other text unchanged). It said
+  "as published" with the published "27.0" as its example, which the tool has not returned since 0.71.0. No output
+  change.
+- `place_at_point` `service_areas`: the helper that fills each group's lists takes exactly the lists the group sets
+  (`Pick`, not `Partial`), so passing `undefined` for a list no longer type-checks; it would have dropped the key from
+  `data`. No output change; the callers are unchanged.
+- Tool contract: the `microbairro` description (snapshot updated, one line).
+- Citizen eval: no new question; 139 of 143.
+- No host contacted, no new network host, no new link, no new dependency.
+
+## 0.76.0 - 2026-11-27
+
+Name filter, third pass (the lows of the 0.72.0 review). 27 tools. Publishes nothing.
+
+- The person-name filters (role lists, person-line tests, the garden allowlist, the service-line words around a hidden
+  label) move from `src/sources/geocuritiba.ts` to `src/sources/nameFilter.ts`, in a commit of their own with no
+  behaviour change (tests unchanged and green).
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: a value after
+  "Atendimento:" made only of service phrases is shown again, on the same line or after a bare label
+  ("Atendimento: por ordem de chegada", "preferencial para idosos", "gratuito", "Carteira de trabalho,
+  seguro-desemprego", "gratuito com agendamento"); anything else in the value keeps it hidden ("por ordem de
+  chegada. Fulana", "gratuito pela Fulana", "Fulana, gratuito"). Newly hidden: palestrante,
+  assistente social and psicólogo/a anywhere in a line ("Palestrante Fulano", "Assistente social Fulana", "Psicóloga
+  Fulana de Tal"), and a channel word followed by "da/do/com", or "falar com", and then a word that is not a unit or
+  channel word ("Contato no WhatsApp da Fulana", "Contato pelo telefone com Fulana", "Falar com Fulana de Tal").
+  "Contato pelo e-mail da unidade", "telefone do Sine", "WhatsApp do CRAS" and "Atendimento psicológico" stay.
+- `horta comunitaria`: "e", "com" or "da/do" inside a partner or programme phrase must be followed by an entity,
+  place or topic word ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden;
+  "Universidade Federal do Paraná", "Secretaria Municipal do Meio Ambiente" and "Programa Municipal de Agricultura
+  Urbana e Segurança Alimentar" stay). Known limit, as before: a name after a comma in the phrase ("Parceria com a
+  comunidade, Fulana") passes.
+- Record for 0.72.0: its rule that an hours line starting with a weekday and holding a digit is never the rest of a
+  split name (NOT_A_NAME/WEEKDAY_START) reached every type that hides names line by line: `clube de xadrez`, `cei
+  contratado`, `administracao regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca
+  alimentar`, `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`. Not `horta comunitaria`: its allowlist
+  never reads a line as the rest of a name.
+- Checked against the real records: layers 150, 151, 149, 152 and 9, re-read once on 2026-11-27 (33 work records and
+  56 gardens, 59 with an `observacao`): 0 lines hidden before and 0 after; every record's `hours` is identical. A 50 KB
+  input of each new rule's worst shape is tested to run in under a second.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
+## 0.75.0 - 2026-11-27
+
+Ouvidoria anonymity wording (the Security Reviewer's R1-R5 on 0.69.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`): the anonymous denúncia "é registrada" (was "é apurada", which the record of
+  the 2024 CGM guide does not say); `what` and step 8 say the anonymous form gets no answer or follow-up and the 30
+  days do not apply to it; step 5 says the anonymous form is the 2024 guide's, not checked on the site today.
+- Step 4 adds one sentence marked as the CuritibAI's own observation: the anonymous form skips the registration, but
+  what the citizen writes or attaches (name, address, phone, a face, photo location, file name) can identify them.
+- Tested: each step 5 sentence that names the anonymous form carries the hedge; "apurad" appears nowhere.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
+## 0.74.0 - 2026-11-27
+
+E-mail filter, second pass (the low of the 0.67.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` (every type): a `curitiba.pr.gov.br` address shaped like a person's name is now also
+  dropped when its first word is a single letter ("j.silva"), when a word ends in digits ("maria2.souza",
+  "maria.souza2"), when a number closes it ("maria.souza.2", "maria_souza_01") or when the words are joined by "-"
+  ("ana-lima"). The unit words are checked first and keep the address ("cras.boqueirao", "cras-cajuru",
+  "regional3.cic"); the list is unchanged. A one-word address ("falecomacgm", "sine") or a word and a number
+  ("sec.2") never matches. Tested for each new shape and for generic addresses. Known limits: "r.cic" or "sme-dpe"
+  would be dropped like names (none was read).
+- Checked against the real records: the 89 urban-equipment layers the tool reads, re-read on 2026-11-27 (2,167
+  records, 1,765 city e-mails, 776 distinct), keep 1,763 e-mails before and after the change; none is newly hidden.
+  None of them has a "-", a one-letter first word or a word ending in digits.
+- Not added: a rule for a unit word followed by a name, and sector words such as secretaria, contato or ouvidoria
+  in the unit list: they would show "secretaria.fulana", which 0.73.0 hides (both left to Enzo).
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
+## 0.73.0 - 2026-11-27
+
+Service areas helper and PGV text codes, the lows of the 0.66.0 and 0.71.0 reviews. 27 tools. Publishes nothing.
+
+- `place_at_point` `service_areas`: each group (care, safety, registry, civic) now sets only its own lists through one
+  helper that fills the others with null; a new group no longer adds a null to every other group. No output change:
+  the keys of `data` keep their order (tested for every group), and the answers of the four groups, inside, outside
+  Curitiba and with a later layer failing, were compared byte for byte before and after the change.
+- `place_at_point` `place.pgv`: a micro-bairro published as text drops a trailing ".0" ("12.0" is "12"), the same
+  form a numeric code already had since 0.71.0, so "12.0" and 12 are one row. Only digits (1 to 6) followed by exactly
+  ".0" change; other text ("99.1", "99.10", "12.0a") is untouched. Tested.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged (the `microbairro` description still
+  gives the published "27.0" as its example).
+- No host contacted, no new network host, no new link, no new dependency.
+
+## 0.72.0 - 2026-11-27
+
+Name filter for the work types, second pass (the lows of the 0.70.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: the value of each
+  "Atendimento:", "Atendimento ao público:" or "Horário de atendimento:" label at the start of the line or of a
+  sentence is kept only when it reads as hours (a digit; "de/das/às" and a digit; a weekday, its abbreviation, "dia"
+  or "feriado" that goes on as hours or has a digit later; "diariamente", "presencial", "online"; an appointment, a
+  "não é/há …" or a "fechado" sentence), on the same line or, after a bare label (with or without ':'), on the next
+  one; otherwise the line is hidden ("Atendimento: Fulana", "Atendimento: Domingos da Silva"). "Local de
+  atendimento: Rua …" is not such a label. Docente and facilitador/a (plurals too) hide a line anywhere in it; agente
+  and técnico/a before ':', or at the start or after an article or "com/pelo/pela" when a word other than "de", "em",
+  "para" … follows: "Técnica Fulana" and "com o agente Fulano" are hidden, "aperfeiçoar técnicas" (layer 149) and "a
+  técnica de solda" stay, and "Agentes comunitários" is hidden on the safe side.
+- "Contato" is a person unless a channel follows: "Contato: 3350-0000" (only phones, channel words and punctuation
+  after the ':', then the end or hours that start with a word: "Contato: 3350-0000 - segunda a sexta 8h") and "contato pelo/via/no 156, telefone, e-mail, site …" stay; "Contato pela Fulana", "Contato via
+  Fulano", "Contato: 3350-0000 Fulana" and a bare "Contato:" (its value follows) are hidden. 0.70.0 hid "Contato:
+  3350-0000" and kept "Contato pela Fulana". The hours after a contact phone stay, also after a bare "Contato:" and
+  its hidden value: an hours line that starts with a weekday and has a digit is never read as the rest of a name (every
+  type that hides names). The whole field read joined checks only the words, not what follows a label. Known limit: a
+  name later in an hours or channel line ("das 8h às 17h com a Fulana", "contato pelo telefone com Fulana") passes,
+  caught only by the role words.
+- `horta comunitaria`: a "Parceria com …" or "Programa …" later in the line needs an entity word too ("Horta com 20
+  canteiros - Parceria com Fulana" is hidden), and "mantida pela" not followed by an entity word hides the line
+  anywhere in it.
+  A sentence split was tried and dropped: it missed " - " and ", " and hid public lines with an abbreviation.
+- Checked against the layers as read twice on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only; the second read
+  after the review fixes): the new filters changed no record's `hours` against 0.71.0 (78 records with an
+  `observacao`). No licence or terms found, as before.
+- Citizen eval: q144 ("Onde fica o Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)") answered from a
+  new synthetic Liceu fixture with a name after "Atendimento:", a contact phone and a docente line. 139 of 143. Tool
+  contract snapshot unchanged.
+- No new network host, no new link, no new dependency.
+
+## 0.71.0 - 2026-11-27
+
+PGV codes as number or text, a follow-up of the 0.65.0 review. 27 tools. Publishes nothing.
+
+- `place_at_point` `place.pgv`: `microbairro` is read whether the layer publishes `cd_microbairro` as text or as a
+  number. A number keeps its JSON form: 27.0 arrives as 27 and is returned as "27" (the ".0" is not invented).
+  `microregion` is read from an integer, as before, or from text of 1 to 6 digits ("3" is 3); a blank, "2.5" or other
+  text is null, so a blank never becomes the code 0. A
+  number below 0 or of 7 digits or more is null for either code (no PGV code is that large). Only these two PGV fields change; the shared field cleaner is
+  untouched. Tested.
+- Citizen eval: q143 ("Qual a microrregião do IPTU na Rua XV de Novembro, 1000?") answered at a point on that street
+  (the tool takes a point, not an address); its synthetic PGV row has a numeric micro-bairro and a text micro-region,
+  and the question fails on 0.70.0. 138 of 142. Tool contract snapshot unchanged.
+- No host contacted: the layer's field types were not re-read. No new network host, no new link, no new dependency.
+
+## 0.70.0 - 2026-11-27
+
+Name filter for the work types, a follow-up of the 0.64.0 and 0.63.0 reviews. 27 tools. Publishes nothing.
+
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: besides a line naming who
+  is in charge, a line with professor/a, "Prof.", "Profa." or "Prof.ª", instrutor/a, monitor/a, orientador/a,
+  educador/a, tutor/a, atendente or contato (plurals too) anywhere in it is hidden with the same marker, and so is the
+  line after such a bare label ("Instrutora:"). "Contato" followed by a channel ("entre em contato pelo 156") stays,
+  so the hours after it are not read as the rest of a name. Broader on purpose than a role or a
+  label before ':': "Atendimento: atendente Fulana" has the word after the colon. "Atendimento" stays. The other
+  office types (regional offices, COHAB, fazenda urbana, núcleos, mesa solidária, chess club) keep the narrower
+  filter; tested.
+- `horta comunitaria`: a "Parceria com …" or "Programa …" line is a known kind only when a body, an organisation
+  (empresa, instituto, universidade, fundação, cooperativa), a public scope (integrado, municipal, estadual, federal)
+  or COPEL, Sanepar or Eletrosul follows the keyword (after an optional ':', article or "de"); otherwise it is hidden
+  ("Parceria com Fulana", "Programa do Fulano", "Parceria com ONG Fulana"). Generic words a name can follow (projeto,
+  ONG, hortas) are left out on purpose. Known limit: a name after an entity word still passes, caught only by the
+  person words.
+- Checked against the layers as read on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only): no line named a
+  person, and no record's `hours` changed against 0.69.0. No licence or terms found, as before.
+- Citizen eval: q142 ("Onde fica o SINE do Pinheirinho? (sem expor nome de pessoa)") answered; the synthetic SINE
+  Pinheirinho record gains an attendant line, hidden. 137 of 141. Tool contract snapshot unchanged.
+- No new network host, no new link, no new dependency.
+
+## 0.69.0 - 2026-11-27
+
+Ouvidoria anonymity, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`): the guide now answers "can I complain without identifying myself?". `what`
+  says that for denúncias the 2024 CGM guide gives the anonymous form on the Portal Curitiba Ouve, that this was not
+  verified for a plain reclamação, and that e-mail is not an anonymous channel. Step 5 (the CGM e-mail
+  `falecomacgm@curitiba.pr.gov.br`) says the sender's address shows in an e-mail, marked as this project's own
+  observation, and points at the anonymous form (step 4). Step 6 adds registration as the
+  2024 CGM guide gives it (e-Cidadão for the identified and confidential forms, none for the anonymous one), that
+  what the site asks today was not verified, and that this project's record of the 2024 guide does not say whether a
+  plain reclamação can be anonymous. The `note` says the e-mail fact is this project's own
+  observation, not the PDF's. Step numbers and links are unchanged.
+- The CGM e-mail spelling matches the 0.43.0 record in docs/sources.md; no page was re-read and no host contacted.
+- Citizen eval: q141 ("Posso reclamar na Ouvidoria sem me identificar?") answered by the guide; q140 is left to
+  0.68.0 (PR #83). 136 of 140. The eval checks shape only; the anonymity text is guarded by
+  `test/cityServiceGuide.test.ts`.
+- Version 0.69.0: 0.68.0 was taken by PR #83 (annual procurement plan), open when this was written.
 - No new network host, no new link, no new dependency.
 
 ## 0.67.0 - 2026-11-27

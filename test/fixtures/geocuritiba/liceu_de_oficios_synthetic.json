@@ -1,0 +1,59 @@
+{
+ "geometryType": "esriGeometryPoint",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "features": [
+  {
+   "attributes": {
+    "objectid": 1,
+    "nome": "Portão Inventado",
+    "nome_completo": "Liceu de Ofícios Portão Inventado",
+    "nome_rua": "R. INVENTADA DO PORTÃO",
+    "num_pred": "500",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Portão",
+    "regional": "Portão",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-7100",
+    "email": "liceuinventado@curitiba.pr.gov.br",
+    "dt_atualiz": 1762867852000,
+    "observacao": "Atendimento:\r\nFulana Inventada\r\n-2ª a 6ª feira, das 8h às 12h e das 13h às 17h\r\nContato: (41) 3333-7100\r\nDocente: Fulano Inventado"
+   },
+   "geometry": {
+    "x": -49.2932,
+    "y": -25.4771
+   }
+  },
+  {
+   "attributes": {
+    "objectid": 2,
+    "nome": "Centro Inventado",
+    "nome_completo": "Liceu de Ofícios Centro Inventado",
+    "nome_rua": "R. INVENTADA DO CENTRO",
+    "num_pred": "61",
+    "compl_end": null,
+    "divulgar_endereco": "Sim",
+    "bairro": "Centro",
+    "regional": "Matriz",
+    "func_manha": "Sim",
+    "func_tarde": "Sim",
+    "func_noite": "Não",
+    "func_24hr": "Não",
+    "telefone": "(41) 3333-7200",
+    "email": "liceucentro@curitiba.pr.gov.br",
+    "dt_atualiz": 1762867852000,
+    "observacao": "Atendimento:\r\n-2ª a 6ª feira, das 8h às 17h\r\nContato pela Fulana Inventada"
+   },
+   "geometry": {
+    "x": -49.2705,
+    "y": -25.4305
+   }
+  }
+ ]
+}

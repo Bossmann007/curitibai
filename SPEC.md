@@ -1,6 +1,8 @@
-# SPEC: v0.68.0 Annual procurement plan (PCA)
+# SPEC: v0.89.0 Annual procurement plan (PCA)
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
+Continued 2026-11-27 on a task brief that relays Enzo's approval to continue PR #83: main (0.88.0) merged in, the release
+renumbered from 0.68.0 to 0.89.0, and the licence question decided (below).
 **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
@@ -18,7 +20,9 @@ by requesting unit (secretaria, departamento). Never supplier data. Smallest cha
 `pncp.gov.br`, already contacted by `procurement_search` (same host, same gate, no new host or link). robots.txt 404
 (2026-11-27 00:54:17 UTC, User-Agent `curitibai-mcp/0.68`). gov.br/pncp "Dados Abertos" page, reread 01:01:54 UTC:
 the APIs give "itens do plano de contratações anual" and "Todas as buscas podem ser feitas sem necessidade de cadastro
-ou login"; the site is under CC BY-ND 3.0; no API terms found.
+ou login"; the site is under CC BY-ND 3.0; no API terms found. Owner decision (2026-11-27, relayed in the task brief):
+the CC BY-ND licence covers the gov.br site and the API has no licence of its own, so the tool keeps returning only
+aggregate facts (totals), with credit to PNCP and the source link.
 
 The briefed route, Consulta `/api/consulta/v1/pca/atualizacao?cnpj=...`, timed out twice at 40 s and then answered
 in 27.8 s with 9,015 item rows (902 pages of 10) for one CNPJ and no year filter: unusable inside a 20 s call. Its two
@@ -56,7 +60,7 @@ Item rows (descriptions) are not read: thousands per body, and free text.
    expect `ok` with `data.units` and `data.categories`; synthetic fixtures. `RESULT_PATH` reads `data.items` or
    `data.units`.
 4. **Docs and version**: docs/tools.md (row and Curitiba App "extra" row), docs/sources.md (robots rows, PCA section
-   with every request), README row, docs/roadmap-1.0.md, CHANGELOG 0.68.0, version 0.68.0 in `package.json`,
+   with every request), README row, docs/roadmap-1.0.md, CHANGELOG 0.89.0, version 0.89.0 in `package.json`,
    `package-lock.json`, `server.json`. Still 27 tools.
 
 ## Out of scope
@@ -70,5 +74,5 @@ download), a public PNCP page link (the app route was not read).
   units sorted by total; masked unit names; dropped foreign rows; no plan → `plan_found: false` and the host still
   answers the next call; unlisted CNPJ, a future year and mixed search/plan arguments → `invalid_argument`; q140 ok;
   descriptions ≤ 9,600.
-- `node scripts/eval-summary.mjs`: `answered 136 / 140`.
+- `node scripts/eval-summary.mjs`: `answered 140 / 144`.
 - `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.

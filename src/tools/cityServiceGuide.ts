@@ -609,7 +609,12 @@ export const GUIDES = {
       "Canais da Ouvidoria da Controladoria Geral do Município (CGM) para pedir informações, sugerir, reclamar, " +
       "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
-      "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria.",
+      "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
+      "para denúncias, o guia de 2024 prevê a forma anônima (sem resposta nem acompanhamento) no Portal Curitiba " +
+      "Ouve (o CuritibAI não conferiu isso hoje no site); para reclamação comum isso não foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia " +
+      "aparece nele (observação do CuritibAI, não do guia de 2024). Mesmo na forma anônima, o texto e os anexos podem " +
+      "identificar o cidadão (observação do CuritibAI, não do guia de 2024). O CuritibAI não pode garantir que a forma " +
+      "anônima proteja a identidade do cidadão (observação do CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
     // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
     carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"], ["curitiba", "ouve"]],
@@ -627,7 +632,14 @@ export const GUIDES = {
       "Never give a phone number as the Ouvidoria's: the Central 156 (step 7) is where that guide sends a citizen for " +
       "a protocol, not the Ouvidoria's own line. The Portal Curitiba Ouve address (step 4) comes from that PDF and was " +
       "not opened here. Not verified: whether the \"Ouvidoria da CGM\" is the same office a citizen may call the " +
-      "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). ",
+      "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). That an e-mail shows the sender's address, so " +
+      "e-mail is not an anonymous channel, is this project's own observation, not the PDF's. Not verified: what " +
+      "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
+      "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
+      "That the text and the attachments a citizen sends can identify them (the summary, steps 4 and 5) is also this " +
+      "project's own observation, not the PDF's. So is \"o CuritibAI não pode garantir que a forma anônima proteja a " +
+      "identidade do cidadão\", said in the summary and steps 4 and 5: this project does not know what the Curitiba " +
+      "Ouve site records about the visit. ",
     steps: [
       FIRST_STEP,
       {
@@ -642,7 +654,14 @@ export const GUIDES = {
         action:
           "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
-          "anexar fotos e documentos.",
+          "anexar fotos e documentos, e a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o " +
+          "CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
+          "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, o cidadão pode " +
+          "deixar de fora o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome " +
+          "do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou " +
+          "lugares que identifiquem o cidadão e qualquer detalhe que só o cidadão conheça. Observação do CuritibAI, não do " +
+          "guia de 2024: o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão, e não sabe " +
+          "o que o site registra sobre o acesso.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
           "de 2024 e não foi aberto pelo CuritibAI.",
@@ -651,7 +670,12 @@ export const GUIDES = {
       {
         action:
           `Para denunciar ato ilícito contra a Prefeitura ou conduta antiética de servidor: o cidadão escreve, do seu ` +
-          `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail.`,
+          `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail. O e-mail não é um canal anônimo: o ` +
+          "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). O texto e os anexos do " +
+          "e-mail também podem identificar o cidadão (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
+          "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4), segundo o guia de 2024, que o CuritibAI " +
+          "não conferiu hoje no site; o CuritibAI não pode garantir que a forma anônima proteja a identidade do " +
+          "cidadão (observação do CuritibAI, não do guia de 2024).",
         consent:
           `O cidadão escreve e envia a mensagem só no seu próprio programa de e-mail, para ${CGM_EMAIL}, não nesta ` +
           "conversa. O assistente não escreve nem envia nada.",
@@ -661,9 +685,12 @@ export const GUIDES = {
         action:
           "Dizer ao cidadão as três formas que o guia de 2024 descreve: identificada (cadastro no e-Cidadão e protocolo " +
           "na Central 156), sigilosa (também com e-Cidadão, mas os dados pessoais de quem denuncia ficam em sigilo e a " +
-          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é apurada, mas sem resposta nem " +
-          "acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
-          "identificada e anônima.",
+          "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é registrada, mas sem resposta " +
+          "nem acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
+          "identificada e anônima. Cadastro: pelo guia de 2024, a identificada e a sigilosa pedem cadastro no e-Cidadão e a " +
+          "anônima não; o que o site pede hoje não foi verificado (o CuritibAI não o abriu). O registro " +
+          "do guia feito pelo CuritibAI não diz se essas formas valem também para uma reclamação comum: se ela pode " +
+          "ser anônima não foi verificado.",
       },
       {
         ...OPEN_156,
@@ -674,7 +701,8 @@ export const GUIDES = {
       {
         action:
           "Dizer ao cidadão o prazo que o guia de 2024 dá: a CGM tem 30 dias para responder (Lei federal " +
-          "13.460/2017), prorrogáveis por igual período quando informado. Não prometa prazo menor.",
+          "13.460/2017), prorrogáveis por igual período quando informado (não vale para a forma anônima, que não recebe " +
+          "resposta). Não prometa prazo menor.",
       },
       {
         action: "Abrir o guia de uso da Ouvidoria da CGM (PDF de 2024 da Prefeitura).",

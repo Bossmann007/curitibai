@@ -4,6 +4,20 @@ import { createHostGate, underOwnBudget } from "../hostGate.js";
 import { cleanField, MASK } from "../mask.js";
 import { fold, foldKey, isObject } from "../text.js";
 import { dateInCuritiba } from "./detran.js";
+import {
+  HIDDEN_MAINTAINER_LINE,
+  HIDDEN_PERSON_LINE,
+  isGardenPersonLine,
+  isMaintainerLine,
+  isPersonInChargeLine,
+  readsNextLine,
+  isServiceText,
+  isWorkPersonLine,
+  MAINTAINER_LABEL,
+  NOT_A_NAME,
+  roleFold,
+  SERVICE_LINE,
+} from "./nameFilter.js";
 
 /** IPPUC's GeoCuritiba ArcGIS REST services (anonymous GET; robots.txt 404 when checked on 2026-11-21). */
 const SERVICES = "https://geocuritiba.ippuc.org.br/server/rest/services";
@@ -292,67 +306,6 @@ const CIRCUS_NOTE =
 const CHESS_NOTE =
   "The Prefeitura's chess club, as listed by IPPUC; hours as published (see `updated`). Its e-mail is not shown (it " +
   "can be a person's own): call.";
-/** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
-export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
-/** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
-export const HIDDEN_PERSON_LINE = "[a line naming who is in charge is not shown: it can carry a person's name]";
-const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
-const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
-const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b/.test(line) || /\bmei\b/i.test(line);
-/**
- * v0.59.0, offices (Administração Regional, COHAB): a line that starts with who is in charge, or has "<role>:"
- * anywhere ("Responsável: Fulana", "Administrador Regional: Fulano", "Diretor(a):"). Narrower than isMaintainerLine,
- * whose MEI, ME, Ltda and "responsável" anywhere rules would hide office service lines ("atendimento ao MEI").
- */
-const ROLE = "responsavel|diretora?|administradora?|gerente|coordenadora?|chefe|secretario|supervisora?|gestora?";
-/**
- * v0.60.0: the roles gain secretário/a, supervisor/a and gestor/a; titular, coordenação and gestão count only before
- * ':' ("Titular da conta" stays). "Secretaria" without the accent is an office ("Secretaria Municipal de …"): a role
- * only right before ':'; with the accent it is the role, read as "secretario" before folding (NFC first). "Mantido/a
- * por" anywhere hides the line (a person follows "por" with no article), and so does "mantida pelo Sr./Sra./Dona";
- * "mantida pela Associação" stays.
- */
-const LABEL_ONLY = "titular|coordenacao|gestao";
-/** Folded, with "secretária" (a person's role, NFC first) read as "secretario": not the office "Secretaria". */
-const roleFold = (t: string): string => fold(t.normalize("NFC").replace(/secretária/giu, "secretario"));
-const PERSON_IN_CHARGE = new RegExp(
-  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
-    `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
-  "u",
-);
-export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
-/**
- * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
- * GARDEN_LINE (a public label; an hours or number line; the body that keeps the garden, "Mantida pela Associação …";
- * the city programme; a partner; "Horta com N canteiros") or exactly "Contato pelo e-mail da secretaria", and has no
- * person in it (GARDEN_PERSON, any case: a contact, a volunteer, "quem cuida", cuidado/coordenado por or pelo/pela a
- * person, an honorific, cuida(m)/coordena(m) after anything but a body word; and isPersonInChargeLine). Any other line,
- * a lower-case name included, is hidden. Replaces the v0.60–v0.61 denylist, which a lower-case name passed. Folded
- * with roleFold, so "secretária Fulana" is a person, not the body "secretaria".
- */
-const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja|lar|smsan";
-const GARDEN_LINE = new RegExp(
-  "^(?:" +
-    [
-      "(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|area de (?:plantio|lavoura)[a-z ]*|jardins? de mel)\\s*:",
-      "(?:(?:atendimento|horarios?(?: de funcionamento)?|funcionamento)\\s*:?\\s*)?(?:(?:de|das?|aos?) )?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?\\b)",
-      `(?:(?:mantid|coordenad|cuidad)[ao]s? pel[ao]|a coordenacao da horta e d[ao]|an?|o) (?:${BODY})\\b`,
-      "programa\\b|parceria com\\b|horta com \\d",
-    ].join("|") +
-    ")",
-);
-const GARDEN_CONTACT = /^contatos? pel[ao] e-?mail d[ao] secretaria\.?$/;
-const GARDEN_PERSON = new RegExp(
-  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
-    `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
-);
-export const isGardenPersonLine = (line: string): boolean => {
-  const f = roleFold(line).replace(/^[^\p{L}\p{N}]+/u, "").trim();
-  if (GARDEN_CONTACT.test(f)) return false;
-  return !GARDEN_LINE.test(f) || GARDEN_PERSON.test(f) || isPersonInChargeLine(line);
-};
-/** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
-const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
 /** One layer is about 250 KB at most when checked (bike structure, 838 segments, simplified geometry). */
 export const GEOCURITIBA_MAX_BYTES = 2 * 1024 * 1024;
 export const GEOCURITIBA_TIMEOUT_MS = 15_000;
@@ -396,8 +349,12 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** True when an `observacao` line (after cleaning) is replaced by `hiddenLineMarker`: a line that may carry a name or point at a shelter. */
-  hideLine?: (line: string) => boolean;
+  /**
+   * True when an `observacao` line (after cleaning) is replaced by `hiddenLineMarker`: a line that may carry a name or
+   * point at a shelter. `prev` is the line before it, shown or not (v0.72.0: the value after a bare "Atendimento:"), or
+   * null when the whole field is tested joined.
+   */
+  hideLine?: (line: string, prev?: string | null) => boolean;
   /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
   /**
@@ -452,6 +409,7 @@ const equipment = (id: string, layer: number, label: string, aliases: string[] =
 /** Lines that may point at a shelter (social assistance) or name the person in charge (offices) are replaced by a marker. */
 const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE, shelter: true } as const;
 const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" } as const;
+const HIDE_WORK_PERSON = { ...HIDE_PERSON, hideLine: isWorkPersonLine } as const;
 
 const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType =>
   equipment(id, layer, label, aliases, { note, ...HIDE_SHELTER });
@@ -676,17 +634,17 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("sine", 150, "Unidade de Atendimento SINE", [
     "sine municipal", "sine curitiba", "unidade do sine", "unidades do sine", "unidade de atendimento sine",
     "unidades de atendimento sine", "agencia do sine",
-  ], { note: SINE_NOTE, ...HIDE_PERSON }),
+  ], { note: SINE_NOTE, ...HIDE_WORK_PERSON }),
   equipment("agencia do trabalhador", 151, "Agência do Trabalhador", [
     "agencias do trabalhador", "agencia do trabalhador de curitiba",
-  ], { note: WORKER_AGENCY_NOTE, ...HIDE_PERSON }),
+  ], { note: WORKER_AGENCY_NOTE, ...HIDE_WORK_PERSON }),
   equipment("liceu de oficios", 149, "Liceu de Ofícios", ["liceu", "liceus", "liceus de oficios", "liceu de oficio"], {
-    note: LICEU_NOTE, wrapLines: true, ...HIDE_PERSON,
+    note: LICEU_NOTE, wrapLines: true, ...HIDE_WORK_PERSON,
   }),
   equipment("inss", 152, "Agência da Previdência Social (INSS)", [
     "agencia do inss", "agencias do inss", "agencia da previdencia social", "agencias da previdencia social",
     "previdencia social",
-  ], { leadNote: INSS_LEAD_NOTE, note: INSS_NOTE, ...HIDE_PERSON }),
+  ], { leadNote: INSS_LEAD_NOTE, note: INSS_NOTE, ...HIDE_WORK_PERSON }),
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",
@@ -917,9 +875,19 @@ export function institutionalPhones(raw: unknown): string[] {
 
 const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitiba\.pr\.gov\.br$/;
 
-/** v0.67.0: a local part of two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva") is a person's. */
-const PERSON_LOCAL = /^[a-z]{2,}(?:[._][a-z]{2,})+$/;
-/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); kept. */
+/**
+ * A local part shaped like a person's name is a person's: alphabetic words joined by ".", "_" or "-" ("fulana.silva"),
+ * since v0.74.0 the first of any length ("j.silva"), each word with optional trailing digits ("maria2.souza",
+ * "maria.souza2", "ana-lima") and an optional number at the end ("maria.souza.2", "maria_souza_01"). Since v0.78.0
+ * separators may repeat ("maria..silva"), a middle word may be a single letter when the last has 2+ ("ana.c.lima",
+ * "joao.e.silva"; "esporte.e.lazer" is dropped too, failing closed), and a final single letter is a surname initial
+ * when the first word and the word just before it have 2+ letters ("maria.s", "maria.silva.s",
+ * "joao.p.silva.r", "maria.s2", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). A single word
+ * ("falecomacgm"), a word and a number ("sec.2") or exactly two single letters ("a.b", "a1.b") never match.
+ */
+const PERSON_LOCAL =
+  /^(?:[a-z]+\d*(?:[._-]+[a-z]+\d*)*[._-]+[a-z]{2,}\d*(?:[._-]+\d+)?|[a-z]{2,}\d*(?:(?:[._-]+[a-z]+\d*)*[._-]+[a-z]{2,}\d*)?[._-]+[a-z]\d*(?:[._-]+\d+)?)$/;
+/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); checked first, kept. */
 const UNIT_PREFIXES = new Set([
   "biblioteca", "caps", "casadepassagem", "ccz", "cei", "cmae", "cmaee", "cmei", "cras", "creas", "escola", "farol",
   "nrgm", "regional", "ruadacidadania", "sine", "ubs", "upa", "us", "visa",
@@ -927,7 +895,7 @@ const UNIT_PREFIXES = new Set([
 
 function isPersonShaped(email: string): boolean {
   const local = email.slice(0, email.indexOf("@"));
-  return PERSON_LOCAL.test(local) && !UNIT_PREFIXES.has(local.split(/[._]/)[0]!);
+  return !UNIT_PREFIXES.has(local.split(/[._-]/)[0]!.replace(/\d+$/, "")) && PERSON_LOCAL.test(local);
 }
 
 /**
@@ -986,17 +954,6 @@ export function isShelterLine(line: string): boolean {
 }
 
 /**
- * v0.60.0: a line after a CEI's "…:" label that is about the service, not a name (see hourLines `soft`): it starts
- * (after an optional dash) with a digit or a service word. Only the start counts: "Fulana de Tal, das 7h às 18h" is a
- * name.
- */
-const SERVICE_PART = "atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|secretaria";
-const SERVICE_WORD = "rua|av|avenida|fones?|vagas?";
-const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PART}|(?:${SERVICE_WORD})\\b)`);
-/** The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). */
-const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
-
-/**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
  * `max` lines: the first max - 1 and a last line saying how many were not shown (never a silent cut).
  */
@@ -1004,7 +961,7 @@ export function hourLines(
   raw: unknown,
   max: number = MAX_HOUR_LINES,
   wrap = false,
-  hide?: (line: string) => boolean,
+  hide?: (line: string, prev?: string | null) => boolean,
   marker: string = HIDDEN_NAME_LINE,
   names?: FacilityType["nameLines"],
   allowlist = false,
@@ -1021,13 +978,32 @@ export function hourLines(
   // "Responsável pela matrícula:" keeps "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora
   // responsável:" is hidden.
   let soft = false;
+  let prev: string | undefined; // the last non-empty line, shown or hidden
+  let prev2: string | undefined; // the one before it
+  // v0.81.0: a line hidden on its own rules (not by the split check below, nor only as the value or the rest of a name
+  // after one): only then is the whole-field check skipped, as before, so a keyword split over three lines is still
+  // caught after the split check hid one half.
+  let other = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
       const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
-      if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
+      const full = hide ? cleanText(part, Infinity) : t;
+      const [before, before2] = [prev, prev2];
+      [prev, prev2] = [full, prev]; // v0.81.0: uncut, so a contact phrase past the cut still reaches the next line's checks
+      // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
+      // whole-field check below (prev null) on this line and the one before, which must not hide alone, and then on the
+      // last three lines ("Tratar com" / "o RH" / "Fulana"); the lines before stay. A line that reads as hours or a
+      // service ("Horário: 8h", "por agendamento") is read so only after a guarded contact phrase ("Telefone da
+      // Regional:" / "3350-0000 - Fulana").
+      const pair = (joined: string, head: string): boolean => hide !== undefined && hide(joined, null) && !hide(head, null);
+      const split = (): boolean =>
+        names !== undefined && !allowlist && before !== undefined && (!isServiceText(t) || readsNextLine(before) || (before2 !== undefined && readsNextLine(`${before2}\n${before}`))) &&
+        (pair(`${before}\n${full}`, before) || (before2 !== undefined && pair(`${before2}\n${before}\n${full}`, `${before2}\n${before}`)));
+      const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(full, before));
+      if (!hide || !(label || named || tail || direct || split())) {
         lines.push(t);
         label = rest = soft = false;
       } else {
@@ -1039,11 +1015,12 @@ export function hourLines(
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
         label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && names === "person") : t.endsWith(":") && !label;
         soft = colon && !label;
+        other ||= direct;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
   }
-  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
+  if (hide && !allowlist && !other && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];

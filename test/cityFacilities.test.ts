@@ -4,15 +4,11 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
-  HIDDEN_MAINTAINER_LINE,
   HIDDEN_NAME_LINE,
-  HIDDEN_PERSON_LINE,
   HIDDEN_SHELTER_LINE,
   hourLines,
   institutionalEmails,
   institutionalPhones,
-  isGardenPersonLine,
-  isPersonInChargeLine,
   isShelterLine,
   layerQueryUrl,
   parseLayer,
@@ -21,6 +17,13 @@ import {
   WOMEN_EMERGENCY_NOTE,
   type FacilityType,
 } from "../src/sources/geocuritiba.js";
+import {
+  HIDDEN_MAINTAINER_LINE,
+  HIDDEN_PERSON_LINE,
+  isGardenPersonLine,
+  isPersonInChargeLine,
+  isWorkPersonLine,
+} from "../src/sources/nameFilter.js";
 import { cityFacilitiesSearchOutput, MIXED_NOTE } from "../src/tools/cityFacilitiesSearch.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
@@ -203,6 +206,47 @@ describe("contact fields", () => {
       expect(institutionalEmails(e), e).toEqual([e]);
     }
     expect(institutionalEmails("fulana.silva@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
+  });
+
+  it("v0.74.0: also drops an initial before the surname, digits after a name word or at the end, and '-' as a separator", () => {
+    for (const e of ["j.silva@curitiba.pr.gov.br", "m_souza@sme.curitiba.pr.gov.br", "maria.souza2@curitiba.pr.gov.br",
+      "j.souza12@sms.curitiba.pr.gov.br", "ana-lima@curitiba.pr.gov.br", "Maria-Clara.Souza3@FCC.curitiba.pr.gov.br",
+      "maria2.souza@curitiba.pr.gov.br", "maria.souza.2@curitiba.pr.gov.br", "maria_souza_01@sme.curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([]);
+    }
+    expect(institutionalEmails("joão.silva@curitiba.pr.gov.br"), "an accented local part never passes the city shape").toEqual([]);
+  });
+
+  it("v0.74.0: generic sector and unit addresses stay, '-' after a unit word included", () => {
+    for (const e of ["falecomacgm@curitiba.pr.gov.br", "sine@curitiba.pr.gov.br", "cras.boqueirao@curitiba.pr.gov.br",
+      "goe@curitiba.pr.gov.br", "ccz@sms.curitiba.pr.gov.br", "ouvidoria@sms.curitiba.pr.gov.br", "cras-cajuru@curitiba.pr.gov.br",
+      "us-bairroalto@sms.curitiba.pr.gov.br", "regional3.cic@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br",
+      "ouvidoria@curitiba.pr.gov.br", "sec.2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([e]);
+    }
+  });
+
+  it("v0.78.0: also drops a middle initial, a surname as an initial and a repeated separator", () => {
+    for (const e of ["ana.c.lima@curitiba.pr.gov.br", "joao.p.silva@sme.curitiba.pr.gov.br", "maria.s@curitiba.pr.gov.br",
+      "maria..silva@curitiba.pr.gov.br", "j.p.silva@curitiba.pr.gov.br", "Ana_C_Lima@FCC.curitiba.pr.gov.br",
+      "maria-s@sms.curitiba.pr.gov.br", "ana.c.lima2@curitiba.pr.gov.br", "ana.c.lima.2@curitiba.pr.gov.br", "a.b.cd@curitiba.pr.gov.br",
+      "maria.s2@curitiba.pr.gov.br", "maria.s.2@sms.curitiba.pr.gov.br", "maria.silva.s@curitiba.pr.gov.br",
+      "ana.lima.c@curitiba.pr.gov.br", "joao.p.silva.r@curitiba.pr.gov.br", "ana.a.lima@curitiba.pr.gov.br", "joao.e.silva@curitiba.pr.gov.br", "j.o.souza@curitiba.pr.gov.br",
+      "maria__silva@curitiba.pr.gov.br", "maria.-silva@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([]);
+    }
+  });
+
+  it("v0.78.0: institutional, unit and regional addresses stay; letter codes and a word and a number are not a name", () => {
+    for (const e of ["ouvidoria@curitiba.pr.gov.br", "sine@curitiba.pr.gov.br", "falecomacgm@curitiba.pr.gov.br",
+      "boqueirao@curitiba.pr.gov.br", "cic@curitiba.pr.gov.br", "regional.boqueirao@curitiba.pr.gov.br", "regional.c.cic@curitiba.pr.gov.br", "regional3.cic@curitiba.pr.gov.br",
+      "cras.boqueirao@curitiba.pr.gov.br", "cras..cajuru@curitiba.pr.gov.br", "us.b.alto@sms.curitiba.pr.gov.br",
+      "sine.s@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br", "a.b@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br",
+      "sec.2@curitiba.pr.gov.br", "sec..2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "sme.d.p.e@sme.curitiba.pr.gov.br",
+      "fas.n.s@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([e]);
+    }
+    expect(institutionalEmails("ana.c.lima@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
   });
 });
 
@@ -1373,7 +1417,7 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
       ["liceu de oficios", "person"],
       ["inss", "person"],
     ]);
-    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine)) {
+    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine || t.hideLine === isWorkPersonLine)) {
       expect(t.nameLines, t.id).toBe("person");
     }
     const cei = type("cei contratado");
@@ -2029,7 +2073,9 @@ describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", (
       "Atendimento:",
       "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
       "Não é necessário realizar agendamento prévio para atendimento.",
+      HIDDEN_PERSON_LINE,
     ]);
+    expect(JSON.stringify(out)).not.toMatch(/Fulana/);
     expect(out.note).toMatch(/search by `name`/);
     expect(out.note).toMatch(/Vacancies and anyone's registration are not in this tool/);
     expect(out.note).toMatch(/`agencia do trabalhador`/);
@@ -2187,5 +2233,931 @@ describe("v0.67.0: Casa da Leitura, Bondinho da Leitura, auditoriums, circus and
       const [f] = parseLayer(type(id), layer({ nome_completo: "Inventado", email: "inventado@curitiba.pr.gov.br" })).facilities;
       expect(f!.emails, id).toEqual(["inventado@curitiba.pr.gov.br"]);
     }
+  });
+});
+
+describe("v0.70.0: the work types hide a teacher, instructor, attendant or contact line", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+
+  it.each(WORK)("%s hides the role words at the start, before ':' and after it", (id) => {
+    for (const who of [
+      "Professora: Fulana de Tal",
+      "Professor(a) de costura: Fulana de Tal",
+      "Instrutor Fulano de Tal",
+      "Instrutores: Fulano e Fulana",
+      "Atendente: Fulana de Tal",
+      "Atendimento: atendente Fulana",
+      "Contato: Fulana 3333-0000",
+      "Cursos com a professora Fulana",
+      "-Contatos: Fulano",
+      "Contato com a Fulana",
+      "Prof.ª Fulana de Tal",
+      "Profa. Fulana de Tal",
+      "Prof. Fulano de Tal",
+      "Monitora: Fulana",
+      "Orientador Fulano de Tal",
+      "Educadoras: Fulana e Fulana",
+      "Tutor: Fulano",
+    ]) {
+      const out = lines(id, `Atendimento:\n-2ª a 6ª feira, das 8h às 17h\n${who}`);
+      expect(out, `${id}: ${who}`).toEqual(["Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s hides the name on the line after a role label", (id) => {
+    for (const label of ["Instrutora:", "Professores:", "Atendente:", "Contato:"]) {
+      expect(lines(id, `${label}\nFulana de Tal Inventada\nAtendimento:\n-2ª a 6ª feira, das 8h às 17h`), label).toEqual([
+        HIDDEN_PERSON_LINE, "Atendimento:", "-2ª a 6ª feira, das 8h às 17h",
+      ]);
+    }
+  });
+
+  it("keeps the lines the work layers published when read (2026-11-27), and the offices' person lines stay hidden", () => {
+    for (const l of [
+      "Atendimento:",
+      "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
+      "Não é necessário realizar agendamento prévio para atendimento.",
+      "A cada dia, o Sine Móvel estará em um ponto estratégico de Curitiba.",
+      "Endereço anterior: R. Mons. Celso, 35, Térreo.",
+      "Nome anterior: Liceu de Ofícios Cidadania Boqueirão",
+      "Antigo Centro de Criatividades de Curitiba, readequado para Liceu das Artes após a inauguração do Memorial Paranista em 2021.",
+      "Atendimento ao público e contratação",
+      "O Liceu de Ofícios Criativos oferece cursos gratuitos voltados exclusivamente para artesãos e profissionais da Economia Criativa",
+      "Para cursos, entre em contato pelo 156",
+      "Contato pelo e-mail da unidade",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+    for (const l of ["Responsável: Fulana", "Coordenadora: Fulana", "Gerente Fulano"]) expect(isWorkPersonLine(l), l).toBe(true);
+  });
+
+  it("only the work types use it: the other office types keep the narrower filter", () => {
+    expect(FACILITY_TYPES.filter((t) => t.hideLine === isWorkPersonLine).map((t) => t.id)).toEqual(WORK);
+    for (const id of ["administracao regional", "cohab", "fazenda urbana", "nucleo de seguranca alimentar", "mesa solidaria", "clube de xadrez"]) {
+      expect(type(id).hideLine, id).toBe(isPersonInChargeLine);
+    }
+    expect(isPersonInChargeLine("Contato: 3350-0000")).toBe(false);
+  });
+
+  it("a contact channel line does not hide the hours after it", () => {
+    expect(lines("sine", "Para cursos, entre em contato pelo 156\nSegunda a sexta, das 8h às 17h")).toEqual([
+      "Para cursos, entre em contato pelo 156", "Segunda a sexta, das 8h às 17h",
+    ]);
+  });
+});
+
+describe("v0.70.0: a garden partner or programme line needs an entity word after the keyword", () => {
+  const t = type("horta comunitaria");
+  const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+
+  it("hides a partner or programme named after no entity", () => {
+    for (const l of [
+      "Parceria com Fulana de Tal", "Parceria com a Fulana", "Programa Fulano de Tal", "Programa do Fulano", "Parceria com Maria da Associação",
+      "Programa Hortas da Fulana", "Parceria com ONG Fulana", "Parceria com projeto Fulana Silva", "Programa de Hortas Comunitárias",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+      expect(lines(l)).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps the kinds the layer published when read and other entities", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Parceria com a Associação de Moradores Inventada",
+      "Parceria com a Prefeitura",
+      "Parceria com o Instituto Inventado",
+      "Parceria com a Universidade Inventada",
+      "Programa Municipal de Agricultura Urbana",
+      "Parceria com: Associação de Moradores Inventada",
+      "Programa: Integrado Inventado",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
+    }
+  });
+});
+
+describe("v0.72.0: work names, second pass (a name after 'Atendimento:', more roles, contact channels)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'Atendimento:', on the same line or the next one", (id) => {
+    expect(lines(id, `Atendimento:\nFulana de Tal\n${HOURS}`)).toEqual(["Atendimento:", HIDDEN_PERSON_LINE, HOURS]);
+    expect(lines(id, `Atendimento: Fulana de Tal\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+    expect(lines(id, `Atendimento ao público: Fulana\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+  });
+
+  it.each(WORK)("%s keeps hours after 'Atendimento:'", (id) => {
+    for (const v of [HOURS, "Segunda a sexta, das 8h às 17h", "das 8h às 17h", "8h às 17h", "seg. a sex. 8h às 17h", "Não é necessário agendamento."]) {
+      expect(lines(id, `Atendimento:\n${v}`), v).toEqual(["Atendimento:", v]);
+      expect(lines(id, `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+    }
+    expect(lines(id, "Horário de atendimento: das 8h às 17h")).toEqual(["Horário de atendimento: das 8h às 17h"]);
+  });
+
+  it.each(WORK)("%s hides docente, facilitador/a, técnico/a and agente", (id) => {
+    for (const who of [
+      "Docente: Fulana de Tal", "Docentes Fulana e Fulano", "Facilitadora: Fulana", "Facilitador Fulano de Tal",
+      "Técnica: Fulana", "Técnico Fulano de Tal", "Técnico(a) responsável: Fulana", "Cursos com a técnica Fulana",
+      "Agente: Fulano", "Agentes Fulana e Fulano", "Atendimento com o agente Fulano",
+    ]) {
+      expect(lines(id, `Atendimento:\n${HOURS}\n${who}`), `${id}: ${who}`).toEqual(["Atendimento:", HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps 'técnica' as a noun (layer 149, read 2026-11-27, and course text)", () => {
+    for (const l of [
+      "que já atuam na área e desejam aperfeiçoar técnicas, desenvolver novos produtos",
+      "Curso de aperfeiçoamento das técnicas de corte e costura",
+      "Aprenda a técnica de solda",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("a value after 'Atendimento:' is hours only when it goes on as hours", () => {
+    for (const v of ["Domingos da Silva", "Dia Fulana", "Seg Fulana", "Não Fulana", "Fechado Fulana", "Diana 8h"]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines("sine", `Atendimento:\n${v}`), v).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
+    }
+    for (const v of [
+      "às segundas e quartas, 14h", "às 8h", "por agendamento", "presencial e online", "Sábado, 8h", "24 horas", "diariamente",
+      "Fechado.", "temporariamente fechado para reforma", "Dias úteis, das 8h às 17h", "domingos e feriados das 8h às 12h",
+    ]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it("checks every attendance label in a line, a bare 'Atendimento' with no colon, and not a label mid-sentence", () => {
+    expect(lines("sine", "Atendimento: 8h às 17h; Atendimento ao público: Fulana")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Atendimento\nFulana")).toEqual(["Atendimento", HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Local de atendimento: Rua Inventada, 100")).toEqual(["Local de atendimento: Rua Inventada, 100"]);
+  });
+
+  it("a contact phone followed by hours on the same line stays; a phone followed by a name does not", () => {
+    expect(lines("sine", "Contato: 3350-0000 - segunda a sexta 8h")).toEqual(["Contato: [masked] - segunda a sexta 8h"]);
+    expect(lines("sine", "Contato: 156 Fulana")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s hides 'Contato pela/via <nome>' and keeps a contact channel", (id) => {
+    for (const who of ["Contato pela Fulana", "Contato via Fulano de Tal", "Contato pelo Fulano", "Contato: 3350-0000 Fulana", "Contato: Fulana"]) {
+      expect(lines(id, `${who}\n${HOURS}`), who).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+    }
+    for (const [raw, shown] of [
+      ["Contato: 3350-0000", "Contato: [masked]"],
+      ["Contato: (41) 3350-0000 / 3350-0001 ramal 2", "Contato: [masked] / [masked] ramal 2"],
+      ["Contato via e-mail", "Contato via e-mail"],
+      ["Contato pelo telefone 156", "Contato pelo telefone 156"],
+      ["Para cursos, entre em contato pelo 156", "Para cursos, entre em contato pelo 156"],
+    ] as const) {
+      expect(lines(id, `${raw}\n${HOURS}`), raw).toEqual([shown, HOURS]);
+    }
+  });
+
+  it("keeps the hours after a contact phone, on the same line or after a bare 'Contato:'", () => {
+    expect(lines("sine", "Contato: 3350-0000\nSegunda a sexta, das 8h às 17h\nEndereço anterior: Rua Inventada, 1")).toEqual([
+      "Contato: [masked]", "Segunda a sexta, das 8h às 17h", "Endereço anterior: Rua Inventada, 1",
+    ]);
+    expect(lines("sine", "Contato:\n3350-0000\nSegunda a sexta, das 8h às 17h")).toEqual([HIDDEN_PERSON_LINE, "Segunda a sexta, das 8h às 17h"]);
+  });
+
+  it("the weekday rule for the rest of a split name needs a digit: a surname after a hidden name stays hidden", () => {
+    expect(lines("cohab", "Responsável:\nMaria Inventada\nDomingos da Silva")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("cohab", "Responsável:\nMaria Inventada\nSegunda a sexta, das 8h às 17h")).toEqual([
+      HIDDEN_PERSON_LINE, "Segunda a sexta, das 8h às 17h",
+    ]);
+  });
+
+  it("answers \"Onde fica o Liceu de Ofícios mais perto do Portão?\" with no person's name", async () => {
+    stubFetch(route("liceu de oficios", "liceu_de_oficios_synthetic.json"));
+    const out = await search({ type: "liceu de oficios", near: { lat: -25.4766, lon: -49.2925 }, radius_m: 3000 });
+    expect(out.data.items[0]).toMatchObject({ name: "Liceu de Ofícios Portão Inventado", bairro: "Portão", phones: ["(41) 3333-7100"] });
+    expect(out.data.items[0]!.hours).toEqual([
+      "Atendimento:", HIDDEN_PERSON_LINE, "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h", "Contato: [masked]", HIDDEN_PERSON_LINE,
+    ]);
+    expect(JSON.stringify(out)).not.toMatch(/Fulan/);
+  });
+});
+
+describe("v0.72.0: a garden partner, programme or keeper later in the line needs an entity too", () => {
+  it("hides a name in a second label of the same line", () => {
+    for (const l of [
+      "Horta com 20 canteiros - Parceria com Fulana",
+      "Horta com 20 canteiros, parceria com Fulana",
+      "Horta com 20 canteiros. Programa do Fulano",
+      "Horta com 10 canteiros, mantida pela Fulana",
+      "Programa Integrado Inventado e parceria com Fulana",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+    }
+  });
+
+  it("keeps the kinds the layer published when read and public lines with an abbreviation", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Horta com 20 canteiros. Parceria com COPEL.",
+      "Mantida pela Associação de Moradores Inventada.",
+      "Mantido pela Secretaria Municipal do Meio Ambiente.",
+      "Endereço: R. Inventada, 10",
+      "Horta com 20 canteiros, mantida pela Universidade Inventada",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
+    }
+  });
+});
+
+describe("v0.76.0: name filter, third pass (service values, names after a channel or 'falar com', more roles, garden partners)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s keeps a service value after 'Atendimento:', on the same line or the next one", (id) => {
+    for (const v of ["por ordem de chegada", "Por ordem de chegada.", "preferencial para idosos", "Prioritário para gestantes", "gratuito", "Gratuita", "Carteira de trabalho, seguro-desemprego", "Seguro desemprego", "gratuito com agendamento", "Preferencial com senha"]) {
+      expect(lines(id, `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+      expect(lines(id, `Atendimento:\n${v}\n${HOURS}`), v).toEqual(["Atendimento:", v, HOURS]);
+    }
+  });
+
+  it("a service word only counts at the start of the value, and the name rules still run after it", () => {
+    for (const v of ["Fulana de Tal, gratuito", "Fulana, por ordem de chegada", "gratuito com a Fulana", "preferencial: falar com Fulana", "gratuito, com a psicóloga Fulana",
+      "por ordem de chegada. Fulana de Tal", "gratuito pela Fulana", "gratuito, Fulana Inventada", "Carteira de trabalho - Fulana"]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines("sine", `Atendimento:\n${v}`), v).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s hides a name after a channel word, after 'falar com' and after the new roles", (id) => {
+    for (const who of [
+      "Contato no WhatsApp da Fulana",
+      "Contato pelo telefone com Fulana",
+      "Telefone do Fulano: 3350-0000",
+      "Falar com Fulana de Tal",
+      "Fale com o Fulano",
+      "Palestrante Fulano",
+      "Palestrantes: Fulana e Fulano",
+      "Assistente social Fulana",
+      "Assistentes sociais: Fulana e Fulano",
+      "Psicóloga Fulana de Tal",
+      "Psicólogo: Fulano",
+    ]) {
+      expect(lines(id, `Atendimento:\n${HOURS}\n${who}`), `${id}: ${who}`).toEqual(["Atendimento:", HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps a channel of a unit, a channel with a number and service text with the new words", () => {
+    for (const l of [
+      "Contato pelo e-mail da unidade",
+      "Contato no WhatsApp da unidade",
+      "Contato pelo telefone da Agência do Trabalhador",
+      "Contato pelo telefone do Sine",
+      "Contato pelo telefone 156",
+      "Telefone com DDD 41",
+      "Para cursos, entre em contato pelo 156",
+      "Falar com a recepção da unidade",
+      "Atendimento psicológico gratuito",
+      "Curso de Psicologia aplicada",
+      "Palestras sobre empreendedorismo",
+      "Serviço social da unidade",
+      "WhatsApp do CRAS",
+      "Telefone do atendimento",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("the office types keep the narrower filter", () => {
+    expect(lines("cohab", "Atendimento: Fulana de Tal")).toEqual(["Atendimento: Fulana de Tal"]);
+    expect(lines("cohab", "Psicóloga Fulana")).toEqual(["Psicóloga Fulana"]);
+  });
+
+  it("hides a garden partner or programme that names a person after the entity word", () => {
+    for (const l of [
+      "Parceria com a comunidade e a Fulana de Tal",
+      "Programa Municipal da Fulana",
+      "Parceria com a Prefeitura e Fulano",
+      "Parceria com a Associação de Moradores com a Fulana",
+      "Horta com 20 canteiros. Programa Municipal do Fulano",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+      expect(lines("horta comunitaria", l), l).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps a garden partner or programme with only entity words after 'e', 'com' or 'da'", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Programa Municipal de Agricultura Urbana",
+      "Parceria com a Associação de Moradores e a Prefeitura",
+      "Parceria com a comunidade e moradores",
+      "Parceria com a COPEL e a Sanepar",
+      "Programa Municipal da Prefeitura de Curitiba",
+      "Parceria com a Universidade Inventada. Horta com 20 canteiros e pomar",
+      "Parceria com a Universidade Federal do Paraná.",
+      "Parceria com a Secretaria Municipal do Meio Ambiente",
+      "Programa Municipal de Agricultura Urbana e Segurança Alimentar",
+      "Parceria com a Associação de Moradores da Vila Inventada",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("the new rules stay fast on 50 KB of their worst shapes", () => {
+    const work = ["contato pelo telefone " + "e ".repeat(25_000), "falar com " + "a ".repeat(25_000), "Atendimento: " + "gratuito ".repeat(5_600) + "x", "Atendimento: " + "gratuito, ".repeat(5_000) + "x"];
+    const garden = ["Programa Municipal " + "da ".repeat(17_000), "Parceria com a comunidade " + "e a ".repeat(12_500), "Parceria com " + "parceria com ".repeat(3_900)];
+    const start = performance.now();
+    for (const s of work) isWorkPersonLine(s);
+    for (const s of garden) isGardenPersonLine(s);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coordenação, RH; a name after 'agendamento com')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s keeps service lines the v0.76.0 rules hid", (id) => {
+    for (const l of [
+      "Dúvidas? Fale com a gente pelo 156",
+      "Telefone da Regional: 156",
+      "E-mail da coordenação",
+      "Tratar com o RH da empresa",
+      "Atendimento: emissão de carteira de trabalho",
+    ]) {
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: ${l}`).toEqual([HOURS, l]);
+    }
+    expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
+    expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
+    for (const l of ["Assistente\nsocial Fulana", "Mantido\npor Fulano", "Fale com\nFulana"]) {
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const l of ["Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "Tratar com o RH da empresa", "Fale com a gente pelo 156 ou pelo e-mail", "Telefone da Regional e e-mail da unidade"]) {
+      expect(lines(id, `${l}\n${HOURS}`), `${id}: ${l} before the hours`).toEqual([l, HOURS]);
+    }
+  });
+
+  it.each(WORK)("%s still hides a name next to the new words", (id) => {
+    for (const l of [
+      "Fale com a Fulana pelo 156",
+      "E-mail da coordenadora",
+      "Coordenação: Fulana",
+      "Tratar com o Fulano do RH",
+      "Telefone da Fulana da Regional",
+      "Atendimento: emissão de carteira de trabalho - Fulana",
+      "Atendimento: emissão de carteira de trabalho com a Fulana",
+      "Falar com o RH Fulano",
+      "Fale com a gente Fulana",
+      "Telefone da coordenação, Fulana",
+      "Tratar com o RH da Fulana",
+      "Telefone da Regional: Fulana",
+      "E-mail da coordenação. Fulana de Tal",
+      "Fale com a gente ou com a Fulana",
+      "Telefone da Regional e da Fulana",
+      "Telefone da Regional: 3350-0000 - Fulana",
+      "Fale com a gente pelo 156 ou com a Fulana",
+      "Tratar com o RH da empresa, Sra. Fulana",
+      "Telefone da Regional (Fulana)",
+      "Fale com a gente pelo (Fulana)",
+    ]) {
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: ${l}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s hides a name after 'agendamento com', on the same line or after a bare label", (id) => {
+    for (const v of ["agendamento com Fulana", "agendamento com a Fulana", "Por agendamento com Fulano de Tal", "mediante agendamento com a Fulana", "com agendamento com Fulana",
+      "presencial com agendamento com Fulana", "seg a sex com agendamento com Fulana", "agendamento, com Fulana", "Segunda a sexta, das 8h às 17h, agendamento com a Fulana",
+      "mediante agendamento prévio com a Fulana", "agendamento (com Fulana)"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `Atendimento:\n${v}`), `${id}: ${v}`).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Contato: 3350-0000 - agendamento com Fulana")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines(id, `${HOURS}\nAgendamento com Fulana`)).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s keeps an appointment with a unit, a channel, a number or an appointment detail", (id) => {
+    for (const v of ["agendamento", "por agendamento", "agendamento com a equipe", "agendamento com o setor de atendimento", "agendamento com 2 dias de antecedência",
+      "agendamento com antecedência", "Agendamento com antecedência mínima de 48h", "agendamento com documentos pessoais", "agendamento com CPF e RG", "agendamento com hora marcada",
+      "agendamento com a coordenação", "agendamento pelo 156", "mediante agendamento pelo telefone", "agendamento com no mínimo 48h de antecedência",
+      "agendamento com uma semana de antecedência", "agendamento com comprovante de residência", "agendamento com prazo de 48h", "agendamento com data marcada", "agendamento com marcação prévia", "Segunda a sexta 8h às 17h, agendamento com pelo menos 2 dias de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const l of ["Contato: 3350-0000 - agendamento com a equipe", "Contato: 3350-0000 - agendamento com antecedência", "Agendamento com antecedência"]) expect(isWorkPersonLine(l), l).toBe(false);
+    expect(isWorkPersonLine("Telefone da coordenação: 3350-0000"), "a 'coordenação:' label stays hidden").toBe(true);
+  });
+
+  it("the new rule stays fast on 50 KB of its worst shapes", () => {
+    const work = ["Atendimento: agendamento com " + "a ".repeat(25_000), "Atendimento: " + "agendamento com ".repeat(3_200) + "x",
+      "Atendimento: agendamento, " + "com ".repeat(12_000), "falar com o rh" + " ".repeat(50_000) + "x", "telefone da regional " + "e ".repeat(25_000),
+      "telefone da regional pelo " + "o ".repeat(25_000), "telefone da regional " + "pelo ".repeat(10_000) + "x", "Atendimento: agendamento" + " (".repeat(25_000)];
+    const start = performance.now();
+    for (const s of work) isWorkPersonLine(s);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a name on the line after 'com o RH')", () => {
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const OFFICES = ["clube de xadrez", "administracao regional", "cohab", "mesa solidaria", "fazenda urbana", "nucleo de seguranca alimentar"];
+  // An earlier hidden line turns the whole-field check off: the split keyword must be caught line by line.
+  const FIRST = "Responsável: Fulana.";
+  const split = (id: string, s: string) => {
+    const t = type(id);
+    const out = lines(id, `${FIRST}\n${HOURS}\n${s}`);
+    expect(out.slice(0, 2), `${id}: ${s}`).toEqual([t.hiddenLineMarker, HOURS]);
+    expect(out.at(-1), `${id}: ${s}`).toBe(t.hiddenLineMarker);
+    expect(out.join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+  };
+
+  it("cei contratado hides a 'mantida pela' or 'mantido por' split over two lines", () => {
+    for (const s of ["Mantida\npela Fulana de Tal", "Mantido\npor Fulano de Tal", "Mantidas\npelas Fulanas"]) split("cei contratado", s);
+    expect(lines("cei contratado", `${FIRST}\n${HOURS}\nMantida\npela Fulana de Tal`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS, "Mantida", HIDDEN_MAINTAINER_LINE]);
+  });
+
+  it.each([...OFFICES, ...WORK])("%s hides a person-in-charge keyword split over two lines", (id) => {
+    for (const s of ["Mantida\npor Fulana", "Mantida pela\nSra. Fulana", "Mantido\npelo Seu Fulano", "Coordenação\ngeral: Fulano", "Gestão\nlocal: Fulana"]) split(id, s);
+  });
+
+  it.each(WORK)("%s hides a work role split over two lines", (id) => {
+    for (const s of ["Assistente\nsocial Fulana", "Assistentes\nsociais Fulana e Fulano", "Técnica\nFulana", "Agente\nresponsável: Fulano", "Fale com\nFulana", "Agendamento\ncom Fulana"]) split(id, s);
+  });
+
+  it("horta comunitaria keeps hiding a split 'mantida pela' (its allowlist hides both halves)", () => {
+    expect(lines("horta comunitaria", "Horta com 10 canteiros\nmantida\npela Fulana")).toEqual(["Horta com 10 canteiros", HIDDEN_PERSON_LINE]);
+    expect(isGardenPersonLine("Mantida\npela Fulana"), "the multi-word rule reads a line break as a space").toBe(true);
+    expect(isGardenPersonLine("Quem\ncuida: Fulana")).toBe(true);
+  });
+
+  it("the split check needs both halves: a line that hides alone does not drag the next one", () => {
+    expect(lines("cei contratado", `Diretora: Fulana.\n${HOURS}`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS]);
+    expect(lines("sine", `${FIRST}\nAtendimento:\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, "Atendimento:", HOURS]);
+    for (const id of WORK) {
+      for (const [a, b] of [["Dúvidas? Fale com a gente pelo 156", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional: 156", HOURS], ["Tratar com o RH da empresa", HOURS],
+        ["Atendimento", "com agendamento"], ["Mantida pela Prefeitura de Curitiba.", HOURS]]) {
+        expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HIDDEN_PERSON_LINE, a, b]);
+      }
+    }
+  });
+
+  it.each(WORK)("%s hides a name alone on the line after a contact phrase that ends in RH, Regional, coordenação or 'a gente'", (id) => {
+    for (const [a, b] of [["Falar com o RH", "Fulano de Tal"], ["Fale com a gente", "Fulana"], ["Telefone da Regional:", "Fulana de Tal"], ["E-mail da coordenação", "Fulana"],
+      ["Tratar com o RH.", "Sra. Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps the line after that phrase when it is hours, a number, a channel or a unit", (id) => {
+    for (const [a, b] of [["Falar com o RH", HOURS], ["Fale com a gente", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional:", "3350-0000"], ["Fale com a gente:", "pelo 156"],
+      ["E-mail da coordenação", "ou pelo telefone"], ["Falar com o RH", "Atendimento presencial"], ["Fale com a gente", "WhatsApp"], ["Fale com a gente", "Com agendamento"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace("3350-0000", "[masked]")]);
+    }
+    for (const a of ["Fale com a gente pelo 156", "Tratar com o RH da empresa", "Telefone da Regional: 156"]) {
+      expect(lines(id, `${a}\nFulana`), `${id}: the phrase goes on after the unit word (0.79.0 hid the name)`).toEqual([a, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("review: a split hidden by the new checks keeps the whole-field check, so a third line is caught too", () => {
+    expect(lines("cei contratado", "Mantido\npor\nFulano de Tal Souza Lima")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    expect(lines("sine", "Assistente\nsocial\nFulana de Tal Souza Lima")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", `Assistente\nsocial: atendimento às terças\n${HOURS}\nFale\ncom\nFulana`)).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Fale com a gente\nFulana\nFale\ncom\nFulano")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it("review: hours or a service on the second line are not read with the line before", () => {
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      expect(lines(id, `${FIRST}\nHorário mantido\npor agendamento`), id).toEqual([type(id).hiddenLineMarker, "Horário mantido", "por agendamento"]);
+      expect(lines(id, `${FIRST}\nCoordenação\nHorário: 8h às 17h`), id).toEqual([type(id).hiddenLineMarker, "Coordenação", "Horário: 8h às 17h"]);
+    }
+  });
+
+  it.each(WORK)("review: %s hides a name before a phone, ':' or hours on the line after the contact phrase; an address stays", (id) => {
+    for (const b of ["Fulana (41) 3350-0000", "Fulana: segunda a sexta", "Sra. Fulana - 3350-0000"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["- Fulana de Tal", "Fulana, telefone 3350-0000", "Fulana - fone", "Fulana Atendimento", "Fulana Silva - Rua XV"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+    }
+    // A line hidden after a bare label still turns the whole-field check off, as in 0.80.0: the hours stay.
+    expect(lines(id, "Atendimento:\nFulana\nSegunda a sexta 8h às 17h, falar com\nHorário de almoço: 12h fechado")).toEqual(
+      ["Atendimento:", HIDDEN_PERSON_LINE, "Segunda a sexta 8h às 17h, falar com", "Horário de almoço: 12h fechado"]);
+    for (const b of ["Rua XV de Novembro, 100", "Av. Inventada", "Horário: 8h às 17h", "Telefone: 3350-0000"]) {
+      expect(lines(id, `Fale com a gente\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente", b.replace("3350-0000", "[masked]")]);
+    }
+  });
+
+  // Security Reviewer, after 0.80.0 merged: leaks 0.80.0 opened against 0.79.0.
+  const PAD = "Curso de solda, elétrica e marcenaria com certificado na unidade do bairro Inventado, turmas de manhã e de tarde, inscrições abertas";
+  it.each(WORK)("O1: %s hides a name after a guarded phrase in a line over 160 characters (cut at commas for liceu)", (id) => {
+    for (const ph of ["Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da coordenação", "Fale com a gente pelo 156", "Tratar com o RH da empresa", "Agendamento com o RH"]) {
+      for (const sep of [", ", "; ", " - ", "\n", ",\n"]) {
+        for (const nm of ["Fulana", "Fulano de Tal", "Sra. Fulana"]) {
+          const out = lines(id, `${PAD}, ${ph}${sep}${nm}`).join("\n");
+          expect(out, `${id}: ${ph}${JSON.stringify(sep)}${nm}`).not.toContain(nm);
+        }
+      }
+    }
+  });
+
+  it.each(WORK)("O2: %s hides a name after a guarded word on the next line (0.79.0 hid these)", (id) => {
+    for (const [a, b] of [["Telefone da", "Regional Fulana"], ["Fale com", "o RH Fulano"], ["Tratar", "com o RH Fulano"], ["E-mail da", "coordenação Fulana"], ["Agendamento", "com o RH Fulano"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: after a hidden line`).toEqual([HIDDEN_PERSON_LINE, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b] of [["Telefone da", "Regional: 156"], ["Fale com", "a gente pelo 156"], ["Tratar", "com o RH da empresa"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
+  });
+
+  it.each(WORK)("review: %s reads the whole next line after a guarded phrase, and a phrase split over two lines", (id) => {
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 - Fulana"], ["Falar com o RH", "(41) 3350-0000 Fulana"], ["Fale com a gente", "pelo 156 ou com a Fulana"],
+      ["Fale com a gente", "WhatsApp da Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b, c] of [["Tratar com", "o RH", "Fulana"], ["Telefone da", "Regional:", "Fulano de Tal"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}\n${c}`), `${id}: ${a} / ${b} / ${c}`).toEqual([HOURS, a, b, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Fale com a\ngente\nSra. Fulana").join("\n"), "'Fale com a' alone already hides, and the name after it").not.toMatch(/Fulana/);
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 ou 3350-0001"], ["Fale com a gente", "pelo 156 ou pelo e-mail"], ["Fale com a gente", "Equipe do RH"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace(/3350-000\d/g, "[masked]")]);
+    }
+    expect(isWorkPersonLine("Telefone da Regional: 156 e 3350 e 3351 e 3352 e 3353 e 3354 e 3355"), "a rest of up to 100 steps is a unit").toBe(false);
+    for (const [a, b] of [["Fale com a gente", "156 - Fulana"], ["Telefone da Regional:", "2º andar - Fulana"], ["Falar com o RH", "8h às 17h com Fulana"],
+      ["Fale com a gente", "Presencial com Fulana"], ["Fale com a gente", "Segunda a sexta com Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, `${HOURS}\nTratar com\no RH\n156 Fulana`)).toEqual([HOURS, "Tratar com", "o RH", HIDDEN_PERSON_LINE]);
+    for (const [a, b, c] of [["Fale com a gente", "pelo 156", "Sala de leitura infantil"], ["Telefone da Regional:", "3350-0000", "Térreo do prédio"]] as const) {
+      expect(lines(id, `${a}\n${b}\n${c}`), `${id}: a complete phrase, a contact line, then ${c}`).toEqual([a, b.replace("3350-0000", "[masked]"), c]);
+    }
+    for (const [a, b] of [["Falar com o RH", "Segunda a sexta, das 8h às 17h, com agendamento"], ["Fale com a gente", "Horário: 8h às 17h"], ["Fale com a gente", "Rua XV de Novembro, 100"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
+  });
+
+  it.each(WORK)("%s hides 'agendamento com' and a word that is also a name at the end of the line", (id) => {
+    for (const v of ["agendamento com Dias", "agendamento com Uma", "agendamento com hora", "agendamento com senha", "agendamento com o Dias", "agendamento com Dias Ferreira",
+      "agendamento com Senha Fulana"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com hora marcada", "agendamento com uma semana de antecedência", "agendamento com 2 dias de antecedência", "agendamento com senha retirada no local"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it("a guarded word's rest is read for at most 100 steps, so a 400 KB line is fast", () => {
+    const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
+      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000),
+      "Telefone da Regional: " + "whats app ".repeat(40_000) + "Fulana", "Fale com a gente\n" + "whats app e-mail segunda as 8h ".repeat(13_000) + "Fulana"];
+    expect(isWorkPersonLine("Telefone da Regional: " + "whats app ".repeat(50) + "Fulana"), "review: 'whats app' reads one way only").toBe(true);
+    const start = performance.now();
+    for (const s of shapes) {
+      isWorkPersonLine(s);
+      lines("liceu de oficios", s);
+      lines("sine", s);
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
+    expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 100 steps is not a unit word: hidden, on the safe side").toBe(true);
+  });
+
+  it("Boss's repros (Security Reviewer MUST FIX on 0.80.0): the long Liceu line with wrapLines and the split forms stay hidden", () => {
+    expect(type("liceu de oficios").wrapLines).toBe(true);
+    const long = "Atendimento ao público de segunda a sexta, das 8h às 17h, com atendimento prioritário para idosos, gestantes e pessoas com deficiência, ";
+    for (const tail of ["Falar com a gente, Fulana", "Tratar com a gente, Fulana da Silva", "Telefone da gente, Fulana da Silva", "Telefone da Regional, Fulana da Silva"]) {
+      expect(`${long}${tail}`.length).toBeGreaterThan(160);
+      expect(lines("liceu de oficios", `${long}${tail}`).join("\n"), tail).not.toMatch(/Fulana/);
+    }
+    for (const id of WORK) {
+      for (const s of ["Telefone da\nRegional Fulana", "Telefone\nda Regional Fulana", "Fale com\no RH Fulano", "Tratar\ncom o RH Fulano", "E-mail da\ncoordenação Fulana",
+        "Assistente\nsocial Fulana", "Telefone da Regional\nFulana", "E-mail da coordenação\nFulana", "Telefone da Regional:\nFulana", "Fale com a gente pelo 156\nFulana",
+        "Telefone da Regional: 3350-0000\nFulana", "Fale com a gente\nFulana, das 8h às 17h", "Fale com a gente\nou com a Fulana"]) {
+        expect(lines(id, s).join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+        expect(lines(id, `${FIRST}\n${s}`).join("\n"), `${id}: after a hidden line: ${s}`).not.toMatch(/Fulan[ao](?!\.)/);
+      }
+    }
+  });
+
+  it("Security Reviewer on 4c32d11: every rest or hours word repeated after a guarded phrase reads one way only (no exponential time)", () => {
+    const words = ["unidade", "agencia", "sine", "liceu", "inss", "central", "setor", "equipe", "recepcao", "prefeitura", "secretaria", "ddd", "cras", "creas",
+      "atendimento", "ministerio", "posto", "ouvidoria", "trabalhador", "telefone", "fone", "tel", "celular", "whats app", "whatsapp", "whats", "e-mail", "email",
+      "ramal", "sms", "gente", "regional", "coordenacao", "rh", "empresa", "site", "portal", "aplicativo", "app", "pelo", "pela", "por", "via", "no", "na", "em",
+      "da", "do", "das", "a", "an", "o", "as", "os", "e", "ou", "segunda", "seg", "sexta", "feira", "feriado", "uteis", "ate", "de", "h", "hs", "2 dias", "dias uteis",
+      "2 horas", "horario", "funcionamento", "aberto", "fechado", "almoco", "intervalo", "manha", "tarde", "noite", "diariamente", "todos", "todas", "presencial",
+      "online", "agendamento", "com", "sem", "mediante", "previo", "ordem", "chegada", "gratuito", "ª", "º"];
+    for (const w of words) {
+      const s = "Fale com o RH\n" + `${w} `.repeat(30) + "x";
+      const start = performance.now();
+      isWorkPersonLine(s, null);
+      isWorkPersonLine(`Telefone da Regional: ${w} `.repeat(30) + "x");
+      lines("sine", s);
+      expect(performance.now() - start, w).toBeLessThan(200);
+    }
+    const start = performance.now();
+    isWorkPersonLine("Fale com o RH\n" + "atendimento ".repeat(35_000) + "x", null);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it.each(WORK)("R1: %s hides 'Dias' or 'Hora' alone after a guarded phrase; '2 dias' and 'Dias úteis' stay", (id) => {
+    for (const b of ["Dias", "WhatsApp Dias", "ou com a Dias", "Hora", "Horas", "Dia"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["Dias úteis, das 8h às 17h", "2 dias de antecedência", "24 horas", "Segunda a sexta, 8 horas por dia útil"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("the split check stays fast on 50 KB of short lines", () => {
+    const start = performance.now();
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      lines(id, "Mantida\n".repeat(6_500));
+      lines(id, "Falar com o RH\nFulano\n".repeat(2_400));
+      lines(id, `${FIRST}\n` + "Assistente\nsocial\n".repeat(2_800));
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
+  });
+});
+
+describe("v0.82.0: name filter, sixth pass (a name-like appointment word; 'N Dias' and 'Úteis' after a guarded phrase)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'agendamento com' that starts with um/uma, dia(s), hora or senha", (id) => {
+    // The five brief cases (already hidden on 0.81.0), then the second word a name can bring (shown on 0.81.0).
+    for (const v of ["agendamento com Dias", "agendamento com Uma Costa", "agendamento com hora Fulana", "agendamento com dias Fulana", "agendamento com senha Fulana",
+      "agendamento com Dias de Souza", "agendamento com Uma de Souza", "agendamento com Hora da Silva", "agendamento com Dias 3350-0000", "agendamento com Hora 8h às 17h",
+      "agendamento com Uma 3350-0000", "agendamento com Dias no balcão", "agendamento com Hora pelo 156", "agendamento com Dias marcados", "agendamento com senha pela Fulana"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps those words as appointment details", (id) => {
+    for (const v of ["agendamento com dias de antecedência", "agendamento com dias úteis de antecedência", "agendamento com uma semana de antecedência", "agendamento com um dia de antecedência",
+      "agendamento com uma hora de antecedência", "agendamento com hora marcada", "agendamento com senha retirada", "agendamento com senha prévia", "agendamento com senha na recepção",
+      "agendamento com senha pelo site", "agendamento com uma antecedência mínima de 48h", "agendamento com senha no local", "agendamento com senha na hora", "agendamento com senha no balcão", "agendamento com 2 dias de antecedência", "agendamento com pelo menos 2 dias de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it.each(WORK)("%s hides 'N Dias', 'NNN Hora' and 'Úteis' alone after a guarded phrase, two or three lines", (id) => {
+    for (const b of ["156 Dias", "8 Dias", "156 Hora", "156 Horas", "Util", "Úteis", "Útil, das 8h às 17h"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nTratar com\no RH\n${b}`).join("\n"), `${id}: three lines: ${b}`).not.toContain(b);
+    }
+    for (const b of ["Dias úteis, das 8h às 17h", "dia útil", "2 dias úteis", "2 dias de antecedência", "24 horas", "1 hora", "Segunda a sexta, 8 horas por dia útil", "Segunda a sexta, dias úteis"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+    // Known limits (stated in CHANGELOG 0.82.0): a three-digit count before "horas" and "N dias" not before "de" are hidden, on the safe side.
+    for (const b of ["100 horas", "2 dias", "24 horas, 7 dias por semana"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["8 Hora"]) { // known limit: one or two digits, then "Hora", still reads as hours
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("every new alternative read repeated after a guarded phrase or 'agendamento com' stays fast", () => {
+    for (const w of ["dia util", "dias uteis", "2 dias uteis", "2 dias de", "24 horas", "156 horas", "util", "uteis", "1 hora"]) {
+      const s = "Fale com o RH\n" + `${w} `.repeat(30) + "x";
+      const start = performance.now();
+      isWorkPersonLine(s, null);
+      isWorkPersonLine(`Telefone da Regional: ${w} `.repeat(30) + "x");
+      lines("sine", s);
+      expect(performance.now() - start, w).toBeLessThan(200);
+    }
+    const start = performance.now();
+    for (const w of ["uma ", "dias ", "hora ", "senha ", "senha na ", "dias de ", "um dia "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    isWorkPersonLine("Fale com o RH\n" + "dias uteis ".repeat(5_000) + "x", null);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.84.0: name filter, seventh pass ('com Uma Dias'; 'senha de atendimento', 'senha numerada')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides um/uma and dia(s)/hora(s) after 'agendamento com' unless a detail follows", (id) => {
+    for (const v of ["agendamento com Uma Dias", "agendamento com Uma Dias Silva", "agendamento com Uma Dias de Souza", "agendamento com Um Hora",
+      "agendamento com Um Horas Ferreira", "agendamento com Uma Dia", "agendamento com um dia", "agendamento com uma hora"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps the appointment details the 0.82.0 review lists, and the new senha details", (id) => {
+    for (const v of ["agendamento com uma semana de antecedência", "agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com senha retirada",
+      "agendamento com um dia antes", "agendamento com uma hora antes", "agendamento com um dia útil de antecedência", "agendamento com uma hora de antecedência",
+      "agendamento com uma antecedência mínima de 48h", "agendamento com 48 horas de antecedência", "agendamento com senha de atendimento", "agendamento com senha numerada"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const b of ["2 dias úteis", "48 horas de antecedência"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+    for (const v of ["agendamento com uma hora marcada", "agendamento com uma hora agendada", "agendamento com uma hora e meia de antecedência",
+      "agendamento com senha numerada.", "agendamento com senha de atendimento, das 8h às 17h", "agendamento (com senha numerada)"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    // The new senha details count only at the end of the line or before punctuation, so a name after them is hidden.
+    for (const v of ["agendamento com senha numerada Fulana", "agendamento com senha de atendimento Fulana", "agendamento com senha de atendimento da Fulana", "agendamento com senha de Souza"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com senha numerada", "agendamento com uma hora marcada"]) {
+      expect(lines(id, `Atendimento:\n${v}\n${HOURS}`), `${id}: next line: ${v}`).toEqual(["Atendimento:", v, HOURS]);
+    }
+    // v0.86.0: the whole field takes any word after the senha detail, so the schedule line stays (0.84.0 hid the field).
+    expect(lines(id, "Atendimento:\nagendamento com senha numerada\nSegunda a sexta, 8h")).toEqual(["Atendimento:", "agendamento com senha numerada", "Segunda a sexta, 8h"]);
+    // Known limits: only the words right after um/uma, dia(s) and senha are read, so a name after a full detail passes
+    // (as on 0.83.0); an um/uma phrase with another detail ("de tolerância") is hidden, on the safe side.
+    expect(lines(id, "Atendimento: agendamento com um dia de antecedência Fulana")).toEqual(["Atendimento: agendamento com um dia de antecedência Fulana"]);
+    expect(lines(id, "Atendimento: agendamento com uma hora de tolerância")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s: known limit, '30 dias' and '1 dia' alone after a guarded phrase are hidden; '10 horas' reads as hours", (id) => {
+    for (const b of ["30 dias", "1 dia"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\nTratar com\no RH\n${b}`).join("\n"), `${id}: three lines: ${b}`).not.toContain(b);
+    }
+    expect(lines(id, `${HOURS}\nTelefone da Regional:\n10 horas`)).toEqual([HOURS, "Telefone da Regional:", "10 horas"]);
+    expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n10 horas`)).toEqual([HOURS, "Fale com a gente pelo 156", "10 horas"]);
+  });
+
+  it("the new alternatives stay fast repeated after 'agendamento com'", () => {
+    const start = performance.now();
+    for (const w of ["uma dias ", "uma dias de ", "um hora ", "um dia de ", "senha de ", "senha numerada ", "uma hora e meia de ", "um dia corrido ", "uma horas marcada "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    isWorkPersonLine("Atendimento: agendamento com " + "uma dias ".repeat(5_000) + "x");
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.86.0: name filter, eighth pass (the rest after 'senha numerada'; the schedule after it; 'um dia corrido')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+  const SCHEDULE = "Segunda a sexta, 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'senha numerada' or 'senha de atendimento' and punctuation or a number (shown in 0.84.0)", (id) => {
+    for (const d of ["senha numerada", "senha de atendimento"]) {
+      for (const r of [", Fulana", ". Fulana", " (Fulana)", " 3350-0000 Fulana", ", das 8h às 17h com Fulana", " - Fulana de Tal", "; Fulana"]) {
+        const v = `agendamento com ${d}${r}`;
+        expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+        expect(lines(id, `${HOURS}\n${v}`), `${id}: ${v}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
+        expect(isWorkPersonLine(`Atendimento: ${v}`), `${id}: per line: ${v}`).toBe(true);
+      }
+    }
+  });
+
+  it.each(WORK)("%s keeps 'senha numerada' and 'senha de atendimento' before the end, punctuation, a number or hours", (id) => {
+    for (const d of ["senha numerada", "senha de atendimento"]) {
+      for (const r of ["", ".", ", das 8h às 17h", " (das 8h às 17h)", ", de segunda a sexta", ", segunda a sexta, 8h", " 3350-0000", ", pelo 156", ", na recepção", " - 2ª a 6ª feira"]) {
+        const v = `agendamento com ${d}${r}`;
+        expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`.replace("3350-0000", "[masked]")]);
+      }
+    }
+    expect(lines(id, "Atendimento: agendamento (com senha numerada)")).toEqual(["Atendimento: agendamento (com senha numerada)"]);
+    // Review of this PR: a long hours rest stays (a step is one character or word, at most 300).
+    const long = "agendamento com senha numerada, segunda a sexta, das 8h às 12h e das 13h às 17h, sábado das 8h às 12h, domingo fechado";
+    expect(lines(id, `Atendimento: ${long}`)).toEqual([`Atendimento: ${long}`]);
+    // Known limits: a word that is not a step hides the line, on the safe side ("Domingos" is a name, so no plural weekdays).
+    for (const v of ["agendamento com senha numerada, das 8h às 17h, exceto feriados", "agendamento com senha numerada, sábados das 8h às 12h"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta, 8h às 17h\nDocumentos: RG")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s keeps a schedule line after 'Agendamento com senha numerada' (0.84.0 hid the field)", (id) => {
+    for (const d of ["Agendamento com senha numerada", "Agendamento com senha de atendimento"]) {
+      expect(lines(id, `${d}\n${SCHEDULE}`), `${id}: ${d}`).toEqual([d, SCHEDULE]);
+      expect(lines(id, `Atendimento:\n${d}\n${SCHEDULE}`), `${id}: label: ${d}`).toEqual(["Atendimento:", d, SCHEDULE]);
+      expect(lines(id, `${d}\n${HOURS}`), `${id}: ${d}`).toEqual([d, HOURS]);
+      expect(lines(id, `${d}\n${SCHEDULE}\nTelefone: 3350-0000`), `${id}: three lines: ${d}`).toEqual([d, SCHEDULE, "Telefone: [masked]"]);
+    }
+  });
+
+  it.each(WORK)("%s hides a name on the line after 'senha numerada', also when it starts with a number", (id) => {
+    for (const d of ["Agendamento com senha numerada", "Agendamento com senha numerada,", "Agendamento com senha de atendimento."]) {
+      for (const n of ["Fulana", "Fulana de Tal", "3350-0000 Fulana", "8h às 17h com Fulana", "(Fulana)"]) {
+        expect(lines(id, `${d}\n${n}`).join("\n"), `${id}: ${d} / ${n}`).not.toContain("Fulana");
+        expect(lines(id, `Atendimento:\n${d}\n${n}`).join("\n"), `${id}: label: ${d} / ${n}`).not.toContain("Fulana");
+      }
+      expect(lines(id, `${d}\n${SCHEDULE}\nFulana`).join("\n"), `${id}: third line: ${d}`).not.toContain("Fulana");
+    }
+    // Review of this PR: a name on the fourth line, after two schedule lines, hides the field (as in 0.84.0).
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana").join("\n")).not.toContain("Fulana");
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nTelefone: 3350-0000")).toEqual(["Agendamento com senha numerada", "Segunda a sexta", "das 8h às 17h", "Telefone: [masked]"]);
+    // Review of this PR: with an article ("com a senha numerada") too, also when another line hid on its own rules.
+    for (const n of ["8h às 17h com Fulana", "3350-0000 Fulana", "Fulana"]) {
+      expect(lines(id, `Agendamento com a senha numerada\n${n}`).join("\n"), `${id}: article / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com a senha numerada\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
+      expect(lines(id, `Responsável: Beltrano\nAgendamento com senha numerada,\n${n}`).join("\n"), `${id}: other / ${n}`).not.toContain("Fulana");
+    }
+    // A detail split over two lines: the first line hides on its own, and the rest of the name after it too.
+    expect(lines(id, "Agendamento com senha\nnumerada Fulana").join("\n")).not.toContain("Fulana");
+  });
+
+  it.each(WORK)("%s: 'corrido' alone is no longer a day detail; 'dias corridos' stays", (id) => {
+    for (const v of ["agendamento com um dia corrido", "agendamento com dia corrido", "agendamento com Uma Dia Corrido"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com um dia útil de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    // Since 0.84.0, um/uma and dia/hora with nothing after are hidden (0.83.0 showed them).
+    for (const v of ["agendamento com um dia", "agendamento com uma hora"]) expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it.each(WORK)("%s still keeps every line the 0.82.0 and 0.84.0 tests list as legitimate", (id) => {
+    for (const v of ["agendamento com uma semana de antecedência", "agendamento com dias corridos", "agendamento com um dia de antecedência", "agendamento com senha retirada",
+      "agendamento com um dia antes", "agendamento com uma hora antes", "agendamento com uma hora marcada", "agendamento com uma hora agendada",
+      "agendamento com uma hora e meia de antecedência", "agendamento com senha prévia", "agendamento com senha na recepção", "agendamento com hora marcada",
+      "agendamento com senha de atendimento, das 8h às 17h", "agendamento com senha numerada.", "agendamento com 48 horas de antecedência"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const b of ["2 dias úteis", "48 horas de antecedência"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("the senha rest stays fast: 'senha numerada, ' repeated, 50 KB and 400 KB", () => {
+    const start = performance.now();
+    const shapes = ["Atendimento: agendamento com senha numerada, " + "senha numerada, ".repeat(3_200) + "x",
+      "Atendimento: " + "agendamento com senha numerada, ".repeat(1_600) + "x",
+      "Atendimento: agendamento com senha numerada" + ", 8h".repeat(12_500) + " Fulana",
+      "agendamento com senha numerada, ".repeat(12_500), "agendamento com senha de atendimento " + "das 8h ".repeat(57_000) + "x",
+      "Agendamento com senha numerada\n" + "senha numerada, \n".repeat(3_000)];
+    for (const s of shapes) {
+      isWorkPersonLine(s);
+      isWorkPersonLine(s, null);
+      lines("sine", s);
+      lines("liceu de oficios", s);
+    }
+    for (const w of ["senha numerada, ", "senha de atendimento, ", "senha numerada 1 ", "um dia corrido "]) isWorkPersonLine("Atendimento: " + `agendamento com ${w}`.repeat(2_000) + "x");
+    expect(performance.now() - start).toBeLessThan(2000);
+  });
+});
+
+describe("v0.88.0: senha follow-ups (the fourth-line known limit; weekday shapes after 'senha numerada')", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+
+  it.each(WORK)("%s keeps weekday schedules after 'senha numerada' (a narrower weekday rule tried in 0.88.0 hid them)", (id) => {
+    for (const r of [", de segunda a sexta", ", de segunda-feira a sexta-feira, 8h às 17h", ", sábado de 8h às 12h", ", seg-sex, 8h", ", sábado (8h às 12h)",
+      ", segunda até sexta, 8h", ", sábado e domingo", ", segunda, quarta e sexta das 8h às 12h", ", domingo fechado"]) {
+      const v = `agendamento com senha numerada${r}`;
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+    for (const n of ["Segunda-feira a sexta-feira, 8h às 17h", "Sábado de 8h às 12h", "Sábado (8h às 12h)"]) {
+      expect(lines(id, `Agendamento com senha numerada\n${n}`), `${id}: ${n}`).toEqual(["Agendamento com senha numerada", n]);
+    }
+  });
+
+  it.each(WORK)("%s, known limit: a weekday word alone after 'senha numerada' reads as hours and is shown", (id) => {
+    // Not fixed: a weekday is an hours step, and narrowing it hid the schedules above. Recorded in docs/sources.md.
+    expect(lines(id, "Atendimento: agendamento com senha numerada, Domingo")).toEqual(["Atendimento: agendamento com senha numerada, Domingo"]);
+  });
+
+  it.each(WORK)("%s, known limit: a name on the fourth line after 'senha numerada' is shown when another line hid on its own rules", (id) => {
+    // The whole-field check is skipped (another line hid on its own rules) and the split check reads at most three
+    // lines, so a name after two schedule lines is shown. Recorded in docs/sources.md; not fixed in 0.88.0.
+    const field = "Responsável: Beltrano.\nAgendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana";
+    expect(lines(id, field)).toEqual([HIDDEN_PERSON_LINE, "Agendamento com senha numerada", "Segunda a sexta", "das 8h às 17h", "Fulana"]);
+    // On the second and third line the name is hidden, and with no other hidden line the field is hidden.
+    expect(lines(id, "Responsável: Beltrano.\nAgendamento com senha numerada\nSegunda a sexta\nFulana").join("\n")).not.toContain("Fulana");
+    expect(lines(id, "Responsável: Beltrano.\nAgendamento com senha numerada\nFulana").join("\n")).not.toContain("Fulana");
+    expect(lines(id, "Agendamento com senha numerada\nSegunda a sexta\ndas 8h às 17h\nFulana")).toEqual([HIDDEN_PERSON_LINE]);
   });
 });

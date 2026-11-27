@@ -419,7 +419,7 @@ export function getSearchPage(query: string, modality: number, page: number, sta
 
 /**
  * The PNCP API's own read routes for the Plano de Contratações Anual (PCA), on the same host and gate as the Consulta
- * API (docs/sources.md, v0.68): no auth in its OpenAPI, about 0.1 s per answer on 2026-11-27. The Consulta PCA route
+ * API (docs/sources.md, v0.89): no auth in its OpenAPI, about 0.1 s per answer on 2026-11-27. The Consulta PCA route
  * filters by update date, not by year, and took 28 s for one page, so it is not used.
  */
 export const PNCP_API = "https://pncp.gov.br/api/pncp";

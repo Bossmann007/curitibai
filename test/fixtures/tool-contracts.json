@@ -4523,7 +4523,7 @@
                                     ]
                                   },
                                   "microbairro": {
-                                    "description": "Micro-bairro code as published (cd_microbairro), e.g. \"27.0\".",
+                                    "description": "Micro-bairro code (cd_microbairro), e.g. \"27\": a number in its JSON form, text of 1 to 6 digits without a trailing \".0\", other text unchanged.",
                                     "type": [
                                       "string",
                                       "null"

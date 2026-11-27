@@ -8,7 +8,7 @@
   - [`dataset_files`: a dataset's file links](#dataset_files-a-datasets-file-links)
   - [`health_units_search`: Ministry of Health CNES open API](#health_units_search-ministry-of-health-cnes-open-api)
   - [`procurement_search`: PNCP Consulta API (contratações of Curitiba municipal bodies)](#procurement_search-pncp-consulta-api-contratações-of-curitiba-municipal-bodies)
-  - [`procurement_search` mode `plan`: PNCP annual procurement plans (since 0.68.0)](#procurement_search-mode-plan-pncp-annual-procurement-plans-since-0680)
+  - [`procurement_search` mode `plan`: PNCP annual procurement plans (since 0.89.0)](#procurement_search-mode-plan-pncp-annual-procurement-plans-since-0890)
   - [`weather_forecast` and `weather_alerts`: INMET forecast and warnings API](#weather_forecast-and-weather_alerts-inmet-forecast-and-warnings-api)
   - [`tax_reform_curitiba`: Receita Federal pilot tax-reform (CBS/IBS) open data](#tax_reform_curitiba-receita-federal-pilot-tax-reform-cbsibs-open-data)
   - [`places_search`: OpenStreetMap via the Overpass API](#places_search-openstreetmap-via-the-overpass-api)
@@ -76,7 +76,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 |---|---|---|
 | `dadosabertos.curitiba.pr.gov.br` | 404 (HTML "not found" page, rechecked 2026-11-19) | No restriction (RFC 9309: a 4xx robots.txt means no rules). **Contacted.** |
 | `apidadosabertos.saude.gov.br` (Ministry of Health open-data API) | 404 (HTML "404 Not Found", checked 2026-11-19) | No restriction. **Contacted** (v0.2, `health_units_search`). |
-| `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309; rechecked 2026-11-22, 404 with the HTML page again after two connection resets). **Contacted** (v0.3, `procurement_search`, `/api/consulta`; since v0.19.1 also `/api/search` when `query` is set). Rechecked 2026-11-27 00:54:17 UTC with User-Agent `curitibai-mcp/0.68 (+https://github.com/Bossmann007/curitibai)`: 404, `text/html`, the portal's HTML page, first attempt. Since v0.68 also `/api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades` and `.../valorescategoriaitem` (`procurement_search` mode `plan`) |
+| `pncp.gov.br` (Portal Nacional de Contratações Públicas) | 404 with the portal's HTML page as body (rechecked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.3`; the first two attempts were connection resets, the third answered 404) | No restriction (RFC 9309; rechecked 2026-11-22, 404 with the HTML page again after two connection resets). **Contacted** (v0.3, `procurement_search`, `/api/consulta`; since v0.19.1 also `/api/search` when `query` is set). Rechecked 2026-11-27 00:54:17 UTC with User-Agent `curitibai-mcp/0.68 (+https://github.com/Bossmann007/curitibai)`: 404, `text/html`, the portal's HTML page, first attempt. Since v0.89 also `/api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades` and `.../valorescategoriaitem` (`procurement_search` mode `plan`) |
 | `apiprevmet3.inmet.gov.br` (INMET forecast and warnings API) | 404, body `HttpException: E_ROUTE_NOT_FOUND: Route not found GET /robots.txt` (checked 2026-11-19 with curl, User-Agent `curitibai-mcp/0.5`; same answer on 2026-11-25) | No restriction (RFC 9309). **Contacted** (v0.5, `weather_forecast` and `weather_alerts`, two paths only) |
 | `ovp.dresel.systems` (Overpass API, OpenStreetMap, run by Christian Dresel) | 404, Apache HTML "Not Found" (checked 2026-11-21 03:26 UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). **Contacted** (v0.7, `places_search`, `POST /api-sa/interpreter` only) |
 | `overpass.private.coffee` (formerly `overpass.kumi.systems`) | 404 (checked 2026-11-21 02:43 UTC) | Allowed, and its terms allow "any project", but **it did not answer any Overpass request** from 02:44 to 03:20 UTC on 2026-11-21 (504 "server is probably too busy", then timeouts). Not used |
@@ -88,7 +88,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `mid-dadosabertos.curitiba.pr.gov.br` (file host the portal links to) | 200: `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, plus extension rules | **Disallowed. Never fetched.** |
 | `dadosabertos.c3sl.ufpr.br` (UFPR mirror) | Rechecked 2026-11-21 15:53 UTC with Node.js `fetch`, User-Agent `curitibai-mcp/0.7`: `/robots.txt` 404 and `/curitibaurbs/robots.txt` 404; `/curitiba/robots.txt` 200 (`text/plain`, Latin-1 comments): `User-agent: *`, `Request-rate: 1/5`, `Visit-time: 0400-0645` (UTC), `Disallow: /`, `Disallow: /aspnet_client`, `Disallow: /temporario`, extension rules (`*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`, `*.aspx`) and `Allow: *.html` | **Treated as disallowed. Never fetched**, `/curitibaurbs/` included: the bus tools (v0.8) and `city_points_search` (v0.9) read URBS files a person downloads from there in a browser. Owner's note (2026-11-21): the project treats `/curitiba/` as disallowed outside that visit window; the rule at the top (no `Disallow: /` host is fetched, not even inside its visit hours) is stricter and still applies, so nothing in this repository fetches it at any hour |
 | `imunizaja.curitiba.pr.gov.br` (Prefeitura, "Imuniza Já") | 200, `text/plain`, `Last-Modified: Tue, 07 Jul 2026 15:12:51 GMT`, fetched 2026-11-21 15:50 UTC (curl) and 15:53 UTC (Node.js `fetch`, User-Agent `curitibai-mcp/0.7`). Group `User-agent: *`: `Disallow: /App`, `/bin`, `/Cache`, `/Imagem`, `/Include`, `*.mdb`, `*.pdf`, `*.dll`, `*.log`, `*.asp`, `*.config`, `*.jpg`, `*.gif`, `*.ascx`; `Allow: *.aspx`, `*.html`, `*.htm`. Other groups: `Twitterbot` and `Googlebot-News` allowed everything; `Yandex`, `Slurp`, `Baidoospider` `Disallow: /`. No `Crawl-delay`, `Request-rate` or `Visit-time`. `Sitemap: http://www.curitiba.pr.gov.br/sitemap.xml` | `/locaisvacinacao/` is not disallowed. **Contacted** (v0.12, `vaccination_sites_search`, that one page only, at most once per 6 hours per server process) |
-| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate. Rechecked 2026-11-24 21:00 UTC (404, IIS HTML page): since v0.27 also the thematic layers 12 (voting places, whole layer), 25, 27 and 41 (police and fire areas, point queries) and 43 (census sector, point query and one `outStatistics` query per neighbourhood), and the urban-equipment layers 157 and 158 (bus terminals). Rechecked 2026-11-25 22:19:03 UTC with User-Agent `curitibai-mcp/0.44 (+https://github.com/Bossmann007/curitibai)` (404, IIS HTML page): since v0.44 also the urban-equipment layer 134 (health units). Rechecked 2026-11-25 22:34:17 UTC with User-Agent `curitibai-mcp/0.45 (+https://github.com/Bossmann007/curitibai)` (404, IIS HTML page): since v0.45 also the urban-equipment layers 130 (UPAs), 129 (public hospitals) and 131 (psychiatric stabilisation). Rechecked 2026-11-25 22:50:20 UTC with User-Agent `curitibai-mcp/0.46 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.46 also the urban-equipment layers 135 (CAPS), 132 (medical specialty centres) and 133 (dental specialty centres). Rechecked 2026-11-25 23:06:03 UTC with User-Agent `curitibai-mcp/0.47 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.47 also the urban-equipment layers 167 (Vigilância Sanitária), 136 (zoonoses centre) and 112 (Hospital Veterinário Municipal). Rechecked 2026-11-25 23:22:01 UTC with User-Agent `curitibai-mcp/0.48 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.48 also the urban-equipment layers 139 (Guarda Municipal modules) and 138 (Guarda Municipal regional núcleos). Rechecked 2026-11-25 23:38:47 UTC with User-Agent `curitibai-mcp/0.49 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.49 also the urban-equipment layers 143 (Polícia Civil), 146 (Polícia Federal), 147 (Polícia Rodoviária Federal) and 145 (Polícia Científica). Rechecked 2026-11-25 23:59:21 UTC with User-Agent `curitibai-mcp/0.50 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.50 also the urban-equipment layer 168 (Instituto de Identificação do Paraná). Rechecked 2026-11-26 00:11:55 UTC with User-Agent `curitibai-mcp/0.51 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.51 also the urban-equipment layers 99 (Cartório de Registro Civil), 21 (Junta de Serviço Militar), 105 (Defensoria Pública) and 106 (Fórum). Rechecked 2026-11-26 00:55:10 UTC with User-Agent `curitibai-mcp/0.52 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.52 also the urban-equipment layers 38 (CREAS), 40 (Centro POP), 39 (Central de Encaminhamento Social), 36 (Centro de Atividades para Idosos), 108 (Centro de Referência de Atendimento à Mulher) and 109 (Centro de Referência Afro); the shelter and transit-house layers 45, 46 and 164 are never read. Rechecked 2026-11-26 01:52:02 UTC with User-Agent `curitibai-mcp/0.53 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.53 also the urban-equipment layers 80 (Escola Municipal), 78 (Centro Municipal de Educação Infantil), 81 (Centro Municipal de Atendimento Educacional Especializado) and 79 (Centro de Educação Infantil (contratado)). Rechecked 2026-11-26 19:26:36 UTC with User-Agent `curitibai-mcp/0.57 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.57 also the thematic layers 15 (Circunscrição Imobiliária) and 16 (Registro Civil), point queries. Rechecked 2026-11-26 19:43:20 UTC with User-Agent `curitibai-mcp/0.58 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.58 also the urban-equipment layers 159 (Terminal Rodoviário), 160 (Terminal Ferroviário) and 15 (Administração Regional). Rechecked 2026-11-26 19:59:13 UTC with User-Agent `curitibai-mcp/0.59 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.59 also the urban-equipment layer 29 (Agência de Atendimento da COHAB). Rechecked 2026-11-26 20:53:33 UTC with User-Agent `curitibai-mcp/0.60 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.60 also the urban-equipment layers 7 (Mesa Solidária), 9 (Horta, only `tipo_equi = 'Horta Comunitária Urbana'`), 10 (Fazenda Urbana) and 1 (Núcleo Regional de Segurança Alimentar e Nutricional). Rechecked 2026-11-26 23:30:06 UTC with User-Agent `curitibai-mcp/0.64 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.64 also the urban-equipment layers 150 (Unidade de Atendimento SINE), 151 (Agência do Trabalhador), 149 (Liceu de Ofícios) and 152 (Agência da Previdência Social). Rechecked 2026-11-26 23:48:30 UTC with User-Agent `curitibai-mcp/0.65 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.65 also the Planta Genérica de Valores service, layer 0 (Microrregião (PGV 2025)), point queries. Rechecked 2026-11-27 00:06:53 UTC with User-Agent `curitibai-mcp/0.66 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`, IIS HTML page): since v0.66 also the thematic layer 13 (Zona Eleitoral), point queries. Rechecked 2026-11-27 00:24:30 UTC with User-Agent `curitibai-mcp/0.67 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.67 also the urban-equipment layers 61 (Casa da Leitura), 60 (Bondinho da Leitura), 52 (Auditório), 57 (Circo) and 58 (Clube de Xadrez) |
+| `geocuritiba.ippuc.org.br` (IPPUC, GeoCuritiba ArcGIS server) | 404, `text/html; charset=utf-8` (checked 2026-11-21 23:16 UTC with curl, User-Agent `curitibai-mcp/0.7`; also reported 404 by the owner's research the same day) | No restriction (RFC 9309). **Contacted** (v0.15, `city_facilities_search`, fixed layer queries under `/server/rest/services` only, each layer at most once per 6 hours per server process; at most one request per 5 s to the host from a server process (any layer; a call whose turn is more than 10 s away returns `rate_limited` with the wait, without a request); after a failure no request for 60 s, or a 429's `Retry-After` when longer, at most 1 hour (the same error is returned instead); an ArcGIS `error` with code 401, 403, 498 or 499 (sent with HTTP 200) is a final refusal that blocks the host for 10 minutes). Since v0.22 also `place_at_point`: point queries on the cadastral map service, and since v0.23 `service_areas_at_point`: point queries on the thematic map service (since v0.24 also the cadastral bairro layer when no health area contains the point), both with the point rounded to 4 decimals, through the same host gate. Rechecked 2026-11-24 21:00 UTC (404, IIS HTML page): since v0.27 also the thematic layers 12 (voting places, whole layer), 25, 27 and 41 (police and fire areas, point queries) and 43 (census sector, point query and one `outStatistics` query per neighbourhood), and the urban-equipment layers 157 and 158 (bus terminals). Rechecked 2026-11-25 22:19:03 UTC with User-Agent `curitibai-mcp/0.44 (+https://github.com/Bossmann007/curitibai)` (404, IIS HTML page): since v0.44 also the urban-equipment layer 134 (health units). Rechecked 2026-11-25 22:34:17 UTC with User-Agent `curitibai-mcp/0.45 (+https://github.com/Bossmann007/curitibai)` (404, IIS HTML page): since v0.45 also the urban-equipment layers 130 (UPAs), 129 (public hospitals) and 131 (psychiatric stabilisation). Rechecked 2026-11-25 22:50:20 UTC with User-Agent `curitibai-mcp/0.46 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.46 also the urban-equipment layers 135 (CAPS), 132 (medical specialty centres) and 133 (dental specialty centres). Rechecked 2026-11-25 23:06:03 UTC with User-Agent `curitibai-mcp/0.47 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.47 also the urban-equipment layers 167 (Vigilância Sanitária), 136 (zoonoses centre) and 112 (Hospital Veterinário Municipal). Rechecked 2026-11-25 23:22:01 UTC with User-Agent `curitibai-mcp/0.48 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.48 also the urban-equipment layers 139 (Guarda Municipal modules) and 138 (Guarda Municipal regional núcleos). Rechecked 2026-11-25 23:38:47 UTC with User-Agent `curitibai-mcp/0.49 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.49 also the urban-equipment layers 143 (Polícia Civil), 146 (Polícia Federal), 147 (Polícia Rodoviária Federal) and 145 (Polícia Científica). Rechecked 2026-11-25 23:59:21 UTC with User-Agent `curitibai-mcp/0.50 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.50 also the urban-equipment layer 168 (Instituto de Identificação do Paraná). Rechecked 2026-11-26 00:11:55 UTC with User-Agent `curitibai-mcp/0.51 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.51 also the urban-equipment layers 99 (Cartório de Registro Civil), 21 (Junta de Serviço Militar), 105 (Defensoria Pública) and 106 (Fórum). Rechecked 2026-11-26 00:55:10 UTC with User-Agent `curitibai-mcp/0.52 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.52 also the urban-equipment layers 38 (CREAS), 40 (Centro POP), 39 (Central de Encaminhamento Social), 36 (Centro de Atividades para Idosos), 108 (Centro de Referência de Atendimento à Mulher) and 109 (Centro de Referência Afro); the shelter and transit-house layers 45, 46 and 164 are never read. Rechecked 2026-11-26 01:52:02 UTC with User-Agent `curitibai-mcp/0.53 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.53 also the urban-equipment layers 80 (Escola Municipal), 78 (Centro Municipal de Educação Infantil), 81 (Centro Municipal de Atendimento Educacional Especializado) and 79 (Centro de Educação Infantil (contratado)). Rechecked 2026-11-26 19:26:36 UTC with User-Agent `curitibai-mcp/0.57 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.57 also the thematic layers 15 (Circunscrição Imobiliária) and 16 (Registro Civil), point queries. Rechecked 2026-11-26 19:43:20 UTC with User-Agent `curitibai-mcp/0.58 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.58 also the urban-equipment layers 159 (Terminal Rodoviário), 160 (Terminal Ferroviário) and 15 (Administração Regional). Rechecked 2026-11-26 19:59:13 UTC with User-Agent `curitibai-mcp/0.59 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.59 also the urban-equipment layer 29 (Agência de Atendimento da COHAB). Rechecked 2026-11-26 20:53:33 UTC with User-Agent `curitibai-mcp/0.60 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.60 also the urban-equipment layers 7 (Mesa Solidária), 9 (Horta, only `tipo_equi = 'Horta Comunitária Urbana'`), 10 (Fazenda Urbana) and 1 (Núcleo Regional de Segurança Alimentar e Nutricional). Rechecked 2026-11-26 23:30:06 UTC with User-Agent `curitibai-mcp/0.64 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.64 also the urban-equipment layers 150 (Unidade de Atendimento SINE), 151 (Agência do Trabalhador), 149 (Liceu de Ofícios) and 152 (Agência da Previdência Social). Rechecked 2026-11-26 23:48:30 UTC with User-Agent `curitibai-mcp/0.65 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.65 also the Planta Genérica de Valores service, layer 0 (Microrregião (PGV 2025)), point queries. Rechecked 2026-11-27 00:06:53 UTC with User-Agent `curitibai-mcp/0.66 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`, IIS HTML page): since v0.66 also the thematic layer 13 (Zona Eleitoral), point queries. Rechecked 2026-11-27 00:24:30 UTC with User-Agent `curitibai-mcp/0.67 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): since v0.67 also the urban-equipment layers 61 (Casa da Leitura), 60 (Bondinho da Leitura), 52 (Auditório), 57 (Circo) and 58 (Clube de Xadrez). Rechecked 2026-11-27 02:45:18 UTC with User-Agent `curitibai-mcp/0.72 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): v0.72 adds no layer (a re-read of layers 150, 151, 149, 152 and 9 for the name filter). v0.74 adds no layer: on 2026-11-27 the 89 urban-equipment layers were re-read twice each (the first rule and the rule after review) by a one-off check script (not the server, so not through the host gate; 6 s apart, User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)`, the server's fixed query without geometry) to count the e-mails the new filter shape keeps; robots.txt was not rechecked. Rechecked 2026-11-27 15:15:58 UTC with User-Agent `curitibai-mcp/0.76 (+https://github.com/Bossmann007/curitibai)` (404, `text/html; charset=utf-8`): v0.76 adds no layer (one read of layers 150, 151, 149, 152 and 9 for the name filter). v0.86 adds no layer: on 2026-11-27 19:44-19:45 UTC the 12 layers whose type hides person lines were read once each by a one-off check script (not the server, so not through the host gate; 6 s apart, User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)`, the server's fixed query) to replay the name filter; robots.txt was not rechecked |
 | `telemetriaws1.ana.gov.br` (ANA, Agência Nacional de Águas e Saneamento Básico, telemetry web service) | 404 (checked 2026-11-21 by the owner's researcher and again 2026-11-22 05:50 UTC with curl) | No restriction (RFC 9309). **Contacted** (v0.16, `river_levels`, `/ServiceANA.asmx/DadosHidrometeorologicos` only, bundled station codes, each at most once per 15 minutes per process) |
 | `dadosabertos.ana.gov.br` (ANA open-data portal) | `Crawl-delay: 60` (owner's researcher, 2026-11-21) | Another host; **never contacted** |
 | `mid.curitiba.pr.gov.br` (Prefeitura file host: the CGM's "Ouvidoria da CGM – Guia de uso" PDF, since 0.43.0) | 404, IIS HTML "404 - File or directory not found." (checked 2026-11-25 21:55:04 UTC with curl, User-Agent `curitibai-mcp/0.43 (+https://github.com/Bossmann007/curitibai)`; the owner's research desk also read 404 the same day) | No robots.txt, so no restriction (RFC 9309, 2.3.1.3). **Never contacted by the server.** One PDF downloaded by hand once, 2026-11-25 21:55:08 UTC; `city_service_guide` (`ouvidoria`) links it ([how](#city_service_guide-guides-and-official-links-for-services-that-need-a-login-bundled-since-0280)) |
@@ -107,7 +107,7 @@ not even inside the visit hours they list. The browser User-Agent is never imita
 | `www.normasbrasil.com.br` (copy of Decreto 2.385/2025) | 404 (HTML "Página não encontrada", checked 2026-11-24 21:2x UTC with curl, User-Agent `curitibai-mcp/0.7`) | No restriction (RFC 9309). Read by hand once (one page, `/norma/decreto-2385-2025-curitiba_486274.html`). **The server never contacts it**: `city_calendar` carries the dated list |
 | `www.legisweb.com.br` (Legisweb news, IPTU 2026 notes) | 200 (checked 2026-11-24 with curl): `User-Agent: *`, `Disallow:` (empty: everything allowed), `Crawl-delay: 10` | Allowed. Read by hand once (`/noticia/?id=32497` and `?id=32939`, 11 s apart). **The server never contacts it**: `city_calendar` carries the dated rule |
 | `cvv.org.br` (Centro de Valorização da Vida, CVV; the 188 number in the `caps` and `estabilizacao psiquiatrica` notes, since 0.46.0) | 200, `text/plain; charset=utf-8` (checked 2026-11-25 22:51:21 UTC with curl, User-Agent `curitibai-mcp/0.46 (+https://github.com/Bossmann007/curitibai)`): `User-agent: *`, `Disallow: /wp-admin/`, `Allow: /wp-admin/admin-ajax.php`, a `Sitemap` | `/` is allowed. Read by hand once (the home page `/`, 22:51:32 UTC): "Nosso atendimento é realizado pelo telefone 188 (24 horas por dia e sem custo de ligação)", "Converse gratuitamente com um dos nossos voluntários, em todo o Brasil, 24 horas por dia LIGUE 188". **The server never contacts it** and no link to it is returned: the notes carry the number only |
-| `www.gov.br` (Governo Federal portal; the Ministério das Mulheres' "Ligue 180" page, for the 180 and 190 numbers in the `centro de referencia da mulher` note, since 0.52.0) | 200, `text/plain; charset=utf-8` (checked 2026-11-26 00:56:51 UTC with curl, User-Agent `curitibai-mcp/0.52 (+https://github.com/Bossmann007/curitibai)`): a `Sitemap` line, a `Yandex` group and a `User-Agent: *` group whose rules disallow `/economia/pt-br/internet/*`, `/*sendto_form$`, `/*folder_factories$` and paths under `/ebserh/` and `/mre/`; no `Crawl-delay` | `/mulheres/pt-br/ligue180` is not disallowed. Read by hand once (that page, 00:57:01 UTC, 200): "A ligação é gratuita e o serviço funciona 24 horas por dia, todos os dias da semana" and "Em casos de emergência, deve ser acionada a Polícia Militar, por meio do 190"; the page footer says the site's content is under Creative Commons Atribuição-SemDerivações 3.0 (CC BY-ND 3.0). Only the two numbers and their labels are used, the ministry cited. **The server never contacts it** and no link to it is returned; the copy was deleted after reading. Reread 2026-11-27 01:01:44 UTC with User-Agent `curitibai-mcp/0.68 (+https://github.com/Bossmann007/curitibai)` (200, same groups): `/pncp/` is not disallowed; the gov.br/pncp "Dados Abertos" page was read by hand once for the PNCP terms ([v0.68](#procurement_search-mode-plan-pncp-annual-procurement-plans-since-0680)) |
+| `www.gov.br` (Governo Federal portal; the Ministério das Mulheres' "Ligue 180" page, for the 180 and 190 numbers in the `centro de referencia da mulher` note, since 0.52.0) | 200, `text/plain; charset=utf-8` (checked 2026-11-26 00:56:51 UTC with curl, User-Agent `curitibai-mcp/0.52 (+https://github.com/Bossmann007/curitibai)`): a `Sitemap` line, a `Yandex` group and a `User-Agent: *` group whose rules disallow `/economia/pt-br/internet/*`, `/*sendto_form$`, `/*folder_factories$` and paths under `/ebserh/` and `/mre/`; no `Crawl-delay` | `/mulheres/pt-br/ligue180` is not disallowed. Read by hand once (that page, 00:57:01 UTC, 200): "A ligação é gratuita e o serviço funciona 24 horas por dia, todos os dias da semana" and "Em casos de emergência, deve ser acionada a Polícia Militar, por meio do 190"; the page footer says the site's content is under Creative Commons Atribuição-SemDerivações 3.0 (CC BY-ND 3.0). Only the two numbers and their labels are used, the ministry cited. **The server never contacts it** and no link to it is returned; the copy was deleted after reading. Reread 2026-11-27 01:01:44 UTC with User-Agent `curitibai-mcp/0.68 (+https://github.com/Bossmann007/curitibai)` (200, same groups): `/pncp/` is not disallowed; the gov.br/pncp "Dados Abertos" page was read by hand once for the PNCP terms ([v0.89](#procurement_search-mode-plan-pncp-annual-procurement-plans-since-0890)) |
 | `www.legislacao.pr.gov.br` (Paraná legislation) | 404 (checked 2026-11-19 with curl) | No restriction (RFC 9309). Read by hand once (Portaria DETRAN 907/2025 page and its annex PDF). **The server never contacts it** |
 
 Some requests were made to `mid-dadosabertos` and the UFPR mirror while these sources were evaluated, before this rule
@@ -280,7 +280,7 @@ from a name by a heuristic (the same lesson as the CSV header check), so the ser
 a Curitiba body list or a person-data gate. Not adopted: the tool is about 430 lines inside this server and reuses its
 HTTP client, cache and envelope.
 
-### `procurement_search` mode `plan`: PNCP annual procurement plans (since 0.68.0)
+### `procurement_search` mode `plan`: PNCP annual procurement plans (since 0.89.0)
 
 Checked live on **2026-11-27** (UTC) with curl, User-Agent `curitibai-mcp/0.68 (+https://github.com/Bossmann007/curitibai)`,
 GET only, at least 6 s between requests to the host except where noted, before any code was written.
@@ -290,6 +290,7 @@ GET only, at least 6 s between requests to the host except where noted, before a
 | URL | `GET https://pncp.gov.br/api/pncp/v1/orgaos/<cnpj>/pca/<ano>/consolidado/unidades?pagina=1&tamanhoPagina=500`, then `GET https://pncp.gov.br/api/pncp/v1/orgaos/<cnpj>/pca/<ano>/valorescategoriaitem`. No trailing slash (notice 11/26) |
 | Documentation | The PNCP API's OpenAPI at `https://pncp.gov.br/api/pncp/v3/api-docs` (the *Manual de Integração* API): both routes are `GET` with no `security` entry (the user routes, by contrast, list `bearerAuth`). Summaries: "Consultar Planos de Contratação Consolidados das Unidades por Órgão e Ano" and "Consultar Valores de Planos de Contratação de um Órgão por Categoria" |
 | Access and terms | No key, no login, no cookie; `access-control-allow-origin: *`; `cache-control: no-cache, no-store`. The gov.br/pncp "Dados Abertos" page (`https://www.gov.br/pncp/pt-br/acesso-a-informacao/copy_of_dados-abertos`, reread 2026-11-27 01:01:54 UTC, 200) says the APIs give "itens do plano de contratações anual, contratos e atas de registro de preço" and "Todas as buscas podem ser feitas sem necessidade de cadastro ou login"; its footer: CC BY-ND 3.0 for the site. No terms for the API data were found. `www.gov.br/robots.txt` reread 01:01:44 UTC (200): `/pncp/` is not disallowed. The PNCP requests below started before that reread; robots.txt of `pncp.gov.br` was read first |
+| Licence decision | **Owner decision (Enzo, 2026-11-27):** the CC BY-ND 3.0 licence covers the gov.br site, and the PNCP API has no licence of its own, so mode `plan` returns only aggregate facts (totals per body, category and unit), credited to PNCP with the source link (`license_note`, `source_url`) |
 | Units answer | A JSON array, one row per requesting unit: `cnpj`, `razaoSocial`, `anoPca`, `codigoUnidade`, `nomeUnidade`, `sequencialPca`, `quantidade` (items), `valorTotal`, `dataPublicacaoPncp`, `dataAtualizacao`, `dataAtualizacaoGlobalPCA`, `numeroControlePNCP`, `esfera`, `poder`. Município de Curitiba (`76417005000186`) 2027: 31 units (CGM, SMMA and its departamentos, ...), 4,897 items, R$ 4,161,572,267.52, which equals `valorTotal` of `/pca/2027/consolidado` (published 2026-06-26, updated 2026-08-31) |
 | Categories answer | A JSON array: `categoriaItemId`, `categoriaItemNome`, `quantidadeItens`, `valorTotal`. Município de Curitiba 2027: Material 4,116 items R$ 172,985,503.18; Serviço 742, R$ 3,044,914,655.75; Obra 39, R$ 943,672,108.59 |
 | No plan | IPPUC (`76582337000116`) 2027: units 404 with `"message":"CNPJ do Órgão/Entidade inválido."` (although the CNPJ is a listed body), `consolidado` 404 "Nenhum Plano de Contratações Anual cadastrado para o ano informado.", `valorescategoriaitem` 422 "Nenhum Plano de Contratação Anual cadastrado para o ano informado." The server treats 404 and 422 as no plan and says which status PNCP gave |
@@ -1525,6 +1526,174 @@ changes (owner request, 2026-11-23: monthly and automatic).
     person's name in the hours lines of the 33 records: run through the parser, no line was hidden. The four types
     still use the offices' person-line filter (tested with a "Responsável:" line). No new host for the server and
     the link allowlist is unchanged.
+  - **Name filter, v0.70.0** (a follow-up of the 0.64.0 and 0.63.0 reviews). The four work types hide, besides the
+    offices' person lines, a line with professor/a, "Prof.", "Profa." or "Prof.ª", instrutor/a, monitor/a,
+    orientador/a, educador/a, tutor/a, atendente or contato (plurals too) anywhere in it, word-bounded ("contato"
+    followed by a channel, "entre em contato pelo 156", is kept, so the hours after it are not read as a name) ("Atendimento" is not "atendente"), and the line after such a bare label ("Instrutora:"). This is
+    broader on purpose than "a role, or a label before ':'": "Atendimento: atendente Fulana" has the word after the
+    colon. The other office types keep the narrower filter. The `horta comunitaria` allowlist now keeps a "Parceria
+    com …" or "Programa …" line only when, right after the keyword (and an optional ':', article or "de"), comes a
+    body word, an organisation (empresa, instituto, universidade, fundação, cooperativa), a public scope (integrado,
+    municipal, estadual, federal) or COPEL, Sanepar or Eletrosul. Generic words a name can follow (projeto, ONG,
+    hortas) are left out, and there is no capital-letter rule (a name in capitals would pass); a public partner not
+    in the list (a university by its acronym) is hidden, on the safe side. Known limit: a name after that word still passes,
+    caught only by the person words. Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.7
+    (+https://github.com/Bossmann007/curitibai)`, 7 GET requests by hand: `/robots.txt` at 02:06:33 (404,
+    `text/html; charset=utf-8`: no rules, RFC 9309), then one read of `objectid,observacao` (no geometry) of layers
+    150, 151, 149, 152 and 9, 5 s apart; then, after those reads, the MapServer metadata at 02:09:43 (`copyrightText`
+    and `description` empty: **no licence or terms found**, as before). Counts as read: 12, 1, 16 and 4 work records
+    and, in layer 9, 233 records of every kind, 45 with an `observacao` (the tool asks only the community gardens).
+    No line in them named a person or used a role word; the new filters, run on those reads, changed no record's
+    `hours` against 0.69.0. Layer 9 has one "Parceria com COPEL." and 17 "Programa Integrado de Desenvolvimento
+    Sustentável Eletrosul …" lines, all kept. The reads were inspected offline and deleted; the test fixture is
+    synthetic. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, second pass, v0.72.0** (the lows of the 0.70.0 review). The four work types also hide a value
+    of an "Atendimento:", "Atendimento ao público:" or "Horário de atendimento:" label (at the start of the line or of a
+    sentence, every one in the line) that does not read as hours (a digit; "de/das/às" and a digit; a weekday, its
+    abbreviation, "dia" or "feriado" that goes on as hours or has a digit later, so "Domingos da Silva" is not hours;
+    an appointment, "não é/há …" or "fechado" sentence), on the same line or, after a bare label with or without ':',
+    on the next one ("Local de atendimento: Rua …" is not such a label); a line with docente or facilitador/a
+    anywhere, or agente or técnico/a before ':', or at the start or after an article or "com/pelo/pela" when a word
+    other than "de", "em", "para" … follows ("aperfeiçoar técnicas", read in layer 149, and "a técnica de solda"
+    stay; "Agentes comunitários" is hidden, on the safe side); and "contato" not followed by a channel: "Contato:
+    3350-0000" (only phones, channel words and punctuation, then the end or hours that start with a word) and "contato
+    pelo/via/no 156, telefone, e-mail, site …" stay, "Contato pela Fulana" and "Contato via Fulano" are hidden (0.70.0
+    did the opposite for both). An hours line that starts with a weekday and has a digit is never read as the rest of
+    a split name, so the hours after "Contato:" and its hidden value stay. The whole field, read joined to catch a
+    keyword split across lines, is checked for the words only. On the safe side: an address after a bare
+    "Atendimento:" is hidden. Known limit: a name later in an hours or channel line passes, caught only by the role
+    words. The `horta comunitaria` allowlist also checks a "Parceria com" or "Programa" later in the line (an entity
+    word must follow each), and "mantida pela" not followed by an entity word hides the line anywhere in it; splitting lines
+    into sentences was tried and dropped (it missed " - " and hid "R. Inventada"). Checked on 2026-11-27 (UTC) with
+    curl and User-Agent `curitibai-mcp/0.72 (+https://github.com/Bossmann007/curitibai)`, 12 GET requests by hand:
+    `/robots.txt` at 02:45:18 (404, `text/html; charset=utf-8`: no rules, RFC 9309), then one read of
+    `objectid,observacao` (no geometry) of layers 150, 151, 149, 152 and 9, about 5 s apart, until 02:45:51; then the
+    MapServer metadata at 02:55:44 (`copyrightText`, `description` and `serviceDescription` empty: **no licence or
+    terms found**, as before); after the review fixes, the same five reads again from 03:02:02 to 03:02:24, same
+    sizes. Counts as read: 12, 1, 16 and 4 work records and 45 layer-9 records with an
+    `observacao`; no line named a person, and the new filters, run on those reads, changed no record's `hours`
+    against 0.71.0. The reads were inspected offline and deleted; the test fixture
+    (`liceu_de_oficios_synthetic.json`) is synthetic. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, third pass, v0.76.0** (the lows of the 0.72.0 review). The filters now live in
+    `src/sources/nameFilter.ts` (moved first, with no behaviour change). The four work types keep a value after an
+    attendance label made only of service phrases ("por ordem de chegada", "preferencial/prioritário (para idosos,
+    gestantes …)", "gratuito", "carteira de trabalho", "seguro-desemprego", "com agendamento/senha") joined by ",",
+    ";", "/", "e" or a space, on the same line or after a bare label; anything else in the value keeps it hidden ("por
+    ordem de chegada. Fulana", "gratuito pela Fulana", "Fulana, gratuito"). They also hide a line with palestrante, assistente social or psicólogo/a anywhere
+    ("Atendimento psicológico" and "Psicologia" stay), and a channel word followed by "da/do/com", or "falar/fale/
+    tratar/procurar com", and then a word that is not a unit or channel word, after an optional article ("Contato no
+    WhatsApp da Fulana", "Contato pelo telefone com Fulana", "Falar com Fulana de Tal" are hidden; "Contato pelo e-mail
+    da unidade", "telefone do Sine", "WhatsApp do CRAS", "Telefone com DDD" and "Falar com a recepção" stay). The `horta comunitaria`
+    allowlist checks the partner or programme phrase up to ".", ";" or " - ": "e", "com" or "da/do/das/dos" there must
+    be followed by an entity, place (Paraná, Curitiba, vila, bairro …) or topic word (meio ambiente, segurança,
+    agricultura …) ("Parceria com a comunidade e a Fulana de Tal" and "Programa Municipal da Fulana" are hidden;
+    "Universidade Federal do Paraná", "Secretaria Municipal do Meio Ambiente" and "Programa Municipal de Agricultura
+    Urbana e Segurança Alimentar" stay; a bare "de" is not checked). Known limits: a name later in an hours line ("das
+    8h às 17h com a Fulana") or after a comma in a partner phrase ("Parceria com a comunidade, Fulana") still passes;
+    the office types keep the narrower filter. Checked on 2026-11-27 (UTC) with curl and
+    User-Agent `curitibai-mcp/0.76 (+https://github.com/Bossmann007/curitibai)`, 6 GET requests by hand: `/robots.txt`
+    at 15:15:58 (404, `text/html; charset=utf-8`: no rules, RFC 9309), then the server's own query (all its fields,
+    with geometry) of layers 150, 151, 149, 152 and 9, about 5 s apart, until 15:16:26. Counts as read: 12, 1, 16 and
+    4 work records, all with an `observacao`, and 56 community gardens, 26 with one. The parser hid no line in them
+    before the change and none after: every record's `hours` is identical. The reads were inspected offline and
+    deleted; the tests use synthetic lines. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, fourth pass, v0.80.0** (the lows of the 0.76.0 review). Lines the third pass hid by mistake stay
+    visible: "a gente", "Regional", "coordenação" and "RH" are unit words after a channel word or "falar/fale/tratar
+    com" ("Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "E-mail da coordenação", "Tratar com o RH
+    da empresa"), but only when the rest of the line holds nothing but numbers, "[masked]", punctuation, channel and
+    unit words, "empresa" and connectors; any other word keeps the line hidden, as in 0.79.0 ("Tratar com o RH da
+    Fulana", "Telefone da Regional: 3350-0000 - Fulana", "Telefone da Regional: 156, de segunda a sexta").
+    "Telefone da coordenação: 3350-0000" stays hidden (the "coordenação:" label of who is in charge). "emissão de
+    carteira de trabalho" is a service phrase after "Atendimento:". "agendamento" (optionally "prévio" and ",", "(",
+    ":" or "-"), then "com" and a word that is not a unit or channel word or an appointment detail (um/uma, no/pelo,
+    até, mínimo, antecedência, hora, horário, documentos, comprovante, carteira, CPF, RG, senha), anywhere in the
+    line, hides it: "Atendimento: agendamento com Fulana" and a line "Agendamento com Fulana" are hidden;
+    "agendamento com a equipe", "agendamento com antecedência", "com no mínimo 48h" and "agendamento pelo 156" stay.
+    Known limits: only the first word after "com" is checked ("agendamento pela Fulana", "agendamento com antecedência,
+    Fulana" pass), "presencial com Fulana" and a name later in an hours line still pass, and a name alone on the next
+    line after "Fale com a gente" was shown (the whole-field check, which joins the lines with spaces, takes the four words as plain unit words; hidden since 0.81.0). No request was made for this version (the layers were not re-read): the change is
+    tested on synthetic lines only. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, fifth pass, v0.81.0** (the lows of the 0.80.0 review). A keyword split over two lines ("Mantida" /
+    "pela Fulana de Tal", "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano") was hidden only by the
+    whole-field check, which is skipped once another line of the record is hidden, so the name showed. Every type
+    that hides person lines (contracted CEIs, the office and work types) now reads each line together with the one
+    before it, joined by a line break, the way the whole-field check reads the record; when that pair hides, the line
+    before does not hide alone and the second line does not read as hours or a service, the second line is hidden (the
+    first half stays). The multi-word patterns accept a line break wherever they had a space. The whole-field check is
+    skipped only when a line hid on its own rules (not by the split check), so a keyword split over three lines still hides the whole field. The
+    garden allowlist already hid both halves and is unchanged. Work types: after a line whose contact phrase ends in "a
+    gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the split check hides the
+    next line unless it is made only of channel, unit, connector and hours words, numbers and punctuation, or is a
+    street address. Known limits: other words on that line are hidden too, on the safe side; after a guarded
+    phrase ending in ',' or ';' with no name after it the line is hidden, on the safe side; a guarded phrase complete on the
+    first of three lines, then a contact line, then the name ("Telefone da Regional:" / "3350-0000" / "- Fulana")
+    shows the name; when the line
+    before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima", "Coordenadora" / "geral:
+    Fulana") the pair is not read and the name passes, as in 0.80.0. Checked on 2026-11-27 (UTC) with the server's own
+    query and User-Agent, one GET per layer to `geocuritiba.ippuc.org.br` (the 12 layers whose type hides person
+    lines; 306 records, 253 with an `observacao`), replayed offline before and after the change: 131 hidden-line
+    markers before and 131 after, and every record's `hours` is identical (0.79.0 gives the same). The reads were
+    deleted after the check; the tests use synthetic lines. No new host for the server and the link allowlist is
+    unchanged. **0.81.0 also fixes leaks 0.80.0 introduced** (Security Reviewer, after the merge): a guarded word's
+    rest is read for at most 100 steps and may not end in ',' or ';' (a long `liceu de oficios` line cut at commas
+    showed "…, Falar com a gente, Fulana"; a 400 KB line took about 4 s); two lines joined by a line break keep the
+    guard ("Telefone da" / "Regional Fulana"); a name on the line after any guarded contact phrase or "agendamento com
+    o RH" is hidden, the line before read uncut; "agendamento com Dias/Uma/hora/senha" at the end of a line is hidden.
+    The whole next line is read ("3350-0000 - Fulana", "pelo 156 ou com a Fulana"), and the split check also reads
+    three lines ("Tratar com" / "o RH" / "Fulana"); that line is kept only when it is made of channel, unit,
+    connector and hours words, numbers and punctuation, or is a street address. "whats app" now reads one way only (a
+    line of repeated "whats app" backtracked exponentially in 0.80.0). The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said: it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone, and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested). On 29,400 generated lines 0.79.0 shows a name
+    in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+  - **Name filter, sixth pass, v0.82.0** (work types). After "agendamento com", um/uma, dia(s), hora and senha count
+    as appointment details only before their own detail words (um/uma: semana, dia, hora, minuto, mês; dia(s):
+    útil/úteis, corridos, antes, "de antecedência/prazo"; hora: marcada/agendada; senha: retirada, prévia, "na/pela"
+    and a place or channel), so "agendamento com Dias de Souza", "com Hora pelo 156" and "com Uma 3350-0000" are
+    hidden. On the line after a guarded phrase, "dia(s)" after a number counts as hours only before "de", "hora(s)"
+    only after a one- or two-digit number, and "útil/úteis" only after "dia(s)": "156 Dias", "8 Dias", "156 Hora",
+    "Util" and "Úteis" are hidden there; "2 dias de antecedência", "24 horas" and "Dias úteis" stay. Known limits:
+    "8 Hora" still reads as hours; "100 horas" and "2 dias" alone there are hidden, on the safe side. No request was made for this
+    version (synthetic lines only). No new host for the server and the link allowlist is unchanged.
+  - **Name filter, seventh pass, v0.84.0** (work types). After "agendamento com", um/uma before dia(s) or hora(s)
+    counts as a detail only when útil/úteis, corrido(s), antes or "de antecedência/prazo" follows, as for dia(s), or
+    hora(s) marcada/agendada or "e meia de antecedência/prazo": "com Uma Dias", "com Uma Dias Silva" and "com Uma Dias
+    de Souza" are hidden; "com um dia de antecedência", "com uma hora antes" and "com uma hora marcada" stay. Senha
+    also counts before "de atendimento" and "numerada", only before the end, a digit or punctuation ("com senha
+    numerada Fulana" is hidden). Known limits: um/uma and dia(s) or hora(s) before any other word ("com uma hora de
+    tolerância") is hidden, on the safe side; a name after a full detail passes, as before; "agendamento com senha
+    numerada" followed by a line that starts with a word hides the field (the whole-field check joins lines with
+    spaces); "30 dias" and "1 dia" alone on the line after a guarded phrase are hidden, on the safe side,
+    while "10 horas" there reads as hours (like "24 horas"). No request was made; no new host.
+  - **Name filter, eighth pass, v0.86.0** (work types; the 0.84.0 Change Reviewer's Lows and the Security Reviewer's
+    R1-R3). After "agendamento com senha numerada" or "… senha de atendimento", the rest of the line must be made only
+    of numbers, punctuation, channel, unit and hours words and connectors (the steps of the guarded-phrase rest; a
+    step is one word or one character, at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h" and
+    "(com senha numerada)" stay; "com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)" and "…
+    numerada 3350-0000 Fulana" are hidden (0.84.0 read only the first character after the words and showed them). The
+    whole-field check (lines joined with spaces) reads the rest the same way, so "Agendamento com senha numerada"
+    followed by "Segunda a sexta, 8h às 17h" keeps both lines (0.84.0 hid the field) and a name on any later line
+    hides the field when that check runs (not when another line hid on its own rules); the split check reads the next
+    two lines after such a line (also "com a senha numerada"), up to the third line from it, even when they start with
+    a number, so "… senha numerada," / "3350-0000 Fulana" hides the second line when the whole-field check is skipped
+    (corrected in v0.88.0: this entry first said only the next line was read). "corrido" alone is no longer a day
+    detail ("corridos" is): "agendamento com um dia corrido" is now hidden. Known limits: any other word in the rest
+    hides the line or the field, on the safe side ("exceto feriados", "sábados", "domingos", since "Domingos" is a
+    name; a later line "Documentos: RG"); a name made only of hours, unit or channel words ("Domingo", "Sexta",
+    "Regional") reads as hours and is shown. Checked on 2026-11-27 (UTC) by a one-off script (not the server, so not
+    through the host gate; the server's fixed query and User-Agent `curitibai-mcp/0.7
+    (+https://github.com/Bossmann007/curitibai)`, one GET per layer, 6 s apart, 19:44:03 to 19:45:16): the 12 layers
+    whose type hides person lines (306 records, 253 with an `observacao`), replayed offline with 0.85.0 and 0.86.0:
+    131 hidden-line markers in each and every record's `hours` identical; no record has "agendamento com senha". The
+    reads were deleted after the check; the tests use synthetic lines. No new host for the server and the link
+    allowlist is unchanged.
+  - **Name filter, ninth pass, v0.88.0** (work types; the 0.86.0 review follow-ups). No behaviour change. Known
+    limits, tested: when another line hid on its own rules, the whole-field check is skipped and the split check reads
+    at most the third line from the "agendamento com senha numerada" line, so a name on the fourth line or later,
+    after two schedule lines ("Responsável: Beltrano." / "Agendamento com senha numerada" / "Segunda a sexta" / "das
+    8h às 17h" / "Fulana"), is shown (the same class as the v0.81.0 limit); with no other hidden line the field is
+    hidden. A weekday word alone after "senha numerada" ("senha numerada, Domingo") reads as hours and is shown: a
+    rule that read a weekday as hours only next to "a/às", a digit or "fechado" was tried and dropped, because it hid
+    ordinary schedules ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)",
+    "sábado e domingo"), now tested as kept. No request was made; no new host.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
@@ -1552,10 +1721,23 @@ changes (owner request, 2026-11-23: monthly and automatic).
     named anyone. The `site` field is never
     read. No new host for the server and the link allowlist is unchanged. Since the review of
     this version the shared e-mail filter (every type, old and new) also drops a `curitiba.pr.gov.br` address whose
-    local part is two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva"), unless the first
-    word is a unit prefix (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
-    nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). A one-word local part shaped like a name
-    ("fulanasilva") is not caught by this rule; `noEmails` covers the two types where one was read.
+    local part is two or more words joined by ".", "_" or (since v0.74.0) "-" ("fulana.silva"), unless the first
+    word is a unit prefix. Since v0.74.0 the first word may be a single letter ("j.silva"), each word may end in
+    digits ("maria2.souza", "maria.souza2"), a number may close it ("maria.souza.2", "maria_souza_01") and "-" is a
+    separator too ("ana-lima"). Since v0.78.0 separators may repeat ("maria..silva"), a middle word may be a single
+    letter when the last has 2+ letters ("ana.c.lima", "joao.e.silva"), and a final
+    single letter is a surname initial when the first word and the word just before it have 2+ letters
+    ("maria.s", "maria.silva.s", "maria.s.2"; letter codes such as "sme.d.p.e" stay);
+    exactly two single letters ("a.b") or a word and a number ("sec.2") never match. The unit prefixes are checked first and
+    keep an address whose first word (trailing digits ignored) they are (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
+    nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). Known limits: a one-letter code before a sector
+    word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a", "ti.a", "sme.d"), a word, a letter and a number ("sec.e.2") or a connector address ("esporte.e.lazer") are dropped like names (none was read). A one-word local part shaped like a name
+    ("fulanasilva") or one ending in a separator ("maria.silva.") , ending in two initials ("joao.p.s", read like the letter code "fas.n.s") or with a word starting with a number ("2maria.silva", "maria.2silva") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
+    checked on 2026-11-27 against a re-read of the 89 urban-equipment layers (2,167 records, 1,765 city e-mails, 776
+    distinct, one request per layer, read again for the final rule with the same counts): 1,763 are kept before and
+    after, none newly hidden. The v0.78.0 shapes were checked the same way on 2026-11-27 (one re-read, same counts): 1,763 kept
+    with the old rule and with the first draft of the new one (the final rule drops less than that draft and more
+    than the old rule, so the count holds).
   - Live call of the built handler on 2026-11-27 from 00:31:16 UTC (3 processes, 1 request each to layer 61): `casa
     da leitura` near Bairro Alto (-25.4055, -49.2035), `radius_m` 3000: `total` 0 in 562 ms, the note naming `farol do
     saber` and `biblioteca`; with `bairro` "bacacheri": the Casa da Leitura Dario Vellozo, 5 lines, 1 phone, 1 e-mail.
@@ -1726,7 +1908,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
   the answer gives the zone, micro-bairro and micro-region codes together. To learn this, three whole-layer queries
   without geometry were run by hand once on 2026-11-26 (a count, a count by `cd_microrregiao`, and 12 rows of the codes
   above); the tool never sends a `where` query to this layer. Example (Portão, -25.4766, -49.2925): `EE` "EIXO
-  ESTRUTURAL", PORTÃO, micro-bairro 27.0, micro-region 0.
+  ESTRUTURAL", PORTÃO, micro-bairro 27.0, micro-region 0. Since 0.71.0 the tool also reads `cd_microbairro` as a
+  number (returned in its JSON form, 27.0 as "27") and `cd_microrregiao` as text of 1 to 6 digits; the layer's field
+  types were not re-read for this (no host contacted). Since 0.77.0 the `microbairro` field description gives that
+  returned form ("27"), not "27.0" (no host contacted).
 
 ### `service_areas_at_point`: IPPUC GeoCuritiba thematic map, health unit areas and CRAS territories (since 0.23.0)
 
@@ -2040,6 +2225,118 @@ server):
   is the one the PDF gives, and the guide's consent for that step says it was not opened. Not verified: whether these
   channels are unchanged since 2024, and whether the "Ouvidoria da CGM" is what a citizen calls the
   "Ouvidoria-Geral do Município" (the PDF does not use that name).
+
+Ouvidoria anonymity follow-up (`ouvidoria`, since 0.69.0, written 2026-11-27). **No request was made**: no host was
+contacted, by hand or by the server, so no robots.txt or terms were re-read; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened. Everything comes from the 0.43.0 record
+above:
+
+- The CGM e-mail spelling `falecomacgm@curitiba.pr.gov.br` matches the 0.43.0 record (and the constant `CGM_EMAIL`
+  written from it); the PDF was not re-read.
+- Registration: the record says the identified and confidential forms need an e-Cidadão account and the anonymous form
+  none, and that the Curitiba Ouve site steps show only the identified and anonymous forms. The guide says so and
+  says what the site asks today was not verified.
+- The record gives the three forms with the denúncia channels; whether a plain reclamação (not a denúncia) can be
+  anonymous is not in it, and the guide says that was not verified.
+- That an e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own
+  observation, not a fact from the PDF; the guide's `what`, step 5 and `note` say so.
+
+Ouvidoria anonymity wording (`ouvidoria`, since 0.75.0, written 2026-11-27; the Security Reviewer's R1-R5 on
+0.69.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence rests on the 0.43.0 record above or is marked as the project's own:
+
+- Step 6, "a denúncia é registrada, mas sem resposta nem acompanhamento" (was "é apurada"): the record says a denúncia
+  "can also be registered" and the anonymous form has "no account, no answer or follow-up"; it does not say the
+  denúncia is investigated.
+- `what`, "forma anônima (sem resposta nem acompanhamento)", and step 8, "(não vale para a forma anônima, que não
+  recebe resposta)" after the 30 days: the record's "anonymous: no account, no answer or follow-up".
+- Step 5, "segundo o guia de 2024, que o CuritibAI não conferiu hoje no site": the record's anonymous form is the
+  PDF's; the site was not opened (the "Not opened" line above).
+- Step 4 and the `note`, that the anonymous form skips the registration but what the citizen writes or attaches (name,
+  address, phone, a face, the location saved in a photo, the file name) can identify them: this project's own
+  observation, marked "(observação do CuritibAI, não do guia de 2024)"; the record only says photos and documents
+  may be attached. Since 0.79.0 step 4 says the "no registration" part in its own sentence, as the 2024 guide's
+  (below).
+
+Ouvidoria anonymity wording, second pass (`ouvidoria`, since 0.79.0, written 2026-11-27; the Security Reviewer's
+R1-R3 on 0.75.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence rests on the 0.43.0 record above or is marked as the project's own:
+
+- Step 4, "Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o CuritibAI
+  não conferiu isso hoje no site)": the record's "anonymous: no account, no answer or follow-up". It is the 2024
+  guide's, not the project's; the Curitiba Ouve site was not opened, so what it asks today is not verified.
+- Step 4, a separate sentence that starts "Observação do CuritibAI, não do guia de 2024": the text and the
+  attachments (name, address, phone, a face, the location saved in a photo, the file name) can identify the
+  citizen. This project's own observation; the record only says photos and documents may be attached.
+- `what` ("Mesmo na forma anônima, o texto e os anexos podem identificar o cidadão") and step 5 ("O texto e os anexos
+  do e-mail também podem identificar o cidadão"): the same observation, marked "(observação do CuritibAI, não do
+  guia de 2024)"; the `note` says it is the project's own for the summary and steps 4 and 5.
+- Tested: each step 5 sentence that names anonymity or identification (`/anônim|identific/`) carries either the
+  2024-guide hedge or the project's own marker.
+
+Ouvidoria anonymity wording, third pass (`ouvidoria`, since 0.83.0, written 2026-11-27; the Security Reviewer's R1-R2
+on 0.79.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Both changed
+sentences are marked as the project's own:
+
+- Step 4, R1: the observation now names what to leave out instead of "deixe isso de fora": "o texto e os anexos podem
+  identificar o cidadão; para continuar anônimo, deixe de fora nome, endereço, telefone, rosto, a localização gravada
+  na foto e o nome do arquivo". The same list as the 0.79.0 sentence, still marked "Observação do CuritibAI, não do
+  guia de 2024"; the record only says photos and documents may be attached.
+- Step 4, R2, a new sentence: "Observação do CuritibAI, não do guia de 2024: a forma anônima não garante anonimato, e
+  o CuritibAI não sabe o que o site registra sobre o acesso." This project's own observation: the record describes
+  the anonymous form (no account, no answer or follow-up), not what the site logs, and the site was not opened. The
+  `note` says so.
+- Tested: the step 4 sentences are pinned with their marker, and no text of the guide says "deixe isso de fora".
+
+Ouvidoria anonymity wording, fourth pass (`ouvidoria`, since 0.85.0, written 2026-11-27; the Security Reviewer's
+R1-R4 on 0.83.0). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence rests on the 0.43.0 record above or is marked as the project's own:
+
+- Step 4, R1-R2: "para reduzir o risco de ser identificado, deixe de fora o que a denúncia não precisa: nome,
+  endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo, nomes ou rostos de outras pessoas,
+  placas de carro, números de documentos, e-mail, datas ou lugares e qualquer detalhe que só você conheça" (was "para
+  continuar anônimo, deixe de fora …" with the first six items). "o que a denúncia não precisa" keeps the facts a
+  denúncia needs (who, when, where) out of the list (review of this PR). Still in the sentence marked "Observação do CuritibAI, não do guia de
+  2024"; the record only says photos and documents may be attached.
+- Step 4, R4: "Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma anônima
+  proteja a sua identidade, e não sabe o que o site registra sobre o acesso" (was "a forma anônima não garante
+  anonimato"). This project's own observation; the record describes the anonymous form, not what the site logs.
+- `what`, R3, a new sentence: "O CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão
+  (observação do CuritibAI, não do guia de 2024)". The same observation; the `note` names the summary and step 4.
+- Hedges where a sentence named anonymity or identification without one: step 4 joins its two "Pelo guia de 2024"
+  sentences into one, "o cidadão escolhe a forma (identificada ou anônima) e pode anexar fotos e documentos, e a forma
+  anônima não pede cadastro e não recebe resposta nem acompanhamento (o CuritibAI não conferiu isso hoje no site)";
+  `what` says "no Portal Curitiba Ouve (o CuritibAI não conferiu isso hoje no site)" after the 2024 guide's denúncia
+  clause. Both rest on the record's three forms and the "Not opened" line above.
+- Tested: each sentence of `what` and step 4 that names anonymity or identification (`/anônim|identific/`) carries
+  either the 2024-guide hedge in the same clause ("guia de 2024 … o CuritibAI não conferiu hoje no site", no ";"
+  between) or the project's own marker; no text of the guide says "continuar anônimo" or "não garante anonimato".
+
+Ouvidoria anonymity wording, fifth pass (`ouvidoria`, since 0.87.0, written 2026-11-27; the review follow-ups of
+0.85.0, PR #100). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence is marked as the project's own, as before:
+
+- Step 4: "datas ou lugares" becomes "datas ou lugares que identifiquem o cidadão". The denúncia itself needs who,
+  when and where (the 0.85.0 entry above), so only the dates and places that point to the citizen are left out.
+- Step 5, after the sentence that sends a citizen who does not want to be identified to the anonymous form: "; o
+  CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão (observação do CuritibAI, não do
+  guia de 2024)". The same observation as in the summary and step 4; the `note` now names the summary and steps 4
+  and 5.
+- One grammatical person: the summary and steps 4 and 5 speak of "o cidadão" (step 4's "a sua identidade" becomes
+  "a identidade do cidadão", "deixe de fora" becomes "o cidadão pode deixar de fora", "só você conheça" becomes "só o
+  cidadão conheça"). The task brief offered "que identifiquem você"; "o cidadão" was chosen because the summary and the other
+  steps already use it.
+- Tested: no text of the guide (title, summary, note, every step's action and consent) promises anonymity, even in a
+  sentence with the project's marker: an indicative "garante", "assegura" or "protege" before "anonimato", "você", "o
+  cidadão" or "identidade", "ninguém saberá", "ninguém vai saber", "totalmente anônim" or "100% anônim" fails it, and
+  the guide's own "não pode garantir que … proteja" does not (infinitive and subjunctive). The summary and steps 4
+  and 5 never say "você", "deixe", "sua identidade" or "seu nome" (checked with Unicode letter boundaries, since `\b`
+  misses "você").
 
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
