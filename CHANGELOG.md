@@ -2,6 +2,40 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.89.0 - 2026-11-27
+
+Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes nothing. Built as 0.68.0 in PR #83
+and renumbered after merging main (0.88.0); no 0.68.0 was released, so the notes "left to 0.68.0" and "0.68.0 was
+taken by PR #83" below mean this version.
+
+- `procurement_search`: new `mode` `plan` (default `search`, unchanged). It returns the Plano de Contratações Anual
+  that one listed Curitiba municipal body published in PNCP for a `year` (default next year in Brasília, at most next
+  year): item count and planned total, first publication and last update, totals per category (Material, Serviço,
+  Obra...) and the `limit` requesting units (secretarias, departamentos) with the largest totals. `body_cnpj` picks
+  the body among the same 15 CNPJs as the search (default `76417005000186`, Município de Curitiba); any other CNPJ is
+  `invalid_argument`. Read on 2026-11-27: the Município de Curitiba's 2027 plan has 31 units, 4,897 items and
+  R$ 4,161,572,267.52. No item text and no supplier is returned; unit and body names are masked like objects.
+- Source: PNCP's own read routes on the same host, `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades`
+  and `.../valorescategoriaitem`, about 0.1 s each, two requests at most through the PNCP gate. The Consulta PCA route
+  named in the brief (`/api/consulta/v1/pca/atualizacao`) timed out twice at 40 s, then took 27.8 s for one page of
+  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422 (an empty 204 or an empty list counts too):
+  answered as `plan_found: false` with that status, and kept inside the gate's turn so it does not hold back the next
+  PNCP request; unit rows that all fail the strict check are `source_unavailable` (a renamed field is not "no plan").
+  When the category request fails or none of its rows passes the check, the unit totals are kept, `categories` is
+  empty and the note says why.
+- `year`/`body_cnpj` without `mode: "plan"`, and `query`, `from`, `to`, `page_source`, `modality`, `page` or `skip`
+  with it, are `invalid_argument`.
+- Tool contract: `procurement_search` gains `mode`, `year` and `body_cnpj`; its output `data` is the search object
+  (unchanged) or the plan object (snapshot updated). The description was rewritten to name the plan mode within 400
+  characters; all descriptions sum to 9,593 of the 9,600 ceiling. A sibling tool was not added: it would have needed
+  about 225 characters cut from other tools' descriptions.
+- Curitiba App table: the "extra" row says annual procurement plans too.
+- Citizen eval: q140 ("O que a Prefeitura planeja comprar em 2027?") answered with synthetic PCA fixtures (a planted
+  e-mail and phone in a unit name, a row of another body, one of another year and one without a value); 140 of 144.
+- Licence (owner decision, 2026-11-27): the CC BY-ND 3.0 licence covers the gov.br site and the PNCP API has no
+  licence of its own; the plan mode returns only aggregate facts, credited to PNCP with the source link.
+- No new network host, no new link, no new dependency.
+
 ## 0.88.0 - 2026-11-27
 
 Person-name filter after "senha numerada", follow-ups of the 0.86.0 reviews (PR #101). 27 tools. Publishes nothing.

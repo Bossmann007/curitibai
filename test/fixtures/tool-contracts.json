@@ -5617,6 +5617,26 @@
     "inputSchema": {
       "type": "object",
       "properties": {
+        "mode": {
+          "default": "search",
+          "description": "'search' (default): procurement published in a date range. 'plan': one body's Plano de Contratações Anual (PCA) for `year`, as planned totals per category and per requesting unit (`limit` units, largest first).",
+          "type": "string",
+          "enum": [
+            "search",
+            "plan"
+          ]
+        },
+        "year": {
+          "description": "Mode 'plan' only: the plan year, up to next year. Default: next year (Brasília).",
+          "type": "integer",
+          "minimum": 2000,
+          "maximum": 2100
+        },
+        "body_cnpj": {
+          "description": "Mode 'plan' only: 14-digit CNPJ of one listed body (docs/sources.md). Default 76417005000186, Município de Curitiba; others publish their own plan, e.g. 13792329000184 Fundo Municipal da Saúde.",
+          "type": "string",
+          "pattern": "^\\d{14}$"
+        },
         "query": {
           "description": "Text in the returned object or the body name, accents and case ignored (e.g. 'medicamentos', 'FAS'). Sent to PNCP's site search, which matches whole words ('merenda', not 'merend'); only results whose returned object or body name contain it are kept.",
           "type": "string",
@@ -5675,210 +5695,351 @@
       "type": "object",
       "properties": {
         "data": {
-          "type": "object",
-          "properties": {
-            "items": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "pncp_id": {
-                    "type": "string"
-                  },
-                  "body_cnpj": {
-                    "type": "string"
-                  },
-                  "body_name": {
-                    "type": "string"
-                  },
-                  "modality_code": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "modality": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "object": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "object_withheld": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "const": "may_name_a_person"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "object_truncated": {
-                    "type": "boolean"
-                  },
-                  "estimated_value": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "status_code": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "status": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "published_at": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "proposals_open_at": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "proposals_close_at": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "link": {
-                    "type": "string",
-                    "format": "uri"
-                  }
-                },
-                "required": [
-                  "pncp_id",
-                  "body_cnpj",
-                  "body_name",
-                  "modality_code",
-                  "modality",
-                  "object",
-                  "object_withheld",
-                  "object_truncated",
-                  "estimated_value",
-                  "status_code",
-                  "status",
-                  "published_at",
-                  "proposals_open_at",
-                  "proposals_close_at",
-                  "link"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "from": {
-              "type": "string"
-            },
-            "to": {
-              "type": "string"
-            },
-            "modality": {
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
-            },
-            "scanned_pages": {
+          "anyOf": [
+            {
               "type": "object",
               "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pncp_id": {
+                        "type": "string"
+                      },
+                      "body_cnpj": {
+                        "type": "string"
+                      },
+                      "body_name": {
+                        "type": "string"
+                      },
+                      "modality_code": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "modality": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "object": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "object_withheld": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "may_name_a_person"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "object_truncated": {
+                        "type": "boolean"
+                      },
+                      "estimated_value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "status_code": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "status": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "published_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "proposals_open_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "proposals_close_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "link": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "pncp_id",
+                      "body_cnpj",
+                      "body_name",
+                      "modality_code",
+                      "modality",
+                      "object",
+                      "object_withheld",
+                      "object_truncated",
+                      "estimated_value",
+                      "status_code",
+                      "status",
+                      "published_at",
+                      "proposals_open_at",
+                      "proposals_close_at",
+                      "link"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
                 "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "modality": {
                   "type": "integer",
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
                 },
-                "to": {
+                "scanned_pages": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "to": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false
+                },
+                "next_page": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "next_page_source": {
+                  "type": "string",
+                  "enum": [
+                    "search",
+                    "scan"
+                  ],
+                  "description": "Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."
+                },
+                "next_skip": {
                   "type": "integer",
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "discarded": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Records of a listed body dropped because a required field was missing or malformed."
+                },
+                "note": {
+                  "type": "string"
                 }
               },
               "required": [
+                "items",
                 "from",
-                "to"
+                "to",
+                "modality",
+                "scanned_pages",
+                "next_page",
+                "next_page_source",
+                "next_skip",
+                "partial",
+                "discarded",
+                "note"
               ],
               "additionalProperties": false
             },
-            "next_page": {
-              "anyOf": [
-                {
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "plan"
+                },
+                "year": {
                   "type": "integer",
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
                 },
-                {
-                  "type": "null"
+                "body_cnpj": {
+                  "type": "string"
+                },
+                "body_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "plan_found": {
+                  "type": "boolean"
+                },
+                "item_count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "total_value": {
+                  "type": "number"
+                },
+                "published_at": {
+                  "description": "First publication of a unit's plan in PNCP (local time, as published).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "updated_at": {
+                  "description": "Latest update of a unit's plan.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "category": {
+                        "type": "string"
+                      },
+                      "item_count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "total_value": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "category",
+                      "item_count",
+                      "total_value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unit": {
+                        "type": "string"
+                      },
+                      "item_count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "total_value": {
+                        "type": "number"
+                      },
+                      "published_at": {
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "unit",
+                      "item_count",
+                      "total_value",
+                      "published_at",
+                      "updated_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "units_total": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "discarded": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Rows dropped because of another body or year, or a missing or malformed field."
+                },
+                "note": {
+                  "type": "string"
                 }
-              ]
-            },
-            "next_page_source": {
-              "type": "string",
-              "enum": [
-                "search",
-                "scan"
+              },
+              "required": [
+                "mode",
+                "year",
+                "body_cnpj",
+                "body_name",
+                "plan_found",
+                "item_count",
+                "total_value",
+                "published_at",
+                "updated_at",
+                "categories",
+                "units",
+                "units_total",
+                "discarded",
+                "note"
               ],
-              "description": "Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."
-            },
-            "next_skip": {
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
-            },
-            "partial": {
-              "type": "boolean"
-            },
-            "discarded": {
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991,
-              "description": "Records of a listed body dropped because a required field was missing or malformed."
-            },
-            "note": {
-              "type": "string"
+              "additionalProperties": false
             }
-          },
-          "required": [
-            "items",
-            "from",
-            "to",
-            "modality",
-            "scanned_pages",
-            "next_page",
-            "next_page_source",
-            "next_skip",
-            "partial",
-            "discarded",
-            "note"
-          ],
-          "additionalProperties": false
+          ]
         },
         "source_url": {
           "type": "string",

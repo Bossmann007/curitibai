@@ -416,3 +416,129 @@ export function getSearchPage(query: string, modality: number, page: number, sta
     }),
   );
 }
+
+/**
+ * The PNCP API's own read routes for the Plano de Contratações Anual (PCA), on the same host and gate as the Consulta
+ * API (docs/sources.md, v0.89): no auth in its OpenAPI, about 0.1 s per answer on 2026-11-27. The Consulta PCA route
+ * filters by update date, not by year, and took 28 s for one page, so it is not used.
+ */
+export const PNCP_API = "https://pncp.gov.br/api/pncp";
+/** 31 units for the Município de Curitiba in 2027 (2026-11-27); a full page means more may exist (said in the note). */
+export const PCA_UNITS_PAGE_SIZE = 500;
+
+export function pcaUnitsUrl(cnpj: string, year: number): string {
+  return `${PNCP_API}/v1/orgaos/${cnpj}/pca/${year}/consolidado/unidades?pagina=1&tamanhoPagina=${PCA_UNITS_PAGE_SIZE}`;
+}
+
+export function pcaCategoriesUrl(cnpj: string, year: number): string {
+  return `${PNCP_API}/v1/orgaos/${cnpj}/pca/${year}/valorescategoriaitem`;
+}
+
+export const PNCP_PLAN_LICENSE_NOTE =
+  "Source: Portal Nacional de Contratações Públicas (PNCP), Plano de Contratações Anual published by the body " +
+  "(https://pncp.gov.br/api/pncp). The PNCP site (https://www.gov.br/pncp/pt-br) is published under CC BY-ND 3.0; no " +
+  "separate licence for the API data was found. Totals per category and per requesting unit only; no item and no " +
+  "supplier is returned. Unit and body names have CPF/CNPJ-shaped numbers, e-mails and phone numbers replaced by " +
+  "[masked] and are cut at 300 characters. A plan is what the body intends to buy, not a purchase. Unofficial; not affiliated with PNCP, the " +
+  "Ministério da Gestão e Inovação em Serviços Públicos (MGI) or Prefeitura de Curitiba.";
+
+export interface PlanUnit {
+  unit: string;
+  item_count: number;
+  total_value: number;
+  published_at: string;
+  updated_at: string;
+}
+
+export interface PlanUnits {
+  body_name: string | null;
+  units: PlanUnit[];
+  received: number;
+  discarded: number;
+}
+
+export interface PlanCategory {
+  category: string;
+  item_count: number;
+  total_value: number;
+}
+
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+const count = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
+const amount = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+const stamp = (v: unknown) => (typeof v === "string" && DATE_TIME.test(v) ? v.slice(0, 19) : null);
+const name = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? maskObject(v).text : null);
+
+/** Rows of another body or year, or with a missing or malformed field, are dropped and counted (fail closed). */
+export function parsePlanUnits(body: string, cnpj: string, year: number): PlanUnits {
+  const list = parseJson(body);
+  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+  const units: PlanUnit[] = [];
+  let bodyName: string | null = null;
+  for (const rec of list as unknown[]) {
+    const r = (typeof rec === "object" && rec !== null ? rec : {}) as Record<string, unknown>;
+    const unit = name(r.nomeUnidade);
+    const items = count(r.quantidade);
+    const total = amount(r.valorTotal);
+    const published = stamp(r.dataPublicacaoPncp);
+    const updated = stamp(r.dataAtualizacao);
+    if (r.cnpj !== cnpj || r.anoPca !== year || unit === null || items === null || total === null || published === null || updated === null) {
+      continue;
+    }
+    bodyName ??= name(r.razaoSocial);
+    units.push({ unit, item_count: items, total_value: total, published_at: published, updated_at: updated });
+  }
+  return { body_name: bodyName, units, received: list.length, discarded: list.length - units.length };
+}
+
+export function parsePlanCategories(body: string): { categories: PlanCategory[]; discarded: number } {
+  const list = parseJson(body);
+  if (!Array.isArray(list)) throw new SourceUnavailableError("unexpected PNCP response");
+  const categories: PlanCategory[] = [];
+  for (const rec of list as unknown[]) {
+    const r = (typeof rec === "object" && rec !== null ? rec : {}) as Record<string, unknown>;
+    const category = name(r.categoriaItemNome);
+    const items = count(r.quantidadeItens);
+    const total = amount(r.valorTotal);
+    if (category !== null && items !== null && total !== null) categories.push({ category, item_count: items, total_value: total });
+  }
+  return { categories, discarded: list.length - categories.length };
+}
+
+/**
+ * PNCP answers 404 (units: "CNPJ do Órgão/Entidade inválido", even for a listed body) or 422 ("Nenhum Plano de
+ * Contratação Anual cadastrado para o ano informado") when the body has no plan for the year; an empty 204 is read the
+ * same way. Returned as a value
+ * inside the gate's turn, so the gate does not count it as a host failure and hold back the next request.
+ */
+export type PlanAnswer<T> = { found: T } | { none: number };
+
+function getPlan<T>(url: string, parse: (body: string) => T, startBy?: number): Promise<{ value: PlanAnswer<T>; fetchedAt: string }> {
+  return underOwnBudget(startBy, () =>
+    sharedCache.getOrLoad(`GET ${url}`, async () => {
+      const got = await gate.run(
+        async (): Promise<{ body: string } | { none: number }> => {
+          try {
+            return { body: await fetchPncp(url) };
+          } catch (err) {
+            const m = err instanceof SourceUnavailableError && /^HTTP (404|422)$/.exec(err.reason);
+            if (m) return { none: Number(m[1]) };
+            throw err;
+          }
+        },
+        { startBy },
+      );
+      if ("none" in got) return got;
+      // An empty body is PNCP's HTTP 204 (as in parseContratacoes): nothing published for that body and year.
+      return got.body.trim() === "" ? { none: 204 } : { found: parse(got.body) };
+    }),
+  );
+}
+
+export function getPlanUnits(cnpj: string, year: number, startBy?: number) {
+  return getPlan(pcaUnitsUrl(cnpj, year), (b) => parsePlanUnits(b, cnpj, year), startBy);
+}
+
+export function getPlanCategories(cnpj: string, year: number, startBy?: number) {
+  return getPlan(pcaCategoriesUrl(cnpj, year), parsePlanCategories, startBy);
+}

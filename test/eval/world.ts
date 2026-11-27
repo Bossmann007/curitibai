@@ -10,6 +10,7 @@ import { STATIONS, stationDataUrl } from "../../src/sources/ana.js";
 import { censusBairroUrl, layerQueryUrl, pointQueryUrl, resolveType, roundPoint, type PointLayer } from "../../src/sources/geocuritiba.js";
 import { listingPageUrl, ROBOTS_URL } from "../../src/sources/guaira.js";
 import { VACCINATION_URL } from "../../src/sources/imunizaja.js";
+import { pcaCategoriesUrl, pcaUnitsUrl } from "../../src/sources/pncp.js";
 import { ALIQUOTA_MUNICIPIO_URL, ALIQUOTA_UF_URL, ALIQUOTA_UNIAO_URL, CLASS_TRIB_URL, NBS_URL, NCM_URL, VERSAO_URL } from "../../src/sources/receita.js";
 import { PHONES_SOURCE_URL } from "../../src/tools/usefulPhones.js";
 import { fixture, happyRoutes, pncpSearchRoutes, type Route } from "../helpers.js";
@@ -189,8 +190,17 @@ export function routesFor(tool: string, args: Args): Record<string, Route> {
     case "weather_alerts":
     case "places_search":
       return happyRoutes();
-    case "procurement_search":
+    case "procurement_search": {
+      if (args.mode === "plan") {
+        const cnpj = typeof args.body_cnpj === "string" ? args.body_cnpj : "76417005000186";
+        const year = typeof args.year === "number" ? args.year : Number(TODAY.slice(0, 4)) + 1;
+        return {
+          [`GET ${pcaUnitsUrl(cnpj, year)}`]: { body: fixture("pncp_pca_units_synthetic.json"), contentType: JSON_TYPE },
+          [`GET ${pcaCategoriesUrl(cnpj, year)}`]: { body: fixture("pncp_pca_categories_synthetic.json"), contentType: JSON_TYPE },
+        };
+      }
       return typeof args.query === "string" ? pncpSearchRoutes(args.query, (args.modality as number | undefined) ?? 6) : happyRoutes();
+    }
     case "vaccination_sites_search":
       return { [`GET ${VACCINATION_URL}`]: { body: fixture("imunizaja_locais_synthetic.html") } };
     case "city_facilities_search": {

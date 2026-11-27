@@ -122,6 +122,11 @@ behind it.
   numbers (amounts of 10+ digits, long process numbers, 2 digits or 0 plus 2 digits followed by 8 or 9 digits).
   Since 0.13.2 two year-like numbers joined by a space, hyphen or dot ("2025 - 2026", "2026-2027") are masked too,
   because an 8-digit phone can look like that; "2025/2026" is kept. `query` never matches a withheld object.
+- `procurement_search` mode `plan` (since 0.89.0) calls PNCP's own read routes
+  (`pncp.gov.br/api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades` and `.../valorescategoriaitem`) for one of the
+  listed body CNPJs and a year; nothing the user typed is sent. It returns totals only (item counts and planned values
+  per category and per requesting unit): no item text and no supplier. Unit and body names pass through the same mask
+  as objects (CPF/CNPJ-shaped numbers, e-mails, phones) and the 300-character cap.
 - `city_services_search` never returns a link to the city's obituary system (`obituarios.curitiba.pr.gov.br`, lists
   of deceased people): such services keep their catalog entry and `official_url`, with `online_url: null`. Online
   links that are not http(s) or carry a username or password are dropped too. Summaries pass through the same

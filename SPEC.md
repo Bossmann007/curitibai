@@ -1,6 +1,8 @@
-# SPEC: v0.88.0 Person-name filter after "senha numerada", review follow-ups
+# SPEC: v0.89.0 Annual procurement plan (PCA)
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
+Continued 2026-11-27 on a task brief that relays Enzo's approval to continue PR #83: main (0.88.0) merged in, the release
+renumbered from 0.68.0 to 0.89.0, and the licence question decided (below).
 **This change publishes nothing**: no workflow run, no tag, no merge.
 
 This file describes the current version only ([ADR 0006](docs/adr/0006-spec-holds-the-current-version.md)). Earlier
@@ -8,46 +10,69 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): the follow-ups of the 0.86.0 reviews (PR #101) on the
-work-type name filter after "senha numerada" / "senha de atendimento" (`src/sources/nameFilter.ts`, `readsNextLine`
-used by `hourLines` in `src/sources/geocuritiba.ts`). Smallest change; no tool contract change; no new citizen
-question.
+Answer "O que a Prefeitura planeja comprar em 2027?" from the Plano de Contratações Anual (PCA) that Curitiba municipal
+bodies publish in PNCP: how much each body plans to spend in a year, split by category (material, service, works) and
+by requesting unit (secretaria, departamento). Never supplier data. Smallest change: a `plan` mode of
+`procurement_search`.
 
-## Source
+## Source (read 2026-11-27 UTC)
 
-None new. No request was made; every fixture is synthetic (Fulana, Beltrano).
+`pncp.gov.br`, already contacted by `procurement_search` (same host, same gate, no new host or link). robots.txt 404
+(2026-11-27 00:54:17 UTC, User-Agent `curitibai-mcp/0.68`). gov.br/pncp "Dados Abertos" page, reread 01:01:54 UTC:
+the APIs give "itens do plano de contratações anual" and "Todas as buscas podem ser feitas sem necessidade de cadastro
+ou login"; the site is under CC BY-ND 3.0; no API terms found. Owner decision (2026-11-27, relayed in the task brief):
+the CC BY-ND licence covers the gov.br site and the API has no licence of its own, so the tool keeps returning only
+aggregate facts (totals), with credit to PNCP and the source link.
+
+The briefed route, Consulta `/api/consulta/v1/pca/atualizacao?cnpj=...`, timed out twice at 40 s and then answered
+in 27.8 s with 9,015 item rows (902 pages of 10) for one CNPJ and no year filter: unusable inside a 20 s call. Its two
+other PCA routes need a platform user id or a catalogue class. The PNCP API's own read routes (no auth in its OpenAPI)
+answer in about 0.1 s:
+
+- `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades?pagina=1&tamanhoPagina=500`: one row per requesting
+  unit (name, item count, total value, publication and update dates). Município de Curitiba 2027: 31 units, 4,897
+  items, R$ 4,161,572,267.52, equal to its `/consolidado` total.
+- `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/valorescategoriaitem`: item count and total per category (Material,
+  Serviço, Obra, ...).
+- No plan for that body and year: HTTP 404 (the units route says "CNPJ do Órgão/Entidade inválido" even for a listed
+  body) or 422 "Nenhum Plano de Contratação Anual cadastrado para o ano informado".
+
+Item rows (descriptions) are not read: thousands per body, and free text.
 
 ## Changes
 
-1. **Docs match code**: the 0.86.0 CHANGELOG note and docs/sources.md said that, when the whole-field check is
-   skipped, only the next line is read. The split check reads the next two lines (up to the third line from the
-   "senha numerada" line). The text is fixed, not the code: the CHANGELOG 0.86.0 entry and the docs/sources.md
-   eighth-pass entry are edited on purpose, and the 0.88.0 entry says so.
-2. **KISS**: `APPOINTMENT_DETAIL` no longer builds its senha branch with `.replace("SENHA_REST", SENHA_REST)` on the
-   pattern source; `SENHA_REST` is declared first and interpolated. The sources of `APPOINTMENT_NAMED`,
-   `APPOINTMENT_NAMED_JOINED` and `SENHA_END` were dumped before and after and are identical, so matching and timing
-   are unchanged; the 0.86.0 timing test covers them.
-3. **Known limit, documented**: a name on the fourth line or later after "senha numerada", after two schedule lines,
-   when another line hid on its own rules, is shown. Recorded in docs/sources.md and in a test that expects the
-   current behaviour, with a comment.
-4. **Weekday alone** (optional item, skipped): a rule that read a weekday as a step in the senha rest only after
-   "a/ao/aos/às" or before "a/e", a digit, "das" and a digit, or "fechado" was written (about 10 lines, every
-   v0.81.0 to v0.86.0 test green), but the code review found it hid ordinary schedules 0.87.0 kept
-   ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)", "sábado e domingo").
-   Not safe, so dropped; a test now keeps those schedules visible (8 failures on the dropped rule), and "senha
-   numerada, Domingo" shown is a tested known limit.
-5. **Docs and version**: docs/sources.md (ninth-pass entry), docs/roadmap-1.0.md, CHANGELOG 0.88.0, version 0.88.0 in
-   `package.json`, `package-lock.json`, `server.json`.
+1. **Mode** `plan` of `procurement_search` (`src/tools/procurementPlan.ts`, one early branch in the handler). Inputs
+   `mode` (`search` default, unchanged), `year` (default next year in Brasília, at most next year), `body_cnpj`
+   (default `76417005000186`, Município de Curitiba; only the 15 listed bodies); `limit` caps the units. Search-only
+   arguments in plan mode, and `year`/`body_cnpj` without it, are `invalid_argument`. Output `data` is the search
+   object (unchanged) or the plan object: body, year, `plan_found`, item count, total, first publication and last
+   update, `categories[]`, the `units[]` with the largest totals, `units_total`, `discarded`, note. Two requests at
+   most, through the PNCP gate: units first; no plan stops there.
+   Why a mode and not a sibling tool: tool descriptions sum to 9,586 of the 9,600 ceiling (`test/contracts.test.ts`);
+   a sibling needed about 225 characters cut from other tools. The brief named the mode first, and ADR 0005's own
+   example (`tax_reform_curitiba`) has topics with different answer shapes. The rewritten description is 398
+   characters; the sum is 9,593.
+2. **Source** (`src/sources/pncp.ts`): URLs, a strict parser (rows of another CNPJ or year, or with a missing field,
+   are dropped and counted; a body that is not an array, or rows that all fail, is `source_unavailable`), unit and
+   body names through `maskObject`, and a 404/422 returned as "no plan" inside the gate's turn, so the gate does not
+   hold back the host.
+3. **Eval**: q140 "O que a Prefeitura planeja comprar em 2027?" → `procurement_search {mode: "plan", year: 2027}`,
+   expect `ok` with `data.units` and `data.categories`; synthetic fixtures. `RESULT_PATH` reads `data.items` or
+   `data.units`.
+4. **Docs and version**: docs/tools.md (row and Curitiba App "extra" row), docs/sources.md (robots rows, PCA section
+   with every request), README row, docs/roadmap-1.0.md, CHANGELOG 0.89.0, version 0.89.0 in `package.json`,
+   `package-lock.json`, `server.json`. Still 27 tools.
 
 ## Out of scope
 
-Fixing the fourth-line limit or the weekday-alone limit; any new tool, host, link or question; touching the guarded-phrase rest.
+Item lists, a search inside a plan, other years' comparisons, every listed body in one call, the PCA CSV (bulk
+download), a public PNCP page link (the app route was not read).
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts`: every v0.81.0 to v0.86.0 test passes unchanged; the new v0.88.0
-  tests pass (weekday schedules visible, the two known-limit tests).
-- The schedule test fails on the dropped weekday rule (8 failures) and passes on 0.88.0.
-- `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
-- `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
-- `scripts/verify` exits 0 on the PR head.
+- `npx vitest run test/procurementPlan.test.ts test/contracts.test.ts test/eval`: plan with categories and the top
+  units sorted by total; masked unit names; dropped foreign rows; no plan → `plan_found: false` and the host still
+  answers the next call; unlisted CNPJ, a future year and mixed search/plan arguments → `invalid_argument`; q140 ok;
+  descriptions ≤ 9,600.
+- `node scripts/eval-summary.mjs`: `answered 140 / 144`.
+- `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.

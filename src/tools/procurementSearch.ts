@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  CURITIBA_BODIES,
   getPublicationPage,
   getSearchPage,
   MODALITIES,
@@ -11,6 +12,7 @@ import {
   type Procurement,
 } from "../sources/pncp.js";
 import { fold } from "../text.js";
+import { answerPlan, CITY_CNPJ, planData } from "./procurementPlan.js";
 import { RateLimitedError, SourceRefusedError } from "../http.js";
 import { OutOfTimeError } from "../hostGate.js";
 import { CALL_START_BUDGET_MS, envelope, fail, failFrom, ok, rateLimitedMessage, refusedPageNote, type ToolDef } from "./common.js";
@@ -39,6 +41,28 @@ const isoDate = z
   });
 
 export const procurementSearchInput = {
+  mode: z
+    .enum(["search", "plan"])
+    .default("search")
+    .describe(
+      "'search' (default): procurement published in a date range. 'plan': one body's Plano de Contratações Anual " +
+        "(PCA) for `year`, as planned totals per category and per requesting unit (`limit` units, largest first).",
+    ),
+  year: z
+    .number()
+    .int()
+    .min(2000)
+    .max(2100)
+    .optional()
+    .describe("Mode 'plan' only: the plan year, up to next year. Default: next year (Brasília)."),
+  body_cnpj: z
+    .string()
+    .regex(/^\d{14}$/)
+    .optional()
+    .describe(
+      `Mode 'plan' only: 14-digit CNPJ of one listed body (docs/sources.md). Default ${CITY_CNPJ}, Município de ` +
+        "Curitiba; others publish their own plan, e.g. 13792329000184 Fundo Municipal da Saúde.",
+    ),
   query: z
     .string()
     .trim()
@@ -107,23 +131,23 @@ const itemSchema = z.object({
   link: z.string().url(),
 });
 
-export const procurementSearchOutput = envelope(
-  z.object({
-    items: z.array(itemSchema),
-    from: z.string(),
-    to: z.string(),
-    modality: z.number().int(),
-    scanned_pages: z.object({ from: z.number().int(), to: z.number().int() }),
-    next_page: z.number().int().nullable(),
-    next_page_source: z
-      .enum(["search", "scan"])
-      .describe("Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."),
-    next_skip: z.number().int(),
-    partial: z.boolean(),
-    discarded: z.number().int().describe("Records of a listed body dropped because a required field was missing or malformed."),
-    note: z.string(),
-  }),
-);
+const searchData = z.object({
+  items: z.array(itemSchema),
+  from: z.string(),
+  to: z.string(),
+  modality: z.number().int(),
+  scanned_pages: z.object({ from: z.number().int(), to: z.number().int() }),
+  next_page: z.number().int().nullable(),
+  next_page_source: z
+    .enum(["search", "scan"])
+    .describe("Which pages next_page counts (the site search or the Consulta page scan); pass it back as page_source."),
+  next_skip: z.number().int(),
+  partial: z.boolean(),
+  discarded: z.number().int().describe("Records of a listed body dropped because a required field was missing or malformed."),
+  note: z.string(),
+});
+
+export const procurementSearchOutput = envelope(z.union([searchData, planData]));
 
 /** Today's date in Brasília (UTC-3, no daylight saving since 2019), as YYYY-MM-DD. */
 export function todayBrasilia(now: number = Date.now()): string {
@@ -140,13 +164,28 @@ export const procurementSearch: ToolDef<typeof procurementSearchInput, typeof pr
   name: "procurement_search",
   title: "Search procurement of Curitiba municipal bodies (PNCP)",
   description:
-    "Search procurement (licitações, dispensas...) by Curitiba municipal bodies in the national PNCP portal: body, " +
-    "modality, object, value, status, dates, link. One modality per call (default 6, Pregão - Eletrônico), dates up " +
-    "to 365 days apart (default the last 30). With query, the search word is sent to PNCP. No suppliers; objects " +
-    "are withheld or masked but may still name a person. Read-only.",
+    "Procurement of Curitiba municipal bodies in PNCP. Default: what they published (licitações, dispensas...): body, " +
+    "modality, object, value, status, dates, link; one modality per call (default 6), up to 365 days (default the last " +
+    "30); a query is sent to PNCP. mode 'plan': a body's yearly plan (PCA), totals by category and unit. No suppliers; " +
+    "objects withheld or masked, may name a person. Read-only.",
   inputSchema: procurementSearchInput,
   outputSchema: procurementSearchOutput,
-  handler: async ({ query, from, to, modality, limit, page, page_source, skip }) => {
+  handler: async ({ mode, year, body_cnpj, query, from, to, modality, limit, page, page_source, skip }) => {
+    const nextYear = Number(todayBrasilia().slice(0, 4)) + 1;
+    if (mode === "plan") {
+      const searchOnly = { query, from, to, page_source };
+      const used = Object.entries(searchOnly).filter(([, v]) => v !== undefined).map(([k]) => k);
+      if (modality !== DEFAULT_MODALITY) used.push("modality");
+      if (page !== 1) used.push("page");
+      if (skip !== 0) used.push("skip");
+      if (used.length > 0) return fail("invalid_argument", `Mode 'plan' does not use ${used.join(", ")}.`);
+      const y = year ?? nextYear;
+      if (y > nextYear) return fail("invalid_argument", `PNCP holds plans up to next year (${nextYear}).`);
+      const cnpj = body_cnpj ?? CITY_CNPJ;
+      if (!CURITIBA_BODIES.has(cnpj)) return fail("invalid_argument", "body_cnpj must be a Curitiba municipal body listed in docs/sources.md.");
+      return answerPlan(y, cnpj, limit);
+    }
+    if (year !== undefined || body_cnpj !== undefined) return fail("invalid_argument", "year and body_cnpj need mode 'plan'.");
     if (page_source === "search" && query === undefined) return fail("invalid_argument", "page_source 'search' needs query.");
     if ((query === undefined || page_source === "scan") && skip >= PNCP_PAGE_SIZE) {
       return fail("invalid_argument", `A scan page holds ${PNCP_PAGE_SIZE} records: skip must be below ${PNCP_PAGE_SIZE}.`);
