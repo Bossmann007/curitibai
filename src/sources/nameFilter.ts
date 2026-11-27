@@ -10,7 +10,7 @@ import { fold } from "../text.js";
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 /** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
 export const HIDDEN_PERSON_LINE = "[a line naming who is in charge is not shown: it can carry a person's name]";
-const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
+const MAINTAINER = "mantenedor|mantid[ao]s?\\s+p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
 const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
 export const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b/.test(line) || /\bmei\b/i.test(line);
 /**
@@ -30,8 +30,8 @@ const LABEL_ONLY = "titular|coordenacao|gestao";
 /** Folded, with "secretária" (a person's role, NFC first) read as "secretario": not the office "Secretaria". */
 export const roleFold = (t: string): string => fold(t.normalize("NFC").replace(/secretária/giu, "secretario"));
 const PERSON_IN_CHARGE = new RegExp(
-  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
-    `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
+  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?:\\s+[a-z]+)?\\s*:|\\bsecretaria\\s*:` +
+    `|\\bmantid[ao]s?\\s+(?:por|pel[ao]\\s+(?:sra?|senhora?|seu|dona))\\b`,
   "u",
 );
 export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
@@ -57,9 +57,9 @@ const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor|facilit
 const NOT_A_NAME_NEXT = "de|do|da|dos|das|em|e|para|que|com|no|na|nos|nas|ao|aos|a|o|as|os|como";
 const CONTEXT_ROLE = "tecnic[ao]s?|agentes?";
 const WORK_PERSON = new RegExp(
-  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|palestrantes?|assistentes? socia(?:l|is)|psicolog[ao]s?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
+  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|palestrantes?|assistentes?\\s+socia(?:l|is)|psicolog[ao]s?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
     `|(?:^[^\\p{L}]*|\\b(?:an?|o|as|os|d[ao]s?|pel[ao]s?|n[ao]s?|com)\\s+)(?:${CONTEXT_ROLE})\\s+(?!(?:${NOT_A_NAME_NEXT})\\b)\\p{L}` +
-    `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`,
+    `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?:\\s+[a-z]+)?\\s*:`,
   "u",
 );
 const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|ramal|sms";
@@ -76,8 +76,8 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * (on the safe side). "Telefone da coordenação: 3350-0000" stays hidden too: "coordenação:" is a label of who is in
  * charge (isPersonInChargeLine). The whole-field check (`prev` null) joins the lines with spaces, so the rest of a
  * line is not known there: it takes the four words as plain unit words (`*_JOINED`), or "Fale com a gente pelo 156"
- * before the hours would hide the hours. Each line was already checked with the guard. Known limit: a name alone on
- * the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
+ * before the hours would hide the hours. Each line was already checked with the guard. A name alone on the next line
+ * after a guarded word that ends its line ("Fale com a gente" / "Fulana") is caught by isNameAfterGuarded (v0.81.0).
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
@@ -172,12 +172,27 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
   const bare = BARE_SERVICE_LABEL.test(p) || (last !== undefined && last.index + last[0].length === p.length);
   return bare && !isServiceValue(f);
 };
+/**
+ * v0.81.0: a line whose contact phrase ends in a guarded word ("Falar com o RH", "Fale com a gente", "Telefone da
+ * Regional:", "E-mail da coordenação") may have the name alone on the next line. That next line is hidden unless it has
+ * a digit, "[masked]" or ':', reads as hours or a service value, or starts with a unit, channel or connector word
+ * ("Segunda a sexta …", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Com agendamento" stay).
+ */
+const GUARDED_END = namedChannel(`(?:(?:an?|o|as|os)\\s+)?(?:${GUARDED_WORD})\\b[^\\p{L}]*$`);
+const NOT_A_NAME_START = new RegExp(
+  `^[^\\p{L}]*(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
+    "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|e|ou|com)\\b",
+  "u",
+);
+const isNameAfterGuarded = (f: string, prev: string): boolean =>
+  GUARDED_END.test(fold(prev)) && !/\d|\[masked\]|:/.test(f) && !isServiceValue(f) && !NOT_A_NAME_START.test(f);
 /** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
   const [channel, appointment] = prev === null ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
   if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
-  return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
+  if (prev === null) return false;
+  return isContactPerson(f) || isServiceValuePerson(f, prev) || (prev !== undefined && isNameAfterGuarded(f, prev));
 };
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
@@ -211,8 +226,8 @@ const GARDEN_LINE = new RegExp(
 );
 const GARDEN_CONTACT = /^contatos? pel[ao] e-?mail d[ao] secretaria\.?$/;
 const GARDEN_PERSON = new RegExp(
-  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
-    `|\\bmantid[ao]s? pel[ao] (?!(?:${ENTITY})\\b)` +
+  `\\bcontatos?\\b|\\bvoluntari|\\bquem\\s+(?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s?\\s+(?:por\\b|pel[ao]\\s+(?!(?:${BODY})\\b))` +
+    `|\\bmantid[ao]s?\\s+pel[ao]\\s+(?!(?:${ENTITY})\\b)` +
     `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
 );
 /**

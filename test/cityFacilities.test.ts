@@ -2604,8 +2604,9 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     }
     expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
     expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
+    // v0.81.0: the split keyword is caught on its second line, so the hours and the first half stay.
     for (const l of ["Assistente\nsocial Fulana", "Mantido\npor Fulano", "Fale com\nFulana"]) {
-      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HOURS, l.split("\n")[0], HIDDEN_PERSON_LINE]);
     }
     for (const l of ["Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "Tratar com o RH da empresa", "Fale com a gente pelo 156 ou pelo e-mail", "Telefone da Regional e e-mail da unidade"]) {
       expect(lines(id, `${l}\n${HOURS}`), `${id}: ${l} before the hours`).toEqual([l, HOURS]);
@@ -2668,5 +2669,79 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     const start = performance.now();
     for (const s of work) isWorkPersonLine(s);
     expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a name on the line after 'com o RH')", () => {
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const OFFICES = ["clube de xadrez", "administracao regional", "cohab", "mesa solidaria", "fazenda urbana", "nucleo de seguranca alimentar"];
+  // An earlier hidden line turns the whole-field check off: the split keyword must be caught line by line.
+  const FIRST = "Responsável: Fulana.";
+  const split = (id: string, s: string) => {
+    const t = type(id);
+    const out = lines(id, `${FIRST}\n${HOURS}\n${s}`);
+    expect(out.slice(0, 2), `${id}: ${s}`).toEqual([t.hiddenLineMarker, HOURS]);
+    expect(out.at(-1), `${id}: ${s}`).toBe(t.hiddenLineMarker);
+    expect(out.join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+  };
+
+  it("cei contratado hides a 'mantida pela' or 'mantido por' split over two lines", () => {
+    for (const s of ["Mantida\npela Fulana de Tal", "Mantido\npor Fulano de Tal", "Mantidas\npelas Fulanas"]) split("cei contratado", s);
+    expect(lines("cei contratado", `${FIRST}\n${HOURS}\nMantida\npela Fulana de Tal`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS, "Mantida", HIDDEN_MAINTAINER_LINE]);
+  });
+
+  it.each([...OFFICES, ...WORK])("%s hides a person-in-charge keyword split over two lines", (id) => {
+    for (const s of ["Mantida\npor Fulana", "Mantida pela\nSra. Fulana", "Mantido\npelo Seu Fulano", "Coordenação\ngeral: Fulano", "Gestão\nlocal: Fulana"]) split(id, s);
+  });
+
+  it.each(WORK)("%s hides a work role split over two lines", (id) => {
+    for (const s of ["Assistente\nsocial Fulana", "Assistentes\nsociais Fulana e Fulano", "Técnica\nFulana", "Agente\nresponsável: Fulano", "Fale com\nFulana", "Agendamento\ncom Fulana"]) split(id, s);
+  });
+
+  it("horta comunitaria keeps hiding a split 'mantida pela' (its allowlist hides both halves)", () => {
+    expect(lines("horta comunitaria", "Horta com 10 canteiros\nmantida\npela Fulana")).toEqual(["Horta com 10 canteiros", HIDDEN_PERSON_LINE]);
+    expect(isGardenPersonLine("Mantida\npela Fulana"), "the multi-word rule reads a line break as a space").toBe(true);
+    expect(isGardenPersonLine("Quem\ncuida: Fulana")).toBe(true);
+  });
+
+  it("the split check needs both halves: a line that hides alone does not drag the next one", () => {
+    expect(lines("cei contratado", `Diretora: Fulana.\n${HOURS}`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS]);
+    expect(lines("sine", `${FIRST}\nAtendimento:\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, "Atendimento:", HOURS]);
+    for (const id of WORK) {
+      for (const [a, b] of [["Dúvidas? Fale com a gente pelo 156", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional: 156", HOURS], ["Tratar com o RH da empresa", HOURS],
+        ["Atendimento", "com agendamento"], ["Mantida pela Prefeitura de Curitiba.", HOURS]]) {
+        expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HIDDEN_PERSON_LINE, a, b]);
+      }
+    }
+  });
+
+  it.each(WORK)("%s hides a name alone on the line after a contact phrase that ends in RH, Regional, coordenação or 'a gente'", (id) => {
+    for (const [a, b] of [["Falar com o RH", "Fulano de Tal"], ["Fale com a gente", "Fulana"], ["Telefone da Regional:", "Fulana de Tal"], ["E-mail da coordenação", "Fulana"],
+      ["Tratar com o RH.", "Sra. Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps the line after that phrase when it is hours, a number, a channel or a unit", (id) => {
+    for (const [a, b] of [["Falar com o RH", HOURS], ["Fale com a gente", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional:", "3350-0000"], ["Fale com a gente:", "pelo 156"],
+      ["E-mail da coordenação", "ou pelo telefone"], ["Falar com o RH", "Atendimento presencial"], ["Fale com a gente", "WhatsApp"], ["Fale com a gente", "Com agendamento"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace("3350-0000", "[masked]")]);
+    }
+    expect(lines(id, "Fale com a gente pelo 156\nFulana"), "the phrase goes on after the unit word: 0.80.0's rule, the name line passes (known limit)").toEqual(["Fale com a gente pelo 156", "Fulana"]);
+  });
+
+  it("the split check stays fast on 50 KB of short lines", () => {
+    const start = performance.now();
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      lines(id, "Mantida\n".repeat(6_500));
+      lines(id, "Falar com o RH\nFulano\n".repeat(2_400));
+      lines(id, `${FIRST}\n` + "Assistente\nsocial\n".repeat(2_800));
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
   });
 });

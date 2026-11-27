@@ -1574,8 +1574,23 @@ changes (owner request, 2026-11-23: monthly and automatic).
     "agendamento com a equipe", "agendamento com antecedência", "com no mínimo 48h" and "agendamento pelo 156" stay.
     Known limits: only the first word after "com" is checked ("agendamento pela Fulana", "agendamento com antecedência,
     Fulana" pass), "presencial com Fulana" and a name later in an hours line still pass, and a name alone on the next
-    line after "Fale com a gente" is shown (the whole-field check, which joins the lines with spaces, takes the four words as plain unit words). No request was made for this version (the layers were not re-read): the change is
+    line after "Fale com a gente" was shown (the whole-field check, which joins the lines with spaces, takes the four words as plain unit words; hidden since 0.81.0). No request was made for this version (the layers were not re-read): the change is
     tested on synthetic lines only. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, fifth pass, v0.81.0** (the lows of the 0.80.0 review). A keyword split over two lines ("Mantida" /
+    "pela Fulana de Tal", "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano") was hidden only by the
+    whole-field check, which is skipped once another line of the record is hidden, so the name showed. Every type
+    that hides person lines (contracted CEIs, the office and work types) now reads each line together with the one
+    before it, joined by a line break, the way the whole-field check reads the record; when that pair hides and the
+    line before does not hide alone, the second line is hidden (the first half stays). The multi-word patterns accept
+    a line break wherever they had a space. The garden allowlist already hid both halves and is unchanged. Work types:
+    after a line whose contact phrase ends in "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone
+    da Regional:"), the next line is hidden unless it has a digit, "[masked]" or ':', reads as hours or a service value,
+    or starts with a unit, channel or connector word. Known limit: after "Fale com a gente pelo 156" (the phrase goes on
+    after the unit word) a name alone on the next line still passes. Checked on 2026-11-27 (UTC) with the server's own
+    query and User-Agent, one GET per layer to `geocuritiba.ippuc.org.br` (the 12 layers whose type hides person
+    lines; 306 records, 253 with an `observacao`), replayed offline before and after the change: 131 hidden-line
+    markers before and 131 after, and every record's `hours` is identical. The reads were deleted after the check; the
+    tests use synthetic lines. No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67

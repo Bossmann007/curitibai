@@ -2,6 +2,36 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.81.0 - 2026-11-27
+
+Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
+  regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
+  trabalhador`, `liceu de oficios`, `inss`): a keyword split over two lines ("Mantida" / "pela Fulana de Tal",
+  "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano", "Técnica" / "Fulana") is hidden on its second line
+  even when another line of the record is already hidden. Before, only the whole-field check caught it, and that
+  check is skipped once a line is hidden, so the name showed. Each line is now read together with the one before it,
+  the way the whole-field check reads the record, and is hidden when the pair hides and the line before does not
+  hide alone; the first half stays. The multi-word patterns accept a line break wherever they had a space. A split
+  keyword with no other hidden line now keeps the record's other lines (before, the whole field was one hidden line).
+  `horta comunitaria` is unchanged (its allowlist already hid both halves).
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after a line whose contact phrase ends in
+  "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Fale com a gente", "Telefone da Regional:"), a
+  name alone on the next line is hidden ("Fulano de Tal", "Sra. Fulana"). The next line is kept when it has a digit,
+  "[masked]" or ':', reads as hours or a service value, or starts with a unit, channel or connector word ("Segunda a
+  sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Com agendamento"). Known
+  limit: after "Fale com a gente pelo 156" (the phrase goes on after the unit word) a name alone on the next line
+  still passes.
+- "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
+  carteira de trabalho" stay shown, also before the hours and after a hidden line.
+- Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
+  records, 253 with an `observacao`) and replayed offline: 131 hidden-line markers before and 131 after; every
+  record's `hours` is identical. A 50 KB input of short lines runs the new check in well under the 2 s bound.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new host, link or dependency.
+
 ## 0.80.0 - 2026-11-27
 
 Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publishes nothing.

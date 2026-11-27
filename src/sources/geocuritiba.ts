@@ -985,7 +985,11 @@ export function hourLines(
       const named = soft && !SERVICE_LINE.test(roleFold(t));
       const before = prev;
       prev = t;
-      if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before))) {
+      // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
+      // whole-field check below (prev null) on this line and the one before, which must not hide alone; that one stays.
+      const split = names !== undefined && !allowlist && before !== undefined;
+      if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before) ||
+        (split && hide(`${before}\n${t}`, null) && !hide(before, null)))) {
         lines.push(t);
         label = rest = soft = false;
       } else {
