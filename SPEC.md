@@ -10,7 +10,8 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 Answer "O que a Prefeitura planeja comprar em 2027?" from the Plano de Contratações Anual (PCA) that Curitiba municipal
 bodies publish in PNCP: how much each body plans to spend in a year, split by category (material, service, works) and
-by requesting unit (secretaria, departamento). Never supplier data.
+by requesting unit (secretaria, departamento). Never supplier data. Smallest change: a `plan` mode of
+`procurement_search`.
 
 ## Source (read 2026-11-27 UTC)
 
@@ -36,20 +37,27 @@ Item rows (descriptions) are not read: thousands per body, and free text.
 
 ## Changes
 
-1. **Tool** `procurement_plan` (`src/tools/procurementPlan.ts`), a sibling of `procurement_search` ([ADR
-   0005](docs/adr/0005-extend-a-tool-before-adding-one.md): the answer shape differs). Input `year` (default next
-   year in Brasília; 2021 to next year), `body_cnpj` (default `76417005000186`, Município de Curitiba; only the 15
-   listed bodies), `limit` (units returned, 1–50, default 10). Output: body, year, `plan_found`, item count, total,
-   first publication and last update, `categories[]`, the `units[]` with the largest totals, `units_total`,
-   `discarded`, note. Two requests at most, through the PNCP gate: units first; no plan stops there.
+1. **Mode** `plan` of `procurement_search` (`src/tools/procurementPlan.ts`, one early branch in the handler). Inputs
+   `mode` (`search` default, unchanged), `year` (default next year in Brasília, at most next year), `body_cnpj`
+   (default `76417005000186`, Município de Curitiba; only the 15 listed bodies); `limit` caps the units. Search-only
+   arguments in plan mode, and `year`/`body_cnpj` without it, are `invalid_argument`. Output `data` is the search
+   object (unchanged) or the plan object: body, year, `plan_found`, item count, total, first publication and last
+   update, `categories[]`, the `units[]` with the largest totals, `units_total`, `discarded`, note. Two requests at
+   most, through the PNCP gate: units first; no plan stops there.
+   Why a mode and not a sibling tool: tool descriptions sum to 9,586 of the 9,600 ceiling (`test/contracts.test.ts`);
+   a sibling needed about 225 characters cut from other tools. The brief named the mode first, and ADR 0005's own
+   example (`tax_reform_curitiba`) has topics with different answer shapes. The rewritten description is 398
+   characters; the sum is 9,593.
 2. **Source** (`src/sources/pncp.ts`): URLs, a strict parser (rows of another CNPJ or year, or with a missing field,
-   are dropped and counted; a body that is not an array is `layout_changed`), unit and body names through
-   `maskObject`, and a 404/422 returned as "no plan" inside the gate's turn, so the gate does not block the host.
-3. **Eval**: q140 "O que a Prefeitura planeja comprar em 2027?" → `procurement_plan {year: 2027}`, expect `ok`
-   with `data.units` and `data.categories`; synthetic fixtures.
-4. **Docs and version**: docs/tools.md, docs/sources.md (robots row path, PCA section with every request), README
-   (28 tools), docs/roadmap-1.0.md, CHANGELOG 0.68.0, version 0.68.0 in `package.json`, `package-lock.json`,
-   `server.json`; tool count 28 in `scripts/verify`, `scripts/smoke.mjs`, tests.
+   are dropped and counted; a body that is not an array, or rows that all fail, is `source_unavailable`), unit and
+   body names through `maskObject`, and a 404/422 returned as "no plan" inside the gate's turn, so the gate does not
+   hold back the host.
+3. **Eval**: q140 "O que a Prefeitura planeja comprar em 2027?" → `procurement_search {mode: "plan", year: 2027}`,
+   expect `ok` with `data.units` and `data.categories`; synthetic fixtures. `RESULT_PATH` reads `data.items` or
+   `data.units`.
+4. **Docs and version**: docs/tools.md (row and Curitiba App "extra" row), docs/sources.md (robots rows, PCA section
+   with every request), README row, docs/roadmap-1.0.md, CHANGELOG 0.68.0, version 0.68.0 in `package.json`,
+   `package-lock.json`, `server.json`. Still 27 tools.
 
 ## Out of scope
 
@@ -60,6 +68,7 @@ download), a public PNCP page link (the app route was not read).
 
 - `npx vitest run test/procurementPlan.test.ts test/contracts.test.ts test/eval`: plan with categories and the top
   units sorted by total; masked unit names; dropped foreign rows; no plan → `plan_found: false` and the host still
-  answers the next call; unlisted CNPJ and a future year → `invalid_argument`; q140 ok.
+  answers the next call; unlisted CNPJ, a future year and mixed search/plan arguments → `invalid_argument`; q140 ok;
+  descriptions ≤ 9,600.
 - `node scripts/eval-summary.mjs`: `answered 136 / 140`.
 - `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.

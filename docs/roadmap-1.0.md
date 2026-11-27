@@ -274,3 +274,9 @@ At v0.67.0 (phase B) `city_facilities_search` `casa da leitura`, `bondinho da le
 Leitura, 26 auditoriums of every owner, 2 circus spaces, 1 chess club), hours as published; no e-mail is returned for
 auditoriums and the chess club. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 135 of
 139 questions; 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.68.0 (phase B) `procurement_search` has `mode: "plan"`: the Plano de Contratações Anual a listed Curitiba
+municipal body published in PNCP for a year, as planned totals per category and per requesting unit (Município de
+Curitiba 2027, read 2026-11-27: 31 units, 4,897 items, R$ 4.16 billion); never items or suppliers. The Curitiba App
+rows are unchanged (18, 16 covered). The citizen eval answers 136 of 140 questions; 4 are gaps (real-time buses 2,
+other cities 2).

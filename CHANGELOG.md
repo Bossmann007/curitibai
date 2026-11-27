@@ -2,6 +2,34 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.68.0 - 2026-11-27
+
+Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `procurement_search`: new `mode` `plan` (default `search`, unchanged). It returns the Plano de Contratações Anual
+  that one listed Curitiba municipal body published in PNCP for a `year` (default next year in Brasília, at most next
+  year): item count and planned total, first publication and last update, totals per category (Material, Serviço,
+  Obra...) and the `limit` requesting units (secretarias, departamentos) with the largest totals. `body_cnpj` picks
+  the body among the same 15 CNPJs as the search (default `76417005000186`, Município de Curitiba); any other CNPJ is
+  `invalid_argument`. Read on 2026-11-27: the Município de Curitiba's 2027 plan has 31 units, 4,897 items and
+  R$ 4,161,572,267.52. No item text and no supplier is returned; unit and body names are masked like objects.
+- Source: PNCP's own read routes on the same host, `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades`
+  and `.../valorescategoriaitem`, about 0.1 s each, two requests at most through the PNCP gate. The Consulta PCA route
+  named in the brief (`/api/consulta/v1/pca/atualizacao`) timed out twice at 40 s, then took 27.8 s for one page of
+  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422:
+  answered as `plan_found: false` with that status, and kept inside the gate's turn so it does not hold back the next
+  PNCP request; rows that all fail the strict check are `source_unavailable` (a renamed field is not "no plan").
+- `year`/`body_cnpj` without `mode: "plan"`, and `query`, `from`, `to`, `page_source`, `modality`, `page` or `skip`
+  with it, are `invalid_argument`.
+- Tool contract: `procurement_search` gains `mode`, `year` and `body_cnpj`; its output `data` is the search object
+  (unchanged) or the plan object (snapshot updated). The description was rewritten to name the plan mode within 400
+  characters; all descriptions sum to 9,593 of the 9,600 ceiling. A sibling tool was not added: it would have needed
+  about 225 characters cut from other tools' descriptions.
+- Curitiba App table: the "extra" row says annual procurement plans too.
+- Citizen eval: q140 ("O que a Prefeitura planeja comprar em 2027?") answered with synthetic PCA fixtures (a planted
+  e-mail and phone in a unit name, a row of another body, one of another year and one without a value); 136 of 140.
+- No new network host, no new link, no new dependency.
+
 ## 0.67.0 - 2026-11-27
 
 Neighbourhood culture and reading, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
