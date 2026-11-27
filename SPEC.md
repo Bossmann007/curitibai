@@ -1,4 +1,4 @@
-# SPEC: v0.86.0 Person-name filter, eighth pass
+# SPEC: v0.87.0 Ouvidoria anonymity wording, fifth pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,43 +8,48 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the 0.84.0 Change Reviewer's Lows and the Security Reviewer's
-R1-R3, in the work-type person-name filter of `city_facilities_search` (`src/sources/nameFilter.ts`). No new citizen
-question; the eval count is unchanged.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): the fifth and final wording pass on the `city_service_guide`
+`ouvidoria` guide (`src/tools/cityServiceGuide.ts`), the review follow-ups of 0.85.0 (PR #100). Text and tests only.
+No new citizen question; the eval count is unchanged.
 
 ## Source
 
-None new. One read of the 12 person-hiding layers on `geocuritiba.ippuc.org.br` (already contacted) by a one-off
-script, to replay the filter on the real records; the reads were deleted. Tests use synthetic lines.
+None new. No request was made: Curitiba Ouve and the 2024 PDF were not opened. Every changed sentence is the
+project's own observation, marked "(observação do CuritibAI, não do guia de 2024)" or "Observação do CuritibAI, não
+do guia de 2024".
 
 ## Changes
 
-1. **Leak** (`SENHA_REST`): after "agendamento com senha numerada" or "… senha de atendimento", the rest of the line
-   must be made only of rest and hours steps (numbers, punctuation, channel, unit and hours words, connectors, line
-   breaks; a step is one word or one character, at most 300). "senha numerada, Fulana", ". Fulana", "(Fulana)" and
-   "3350-0000 Fulana" are hidden; "senha numerada, das 8h às 17h" stays.
-2. **Over-hiding**: the whole-field check (lines joined with spaces) reads the rest the same way, so a schedule line
-   after "Agendamento com senha numerada" stays and a name on any later line hides the field (review of this PR:
-   taking any word there showed a name on the fourth line). `readsNextLine` (was `isGuardedContact`) makes hourLines'
-   split check read the line after a line ending in them (with or without an article), even when it starts with a
-   number, for fields where the whole-field check is skipped. The nameFilter.ts comment "as on 0.83.0" is replaced.
-3. **DAY_DETAIL**: "corrido" alone is dropped ("corridos" stays); "agendamento com um dia corrido" is hidden.
-4. **CHANGELOG**: says "com uma hora" / "com um dia" alone are hidden since 0.84.0.
-5. **Tests** (`test/cityFacilities.test.ts`, v0.86.0 block): each hidden and kept case, every line the 0.82.0 and
-   0.84.0 tests list as legitimate, the 0.84.0 known-limit test flipped, and timing of "senha numerada, " repeated
-   and 50 KB / 400 KB lines.
-6. **Docs and version**: docs/sources.md, docs/tools.md, docs/roadmap-1.0.md, CHANGELOG 0.86.0, version 0.86.0 in
+1. **No promise of anonymity** (test): no text of the guide (title, `what`, `note`, every step's action and consent)
+   matches the brief's pattern (`garante( o seu)? anonimato|protege (você|a sua identidade)|ninguém saberá|totalmente
+   anônim`), widened in review to other indicative forms ("garante seu anonimato", "assegura o anonimato", "protege
+   sua identidade", "protege o cidadão", "ninguém vai saber", "100% anônim"), even in a sentence with the CuritibAI
+   mark. Only indicative verbs match, so the guide's own "não pode garantir que … proteja" does not; the test asserts
+   both sides.
+2. **Step 4 list**: "datas ou lugares" becomes "datas ou lugares que identifiquem o cidadão" (the denúncia needs who,
+   when and where). docs/sources.md says so in a fifth-pass entry.
+3. **Step 5**: the sentence that sends a citizen who does not want to be identified to the anonymous form ends with
+   "; o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão (observação do CuritibAI, não
+   do guia de 2024)". The `note` names the summary and steps 4 and 5.
+4. **One grammatical person**: "o cidadão" in `what` and steps 4 and 5 (step 4's "a sua identidade", "deixe de fora"
+   and "só você conheça" become "a identidade do cidadão", "o cidadão pode deixar de fora" and "só o cidadão
+   conheça"). The brief gave item 2 as "que identifiquem você" and let this item pick the person; "o cidadão" was
+   picked because `what` and the other steps already use it, so item 2 reads "que identifiquem o cidadão". Tested: no
+   "você", "deixe", "sua identidade" or "seu nome" in those three fields.
+5. **Docs and version**: docs/sources.md, docs/tools.md, docs/roadmap-1.0.md, CHANGELOG 0.87.0, version 0.87.0 in
    `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-Any new source, host, link or question. Reading names after other appointment details ("com um dia de antecedência
-Fulana" still passes, as before). Changing how the whole-field check joins lines.
+Any new tool, host, link, step or question. Opening Curitiba Ouve or the 2024 PDF. Rewording earlier passes'
+entries in docs/sources.md and CHANGELOG.md.
 
 ## Check
 
-- `npx vitest run test/cityFacilities.test.ts -t v0.86.0`: the new behaviour tests fail on 0.85.0 and pass on 0.86.0.
-- Replay of the real records: hidden-line markers and `hours` identical between 0.85.0 and 0.86.0.
+- `npx vitest run test/cityServiceGuide.test.ts`: every existing caveat test, the 0.85.0 hedge test included, and
+  the three new 0.87.0 tests pass.
+- The no-promise test fails on a copy of the guide with "A forma anônima garante o seu anonimato (observação do
+  CuritibAI, não do guia de 2024)." in step 5, and passes again after the copy is restored.
 - `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
 - `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
 - `scripts/verify` exits 0 on the PR head.

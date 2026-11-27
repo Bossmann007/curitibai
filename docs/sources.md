@@ -2267,6 +2267,28 @@ sentence rests on the 0.43.0 record above or is marked as the project's own:
   either the 2024-guide hedge in the same clause ("guia de 2024 … o CuritibAI não conferiu hoje no site", no ";"
   between) or the project's own marker; no text of the guide says "continuar anônimo" or "não garante anonimato".
 
+Ouvidoria anonymity wording, fifth pass (`ouvidoria`, since 0.87.0, written 2026-11-27; the review follow-ups of
+0.85.0, PR #100). **No request was made**: no host was contacted, by hand or by the server; `mid.curitiba.pr.gov.br`,
+`www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
+sentence is marked as the project's own, as before:
+
+- Step 4: "datas ou lugares" becomes "datas ou lugares que identifiquem o cidadão". The denúncia itself needs who,
+  when and where (the 0.85.0 entry above), so only the dates and places that point to the citizen are left out.
+- Step 5, after the sentence that sends a citizen who does not want to be identified to the anonymous form: "; o
+  CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão (observação do CuritibAI, não do
+  guia de 2024)". The same observation as in the summary and step 4; the `note` now names the summary and steps 4
+  and 5.
+- One grammatical person: the summary and steps 4 and 5 speak of "o cidadão" (step 4's "a sua identidade" becomes
+  "a identidade do cidadão", "deixe de fora" becomes "o cidadão pode deixar de fora", "só você conheça" becomes "só o
+  cidadão conheça"). The task brief offered "que identifiquem você"; "o cidadão" was chosen because the summary and the other
+  steps already use it.
+- Tested: no text of the guide (title, summary, note, every step's action and consent) promises anonymity, even in a
+  sentence with the project's marker: an indicative "garante", "assegura" or "protege" before "anonimato", "você", "o
+  cidadão" or "identidade", "ninguém saberá", "ninguém vai saber", "totalmente anônim" or "100% anônim" fails it, and
+  the guide's own "não pode garantir que … proteja" does not (infinitive and subjunctive). The summary and steps 4
+  and 5 never say "você", "deixe", "sua identidade" or "seu nome" (checked with Unicode letter boundaries, since `\b`
+  misses "você").
+
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
 Ouvidoria tool was made: the change is one guide entry in an existing table.

@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.87.0 - 2026-11-27
+
+Ouvidoria anonymity wording, fifth pass (review follow-ups of 0.85.0). 27 tools. Publishes nothing.
+
+- `city_service_guide` (`ouvidoria`), step 4: "datas ou lugares" becomes "datas ou lugares que identifiquem o
+  cidadão"; the denúncia itself still needs who, when and where.
+- Step 5, after "Quem não quer se identificar usa a forma anônima …": "; o CuritibAI não pode garantir que a forma
+  anônima proteja a identidade do cidadão (observação do CuritibAI, não do guia de 2024)". The `note` names the
+  summary and steps 4 and 5.
+- One grammatical person, "o cidadão", in the summary and steps 4 and 5: step 4's "a sua identidade", "deixe de fora"
+  and "só você conheça" become "a identidade do cidadão", "o cidadão pode deixar de fora" and "só o cidadão conheça".
+- New test: no text of the guide (title, summary, note, every step) promises anonymity ("garante", "assegura" or
+  "protege" in the indicative before "anonimato", "você", "o cidadão" or "identidade", "ninguém saberá", "totalmente
+  anônim"), even in a sentence marked as the CuritibAI's own; shown to fail on a copy with "garante o seu anonimato"
+  in step 5. The summary and steps 4 and 5 never say "você", "deixe", "sua identidade" or "seu nome".
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.86.0 - 2026-11-27
 
 Person-name filter, eighth pass (the 0.84.0 Change Reviewer's Lows and the Security Reviewer's R1-R3). 27 tools.
