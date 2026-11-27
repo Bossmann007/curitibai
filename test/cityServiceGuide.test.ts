@@ -268,7 +268,6 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
   it("anonymous form wording stays inside the record of the 2024 guide (since 0.75.0)", async () => {
     const o = await guide();
     const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
-    const ownTextWarning = /o texto e os anexos[^.]* podem identificar o cidadão/;
     // 0.79.0: step 4 keeps what the 2024 guide says (no registration, no answer or follow-up; site not checked)
     // apart from the CuritibAI's own warning that the text and the attachments can identify the citizen.
     expect(step(4)).toMatch(
@@ -278,12 +277,11 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
       /Observação do CuritibAI, não do guia de 2024: o texto e os anexos \(nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo\) podem identificar o cidadão; para continuar anônimo, deixe isso de fora\./,
     );
     for (const s of step(4).split(/(?<=\.)\s+/)) {
-      expect(/cadastro|resposta/.test(s) && /Observação do CuritibAI/i.test(s)).toBe(false);
+      expect(/cadastro|resposta|acompanhamento|guia de 2024 (prevê|diz)/.test(s) && /Observação do CuritibAI/i.test(s)).toBe(false);
     }
     // 0.79.0: the summary and the e-mail step give the same warning, marked as the CuritibAI's own.
     expect(o.data.what).toMatch(/Mesmo na forma anônima, o texto e os anexos podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
     expect(step(5)).toMatch(/O texto e os anexos do e-mail também podem identificar o cidadão \(observação do CuritibAI, não do guia de 2024\)/);
-    expect(o.data.what).toMatch(ownTextWarning);
     // R3: the record says a denúncia is registered, not that it is investigated.
     expect(step(6)).toMatch(/anônima \(sem cadastro; a denúncia é registrada, mas sem resposta nem acompanhamento\)/);
     expect(text(o)).not.toMatch(/apurad/);
