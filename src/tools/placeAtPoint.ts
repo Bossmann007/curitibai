@@ -120,17 +120,27 @@ function zonesOf(features: PointFeature[], layer: number): ZoneOut[] {
   return out.slice(0, MAX_ZONES);
 }
 
+/** PGV codes are small and non-negative; outside this range a number is not a code. */
+const isCodeNumber = (v: number): boolean => v >= 0 && v < 1e6;
+/** A PGV code published as a number or as text (0.71.0). A number keeps its JSON form: 27.0 arrives as 27, so "27". */
+const codeText = (v: unknown): unknown => (typeof v === "number" ? (isCodeNumber(v) ? String(v) : null) : v);
+/** The micro-region index as an integer; text only when all digits, so a blank never becomes the code 0. */
+const microRegionCode = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isInteger(v) && isCodeNumber(v) ? v : null;
+  const s = typeof v === "string" ? v.trim() : "";
+  return /^\d{1,6}$/.test(s) ? Number(s) : null;
+};
+
 function microRegionsOf(features: PointFeature[]): MicroRegionOut[] {
   const out: MicroRegionOut[] = [];
   const seen = new Set<string>();
   for (const { attributes: a } of features) {
-    const code = a.cd_microrregiao;
     const r: MicroRegionOut = {
       zone_code: cleanPointField(a.sg_zona, 50),
       zone_name: cleanPointField(a.nm_zona, 255),
       bairro: cleanPointField(a.nm_bairro, 100),
-      microbairro: cleanPointField(a.cd_microbairro, 10),
-      microregion: typeof code === "number" && Number.isInteger(code) ? code : null,
+      microbairro: cleanPointField(codeText(a.cd_microbairro), 10),
+      microregion: microRegionCode(a.cd_microrregiao),
     };
     if (Object.values(r).every((v) => v === null)) continue;
     const k = JSON.stringify(r);
