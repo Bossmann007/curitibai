@@ -656,10 +656,10 @@ export const GUIDES = {
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
           "anexar fotos e documentos, e a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o " +
           "CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
-          "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, ele pode deixar " +
-          "de fora o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome " +
+          "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, o cidadão pode " +
+          "deixar de fora o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome " +
           "do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou " +
-          "lugares que identifiquem o cidadão e qualquer detalhe que só ele conheça. Observação do CuritibAI, não do " +
+          "lugares que identifiquem o cidadão e qualquer detalhe que só o cidadão conheça. Observação do CuritibAI, não do " +
           "guia de 2024: o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão, e não sabe " +
           "o que o site registra sobre o acesso.",
         consent:

@@ -21,19 +21,21 @@ do guia de 2024".
 ## Changes
 
 1. **No promise of anonymity** (test): no text of the guide (title, `what`, `note`, every step's action and consent)
-   matches `/garante( o seu)? anonimato|protege (você|o cidadão|a (sua )?identidade)|ninguém saberá|totalmente
-   anônim/i`, even in a sentence with the CuritibAI mark. The test also asserts that the pattern does not match "não
-   pode garantir" and does match a marked promise.
+   matches the brief's pattern (`garante( o seu)? anonimato|protege (você|a sua identidade)|ninguém saberá|totalmente
+   anônim`), widened in review to other indicative forms ("garante seu anonimato", "assegura o anonimato", "protege
+   sua identidade", "protege o cidadão", "ninguém vai saber", "100% anônim"), even in a sentence with the CuritibAI
+   mark. Only indicative verbs match, so the guide's own "não pode garantir que … proteja" does not; the test asserts
+   both sides.
 2. **Step 4 list**: "datas ou lugares" becomes "datas ou lugares que identifiquem o cidadão" (the denúncia needs who,
    when and where). docs/sources.md says so in a fifth-pass entry.
 3. **Step 5**: the sentence that sends a citizen who does not want to be identified to the anonymous form ends with
    "; o CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão (observação do CuritibAI, não
    do guia de 2024)". The `note` names the summary and steps 4 and 5.
 4. **One grammatical person**: "o cidadão" in `what` and steps 4 and 5 (step 4's "a sua identidade", "deixe de fora"
-   and "só você conheça" become "a identidade do cidadão", "ele pode deixar de fora" and "só ele conheça"). The brief
-   gave item 2 as "que identifiquem você" and let this item pick the person; "o cidadão" was picked because `what`
-   and the other steps already use it, so item 2 reads "que identifiquem o cidadão". Tested: no "você" in those
-   three fields.
+   and "só você conheça" become "a identidade do cidadão", "o cidadão pode deixar de fora" and "só o cidadão
+   conheça"). The brief gave item 2 as "que identifiquem você" and let this item pick the person; "o cidadão" was
+   picked because `what` and the other steps already use it, so item 2 reads "que identifiquem o cidadão". Tested: no
+   "você", "deixe", "sua identidade" or "seu nome" in those three fields.
 5. **Docs and version**: docs/sources.md, docs/tools.md, docs/roadmap-1.0.md, CHANGELOG 0.87.0, version 0.87.0 in
    `package.json`, `package-lock.json`, `server.json`.
 
