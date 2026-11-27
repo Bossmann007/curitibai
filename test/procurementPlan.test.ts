@@ -15,6 +15,7 @@ interface Unit {
   updated_at: string;
 }
 interface Data {
+  mode: string;
   year: number;
   body_cnpj: string;
   body_name: string | null;
@@ -32,7 +33,7 @@ interface Data {
 const dataOf = (res: object) => (res as { structuredContent: { data: Data } }).structuredContent.data;
 const plan = async (args: Record<string, unknown> = {}) => {
   const client = await connectClient();
-  return client.callTool({ name: "procurement_plan", arguments: { year: 2027, ...args } });
+  return client.callTool({ name: "procurement_search", arguments: { mode: "plan", year: 2027, ...args } });
 };
 
 function planRoutes(cnpj = CITY, year = 2027): Record<string, Route> {
@@ -43,12 +44,13 @@ function planRoutes(cnpj = CITY, year = 2027): Record<string, Route> {
 }
 const noPlan = (status: number): Route => ({ status, body: '{"status":"404","message":"x"}', contentType: JSON_TYPE });
 
-describe("procurement_plan", () => {
+describe("procurement_search mode plan", () => {
   it("returns the body's plan: totals, categories and the units with the largest totals, in two requests", async () => {
     const calls = stubFetch(planRoutes());
     const res = await plan();
     const data = dataOf(res);
     expect(calls.map((c) => c.url)).toEqual([pcaUnitsUrl(CITY, 2027), pcaCategoriesUrl(CITY, 2027)]);
+    expect(data.mode).toBe("plan");
     expect(data.plan_found).toBe(true);
     expect(data.body_cnpj).toBe(CITY);
     expect(data.body_name).toBe("MUNICIPIO DE CURITIBA");
@@ -66,7 +68,8 @@ describe("procurement_plan", () => {
     expect(data.units_total).toBe(4);
     expect(data.discarded).toBe(3);
     expect(data.note).toMatch(/this body only/i);
-    expect((res as { structuredContent: { source_url: string } }).structuredContent.source_url).toBe(pcaUnitsUrl(CITY, 2027));
+    expect(data.note).toMatch(/3 malformed or foreign row\(s\) were left out/);
+    expect((res as unknown as { structuredContent: { source_url: string } }).structuredContent.source_url).toBe(pcaUnitsUrl(CITY, 2027));
   });
 
   it("masks e-mails and phones in unit names and never returns rows of another body or year", async () => {
@@ -117,9 +120,38 @@ describe("procurement_plan", () => {
     const next = Number(todayBrasilia().slice(0, 4)) + 1;
     stubFetch(planRoutes(CITY, next));
     const client = await connectClient();
-    const data = dataOf(await client.callTool({ name: "procurement_plan", arguments: {} }));
+    const data = dataOf(await client.callTool({ name: "procurement_search", arguments: { mode: "plan" } }));
     expect(data.year).toBe(next);
     expect(data.body_cnpj).toBe(CITY);
+  });
+
+  it.each([
+    [{ query: "merenda" }, "query"],
+    [{ from: "2026-01-01" }, "from"],
+    [{ modality: 8 }, "modality"],
+    [{ page: 2 }, "page"],
+  ])("refuses search-only arguments in mode plan: %j", async (args, name) => {
+    const calls = stubFetch({});
+    const err = errorOf(await plan(args)) as { error: string; message: string };
+    expect(err.error).toBe("invalid_argument");
+    expect(err.message).toContain(name);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("refuses year and body_cnpj outside mode plan", async () => {
+    const calls = stubFetch({});
+    const client = await connectClient();
+    for (const args of [{ year: 2027 }, { body_cnpj: CITY }]) {
+      const err = errorOf(await client.callTool({ name: "procurement_search", arguments: args })) as { error: string };
+      expect(err.error).toBe("invalid_argument");
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it("fails as source_unavailable when every returned unit row is malformed (a renamed field is not 'no plan')", async () => {
+    const rows = (JSON.parse(fixture("pncp_pca_units_synthetic.json")) as Record<string, unknown>[]).map((r) => ({ ...r, valorTotal: undefined }));
+    stubFetch({ ...planRoutes(), [`GET ${pcaUnitsUrl(CITY, 2027)}`]: { body: JSON.stringify(rows), contentType: JSON_TYPE } });
+    expect((errorOf(await plan()) as { error: string }).error).toBe("source_unavailable");
   });
 
   it("fails as source_unavailable when the units answer is not a list", async () => {
