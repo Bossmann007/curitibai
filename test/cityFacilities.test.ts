@@ -2799,7 +2799,7 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
 
   it("a guarded word's rest is read for at most 40 steps, so a 400 KB line is fast", () => {
     const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
-      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000)];
+      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000)];
     const start = performance.now();
     for (const s of shapes) {
       isWorkPersonLine(s);

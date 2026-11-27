@@ -1588,14 +1588,20 @@ changes (owner request, 2026-11-23: monthly and automatic).
     gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the split check hides the
     next line unless what comes before its first digit, "[masked]" or ':' (after a leading dash) is empty, reads as
     hours or a service value, or starts with a service or address word or a unit, channel or connector word. Known
-    limits: other words on that line are hidden too, on the safe side; "Presencial com Fulana" passes; after "Fale com
-    a gente pelo 156" or a guarded phrase split over two lines a name on the next line still passes; when the line
+    limits: other words on that line are hidden too, on the safe side; "Presencial com Fulana" passes; after a guarded
+    phrase itself split over two lines a name on the third line still passes; when the line
     before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima", "Coordenadora" / "geral:
     Fulana") the pair is not read and the name passes, as in 0.80.0. Checked on 2026-11-27 (UTC) with the server's own
     query and User-Agent, one GET per layer to `geocuritiba.ippuc.org.br` (the 12 layers whose type hides person
     lines; 306 records, 253 with an `observacao`), replayed offline before and after the change: 131 hidden-line
-    markers before and 131 after, and every record's `hours` is identical. The reads were deleted after the check; the
-    tests use synthetic lines. No new host for the server and the link allowlist is unchanged.
+    markers before and 131 after, and every record's `hours` is identical (0.79.0 gives the same). The reads were
+    deleted after the check; the tests use synthetic lines. No new host for the server and the link allowlist is
+    unchanged. **0.81.0 also fixes leaks 0.80.0 introduced** (Security Reviewer, after the merge): a guarded word's
+    rest is read for at most 40 steps and may not end in ',' or ';' (a long `liceu de oficios` line cut at commas
+    showed "…, Falar com a gente, Fulana"; a 400 KB line took about 4 s); two lines joined by a line break keep the
+    guard ("Telefone da" / "Regional Fulana"); a name on the line after any guarded contact phrase or "agendamento com
+    o RH" is hidden, the line before read uncut; "agendamento com Dias/Uma/hora/senha" at the end of a line is hidden.
+    On 11,760 generated lines 0.79.0 shows a name in 704, 0.80.0 in 3,440 and 0.81.0 in none.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67

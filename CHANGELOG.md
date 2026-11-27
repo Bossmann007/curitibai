@@ -4,7 +4,26 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 
 ## 0.81.0 - 2026-11-27
 
-Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing.
+Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing. **This version fixes
+leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 merge).
+
+- Regressions of 0.80.0, work types: after "Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da
+  coordenação" and the like, a name that 0.79.0 hid was shown in three shapes, and all three are hidden again:
+  - In a long `liceu de oficios` line (over 160 characters, cut at commas), "…, Falar com a gente, Fulana" showed
+    "Fulana". A guarded word's rest ("gente", "Regional", "coordenação", "RH") now may not end in ',' or ';'.
+  - A name on the line after the phrase ("Telefone da" / "Regional Fulana", "Fale com" / "o RH Fulano", "Tratar" /
+    "com o RH Fulano", "E-mail da" / "coordenação Fulana"). Two lines joined by a line break now keep the guard; only
+    the whole-field check, joined with spaces, reads the four words as plain unit words.
+  - A name alone on the line after a phrase that goes on after the unit word ("Fale com a gente pelo 156", "Tratar
+    com o RH da empresa", "Agendamento com o RH"), also past the 160-character cut (the line before is now read
+    uncut).
+  On a generated set of 11,760 such lines (four work types, seven lead-in lengths, twelve phrases, seven separators,
+  five names), 0.79.0 shows the name in 704, 0.80.0 in 3,440 and 0.81.0 in none; nothing 0.79.0 hid is shown.
+- Performance regression of 0.80.0: a guarded word's rest is read for at most 40 steps. A 400 KB line of "telefone
+  da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
+  longer than 40 steps is not read as a unit, so that line is hidden, on the safe side.
+- "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
+  um/uma, dia(s), hora and senha count as appointment details only when a word or number follows them.
 
 - `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
   regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
@@ -29,14 +48,14 @@ Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publis
   as hours or a service value, or starts with a service or address word or a unit, channel or connector word
   ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua XV de
   Novembro, 100", "Com agendamento"). Known limits: any other words on that line are hidden too, on the safe side;
-  "Presencial com Fulana" passes (it reads as hours); after "Fale com a gente pelo 156" (the phrase goes on after the
-  unit word), or after a guarded phrase itself split over two lines ("Telefone da" / "Regional"), a name on the next
-  line still passes.
+  "Presencial com Fulana" passes (it reads as hours); after a guarded phrase itself split over two lines ("Telefone
+  da" / "Regional" / "Fulana"), a name on the third line still passes.
 - "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
   carteira de trabalho" stay shown, also before the hours and after a hidden line.
 - Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
-  records, 253 with an `observacao`) and replayed offline: 131 hidden-line markers before and 131 after; every
-  record's `hours` is identical. A 50 KB input of short lines runs the new check in well under the 2 s bound.
+  records, 253 with an `observacao`) and replayed offline with 0.79.0, 0.80.0 and 0.81.0: 131 hidden-line markers in
+  each, and every record's `hours` is identical. Timing tests: 50 KB of short lines and five 400 KB lines, each set
+  under 2 s.
 - Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
 - Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
   new host, link or dependency.
