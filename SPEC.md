@@ -1,4 +1,4 @@
-# SPEC: v0.78.0 E-mail filter, third pass (middle initial, surname initial, repeated separator)
+# SPEC: v0.79.0 Ouvidoria anonymity wording, second pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,46 +8,39 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the low of the 0.74.0 review: three person-shaped city
-addresses still passed the `city_facilities_search` e-mail filter and must be dropped: a middle initial
-("ana.c.lima", "joao.p.silva"), a surname written as an initial ("maria.s") and a doubled separator
-("maria..silva"). Institutional addresses (ouvidoria@, sine@, unit and regional addresses) stay. No new citizen
-question; the eval count is unchanged.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the Security Reviewer's R1-R3 on v0.75.0: the
+`city_service_guide` `ouvidoria` guide keeps what the 2024 CGM guide says apart from what the CuritibAI observes, and
+warns in every place it talks about not identifying oneself that the text and the attachments can identify the
+citizen. No new citizen question; the eval count is unchanged.
 
 ## Source
 
-No new source and no new host or link. To count what the new shape changes, the 89 urban-equipment layers the tool
-already reads were re-read once each from `geocuritiba.ippuc.org.br` (already allowed) by a one-off script, 5.5 s
-apart, through the server's own `fetchText` (its User-Agent, same-host redirects only) and fixed query.
+None new. No request is made: `mid.curitiba.pr.gov.br` and the Curitiba Ouve site are not opened. Every fact comes
+from the 0.43.0 record in docs/sources.md; the rest is marked as the CuritibAI's own observation.
 
-## Changes
+## Changes (`src/tools/cityServiceGuide.ts`, text only)
 
-1. **`PERSON_LOCAL`** (`src/sources/geocuritiba.ts`): separators may repeat (`[._-]+`); a middle word may be a
-   single letter when the last word has 2+ letters ("ana.c.lima", "j.p.silva", "joao.e.silva"); a final single letter (digits or a number may follow) is a surname
-   initial when the first word and the word just before it have 2+ letters ("maria.s", "maria.silva.s",
-   "joao.p.silva.r", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). Unchanged: the unit prefixes are checked first and keep the
-   address; a single word, a word and a number ("sec.2", "sec..2") and exactly two single letters ("a.b", "a1.b")
-   never match. The local part is at most 64 characters (`CITY_EMAIL` runs first), so the regex has no long-input
-   cost.
-2. **Tests** (`test/cityFacilities.test.ts`): each new shape is dropped; ouvidoria, sine, falecomacgm, bare
-   regional names (boqueirao, cic), regional and unit addresses with a single-letter middle word or a doubled
-   separator, letter codes ("sme.d.p.e", "fas.n.s"), two single letters and a word and a number stay.
-3. **Docs and version**: docs/sources.md (the e-mail filter paragraph), docs/roadmap-1.0.md, CHANGELOG 0.78.0,
-   version 0.78.0 in `package.json`, `package-lock.json`, `server.json`. docs/tools.md and the tool contract do not
-   describe the name shapes and do not change.
+1. **R1, `what` and step 5**: one sentence each, marked "(observação do CuritibAI, não do guia de 2024)": the text
+   and the attachments can identify the citizen (in step 5, those of the e-mail). The `note` says the observation is
+   the project's own for the summary and steps 4 and 5.
+2. **R2, step 4**: "Pelo guia de 2024, a forma anônima não pede cadastro [...] (o CuritibAI não conferiu isso hoje no
+   site)" is its own sentence; the CuritibAI's warning follows in a separate sentence that starts "Observação do
+   CuritibAI, não do guia de 2024:". docs/sources.md says the same.
+3. **R3, step 4**: the same 2024-guide sentence says the anonymous form "não recebe resposta nem acompanhamento".
+4. **Test** (`test/cityServiceGuide.test.ts`): each step 5 sentence matching `/anônim|identific/` carries the
+   2024-guide hedge or the CuritibAI's own marker; step 4 has no sentence that mixes the registration or the answer
+   with the CuritibAI's observation; the new `what`, step 4, step 5 and `note` strings are pinned.
+5. **Docs and version**: docs/sources.md (a 0.79.0 paragraph), docs/tools.md (the Curitiba Ouve link row),
+   docs/roadmap-1.0.md, CHANGELOG 0.79.0, version 0.79.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-A trailing separator ("maria.silva."), two initials at the end ("joao.p.s"), a word starting with a number
-("2maria.silva") and a one-word name ("fulanasilva") still pass, and a connector address
-("esporte.e.lazer"), a word and one letter ("sala.a", "sme.d") or a word, a letter and a number ("sec.e.2") is
-dropped, failing closed (known limits, written down);
-sector words in the unit list; any new type, host, link or question.
+Any new step, question, source, host or link; any change to what the citizen types or what the assistant sends (it
+still writes and sends nothing). Re-reading the 2024 PDF or the Curitiba Ouve site.
 
 ## Check
 
-- `scripts/verify` exit 0; the tool contract snapshot is unchanged.
-- The old `PERSON_LOCAL` keeps every new dropped case of the tests (checked by hand with node).
-- Real records: the re-read above keeps the same number of city e-mails with the old rule and with the first draft
-  of the new rule. The final rule (after review: a surname initial needs only name words before it, so letter codes stay)
-  drops a subset of what that draft dropped and a superset of what the old rule dropped, so the count holds.
+- `npx vitest run test/cityServiceGuide.test.ts`: the pinned step 4 test fails on the 0.78.0 text and passes on 0.79.0.
+- `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
+- `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
+- `scripts/verify` exits 0 on the PR head.
