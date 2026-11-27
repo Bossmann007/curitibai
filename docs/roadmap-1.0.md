@@ -366,3 +366,10 @@ At v0.82.0 (phase B) the work-type person-name filter reads the word after um/um
 a guarded phrase "156 Dias", "8 Dias", "156 Hora" and "Úteis" alone are hidden. No new question, source or host; the
 layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.83.0 (phase B) the `city_service_guide` `ouvidoria` guide's step 4 names what to leave out to stay anonymous
+(name, address, phone, a face, the location saved in a photo, the file name) and says, as the project's own
+observation, that the anonymous form does not guarantee anonymity and that the project does not know what the site
+records about the visit. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The
+citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other
+cities 2).
