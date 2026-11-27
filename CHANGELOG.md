@@ -16,9 +16,11 @@ Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes n
 - Source: PNCP's own read routes on the same host, `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades`
   and `.../valorescategoriaitem`, about 0.1 s each, two requests at most through the PNCP gate. The Consulta PCA route
   named in the brief (`/api/consulta/v1/pca/atualizacao`) timed out twice at 40 s, then took 27.8 s for one page of
-  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422:
+  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422 (an empty 204 counts too):
   answered as `plan_found: false` with that status, and kept inside the gate's turn so it does not hold back the next
-  PNCP request; rows that all fail the strict check are `source_unavailable` (a renamed field is not "no plan").
+  PNCP request; unit rows that all fail the strict check are `source_unavailable` (a renamed field is not "no plan").
+  When the category request fails or none of its rows passes the check, the unit totals are kept, `categories` is
+  empty and the note says why.
 - `year`/`body_cnpj` without `mode: "plan"`, and `query`, `from`, `to`, `page_source`, `modality`, `page` or `skip`
   with it, are `invalid_argument`.
 - Tool contract: `procurement_search` gains `mode`, `year` and `body_cnpj`; its output `data` is the search object

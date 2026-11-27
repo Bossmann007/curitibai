@@ -423,7 +423,7 @@ export function getSearchPage(query: string, modality: number, page: number, sta
  * filters by update date, not by year, and took 28 s for one page, so it is not used.
  */
 export const PNCP_API = "https://pncp.gov.br/api/pncp";
-/** 31 units for the Município de Curitiba in 2027 (2026-11-27); a full page means more may exist (`units_capped`). */
+/** 31 units for the Município de Curitiba in 2027 (2026-11-27); a full page means more may exist (said in the note). */
 export const PCA_UNITS_PAGE_SIZE = 500;
 
 export function pcaUnitsUrl(cnpj: string, year: number): string {
@@ -439,7 +439,7 @@ export const PNCP_PLAN_LICENSE_NOTE =
   "(https://pncp.gov.br/api/pncp). The PNCP site (https://www.gov.br/pncp/pt-br) is published under CC BY-ND 3.0; no " +
   "separate licence for the API data was found. Totals per category and per requesting unit only; no item and no " +
   "supplier is returned. Unit and body names have CPF/CNPJ-shaped numbers, e-mails and phone numbers replaced by " +
-  "[masked]. A plan is what the body intends to buy, not a purchase. Unofficial; not affiliated with PNCP, the " +
+  "[masked] and are cut at 300 characters. A plan is what the body intends to buy, not a purchase. Unofficial; not affiliated with PNCP, the " +
   "Ministério da Gestão e Inovação em Serviços Públicos (MGI) or Prefeitura de Curitiba.";
 
 export interface PlanUnit {
@@ -507,7 +507,8 @@ export function parsePlanCategories(body: string): { categories: PlanCategory[];
 
 /**
  * PNCP answers 404 (units: "CNPJ do Órgão/Entidade inválido", even for a listed body) or 422 ("Nenhum Plano de
- * Contratação Anual cadastrado para o ano informado") when the body has no plan for the year. Returned as a value
+ * Contratação Anual cadastrado para o ano informado") when the body has no plan for the year; an empty 204 is read the
+ * same way. Returned as a value
  * inside the gate's turn, so the gate does not count it as a host failure and hold back the next request.
  */
 export type PlanAnswer<T> = { found: T } | { none: number };
@@ -527,7 +528,9 @@ function getPlan<T>(url: string, parse: (body: string) => T, startBy?: number): 
         },
         { startBy },
       );
-      return "none" in got ? got : { found: parse(got.body) };
+      if ("none" in got) return got;
+      // An empty body is PNCP's HTTP 204 (as in parseContratacoes): nothing published for that body and year.
+      return got.body.trim() === "" ? { none: 204 } : { found: parse(got.body) };
     }),
   );
 }

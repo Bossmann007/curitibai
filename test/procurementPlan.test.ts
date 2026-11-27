@@ -102,6 +102,30 @@ describe("procurement_search mode plan", () => {
     expect(dataOf(await plan()).plan_found).toBe(true);
   });
 
+  it("reads an empty HTTP 204 as no plan", async () => {
+    stubFetch({ [`GET ${pcaUnitsUrl(FAS, 2027)}`]: { status: 204 } });
+    const data = dataOf(await plan({ body_cnpj: FAS }));
+    expect(data.plan_found).toBe(false);
+    expect(data.note).toMatch(/HTTP 204/);
+  });
+
+  it("keeps the unit totals when the category request fails, and says why categories is empty", async () => {
+    stubFetch({ ...planRoutes(), [`GET ${pcaCategoriesUrl(CITY, 2027)}`]: { status: 500, body: "x" } });
+    const data = dataOf(await plan());
+    expect(data.plan_found).toBe(true);
+    expect(data.total_value).toBe(9_200_000);
+    expect(data.categories).toEqual([]);
+    expect(data.note).toMatch(/category totals could not be read \(HTTP 500\)/);
+  });
+
+  it("says so when no category row passes the format check", async () => {
+    const renamed = JSON.stringify([{ categoriaItemId: 1, nomeCategoria: "Material", quantidadeItens: 1, valorTotal: 1 }]);
+    stubFetch({ ...planRoutes(), [`GET ${pcaCategoriesUrl(CITY, 2027)}`]: { body: renamed, contentType: JSON_TYPE } });
+    const data = dataOf(await plan());
+    expect(data.categories).toEqual([]);
+    expect(data.note).toMatch(/No category row passed the format check/);
+  });
+
   it("refuses a body that is not a listed Curitiba municipal body, without a request", async () => {
     const calls = stubFetch({});
     const err = errorOf(await plan({ body_cnpj: "00394460005887" })) as { error: string; message: string };

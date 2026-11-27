@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SourceUnavailableError } from "../http.js";
+import { OutOfTimeError } from "../hostGate.js";
 import { getPlanCategories, getPlanUnits, PCA_UNITS_PAGE_SIZE, pcaUnitsUrl, PNCP_PLAN_LICENSE_NOTE, type PlanCategory } from "../sources/pncp.js";
 import { CALL_START_BUDGET_MS, failFrom, ok } from "./common.js";
 
@@ -41,12 +42,22 @@ export async function answerPlan(year: number, cnpj: string, limit: number) {
     const { body_name, units, received, discarded } = unitsRes.value.found;
     // Rows came back and none passed the strict check: a renamed field, not "no plan".
     if (received > 0 && units.length === 0) throw new SourceUnavailableError("layout_changed");
-    const catRes = await getPlanCategories(cnpj, year, startBy);
-    const cats = "found" in catRes.value ? catRes.value.found : { categories: [] as PlanCategory[], discarded: 0 };
-    const dropped = discarded + cats.discarded;
     const notes = [scope, "Totals are the sum of the requesting units' plans; a plan is what the body intends to buy, not a purchase. Values in BRL."];
-    if (dropped > 0) notes.push(`${dropped} malformed or foreign row(s) were left out of the totals.`);
-    if ("none" in catRes.value) notes.push(`The category totals answered HTTP ${catRes.value.none}; categories is empty.`);
+    // The units are in hand: a failed category request keeps them and says why categories is empty.
+    let cats: { categories: PlanCategory[]; discarded: number } = { categories: [], discarded: 0 };
+    try {
+      const catRes = await getPlanCategories(cnpj, year, startBy);
+      if ("none" in catRes.value) notes.push(`The category totals answered HTTP ${catRes.value.none}; categories is empty.`);
+      else if (catRes.value.found.categories.length === 0 && catRes.value.found.discarded > 0) {
+        notes.push("No category row passed the format check (PNCP may have changed it); categories is empty.");
+      } else cats = catRes.value.found;
+    } catch (err) {
+      if (!(err instanceof SourceUnavailableError) && !(err instanceof OutOfTimeError)) throw err;
+      const why = err instanceof SourceUnavailableError ? err.reason : "no turn within the time budget";
+      notes.push(`The category totals could not be read (${why}); categories is empty, the unit totals stand.`);
+    }
+    const dropped = discarded + cats.discarded;
+    if (dropped > 0) notes.splice(2, 0, `${dropped} malformed or foreign row(s) were left out of the totals.`);
     if (received >= PCA_UNITS_PAGE_SIZE) notes.push(`PNCP returned ${PCA_UNITS_PAGE_SIZE} units, its page size: more may exist.`);
     const stamps = units.flatMap((u) => [u.published_at, u.updated_at]).sort();
     return ok({
