@@ -124,10 +124,10 @@ function zonesOf(features: PointFeature[], layer: number): ZoneOut[] {
 const isCodeNumber = (v: number): boolean => v >= 0 && v < 1e6;
 /**
  * A PGV code published as a number or as text (0.71.0). A number keeps its JSON form: 27.0 arrives as 27, so "27";
- * text drops a trailing ".0" the same way ("12.0" is "12", 0.73.0), so both forms of one code match.
+ * text of 1 to 6 digits drops a trailing ".0" the same way ("12.0" is "12", 0.73.0), so "12.0" and 12 are one row.
  */
 const codeText = (v: unknown): unknown =>
-  typeof v === "number" ? (isCodeNumber(v) ? String(v) : null) : typeof v === "string" ? v.replace(/^(\s*\d+)\.0(\s*)$/, "$1$2") : v;
+  typeof v === "number" ? (isCodeNumber(v) ? String(v) : null) : typeof v === "string" ? v.replace(/^(\s*\d{1,6})\.0(\s*)$/, "$1$2") : v;
 /** The micro-region index as an integer; text only when all digits, so a blank never becomes the code 0. */
 const microRegionCode = (v: unknown): number | null => {
   if (typeof v === "number") return Number.isInteger(v) && isCodeNumber(v) ? v : null;

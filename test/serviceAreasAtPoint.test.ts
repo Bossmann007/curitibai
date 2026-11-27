@@ -544,17 +544,23 @@ describe("place_at_point service_areas, areas: civic (v0.66.0)", () => {
 });
 
 describe("service areas data shape (0.73.0)", () => {
-  it("every group answers every list, in the schema's key order; lists of other groups are null", async () => {
-    const reads: PointReads = {
-      layer: async (layer) => ({ value: layer === "bairro" ? [{ attributes: { nome: "BAIRRO TESTE" }, paths: null }] : [], fetchedAt: "2026-01-01T00:00:00.000Z" }),
+  it("every group answers every list, in the schema's key order (inside, outside, a later layer failing); lists of other groups are null", async () => {
+    const FIRST = ["health_area", "pm_company", "property_registry", "electoral_zone"];
+    const reads = (bairro: boolean, failLater: boolean): PointReads => ({
+      layer: async (layer) => {
+        if (failLater && layer !== "bairro" && !FIRST.includes(layer)) throw new SourceUnavailableError("synthetic");
+        return { value: bairro && layer === "bairro" ? [{ attributes: { nome: "BAIRRO TESTE" }, paths: null }] : [], fetchedAt: "2026-01-01T00:00:00.000Z" };
+      },
       censusBairro: () => null,
-    };
+    });
     const own = { care: ["health_units", "cras"], safety: ["police_military", "police_civil", "fire"], registry: ["property_registry", "civil_registry"], civic: ["electoral_zones"] };
+    const schemaKeys = Object.keys(serviceAreasAtPointOutput.shape.data.shape);
     for (const g of ["care", "safety", "registry", "civic"] as const) {
-      const { data } = await serviceAreasAt({ lat: P.lat, lon: P.lon }, reads, g);
-      expect(Object.keys(data)).toEqual(Object.keys(serviceAreasAtPointOutput.shape.data.shape));
-      const lists = Object.entries(data).filter(([, v]) => Array.isArray(v)).map(([k]) => k);
-      expect(lists).toEqual(own[g]);
+      const { data } = await serviceAreasAt({ lat: P.lat, lon: P.lon }, reads(true, false), g);
+      expect(Object.keys(data)).toEqual(schemaKeys);
+      expect(Object.entries(data).filter(([, v]) => Array.isArray(v)).map(([k]) => k)).toEqual(own[g]);
+      expect(Object.keys((await serviceAreasAt({ lat: P.lat, lon: P.lon }, reads(false, false), g)).data)).toEqual(schemaKeys);
+      expect(Object.keys((await serviceAreasAt({ lat: P.lat, lon: P.lon }, reads(true, true), g)).data)).toEqual(schemaKeys);
     }
   });
 });

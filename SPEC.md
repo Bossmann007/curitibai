@@ -22,7 +22,7 @@ No new source and no request: no host contacted. No new host, no new link.
 1. **Helper** (`src/tools/serviceAreasAtPoint.ts`): `areasData(p, areas, inside, lists, partial)` spreads `NO_LISTS`
    (every list null, in the schema's order) and then the group's own lists, so the keys of `data` keep their order.
    The four groups (care, safety, registry, civic) call it; `mergeAreas` in `placeAtPoint.ts` is unchanged.
-2. **PGV text code** (`src/tools/placeAtPoint.ts`, `codeText`): text of digits followed by exactly ".0" drops the
+2. **PGV text code** (`src/tools/placeAtPoint.ts`, `codeText`): text of 1 to 6 digits followed by exactly ".0" drops the
    ".0" ("12.0" is "12", " 13.0 " is "13"); "99.1", "99.10" and "12.0a" are untouched. Numbers as in 0.71.0.
 3. **Tests**: every group answers every list key in the schema's order, with only its own lists as arrays
    (`test/serviceAreasAtPoint.test.ts`); the ".0" cases and that "12.0" and 12 are one row
