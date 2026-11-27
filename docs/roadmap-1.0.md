@@ -287,3 +287,9 @@ keeps a "Parceria com" or "Programa" line only when an entity word follows; this
 Pinheirinho? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are unchanged (18, 16 covered).
 The citizen eval answers 137 of 141 questions (q142; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2,
 other cities 2).
+
+At v0.71.0 (phase B) `place_at_point` `place.pgv` reads the micro-bairro and micro-region codes whether the PGV layer
+publishes them as a number or as text (a blank is never the code 0); this answers "Qual a microrregião do IPTU na Rua
+XV de Novembro, 1000?" at a point on that street. No new source or host. The Curitiba App rows are unchanged (18, 16
+covered). The citizen eval answers 138 of 142 questions (q143; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).

@@ -2,6 +2,20 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.71.0 - 2026-11-27
+
+PGV codes as number or text, a follow-up of the 0.65.0 review. 27 tools. Publishes nothing.
+
+- `place_at_point` `place.pgv`: `microbairro` is read whether the layer publishes `cd_microbairro` as text or as a
+  number. A number keeps its JSON form: 27.0 arrives as 27 and is returned as "27" (the ".0" is not invented).
+  `microregion` is read from an integer, as before, or from text of 1 to 6 digits ("3" is 3); a blank, "2.5" or other
+  text is null, so a blank never becomes the code 0. Only these two PGV fields change; the shared field cleaner is
+  untouched. Tested.
+- Citizen eval: q143 ("Qual a microrregião do IPTU na Rua XV de Novembro, 1000?") answered at a point on that street
+  (the tool takes a point, not an address); its synthetic PGV row has a numeric micro-bairro and a text micro-region,
+  and the question fails on 0.70.0. 138 of 142. Tool contract snapshot unchanged.
+- No host contacted: the layer's field types were not re-read. No new network host, no new link, no new dependency.
+
 ## 0.70.0 - 2026-11-27
 
 Name filter for the work types, a follow-up of the 0.64.0 and 0.63.0 reviews. 27 tools. Publishes nothing.

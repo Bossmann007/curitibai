@@ -215,6 +215,23 @@ describe("place_at_point answers", () => {
     expect(out.note).toMatch(/more than one PGV micro-region/);
   });
 
+  it("PGV codes are read whether published as a number or as text (0.71.0)", async () => {
+    const row = (cd_microbairro: unknown, cd_microrregiao: unknown) => ({ sg_zona: "ZF-T", cd_microbairro, cd_microrregiao });
+    stubFetch(routes({
+      pgv: {
+        body: attrs([
+          row(27, "0"),
+          row(27.5, " 3 "),
+          row("28.0", ""),
+          row(29, " "),
+          row(30, "2.5"),
+        ]),
+      },
+    }));
+    const pgv = (await place()).data.pgv!.micro_regions.map((r) => [r.microbairro, r.microregion]);
+    expect(pgv).toEqual([["27", 0], ["27.5", 3], ["28.0", null], ["29", null], ["30", null]]);
+  });
+
   it("no PGV polygon at the point is an empty list, not partial", async () => {
     stubFetch(routes({ pgv: { body: EMPTY } }));
     const out = await place();
