@@ -10,7 +10,7 @@ import { fold } from "../text.js";
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 /** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
 export const HIDDEN_PERSON_LINE = "[a line naming who is in charge is not shown: it can carry a person's name]";
-const MAINTAINER = "mantenedor|mantid[ao]s? p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
+const MAINTAINER = "mantenedor|mantid[ao]s?\\s+p(?:or|el[ao])|proprietari|responsavel|\\bdiretora?\\b|\\badministradora?\\b";
 const MAINTAINER_LINE = new RegExp(`${MAINTAINER}|eireli|ltda`);
 export const isMaintainerLine = (line: string): boolean => MAINTAINER_LINE.test(fold(line)) || /\bME\b/.test(line) || /\bmei\b/i.test(line);
 /**
@@ -30,8 +30,8 @@ const LABEL_ONLY = "titular|coordenacao|gestao";
 /** Folded, with "secretária" (a person's role, NFC first) read as "secretario": not the office "Secretaria". */
 export const roleFold = (t: string): string => fold(t.normalize("NFC").replace(/secretária/giu, "secretario"));
 const PERSON_IN_CHARGE = new RegExp(
-  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?: [a-z]+)?\\s*:|\\bsecretaria\\s*:` +
-    `|\\bmantid[ao]s? (?:por|pel[ao] (?:sra?|senhora?|seu|dona))\\b`,
+  `^[^\\p{L}]*(?:${ROLE})\\b|\\b(?:${ROLE}|${LABEL_ONLY})(?:\\(a\\))?(?:\\s+[a-z]+)?\\s*:|\\bsecretaria\\s*:` +
+    `|\\bmantid[ao]s?\\s+(?:por|pel[ao]\\s+(?:sra?|senhora?|seu|dona))\\b`,
   "u",
 );
 export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
@@ -57,12 +57,13 @@ const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor|facilit
 const NOT_A_NAME_NEXT = "de|do|da|dos|das|em|e|para|que|com|no|na|nos|nas|ao|aos|a|o|as|os|como";
 const CONTEXT_ROLE = "tecnic[ao]s?|agentes?";
 const WORK_PERSON = new RegExp(
-  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|palestrantes?|assistentes? socia(?:l|is)|psicolog[ao]s?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
+  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|palestrantes?|assistentes?\\s+socia(?:l|is)|psicolog[ao]s?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
     `|(?:^[^\\p{L}]*|\\b(?:an?|o|as|os|d[ao]s?|pel[ao]s?|n[ao]s?|com)\\s+)(?:${CONTEXT_ROLE})\\s+(?!(?:${NOT_A_NAME_NEXT})\\b)\\p{L}` +
-    `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?: [a-z]+)?\\s*:`,
+    `|\\b(?:${CONTEXT_ROLE})(?:\\(a\\))?(?:\\s+[a-z]+)?\\s*:`,
   "u",
 );
-const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|ramal|sms";
+// v0.81.0: "whats" never before "app", so "whats app" reads one way only (two ways backtracked exponentially).
+const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats(?! ?app\\b)|e-?mails?|ramal|sms";
 /**
  * v0.76.0: the next word is a person unless it is a unit or channel word ("da unidade", "do Sine", "com DDD"), after
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
@@ -76,15 +77,38 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * (on the safe side). "Telefone da coordenação: 3350-0000" stays hidden too: "coordenação:" is a label of who is in
  * charge (isPersonInChargeLine). The whole-field check (`prev` null) joins the lines with spaces, so the rest of a
  * line is not known there: it takes the four words as plain unit words (`*_JOINED`), or "Fale com a gente pelo 156"
- * before the hours would hide the hours. Each line was already checked with the guard. Known limit: a name alone on
- * the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
+ * before the hours would hide the hours. Each line was already checked with the guard. A name alone on the next line
+ * after a guarded word that ends its line ("Fale com a gente" / "Fulana") is caught by isNameAfterGuarded (v0.81.0).
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
 const GUARDED_WORD = "gente|regional|coordenacao|rh";
-const GUARDED_UNIT =
-  `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
-  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b)*$)";
+/** One step of a guarded word's rest: a non-letter, "[masked]", a unit or channel word, "empresa", "site" or a connector. */
+const REST_STEP =
+  `[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
+  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b";
+/**
+ * v0.81.0: the rest is read for at most 100 steps (a 400 KB line of guarded words was quadratic, seconds in 0.80.0) and
+ * may not end in ',' or ';' (a long Liceu line cut at commas, "…, Falar com a gente," then "Fulana"); it ends at the
+ * end or at a line break (two lines joined by the split check). A longer rest is not a unit: hidden, on the safe side.
+ */
+const GUARDED_UNIT = `(?:${GUARDED_WORD})\\b(?=(?:${REST_STEP}){0,100}(?<![,;])(?:$|\\n))`;
+/** A whole line made only of rest steps ("pelo 156", "3350-0000", "WhatsApp", "ou pelo telefone"). */
+/**
+ * Hours words that are not rest steps: weekdays, "h", "às", "até", "de", "horário", "fechado", "agendamento" …
+ * No word may be both a rest step and an hours step, nor match two alternatives here: a word read two ways doubles
+ * the work on each repeat (0.81.0 review: "atendimento", in UNIT_WORD and here, made "atendimento " x27 take 5 s).
+ * test/cityFacilities.test.ts times every word of both lists repeated.
+ */
+const HOURS_STEP =
+  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|util|uteis|ate|de|h|hs|" +
+  // "dia(s)" and "hora(s)" can be a name ("Dias"): only after a number, or "dia(s)" before "útil/úteis" (disjoint paths).
+  "dias?(?=\\s+(?:util|uteis)\\b)|(?<=\\d\\s?)(?:dias?(?!\\s+(?:util|uteis)\\b)|horas?)|" +
+  "horarios?|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
+  "todas|presencial|online|agendamento|antecedencia|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
+const REST_ONLY = new RegExp(`^(?:${REST_STEP}|${HOURS_STEP})*$`, "u");
+/** A street address ("Rua XV de Novembro, 100", "Av. …"): kept after a guarded contact phrase. */
+const ADDRESS_START = /^(?:rua|r|av|avenida|travessa|alameda|praca|rodovia|estrada)\b/;
 const personNext = (guarded: string): string =>
   `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${guarded}))\\p{L}`;
 const PERSON_NEXT = personNext(GUARDED_UNIT);
@@ -117,8 +141,11 @@ const SERVICE_VALUE = new RegExp(
  * Fulana" and "agendamento com antecedência, Fulana" pass; a detail word missing from the list hides the line.
  */
 const APPOINTMENT_DETAIL =
-  "um|uma|no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|dias?|hora|horario|marcacao|retirada|" +
-  "documentos?|documentacao|comprovantes?|carteira|cpf|rg|senha";
+  "no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|horario|marcacao|retirada|" +
+  "documentos?|documentacao|comprovantes?|carteira|cpf|rg|" +
+  // v0.81.0: words that can also be a name ("Dias", "Hora") count only before a number or a detail ("uma semana", "dias
+  // úteis", "hora marcada", "senha retirada"); "agendamento com Dias" and "com Dias Ferreira" are a name.
+  "(?:um|uma|dias?|hora|senha)(?=\\s+(?:\\d|(?:d[aeo]s?|semanas?|horas?|minutos?|uteis|marcad[ao]s?|retirad[ao]s?|previ[ao]s?|n[ao]|pel[ao]|antecedencia)\\b))";
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);
@@ -172,12 +199,42 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
   const bare = BARE_SERVICE_LABEL.test(p) || (last !== undefined && last.index + last[0].length === p.length);
   return bare && !isServiceValue(f);
 };
-/** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
+/**
+ * v0.81.0: a line whose contact phrase or "agendamento com" names a guarded unit word ("Falar com o RH", "Fale com a
+ * gente pelo 156", "Telefone da Regional:", "E-mail da coordenação", "Agendamento com o RH") may have the name on the
+ * next line (0.79.0 hid it with the whole field). That next line is hidden unless it is made only of rest and hours
+ * steps (REST_ONLY) or is a street address (ADDRESS_START): "Segunda a sexta, das 8h …", "3350-0000", "pelo 156",
+ * "WhatsApp", "Atendimento presencial", "Horário: 8h", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000",
+ * "3350-0000 - Fulana", "156 - Fulana", "pelo 156 ou com a Fulana", "8h às 17h com Fulana" and "Presencial com
+ * Fulana" are hidden. The phrase may itself span two lines ("Tratar com" / "o RH" / "Fulana": hourLines reads three
+ * lines), but not be complete on the first of three. Known limit: a line of any other words is hidden too ("Térreo do
+ * prédio", "2º andar"), on the safe side.
+ */
+const GUARDED_NEXT = `(?:(?:an?|o|as|os)\\s+)?${GUARDED_UNIT}`;
+const GUARDED_END = new RegExp(`${namedChannel(GUARDED_NEXT).source}|\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+${GUARDED_NEXT}`, "u");
+const isNameAfterGuarded = (f: string, prev: string): boolean => {
+  if (!GUARDED_END.test(prev)) return false;
+  return !REST_ONLY.test(f) && !ADDRESS_START.test(f.replace(/^[-–•*\s]+/, ""));
+};
+/** v0.81.0: the line ends in a guarded contact phrase, so hourLines reads the next line with it even if it starts with a number. */
+export const isGuardedContact = (line: string): boolean => GUARDED_END.test(fold(line));
+/**
+ * `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count;
+ * or two lines joined by a line break (hourLines' split check), where a name after a guarded contact phrase is read.
+ */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
-  const [channel, appointment] = prev === null ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
+  // v0.81.0: two lines joined by a line break (the split check) know where the first one ends, so they keep the guard.
+  const joined = prev === null && !f.includes("\n");
+  const [channel, appointment] = joined ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
   if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
-  return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
+  if (prev !== null) return isContactPerson(f) || isServiceValuePerson(f, prev);
+  // hourLines' split check (v0.81.0) joins a line to the one before it with a line break.
+  const br = f.lastIndexOf("\n");
+  if (br < 0) return false;
+  // Three lines: the phrase must end on the middle one ("Tratar com" / "o RH"), not be complete on the first.
+  const first = f.slice(0, f.indexOf("\n"));
+  return (first.length === br || !GUARDED_END.test(first)) && isNameAfterGuarded(f.slice(br + 1), f.slice(0, br));
 };
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
@@ -211,8 +268,8 @@ const GARDEN_LINE = new RegExp(
 );
 const GARDEN_CONTACT = /^contatos? pel[ao] e-?mail d[ao] secretaria\.?$/;
 const GARDEN_PERSON = new RegExp(
-  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
-    `|\\bmantid[ao]s? pel[ao] (?!(?:${ENTITY})\\b)` +
+  `\\bcontatos?\\b|\\bvoluntari|\\bquem\\s+(?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s?\\s+(?:por\\b|pel[ao]\\s+(?!(?:${BODY})\\b))` +
+    `|\\bmantid[ao]s?\\s+pel[ao]\\s+(?!(?:${ENTITY})\\b)` +
     `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
 );
 /**
@@ -263,3 +320,8 @@ export const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PAR
  */
 const WEEKDAY_START = "^(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?(?:-feira|\\s+(?:a|e|das?|de)\\b|\\s*[,:])(?=.*\\d)";
 export const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${WEEKDAY_START}|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
+/** v0.81.0: a line that reads as hours or a service (SERVICE_LINE, or a service value): not the rest of a split keyword. */
+export const isServiceText = (line: string): boolean => {
+  const f = roleFold(line);
+  return SERVICE_LINE.test(f) || isServiceValue(f);
+};

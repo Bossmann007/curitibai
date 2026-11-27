@@ -2670,3 +2670,228 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     expect(performance.now() - start).toBeLessThan(1000);
   });
 });
+
+describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a name on the line after 'com o RH')", () => {
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const OFFICES = ["clube de xadrez", "administracao regional", "cohab", "mesa solidaria", "fazenda urbana", "nucleo de seguranca alimentar"];
+  // An earlier hidden line turns the whole-field check off: the split keyword must be caught line by line.
+  const FIRST = "Responsável: Fulana.";
+  const split = (id: string, s: string) => {
+    const t = type(id);
+    const out = lines(id, `${FIRST}\n${HOURS}\n${s}`);
+    expect(out.slice(0, 2), `${id}: ${s}`).toEqual([t.hiddenLineMarker, HOURS]);
+    expect(out.at(-1), `${id}: ${s}`).toBe(t.hiddenLineMarker);
+    expect(out.join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+  };
+
+  it("cei contratado hides a 'mantida pela' or 'mantido por' split over two lines", () => {
+    for (const s of ["Mantida\npela Fulana de Tal", "Mantido\npor Fulano de Tal", "Mantidas\npelas Fulanas"]) split("cei contratado", s);
+    expect(lines("cei contratado", `${FIRST}\n${HOURS}\nMantida\npela Fulana de Tal`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS, "Mantida", HIDDEN_MAINTAINER_LINE]);
+  });
+
+  it.each([...OFFICES, ...WORK])("%s hides a person-in-charge keyword split over two lines", (id) => {
+    for (const s of ["Mantida\npor Fulana", "Mantida pela\nSra. Fulana", "Mantido\npelo Seu Fulano", "Coordenação\ngeral: Fulano", "Gestão\nlocal: Fulana"]) split(id, s);
+  });
+
+  it.each(WORK)("%s hides a work role split over two lines", (id) => {
+    for (const s of ["Assistente\nsocial Fulana", "Assistentes\nsociais Fulana e Fulano", "Técnica\nFulana", "Agente\nresponsável: Fulano", "Fale com\nFulana", "Agendamento\ncom Fulana"]) split(id, s);
+  });
+
+  it("horta comunitaria keeps hiding a split 'mantida pela' (its allowlist hides both halves)", () => {
+    expect(lines("horta comunitaria", "Horta com 10 canteiros\nmantida\npela Fulana")).toEqual(["Horta com 10 canteiros", HIDDEN_PERSON_LINE]);
+    expect(isGardenPersonLine("Mantida\npela Fulana"), "the multi-word rule reads a line break as a space").toBe(true);
+    expect(isGardenPersonLine("Quem\ncuida: Fulana")).toBe(true);
+  });
+
+  it("the split check needs both halves: a line that hides alone does not drag the next one", () => {
+    expect(lines("cei contratado", `Diretora: Fulana.\n${HOURS}`)).toEqual([HIDDEN_MAINTAINER_LINE, HOURS]);
+    expect(lines("sine", `${FIRST}\nAtendimento:\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, "Atendimento:", HOURS]);
+    for (const id of WORK) {
+      for (const [a, b] of [["Dúvidas? Fale com a gente pelo 156", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional: 156", HOURS], ["Tratar com o RH da empresa", HOURS],
+        ["Atendimento", "com agendamento"], ["Mantida pela Prefeitura de Curitiba.", HOURS]]) {
+        expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HIDDEN_PERSON_LINE, a, b]);
+      }
+    }
+  });
+
+  it.each(WORK)("%s hides a name alone on the line after a contact phrase that ends in RH, Regional, coordenação or 'a gente'", (id) => {
+    for (const [a, b] of [["Falar com o RH", "Fulano de Tal"], ["Fale com a gente", "Fulana"], ["Telefone da Regional:", "Fulana de Tal"], ["E-mail da coordenação", "Fulana"],
+      ["Tratar com o RH.", "Sra. Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s keeps the line after that phrase when it is hours, a number, a channel or a unit", (id) => {
+    for (const [a, b] of [["Falar com o RH", HOURS], ["Fale com a gente", "Segunda a sexta, das 8h às 17h"], ["Telefone da Regional:", "3350-0000"], ["Fale com a gente:", "pelo 156"],
+      ["E-mail da coordenação", "ou pelo telefone"], ["Falar com o RH", "Atendimento presencial"], ["Fale com a gente", "WhatsApp"], ["Fale com a gente", "Com agendamento"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace("3350-0000", "[masked]")]);
+    }
+    for (const a of ["Fale com a gente pelo 156", "Tratar com o RH da empresa", "Telefone da Regional: 156"]) {
+      expect(lines(id, `${a}\nFulana`), `${id}: the phrase goes on after the unit word (0.79.0 hid the name)`).toEqual([a, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("review: a split hidden by the new checks keeps the whole-field check, so a third line is caught too", () => {
+    expect(lines("cei contratado", "Mantido\npor\nFulano de Tal Souza Lima")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    expect(lines("sine", "Assistente\nsocial\nFulana de Tal Souza Lima")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", `Assistente\nsocial: atendimento às terças\n${HOURS}\nFale\ncom\nFulana`)).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Fale com a gente\nFulana\nFale\ncom\nFulano")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it("review: hours or a service on the second line are not read with the line before", () => {
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      expect(lines(id, `${FIRST}\nHorário mantido\npor agendamento`), id).toEqual([type(id).hiddenLineMarker, "Horário mantido", "por agendamento"]);
+      expect(lines(id, `${FIRST}\nCoordenação\nHorário: 8h às 17h`), id).toEqual([type(id).hiddenLineMarker, "Coordenação", "Horário: 8h às 17h"]);
+    }
+  });
+
+  it.each(WORK)("review: %s hides a name before a phone, ':' or hours on the line after the contact phrase; an address stays", (id) => {
+    for (const b of ["Fulana (41) 3350-0000", "Fulana: segunda a sexta", "Sra. Fulana - 3350-0000"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["- Fulana de Tal", "Fulana, telefone 3350-0000", "Fulana - fone", "Fulana Atendimento", "Fulana Silva - Rua XV"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+    }
+    // A line hidden after a bare label still turns the whole-field check off, as in 0.80.0: the hours stay.
+    expect(lines(id, "Atendimento:\nFulana\nSegunda a sexta 8h às 17h, falar com\nHorário de almoço: 12h fechado")).toEqual(
+      ["Atendimento:", HIDDEN_PERSON_LINE, "Segunda a sexta 8h às 17h, falar com", "Horário de almoço: 12h fechado"]);
+    for (const b of ["Rua XV de Novembro, 100", "Av. Inventada", "Horário: 8h às 17h", "Telefone: 3350-0000"]) {
+      expect(lines(id, `Fale com a gente\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente", b.replace("3350-0000", "[masked]")]);
+    }
+  });
+
+  // Security Reviewer, after 0.80.0 merged: leaks 0.80.0 opened against 0.79.0.
+  const PAD = "Curso de solda, elétrica e marcenaria com certificado na unidade do bairro Inventado, turmas de manhã e de tarde, inscrições abertas";
+  it.each(WORK)("O1: %s hides a name after a guarded phrase in a line over 160 characters (cut at commas for liceu)", (id) => {
+    for (const ph of ["Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da coordenação", "Fale com a gente pelo 156", "Tratar com o RH da empresa", "Agendamento com o RH"]) {
+      for (const sep of [", ", "; ", " - ", "\n", ",\n"]) {
+        for (const nm of ["Fulana", "Fulano de Tal", "Sra. Fulana"]) {
+          const out = lines(id, `${PAD}, ${ph}${sep}${nm}`).join("\n");
+          expect(out, `${id}: ${ph}${JSON.stringify(sep)}${nm}`).not.toContain(nm);
+        }
+      }
+    }
+  });
+
+  it.each(WORK)("O2: %s hides a name after a guarded word on the next line (0.79.0 hid these)", (id) => {
+    for (const [a, b] of [["Telefone da", "Regional Fulana"], ["Fale com", "o RH Fulano"], ["Tratar", "com o RH Fulano"], ["E-mail da", "coordenação Fulana"], ["Agendamento", "com o RH Fulano"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${FIRST}\n${a}\n${b}`), `${id}: after a hidden line`).toEqual([HIDDEN_PERSON_LINE, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b] of [["Telefone da", "Regional: 156"], ["Fale com", "a gente pelo 156"], ["Tratar", "com o RH da empresa"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
+  });
+
+  it.each(WORK)("review: %s reads the whole next line after a guarded phrase, and a phrase split over two lines", (id) => {
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 - Fulana"], ["Falar com o RH", "(41) 3350-0000 Fulana"], ["Fale com a gente", "pelo 156 ou com a Fulana"],
+      ["Fale com a gente", "WhatsApp da Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    for (const [a, b, c] of [["Tratar com", "o RH", "Fulana"], ["Telefone da", "Regional:", "Fulano de Tal"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}\n${c}`), `${id}: ${a} / ${b} / ${c}`).toEqual([HOURS, a, b, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, "Fale com a\ngente\nSra. Fulana").join("\n"), "'Fale com a' alone already hides, and the name after it").not.toMatch(/Fulana/);
+    for (const [a, b] of [["Telefone da Regional:", "3350-0000 ou 3350-0001"], ["Fale com a gente", "pelo 156 ou pelo e-mail"], ["Fale com a gente", "Equipe do RH"]] as const) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace(/3350-000\d/g, "[masked]")]);
+    }
+    expect(isWorkPersonLine("Telefone da Regional: 156 e 3350 e 3351 e 3352 e 3353 e 3354 e 3355"), "a rest of up to 100 steps is a unit").toBe(false);
+    for (const [a, b] of [["Fale com a gente", "156 - Fulana"], ["Telefone da Regional:", "2º andar - Fulana"], ["Falar com o RH", "8h às 17h com Fulana"],
+      ["Fale com a gente", "Presencial com Fulana"], ["Fale com a gente", "Segunda a sexta com Fulana"]]) {
+      expect(lines(id, `${HOURS}\n${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([HOURS, a, HIDDEN_PERSON_LINE]);
+    }
+    expect(lines(id, `${HOURS}\nTratar com\no RH\n156 Fulana`)).toEqual([HOURS, "Tratar com", "o RH", HIDDEN_PERSON_LINE]);
+    for (const [a, b, c] of [["Fale com a gente", "pelo 156", "Sala de leitura infantil"], ["Telefone da Regional:", "3350-0000", "Térreo do prédio"]] as const) {
+      expect(lines(id, `${a}\n${b}\n${c}`), `${id}: a complete phrase, a contact line, then ${c}`).toEqual([a, b.replace("3350-0000", "[masked]"), c]);
+    }
+    for (const [a, b] of [["Falar com o RH", "Segunda a sexta, das 8h às 17h, com agendamento"], ["Fale com a gente", "Horário: 8h às 17h"], ["Fale com a gente", "Rua XV de Novembro, 100"]]) {
+      expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b]);
+    }
+  });
+
+  it.each(WORK)("%s hides 'agendamento com' and a word that is also a name at the end of the line", (id) => {
+    for (const v of ["agendamento com Dias", "agendamento com Uma", "agendamento com hora", "agendamento com senha", "agendamento com o Dias", "agendamento com Dias Ferreira",
+      "agendamento com Senha Fulana"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
+    }
+    for (const v of ["agendamento com hora marcada", "agendamento com uma semana de antecedência", "agendamento com 2 dias de antecedência", "agendamento com senha retirada no local"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
+    }
+  });
+
+  it("a guarded word's rest is read for at most 100 steps, so a 400 KB line is fast", () => {
+    const shapes = ["telefone da regional ".repeat(19_000), "telefone da regional, ".repeat(18_000), "fale com a gente pelo 156 ".repeat(15_000),
+      `${PAD}, Falar com a gente, ` + "x, ".repeat(130_000), "Tratar com o RH da empresa ".repeat(15_000),
+      "Telefone da Regional: " + "whats app ".repeat(40_000) + "Fulana", "Fale com a gente\n" + "whats app e-mail segunda as 8h ".repeat(13_000) + "Fulana"];
+    expect(isWorkPersonLine("Telefone da Regional: " + "whats app ".repeat(50) + "Fulana"), "review: 'whats app' reads one way only").toBe(true);
+    const start = performance.now();
+    for (const s of shapes) {
+      isWorkPersonLine(s);
+      lines("liceu de oficios", s);
+      lines("sine", s);
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
+    expect(isWorkPersonLine("Telefone da Regional: " + "156 e ".repeat(30)), "a rest longer than 100 steps is not a unit word: hidden, on the safe side").toBe(true);
+  });
+
+  it("Boss's repros (Security Reviewer MUST FIX on 0.80.0): the long Liceu line with wrapLines and the split forms stay hidden", () => {
+    expect(type("liceu de oficios").wrapLines).toBe(true);
+    const long = "Atendimento ao público de segunda a sexta, das 8h às 17h, com atendimento prioritário para idosos, gestantes e pessoas com deficiência, ";
+    for (const tail of ["Falar com a gente, Fulana", "Tratar com a gente, Fulana da Silva", "Telefone da gente, Fulana da Silva", "Telefone da Regional, Fulana da Silva"]) {
+      expect(`${long}${tail}`.length).toBeGreaterThan(160);
+      expect(lines("liceu de oficios", `${long}${tail}`).join("\n"), tail).not.toMatch(/Fulana/);
+    }
+    for (const id of WORK) {
+      for (const s of ["Telefone da\nRegional Fulana", "Telefone\nda Regional Fulana", "Fale com\no RH Fulano", "Tratar\ncom o RH Fulano", "E-mail da\ncoordenação Fulana",
+        "Assistente\nsocial Fulana", "Telefone da Regional\nFulana", "E-mail da coordenação\nFulana", "Telefone da Regional:\nFulana", "Fale com a gente pelo 156\nFulana",
+        "Telefone da Regional: 3350-0000\nFulana", "Fale com a gente\nFulana, das 8h às 17h", "Fale com a gente\nou com a Fulana"]) {
+        expect(lines(id, s).join("\n"), `${id}: ${s}`).not.toMatch(/Fulan/);
+        expect(lines(id, `${FIRST}\n${s}`).join("\n"), `${id}: after a hidden line: ${s}`).not.toMatch(/Fulan[ao](?!\.)/);
+      }
+    }
+  });
+
+  it("Security Reviewer on 4c32d11: every rest or hours word repeated after a guarded phrase reads one way only (no exponential time)", () => {
+    const words = ["unidade", "agencia", "sine", "liceu", "inss", "central", "setor", "equipe", "recepcao", "prefeitura", "secretaria", "ddd", "cras", "creas",
+      "atendimento", "ministerio", "posto", "ouvidoria", "trabalhador", "telefone", "fone", "tel", "celular", "whats app", "whatsapp", "whats", "e-mail", "email",
+      "ramal", "sms", "gente", "regional", "coordenacao", "rh", "empresa", "site", "portal", "aplicativo", "app", "pelo", "pela", "por", "via", "no", "na", "em",
+      "da", "do", "das", "a", "an", "o", "as", "os", "e", "ou", "segunda", "seg", "sexta", "feira", "feriado", "uteis", "ate", "de", "h", "hs", "2 dias", "dias uteis",
+      "2 horas", "horario", "funcionamento", "aberto", "fechado", "almoco", "intervalo", "manha", "tarde", "noite", "diariamente", "todos", "todas", "presencial",
+      "online", "agendamento", "com", "sem", "mediante", "previo", "ordem", "chegada", "gratuito", "ª", "º"];
+    for (const w of words) {
+      const s = "Fale com o RH\n" + `${w} `.repeat(30) + "x";
+      const start = performance.now();
+      isWorkPersonLine(s, null);
+      isWorkPersonLine(`Telefone da Regional: ${w} `.repeat(30) + "x");
+      lines("sine", s);
+      expect(performance.now() - start, w).toBeLessThan(200);
+    }
+    const start = performance.now();
+    isWorkPersonLine("Fale com o RH\n" + "atendimento ".repeat(35_000) + "x", null);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it.each(WORK)("R1: %s hides 'Dias' or 'Hora' alone after a guarded phrase; '2 dias' and 'Dias úteis' stay", (id) => {
+    for (const b of ["Dias", "WhatsApp Dias", "ou com a Dias", "Hora", "Horas", "Dia"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["Dias úteis, das 8h às 17h", "2 dias de antecedência", "24 horas", "Segunda a sexta, 8 horas por dia útil"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
+  it("the split check stays fast on 50 KB of short lines", () => {
+    const start = performance.now();
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      lines(id, "Mantida\n".repeat(6_500));
+      lines(id, "Falar com o RH\nFulano\n".repeat(2_400));
+      lines(id, `${FIRST}\n` + "Assistente\nsocial\n".repeat(2_800));
+    }
+    expect(performance.now() - start).toBeLessThan(2000);
+  });
+});

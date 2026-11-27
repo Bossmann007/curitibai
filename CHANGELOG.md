@@ -2,6 +2,82 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.81.0 - 2026-11-27
+
+Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publishes nothing. **This version fixes
+leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 merge).
+
+- Regressions of 0.80.0, work types: after "Falar com a gente", "Fale com o RH", "Telefone da Regional", "E-mail da
+  coordenação" and the like, a name that 0.79.0 hid was shown in three shapes, and all three are hidden again:
+  - In a long `liceu de oficios` line (over 160 characters, cut at commas), "…, Falar com a gente, Fulana" showed
+    "Fulana". A guarded word's rest ("gente", "Regional", "coordenação", "RH") now may not end in ',' or ';'.
+  - A name on the line after the phrase ("Telefone da" / "Regional Fulana", "Fale com" / "o RH Fulano", "Tratar" /
+    "com o RH Fulano", "E-mail da" / "coordenação Fulana"). Two lines joined by a line break now keep the guard; only
+    the whole-field check, joined with spaces, reads the four words as plain unit words.
+  - A name alone on the line after a phrase that goes on after the unit word ("Fale com a gente pelo 156", "Tratar
+    com o RH da empresa", "Agendamento com o RH"), also past the 160-character cut (the line before is now read
+    uncut).
+  - A name after a number or a connector on that next line ("Telefone da Regional:" / "3350-0000 - Fulana", "Fale
+    com a gente" / "pelo 156 ou com a Fulana"), and a phrase itself split over two lines with the name on a third
+    ("Tratar com" / "o RH" / "Fulana"): the whole next line is read, and the split check also reads three lines.
+  The line after such a phrase is kept only when it is made of channel, unit, connector and hours words, numbers and
+  punctuation ("pelo 156", "Segunda a sexta, das 8h às 17h", "Horário: 8h às 17h") or is a street address, so "156 -
+  Fulana", "8h às 17h com Fulana" and "Presencial com Fulana" are hidden there.
+  On a generated set of 29,400 such lines (four work types, seven lead-in lengths, fifteen phrases, fourteen
+  separators, five names), 0.79.0 shows the name in 6,472, 0.80.0 in 18,980 and 0.81.0 in none; nothing 0.79.0 hid
+  is shown.
+- The 0.80.0 known limit "a name alone on the next line after 'Fale com a gente' is shown" was wider than 0.80.0 said:
+  it also covered "Telefone da Regional", "E-mail da coordenação" and "RH", lines ending in ':', "pelo 156" or a phone,
+  and next lines such as "Fulana, das 8h às 17h" or "ou com a Fulana". 0.81.0 closes it for all of these (tested).
+- Performance regression of 0.80.0: a guarded word's rest is read for at most 100 steps. A 400 KB line of "telefone
+  da regional" took about 4 s in one call to the work-type filter (0.79.0: 5 ms); it now takes about 6 ms. A rest
+  longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
+  "whats app" could be read two ways ("whats app" or "whats" then "app"), so a line of repeated "whats app" after a
+  guarded word backtracked exponentially (0.80.0: 22 repeats 153 ms, 50 repeats over a minute); it reads one way now
+  (50 repeats: under 1 ms). The same held for "atendimento" (a unit word and, in a first draft of this version, an
+  hours word): no word is now both, and a test times every word of both lists repeated 30 times.
+- "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
+  um/uma, dia(s), hora and senha count as appointment details only before a number or a detail word ("uma semana",
+  "dias úteis", "hora marcada", "senha retirada"), so "agendamento com Dias Ferreira" is hidden too.
+
+- `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
+  regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
+  trabalhador`, `liceu de oficios`, `inss`): a keyword split over two lines ("Mantida" / "pela Fulana de Tal" in a
+  contracted CEI; "Mantida" / "por Fulana", "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano", "Técnica"
+  / "Fulana" for the office and work types) is hidden on its second line
+  even when another line of the record is already hidden. Before, only the whole-field check caught it, and that
+  check is skipped once a line is hidden, so the name showed. Each line is now read together with the one before it,
+  the way the whole-field check reads the record, and is hidden when the pair hides and the line before does not
+  hide alone; the first half stays. A second line that reads as hours or a service ("Horário: 8h", "por
+  agendamento") is not read with the one before. The multi-word patterns accept a line break wherever they had a
+  space. The whole-field check is now skipped only when a line hid on its own rules (not by the split check), so a
+  keyword split over three lines ("Mantido" / "por" / "Fulano de Tal Souza Lima") still hides the whole field, as before. `horta comunitaria`
+  is unchanged (its allowlist already hid both halves). Known limit: when the line before hides on its own
+  ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima"), the pair is not read and a name of five or more
+  words on the next line passes, and so does "Coordenadora" / "geral: Fulana" (as in 0.80.0).
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after a line whose contact phrase ends in
+  "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Fale com a gente", "Telefone da Regional:"), a
+  name on the next line is hidden ("Fulano de Tal", "Sra. Fulana", "- Fulana", "Fulana (41) 3350-0000", "Fulana,
+  telefone …", "Fulana: segunda a sexta", "156 - Fulana", "8h às 17h com Fulana"); this is read by the split check,
+  so the whole-field check still runs. The next line is kept only when it is made of channel, unit, connector and
+  hours words, numbers and punctuation ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp",
+  "Atendimento presencial", "Horário: 8h às 17h", "Com agendamento") or is a street address ("Rua XV de Novembro,
+  100"). "Dia(s)" and "hora(s)" count as hours only after a number or before "útil/úteis" ("2 dias", "Dias úteis",
+  "24 horas"), so "Dias" or "Hora" alone is hidden there. Known limits: any other words on that line are hidden too,
+  on the safe side ("Sala de leitura", "2º andar"); a guarded phrase that ends in ',' or ';' with no name after it
+  ("Fale com a gente," / hours) is hidden, on the safe side; and a guarded phrase complete on the first of three
+  lines, then a contact line, then the name ("Telefone da Regional:" / "3350-0000" / "- Fulana") shows the name
+  (only the line right after the phrase, or the third line of a phrase split over two, is read).
+- "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
+  carteira de trabalho" stay shown, also before the hours and after a hidden line.
+- Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306
+  records, 253 with an `observacao`) and replayed offline with 0.79.0, 0.80.0 and 0.81.0: 131 hidden-line markers in
+  each, and every record's `hours` is identical. Timing tests: 50 KB of short lines and five 400 KB lines, each set
+  under 2 s.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new host, link or dependency.
+
 ## 0.80.0 - 2026-11-27
 
 Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publishes nothing.

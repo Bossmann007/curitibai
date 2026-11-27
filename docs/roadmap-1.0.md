@@ -352,3 +352,11 @@ empresa", "Atendimento: emissão de carteira de trabalho") and hides "Atendiment
 passed as hours. No new question, source or host; the layers were not re-read. The Curitiba App rows are unchanged
 (18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version; q140 is left to
 v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.81.0 (phase B) the `city_facilities_search` person-name filter hides a keyword split over two lines ("Mantida" /
+"pela Fulana") even when another line of the record is already hidden, for every type that hides person lines, and,
+for the work types, a name alone on the line after "Falar com o RH" or "Fale com a gente". It also fixes the
+leaks 0.80.0 introduced (long Liceu lines, names on the line after a guarded word, a 400 KB slow case). On the 12 layers re-read
+once for the check, no shown line changed. No new question, source or host. The Curitiba App rows are unchanged (18,
+16 covered). The citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time
+buses 2, other cities 2).

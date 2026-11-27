@@ -10,6 +10,8 @@ import {
   isGardenPersonLine,
   isMaintainerLine,
   isPersonInChargeLine,
+  isGuardedContact,
+  isServiceText,
   isWorkPersonLine,
   MAINTAINER_LABEL,
   NOT_A_NAME,
@@ -977,15 +979,31 @@ export function hourLines(
   // responsável:" is hidden.
   let soft = false;
   let prev: string | undefined; // the last non-empty line, shown or hidden
+  let prev2: string | undefined; // the one before it
+  // v0.81.0: a line hidden on its own rules (not by the split check below, nor only as the value or the rest of a name
+  // after one): only then is the whole-field check skipped, as before, so a keyword split over three lines is still
+  // caught after the split check hid one half.
+  let other = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
       const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
-      const before = prev;
-      prev = t;
-      if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before))) {
+      const full = hide ? cleanText(part, Infinity) : t;
+      const [before, before2] = [prev, prev2];
+      [prev, prev2] = [full, prev]; // v0.81.0: uncut, so a contact phrase past the cut still reaches the next line's checks
+      // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
+      // whole-field check below (prev null) on this line and the one before, which must not hide alone, and then on the
+      // last three lines ("Tratar com" / "o RH" / "Fulana"); the lines before stay. A line that reads as hours or a
+      // service ("Horário: 8h", "por agendamento") is read so only after a guarded contact phrase ("Telefone da
+      // Regional:" / "3350-0000 - Fulana").
+      const pair = (joined: string, head: string): boolean => hide !== undefined && hide(joined, null) && !hide(head, null);
+      const split = (): boolean =>
+        names !== undefined && !allowlist && before !== undefined && (!isServiceText(t) || isGuardedContact(before) || (before2 !== undefined && isGuardedContact(`${before2}\n${before}`))) &&
+        (pair(`${before}\n${full}`, before) || (before2 !== undefined && pair(`${before2}\n${before}\n${full}`, `${before2}\n${before}`)));
+      const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(full, before));
+      if (!hide || !(label || named || tail || direct || split())) {
         lines.push(t);
         label = rest = soft = false;
       } else {
@@ -997,11 +1015,12 @@ export function hourLines(
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
         label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && names === "person") : t.endsWith(":") && !label;
         soft = colon && !label;
+        other ||= direct;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
   }
-  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "), null)) return [marker];
+  if (hide && !allowlist && !other && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
