@@ -2,6 +2,21 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.73.0 - 2026-11-27
+
+Service areas helper and PGV text codes, the lows of the 0.66.0 and 0.71.0 reviews. 27 tools. Publishes nothing.
+
+- `place_at_point` `service_areas`: each group (care, safety, registry, civic) now sets only its own lists through one
+  helper that fills the others with null; a new group no longer adds a null to every other group. No output change:
+  the keys of `data` keep their order (tested for every group), and the answers of the four groups, inside, outside
+  Curitiba and with a later layer failing, were compared byte for byte before and after the change.
+- `place_at_point` `place.pgv`: a micro-bairro published as text drops a trailing ".0" ("12.0" is "12"), the same
+  form a numeric code already had since 0.71.0, so "12.0" and 12 are one row. Only digits (1 to 6) followed by exactly
+  ".0" change; other text ("99.1", "99.10", "12.0a") is untouched. Tested.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged (the `microbairro` description still
+  gives the published "27.0" as its example).
+- No host contacted, no new network host, no new link, no new dependency.
+
 ## 0.72.0 - 2026-11-27
 
 Name filter for the work types, second pass (the lows of the 0.70.0 review). 27 tools. Publishes nothing.

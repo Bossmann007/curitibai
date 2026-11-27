@@ -300,3 +300,8 @@ stay; the `horta comunitaria` allowlist checks a partner or programme later in t
 Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are
 unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q144; q140 is left to v0.68.0, PR #83); 4
 are gaps (real-time buses 2, other cities 2).
+
+At v0.73.0 (phase B) the `place_at_point` service areas build their answer through one helper that fills the lists of
+the other groups with null (no output change), and a PGV micro-bairro published as text drops a trailing ".0" ("12.0"
+is "12"). No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
