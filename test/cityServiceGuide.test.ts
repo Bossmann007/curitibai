@@ -265,6 +265,19 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     }
   });
 
+  it("marks where each sentence about anonymity or identification in the summary and step 4 comes from (since 0.85.0)", async () => {
+    const o = await guide();
+    const step4 = allSteps(o).find((s) => s.step === 4)!.action;
+    // The 2024 guide's, with the caveat that the site was not checked today, or the CuritibAI's own observation.
+    const guideHedge = /guia de 2024.*o CuritibAI não conferiu (isso )?hoje no site/;
+    const ownMarker = /[Oo]bservação do CuritibAI, não do guia de 2024/;
+    for (const field of [o.data.what, step4]) {
+      const aboutAnonymity = field.split(/(?<=\.)\s+/).filter((s) => /anônim|identific/.test(s));
+      expect(aboutAnonymity.length).toBeGreaterThan(1);
+      for (const s of aboutAnonymity) expect(guideHedge.test(s) || ownMarker.test(s), s).toBe(true);
+    }
+  });
+
   it("anonymous form wording stays inside the record of the 2024 guide (since 0.75.0)", async () => {
     const o = await guide();
     const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
@@ -273,16 +286,21 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(step(4)).toMatch(
       /Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem acompanhamento \(o CuritibAI não conferiu isso hoje no site\)\./,
     );
-    // 0.83.0 R1: the warning names what to leave out instead of "deixe isso de fora".
+    // 0.83.0: the warning names what to leave out instead of "deixe isso de fora". 0.85.0 R1-R2: it promises a lower
+    // risk, not anonymity, and the list ends with any detail only the citizen knows.
     expect(step(4)).toMatch(
-      /Observação do CuritibAI, não do guia de 2024: o texto e os anexos podem identificar o cidadão; para continuar anônimo, deixe de fora nome, endereço, telefone, rosto, a localização gravada na foto e o nome do arquivo\./,
+      /Observação do CuritibAI, não do guia de 2024: o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, deixe de fora nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail e qualquer detalhe que só você conheça, como uma data ou um lugar\./,
     );
-    expect(text(o)).not.toMatch(/deixe isso de fora/);
-    // 0.83.0 R2: the limit of the anonymous form is the CuritibAI's own observation, with its marker in the sentence.
-    const r2 = step(4).split(/(?<=\.)\s+/).filter((s) => /não garante anonimato/.test(s));
-    expect(r2).toEqual([
-      "Observação do CuritibAI, não do guia de 2024: a forma anônima não garante anonimato, e o CuritibAI não sabe o que o site registra sobre o acesso.",
+    expect(text(o)).not.toMatch(/deixe isso de fora|continuar anônimo|não garante anonimato/);
+    // 0.85.0 R4: the limit of the anonymous form is the CuritibAI's own observation, with its marker in the sentence.
+    const r4 = step(4).split(/(?<=\.)\s+/).filter((s) => /proteja a sua identidade/.test(s));
+    expect(r4).toEqual([
+      "Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma anônima proteja a sua identidade, e não sabe o que o site registra sobre o acesso.",
     ]);
+    // 0.85.0 R3: the summary says it too, marked the same way.
+    expect(o.data.what).toMatch(
+      /O CuritibAI não pode garantir que a forma anônima proteja a sua identidade \(observação do CuritibAI, não do guia de 2024\)\./,
+    );
     for (const s of step(4).split(/(?<=\.)\s+/)) {
       expect(/cadastro|resposta|acompanhamento|guia de 2024 (prevê|diz)/.test(s) && /Observação do CuritibAI/i.test(s)).toBe(false);
     }
@@ -296,7 +314,7 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     expect(step(8)).toMatch(/\(não vale para a forma anônima, que não recebe resposta\)/);
     expect(o.data.what).toMatch(/forma anônima \(sem resposta nem acompanhamento\)/);
     expect(o.note).toMatch(/the text and the attachments a citizen sends can identify them \(the summary, steps 4 and 5\) is also this project's own observation/);
-    expect(o.note).toMatch(/So is step 4's "a forma anônima não garante anonimato": this project does not know what the Curitiba Ouve site records/);
+    expect(o.note).toMatch(/So is "o CuritibAI não pode garantir que a forma anônima proteja a sua identidade" \(the summary and step 4\): this project does not know what the Curitiba Ouve site records/);
   });
 
   it("links Curitiba Ouve, the Central 156 and the 2024 PDF at the step numbers the notes name", async () => {
