@@ -1591,12 +1591,12 @@ changes (owner request, 2026-11-23: monthly and automatic).
     word is a unit prefix. Since v0.74.0 the first word may be a single letter ("j.silva"), each word may end in
     digits ("maria2.souza", "maria.souza2"), a number may close it ("maria.souza.2", "maria_souza_01") and "-" is a
     separator too ("ana-lima"). Since v0.78.0 separators may repeat ("maria..silva"), a middle word may be a single
-    letter other than a, e or o when the last has 2+ letters ("ana.c.lima"; "esporte.e.lazer" stays), and a word of
+    letter when the last has 2+ letters ("ana.c.lima", "joao.e.silva"), and a word of
     2+ letters followed by exactly one letter is a surname initial ("maria.s"; "sme.d.p.e" and "sec.e.2" stay);
     exactly two single letters ("a.b") or a word and a number ("sec.2") never match. The unit prefixes are checked first and
     keep an address whose first word (trailing digits ignored) they are (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
     nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). Known limits: a one-letter code before a sector
-    word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a", "ti.a") are dropped like names (none was read). A one-word local part shaped like a name
+    word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a", "ti.a") or a connector address ("esporte.e.lazer") are dropped like names (none was read). A one-word local part shaped like a name
     ("fulanasilva") or one ending in a separator ("maria.silva.") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
     checked on 2026-11-27 against a re-read of the 89 urban-equipment layers (2,167 records, 1,765 city e-mails, 776
     distinct, one request per layer, read again for the final rule with the same counts): 1,763 are kept before and

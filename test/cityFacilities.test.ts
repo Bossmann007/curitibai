@@ -230,18 +230,18 @@ describe("contact fields", () => {
     for (const e of ["ana.c.lima@curitiba.pr.gov.br", "joao.p.silva@sme.curitiba.pr.gov.br", "maria.s@curitiba.pr.gov.br",
       "maria..silva@curitiba.pr.gov.br", "j.p.silva@curitiba.pr.gov.br", "Ana_C_Lima@FCC.curitiba.pr.gov.br",
       "maria-s@sms.curitiba.pr.gov.br", "ana.c.lima2@curitiba.pr.gov.br", "ana.c.lima.2@curitiba.pr.gov.br", "a.b.cd@curitiba.pr.gov.br",
+      "ana.a.lima@curitiba.pr.gov.br", "joao.e.silva@curitiba.pr.gov.br", "j.o.souza@curitiba.pr.gov.br",
       "maria__silva@curitiba.pr.gov.br", "maria.-silva@curitiba.pr.gov.br"]) {
       expect(institutionalEmails(e), e).toEqual([]);
     }
   });
 
-  it("v0.78.0: institutional, unit and regional addresses stay; connectors a/e/o, letter codes and a word and a number are not a name", () => {
+  it("v0.78.0: institutional, unit and regional addresses stay; letter codes and a word and a number are not a name", () => {
     for (const e of ["ouvidoria@curitiba.pr.gov.br", "sine@curitiba.pr.gov.br", "falecomacgm@curitiba.pr.gov.br",
       "boqueirao@curitiba.pr.gov.br", "cic@curitiba.pr.gov.br", "regional.boqueirao@curitiba.pr.gov.br", "regional.c.cic@curitiba.pr.gov.br", "regional3.cic@curitiba.pr.gov.br",
       "cras.boqueirao@curitiba.pr.gov.br", "cras..cajuru@curitiba.pr.gov.br", "us.b.alto@sms.curitiba.pr.gov.br",
       "sine.s@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br", "a.b@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br",
-      "sec.2@curitiba.pr.gov.br", "sec..2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "esporte.e.lazer@curitiba.pr.gov.br",
-      "saude.a.domicilio@sms.curitiba.pr.gov.br", "meio.e.ambiente@curitiba.pr.gov.br", "sme.d.p.e@sme.curitiba.pr.gov.br",
+      "sec.2@curitiba.pr.gov.br", "sec..2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "sme.d.p.e@sme.curitiba.pr.gov.br",
       "fas.n.s@curitiba.pr.gov.br", "sec.e.2@curitiba.pr.gov.br"]) {
       expect(institutionalEmails(e), e).toEqual([e]);
     }
