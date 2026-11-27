@@ -211,6 +211,7 @@ describe("contact fields", () => {
       "j.souza12@sms.curitiba.pr.gov.br", "ana-lima@curitiba.pr.gov.br", "Maria-Clara.Souza3@FCC.curitiba.pr.gov.br"]) {
       expect(institutionalEmails(e), e).toEqual([]);
     }
+    expect(institutionalEmails("joão.silva@curitiba.pr.gov.br"), "an accented local part never passes the city shape").toEqual([]);
   });
 
   it("v0.74.0: generic sector and unit addresses stay, '-' after a unit word included", () => {

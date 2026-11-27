@@ -1,4 +1,4 @@
-# SPEC: v0.73.0 Service areas helper and PGV text codes
+# SPEC: v0.74.0 E-mail filter, second pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,40 +8,40 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), two lows from earlier reviews: (1) the v0.66.0 review, in
-`serviceAreasAt` each group builds the whole `data` object by hand with a null for every other group's list; (2) the
-v0.71.0 review, a PGV micro-bairro published as text keeps a trailing ".0" that the numeric form does not have.
-Refactor with no behaviour change apart from that ".0".
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the low of the v0.67.0 review: the filter that drops a
+`curitiba.pr.gov.br` e-mail shaped like a person's name (`city_facilities_search`, every type) misses an initial
+before the surname ("j.silva"), digits after the surname ("maria.souza2") and "-" as a separator ("ana-lima").
+Generic sector and unit addresses ("falecomacgm", "sine", "cras.boqueirao") stay visible.
 
 ## Source
 
-No new source and no request: no host contacted. No new host, no new link.
+No new source and no new host or link. To count what the new shape changes, the 89 urban-equipment layers the tool
+already reads were re-read once each from `geocuritiba.ippuc.org.br` (already allowed) by a one-off script, 6 s
+apart, with the server's User-Agent and fixed query.
 
 ## Changes
 
-1. **Helper** (`src/tools/serviceAreasAtPoint.ts`): `areasData(p, areas, inside, lists, partial)` spreads `NO_LISTS`
-   (every list null, in the schema's order) and then the group's own lists, so the keys of `data` keep their order.
-   The four groups (care, safety, registry, civic) call it; `mergeAreas` in `placeAtPoint.ts` is unchanged.
-2. **PGV text code** (`src/tools/placeAtPoint.ts`, `codeText`): text of 1 to 6 digits followed by exactly ".0" drops the
-   ".0" ("12.0" is "12", " 13.0 " is "13"); "99.1", "99.10" and "12.0a" are untouched. Numbers as in 0.71.0.
-3. **Tests**: every group answers every list key in the schema's order, with only its own lists as arrays
-   (`test/serviceAreasAtPoint.test.ts`); the ".0" cases and that "12.0" and 12 are one row
-   (`test/placeAtPoint.test.ts`); the existing "99.0" and "28.0" expectations become "99" and "28".
-4. **Docs and version**: docs/tools.md (the PGV parenthetical), docs/roadmap-1.0.md, CHANGELOG 0.73.0, version 0.73.0
-   in `package.json`, `package-lock.json`, `server.json`. Tool contract snapshot unchanged (no description changes);
-   docs/sources.md unchanged.
+1. **Name shape** (`src/sources/geocuritiba.ts`, `PERSON_LOCAL`): `^[a-z]+(?:[._-][a-z]{2,}\d*)+$`. The first word
+   may be one letter; each later word has 2+ letters and optional trailing digits; ".", "_" and "-" join words. No
+   accent folding: `CITY_EMAIL` already rejects a non-ASCII local part, so such an address is dropped before.
+2. **Unit and sector words** (`UNIT_PREFIXES`), checked first: the first word (split on ".", "_" or "-") in the list
+   keeps the address. Added: atendimento, contato, falecom, ouvidoria, secretaria.
+3. **Tests** (`test/cityFacilities.test.ts`): each new hidden shape; generic sector and unit addresses kept,
+   `cras.boqueirao` and `cras-cajuru` included; an accented local part dropped.
+4. **Docs and version**: docs/sources.md (the filter paragraph and the host row), docs/roadmap-1.0.md, CHANGELOG
+   0.74.0, version 0.74.0 in `package.json`, `package-lock.json`, `server.json`. Tool contract snapshot unchanged.
 
 ## Out of scope
 
-Folding the repeated bairro fallback or the `source`/`checked_at` envelope of the groups; the `microbairro`
-description's published example "27.0" (a description change would change the contract snapshot); any new question,
-source, host or link.
+A rule for a unit word followed by a name ("secretaria.fulana", "cras.fulana"): Enzo's decision. Such an address is
+kept, and with the new words also when the first word is atendimento, contato, falecom, ouvidoria or secretaria (in
+0.73.0 those were dropped as name-shaped). A one-word name ("fulanasilva"). Any new question, source, host or link.
 
 ## Check
 
-- Before and after the helper: the answers of the four groups (inside, outside Curitiba, a later layer failing) dumped
-  as JSON with their `data` keys, byte-identical.
-- `npx vitest run test/serviceAreasAtPoint.test.ts test/placeAtPoint.test.ts`: new tests pass.
+- `npx vitest run test/cityFacilities.test.ts`: new tests pass.
+- Real records (re-read 2026-11-27): 89 layers, 2,167 records, 1,765 city e-mails (776 distinct); kept 1,763 by the
+  0.73.0 rule and 1,763 by the 0.74.0 one; none newly hidden, none newly shown.
 - `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
 - `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
 - `scripts/verify` exits 0 on the PR head.
