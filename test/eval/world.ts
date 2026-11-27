@@ -54,6 +54,7 @@ const FACILITY_FIXTURES: Record<string, string> = {
   cohab: "cohab_synthetic.json",
   "mesa solidaria": "mesa_solidaria_synthetic.json",
   sine: "sine_synthetic.json",
+  "liceu de oficios": "liceu_de_oficios_synthetic.json",
   "casa da leitura": "casa_da_leitura_synthetic.json",
 };
 

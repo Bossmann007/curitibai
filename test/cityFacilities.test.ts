@@ -2297,3 +2297,106 @@ describe("v0.70.0: a garden partner or programme line needs an entity word after
     }
   });
 });
+
+describe("v0.72.0: work names, second pass (a name after 'Atendimento:', more roles, contact channels)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s hides a name after 'Atendimento:', on the same line or the next one", (id) => {
+    expect(lines(id, `Atendimento:\nFulana de Tal\n${HOURS}`)).toEqual(["Atendimento:", HIDDEN_PERSON_LINE, HOURS]);
+    expect(lines(id, `Atendimento: Fulana de Tal\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+    expect(lines(id, `Atendimento ao público: Fulana\n${HOURS}`)).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+  });
+
+  it.each(WORK)("%s keeps hours after 'Atendimento:'", (id) => {
+    for (const v of [HOURS, "Segunda a sexta, das 8h às 17h", "das 8h às 17h", "8h às 17h", "seg. a sex. 8h às 17h", "Não é necessário agendamento."]) {
+      expect(lines(id, `Atendimento:\n${v}`), v).toEqual(["Atendimento:", v]);
+      expect(lines(id, `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+    }
+    expect(lines(id, "Horário de atendimento: das 8h às 17h")).toEqual(["Horário de atendimento: das 8h às 17h"]);
+  });
+
+  it.each(WORK)("%s hides docente, facilitador/a, técnico/a and agente", (id) => {
+    for (const who of [
+      "Docente: Fulana de Tal", "Docentes Fulana e Fulano", "Facilitadora: Fulana", "Facilitador Fulano de Tal",
+      "Técnica: Fulana", "Técnico Fulano de Tal", "Técnico(a) responsável: Fulana", "Cursos com a técnica Fulana",
+      "Agente: Fulano", "Agentes Fulana e Fulano", "Atendimento com o agente Fulano",
+    ]) {
+      expect(lines(id, `Atendimento:\n${HOURS}\n${who}`), `${id}: ${who}`).toEqual(["Atendimento:", HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps 'técnicas' as a noun, as layer 149 published it when read (2026-11-27)", () => {
+    expect(isWorkPersonLine("que já atuam na área e desejam aperfeiçoar técnicas, desenvolver novos produtos")).toBe(false);
+  });
+
+  it.each(WORK)("%s hides 'Contato pela/via <nome>' and keeps a contact channel", (id) => {
+    for (const who of ["Contato pela Fulana", "Contato via Fulano de Tal", "Contato pelo Fulano", "Contato: 3350-0000 Fulana", "Contato: Fulana"]) {
+      expect(lines(id, `${who}\n${HOURS}`), who).toEqual([HIDDEN_PERSON_LINE, HOURS]);
+    }
+    for (const [raw, shown] of [
+      ["Contato: 3350-0000", "Contato: [masked]"],
+      ["Contato: (41) 3350-0000 / 3350-0001 ramal 2", "Contato: [masked] / [masked] ramal 2"],
+      ["Contato via e-mail", "Contato via e-mail"],
+      ["Contato pelo telefone 156", "Contato pelo telefone 156"],
+      ["Para cursos, entre em contato pelo 156", "Para cursos, entre em contato pelo 156"],
+    ] as const) {
+      expect(lines(id, `${raw}\n${HOURS}`), raw).toEqual([shown, HOURS]);
+    }
+  });
+
+  it("keeps the hours after a contact phone, on the same line or after a bare 'Contato:'", () => {
+    expect(lines("sine", "Contato: 3350-0000\nSegunda a sexta, das 8h às 17h\nEndereço anterior: Rua Inventada, 1")).toEqual([
+      "Contato: [masked]", "Segunda a sexta, das 8h às 17h", "Endereço anterior: Rua Inventada, 1",
+    ]);
+    expect(lines("sine", "Contato:\n3350-0000\nSegunda a sexta, das 8h às 17h")).toEqual([HIDDEN_PERSON_LINE, "Segunda a sexta, das 8h às 17h"]);
+  });
+
+  it("the weekday rule for the rest of a split name needs a digit: a surname after a hidden name stays hidden", () => {
+    expect(lines("cohab", "Responsável:\nMaria Inventada\nDomingos da Silva")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("cohab", "Responsável:\nMaria Inventada\nSegunda a sexta, das 8h às 17h")).toEqual([
+      HIDDEN_PERSON_LINE, "Segunda a sexta, das 8h às 17h",
+    ]);
+  });
+
+  it("answers \"Onde fica o Liceu de Ofícios mais perto do Portão?\" with no person's name", async () => {
+    stubFetch(route("liceu de oficios", "liceu_de_oficios_synthetic.json"));
+    const out = await search({ type: "liceu de oficios", near: { lat: -25.4766, lon: -49.2925 }, radius_m: 3000 });
+    expect(out.data.items[0]).toMatchObject({ name: "Liceu de Ofícios Portão Inventado", bairro: "Portão", phones: ["(41) 3333-7100"] });
+    expect(out.data.items[0]!.hours).toEqual([
+      "Atendimento:", HIDDEN_PERSON_LINE, "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h", "Contato: [masked]", HIDDEN_PERSON_LINE,
+    ]);
+    expect(JSON.stringify(out)).not.toMatch(/Fulan/);
+  });
+});
+
+describe("v0.72.0: a garden partner, programme or keeper later in the line needs an entity too", () => {
+  it("hides a name in a second label of the same line", () => {
+    for (const l of [
+      "Horta com 20 canteiros - Parceria com Fulana",
+      "Horta com 20 canteiros, parceria com Fulana",
+      "Horta com 20 canteiros. Programa do Fulano",
+      "Horta com 10 canteiros, mantida pela Fulana",
+      "Programa Integrado Inventado e parceria com Fulana",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+    }
+  });
+
+  it("keeps the kinds the layer published when read and public lines with an abbreviation", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Horta com 20 canteiros. Parceria com COPEL.",
+      "Mantida pela Associação de Moradores Inventada.",
+      "Mantido pela Secretaria Municipal do Meio Ambiente.",
+      "Endereço: R. Inventada, 10",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
+    }
+  });
+});

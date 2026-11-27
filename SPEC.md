@@ -1,4 +1,4 @@
-# SPEC: v0.71.0 PGV codes as number or text
+# SPEC: v0.72.0 Name filter for the work types, second pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,36 +8,46 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), a follow-up of the 0.65.0 review: answer "Qual a microrregião
-do IPTU na Rua XV de Novembro, 1000?" with `place_at_point` `place.pgv` even if the PGV layer publishes its
-micro-bairro or micro-region code with the other JSON type. Today a numeric `cd_microbairro` or a text
-`cd_microrregiao` becomes null.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the 0.70.0 review: answer "Onde fica o Liceu de
+Ofícios mais perto do Portão? (sem expor nome de pessoa)" with the existing `city_facilities_search` work types, and
+close the gaps of their person-line filter. On the safe side: a line is hidden when unsure. No contract change.
 
 ## Source
 
-No new source. The GeoCuritiba PGV layer 0, already recorded in [docs/sources.md](docs/sources.md). No host contacted
-for this change: the layer's field types were not re-read, so nothing here says what the layer publishes today.
+No new source. The GeoCuritiba urban-equipment layers 150, 151, 149, 152 (work) and 9 (gardens), already recorded in
+[docs/sources.md](docs/sources.md). robots.txt re-checked on 2026-11-27 02:45:18 UTC (404, no restriction); one read of
+`objectid,observacao` per layer, about 5 s apart, to check the new rules against today's lines; then the service
+metadata (no terms, no licence text). No new host, no new link.
 
 ## Changes
 
-1. **PGV codes** (`src/tools/placeAtPoint.ts`, `microRegionsOf`): `cd_microbairro` as a finite number is turned into
-   text (`String`, so 27.0, which JSON carries as 27, becomes "27"; the ".0" is not invented), then cleaned as before.
-   `cd_microrregiao` as text counts only when it is 1 to 6 digits after trimming (so a blank never becomes the code 0);
-   a number counts when it is an integer, as before. A number below 0 or of 7 digits or more is null for either code. The brief named `clean()` in `src/sources/geocuritiba.ts`; that
-   helper is shared by about 15 facility fields, so the change stays in the two PGV fields.
-2. **Tests** (`test/placeAtPoint.test.ts`): number and text for both codes, a blank, spaces and "2.5" as null.
-3. **Eval**: q143 → `place_at_point` at a point on Rua XV de Novembro (about number 1000, -25.4293, -49.2652;
-   approximate, the tool takes a point, not an address). The synthetic world answers that point with
-   `cd_microbairro: 99` and `cd_microrregiao: "1"`; q143 fails without change 1.
-4. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.71.0, version 0.71.0 in
+1. **"Atendimento:" value** (`src/sources/geocuritiba.ts`, `isWorkPersonLine`): the text after "Atendimento:" (or
+   "Atendimento ao público:") must read as hours (`HOURS_VALUE`), on the same line or, after a bare label, on the next
+   one. The hide predicate gains an optional `prev` argument (the line before, shown or not); `hourLines` passes it,
+   and passes `null` for the whole field read joined, where only the words count.
+2. **Roles**: docente, facilitador/a, agente anywhere; técnico/a at the start, before ':' or after an article or
+   "pelo/pela" ("aperfeiçoar técnicas" in layer 149 stays).
+3. **Contato**: a person unless a channel follows: "Contato: <phones only>" or "contato pelo/via/no <156, telefone,
+   e-mail, site …>". "Contato pela Fulana" and "Contato via Fulano" are hidden; "Contato: 3350-0000" stays.
+4. **Split-name tail** (`NOT_A_NAME`, every type with `nameLines`): an hours line that starts with a weekday and has a
+   digit is not the rest of a name, so the hours after a bare "Contato:" and its hidden value stay. "Domingos da
+   Silva" (no digit) is still hidden.
+5. **Garden allowlist**: each "Parceria com" or "Programa" in the line, not only at its start, needs an entity word
+   after it; "mantida pela" not followed by a body is a person anywhere (`GARDEN_PERSON`).
+6. **Tests** (`test/cityFacilities.test.ts`): each case above, the live lines kept, the other types unchanged.
+7. **Eval**: q144 → `city_facilities_search` `{type: "liceu de oficios", near: Portão, radius_m: 3000}` with a new
+   synthetic fixture `liceu_de_oficios_synthetic.json`.
+8. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.72.0, version 0.72.0 in
    `package.json`, `package-lock.json`, `server.json`. Tool contract snapshot unchanged (no description changes).
 
 ## Out of scope
 
-Changing the shared `clean()`, re-reading the layer, geocoding an address, any new field, host or link.
+Name detection by capital letters, a name later in an hours or channel line (known limit), the offices' global
+`ROLE`, any new type, host or link.
 
 ## Check
 
-- `npx vitest run test/placeAtPoint.test.ts test/eval`: the new test passes; q143 answers, and fails on the 0.70.0 code.
-- `node scripts/eval-summary.mjs`: answered count from the run.
+- `npx vitest run test/cityFacilities.test.ts test/eval`: new tests pass; q144 answers.
+- The new predicates over today's lines of layers 149–152 and 9: no record's `hours` changed against 0.71.0.
+- `node scripts/eval-summary.mjs`: answered 139 / 143.
 - `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.

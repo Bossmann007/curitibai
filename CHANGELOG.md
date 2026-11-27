@@ -2,6 +2,33 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.72.0 - 2026-11-27
+
+Name filter for the work types, second pass (the lows of the 0.70.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: a value after
+  "Atendimento:" (or "Atendimento ao público:") is kept only when it reads as hours (a digit, a weekday or its
+  abbreviation, "de/das" and one of them, an appointment or "não" sentence), on the same line or, after a bare
+  "Atendimento:", on the next one; otherwise the line is hidden ("Atendimento: Fulana"). Docente, facilitador/a and
+  agente (plurals too) hide a line anywhere in it; técnico/a at the start, before ':' or after an article or
+  "pelo/pela", so "aperfeiçoar técnicas" (layer 149) stays.
+- "Contato" is a person unless a channel follows: "Contato: 3350-0000" (only phones, channel words and punctuation
+  after the ':') and "contato pelo/via/no 156, telefone, e-mail, site …" stay; "Contato pela Fulana", "Contato via
+  Fulano", "Contato: 3350-0000 Fulana" and a bare "Contato:" (its value follows) are hidden. 0.70.0 hid "Contato:
+  3350-0000" and kept "Contato pela Fulana". The hours after a contact phone stay, also after a bare "Contato:" and
+  its hidden value: an hours line that starts with a weekday and has a digit is never read as the rest of a name (every
+  type that hides names). The whole field read joined checks only the words, not what follows a label. Known limit: a
+  name later in an hours or channel line ("das 8h às 17h com a Fulana") passes, caught only by the role words.
+- `horta comunitaria`: a "Parceria com …" or "Programa …" later in the line needs an entity word too ("Horta com 20
+  canteiros - Parceria com Fulana" is hidden), and "mantida pela" not followed by a body hides the line anywhere in it.
+  A sentence split was tried and dropped: it missed " - " and ", " and hid public lines with an abbreviation.
+- Checked against the layers as read on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only): the new filters
+  changed no record's `hours` against 0.71.0 (78 records with an `observacao`). No licence or terms found, as before.
+- Citizen eval: q144 ("Onde fica o Liceu de Ofícios mais perto do Portão? (sem expor nome de pessoa)") answered from a
+  new synthetic Liceu fixture with a name after "Atendimento:", a contact phone and a docente line. 139 of 143. Tool
+  contract snapshot unchanged.
+- No new network host, no new link, no new dependency.
+
 ## 0.71.0 - 2026-11-27
 
 PGV codes as number or text, a follow-up of the 0.65.0 review. 27 tools. Publishes nothing.

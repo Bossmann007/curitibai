@@ -325,15 +325,55 @@ export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.
  * v0.70.0, work types (SINE, Agência do Trabalhador, Liceu, INSS): the offices' rule, or a teacher, instructor, monitor,
  * tutor, attendant or contact word anywhere in the line ("Atendimento: atendente Fulana" has it after the colon),
  * "Prof.", "Profa." and "Prof.ª" included. Broader than a role or label on purpose: a name may follow; "atendimento" is
- * not "atendente". "Contato" followed by a channel ("entre em contato pelo 156") is not a person, so the hours after it
- * are not read as the rest of a name. Only these types use it, so an office line such as "Contato: 3350-0000" stays.
+ * not "atendente". Only these types use it.
+ * v0.72.0: also docente, facilitador/a and agente anywhere; técnico/a at the start, before ':' or after an article or
+ * "pelo/pela" ("aperfeiçoar técnicas", read in layer 149, stays). "Contato" is a person unless it is followed by a
+ * channel: "Contato: 3350-0000" (only phones, "[masked]", channel words and punctuation after the ':') or "contato
+ * pelo/via/no 156, telefone, e-mail, site …"; "Contato pela Fulana", "Contato via Fulano" and a bare "Contato:" (its
+ * value follows) are hidden. A value after "Atendimento:" must read as hours (a digit, a weekday, "de/das" and one of
+ * them, an appointment or "não" sentence), on the same line or, after a bare "Atendimento:", on the next one (`prev`);
+ * otherwise the line is hidden ("Atendimento: Fulana"). Known limit: a name later in an hours or channel line
+ * ("das 8h às 17h com a Fulana") passes, caught only by the role words.
  */
-const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor";
+const WORK_ROLE = "professor|instrutor|monitor|orientador|educador|tutor|facilitador";
 const WORK_PERSON = new RegExp(
-  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
-    "|\\bcontatos?\\b(?!\\s+(?:pel[ao]s?|por|via|atraves|n[ao]s?)\\b)",
+  `\\b(?:(?:${WORK_ROLE})(?:a|es|as)?|atendentes?|docentes?|agentes?)\\b|\\bprofa?(?=[.:\\sª]|$)` +
+    "|(?:^[^\\p{L}]*|\\b(?:an?|o|as|os|d[ao]s?|pel[ao]s?|n[ao]s?)\\s+)tecnic[ao]s?\\b|\\btecnic[ao]s?(?:\\(a\\))?(?: [a-z]+)?\\s*:",
+  "u",
 );
-export const isWorkPersonLine = (line: string): boolean => isPersonInChargeLine(line) || WORK_PERSON.test(fold(line));
+const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|ramal|sms";
+/** The start of an hours value: a digit, a weekday, "de/das" and one of them, an appointment or "não" sentence (folded). */
+const HOURS_VALUE = new RegExp(
+  "^[-–•*\\s]*(?:\\d|(?:(?:d[aeo]s?|aos?|a partir d[aeo]s?|todos? os|todas as)\\s+)?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|feriado|dia)s?\\b)" +
+    "|(?:seg|ter|qua|qui|sex|sab|dom)\\b|diariamente\\b|nao\\b|(?:sem|com|mediante) agendamento\\b|agendamento\\b|fechad|temporariamente\\b)",
+);
+/** After "Contato:": only phones, masked values, channel words and punctuation; one character or word per step (linear). */
+const CONTACT_VALUE = new RegExp(`^\\s*[:\\-–]\\s*(?=\\S)(?:[\\d\\s()+\\-./,;:]|\\[masked\\]|(?:${CHANNEL_WORD}|ou|e)\\b)*$`);
+/** "contato pelo 156", "contato via e-mail", "contato no site": a connector, then a channel. */
+const CONTACT_CHANNEL = new RegExp(
+  "^\\s+(?:pel[ao]s?|por|via|atraves d[aeo]s?|n[ao]s?|em)\\s+(?:(?:o|a|um|d[ao]s?)\\s+)?" +
+    `(?:\\d|\\(|\\+|\\[masked\\]|(?:${CHANNEL_WORD}|site|portal|aplicativo|app|central|internet|formulario|numero)\\b|www\\.)`,
+);
+const isContactPerson = (f: string): boolean => {
+  for (const m of f.matchAll(/\bcontatos?\b/g)) {
+    const rest = f.slice(m.index + m[0].length);
+    if (!CONTACT_VALUE.test(rest) && !CONTACT_CHANNEL.test(rest)) return true;
+  }
+  return false;
+};
+/** "Atendimento:" (or "Atendimento ao público:") and the text after it, empty for a bare label. */
+const SERVICE_LABEL = /\batendimento\b[^:,.;]{0,30}:\s*(.*)$/;
+const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
+  const own = SERVICE_LABEL.exec(f)?.[1];
+  if (own !== undefined) return own !== "" && !HOURS_VALUE.test(own);
+  return prev !== undefined && SERVICE_LABEL.exec(fold(prev))?.[1] === "" && !HOURS_VALUE.test(f);
+};
+/** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
+export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
+  const f = fold(line);
+  if (isPersonInChargeLine(line) || WORK_PERSON.test(f)) return true;
+  return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
+};
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
  * GARDEN_LINE (a public label; an hours or number line; the body that keeps the garden, "Mantida pela Associação …";
@@ -366,13 +406,20 @@ const GARDEN_LINE = new RegExp(
 );
 const GARDEN_CONTACT = /^contatos? pel[ao] e-?mail d[ao] secretaria\.?$/;
 const GARDEN_PERSON = new RegExp(
-  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
+  `\\bcontatos?\\b|\\bvoluntari|\\bquem (?:cuida|coordena)|\\b(?:coordenad|cuidad|mantid)[ao]s? (?:por\\b|pel[ao] (?!(?:${BODY})\\b))` +
     `|\\b(?:dona|seu|sra?|senhora?)\\b\\.?\\s+[a-z]|(?<!\\b(?:${BODY}) )\\b(?:cuidam?|coordenam?)\\b`,
 );
+/**
+ * v0.72.0: GARDEN_LINE is matched at the start of the line; a partner or programme later in the line ("Horta com 20
+ * canteiros - Parceria com Fulana") must name an entity too, like one at the start.
+ */
+const GARDEN_PARTNER = new RegExp(`^\\s*:?\\s*(?:(?:d[aeo]s?|an?|o|as|os) )?(?:${ENTITY})\\b`);
+const hasUnknownPartner = (f: string): boolean =>
+  [...f.matchAll(/\b(?:programa|parceria com)\b/g)].some((m) => !GARDEN_PARTNER.test(f.slice(m.index + m[0].length)));
 export const isGardenPersonLine = (line: string): boolean => {
   const f = roleFold(line).replace(/^[^\p{L}\p{N}]+/u, "").trim();
   if (GARDEN_CONTACT.test(f)) return false;
-  return !GARDEN_LINE.test(f) || GARDEN_PERSON.test(f) || isPersonInChargeLine(line);
+  return !GARDEN_LINE.test(f) || GARDEN_PERSON.test(f) || hasUnknownPartner(f) || isPersonInChargeLine(line);
 };
 /** v0.54.0: only the keyword, with or without ':' ("Mantenedora", "Mantida pela:"); its value follows. */
 const MAINTAINER_LABEL = new RegExp(`^(?:${MAINTAINER})[a-z]*(?:\\(a\\))?\\s*:?$`);
@@ -419,8 +466,12 @@ export interface FacilityType {
   maxHourLines?: number;
   /** A line longer than LINE_MAX is split after its commas into several lines, not cut (bairro lists, v0.51.0). */
   wrapLines?: true;
-  /** True when an `observacao` line (after cleaning) is replaced by `hiddenLineMarker`: a line that may carry a name or point at a shelter. */
-  hideLine?: (line: string) => boolean;
+  /**
+   * True when an `observacao` line (after cleaning) is replaced by `hiddenLineMarker`: a line that may carry a name or
+   * point at a shelter. `prev` is the line before it, shown or not (v0.72.0: the value after a bare "Atendimento:"), or
+   * null when the whole field is tested joined.
+   */
+  hideLine?: (line: string, prev?: string | null) => boolean;
   /** Default HIDDEN_NAME_LINE. */
   hiddenLineMarker?: string;
   /**
@@ -1017,8 +1068,13 @@ export function isShelterLine(line: string): boolean {
 const SERVICE_PART = "atendimento|encaminhamento|funcionamento|horario|telefone|periodo|bercario|matricula|secretaria";
 const SERVICE_WORD = "rua|av|avenida|fones?|vagas?";
 const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PART}|(?:${SERVICE_WORD})\\b)`);
-/** The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). */
-const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
+/**
+ * The rest of a split name after a hidden line is never a service line: any service word anywhere (v0.54.0 tail). Nor
+ * is an hours line that starts with a weekday, goes on as one and has a digit ("Segunda a sexta, das 8h …", v0.72.0, the
+ * hours after "Contato:\n3350-0000"); "Domingos da Silva" can still be the rest of a name.
+ */
+const WEEKDAY_START = "^(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?(?:-feira|\\s+(?:a|e|das?|de)\\b|\\s*[,:])(?=.*\\d)";
+const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${WEEKDAY_START}|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
 
 /**
  * `observacao` split into lines, each cleaned and masked (phones and e-mails inside it become "[masked]"). More than
@@ -1028,7 +1084,7 @@ export function hourLines(
   raw: unknown,
   max: number = MAX_HOUR_LINES,
   wrap = false,
-  hide?: (line: string) => boolean,
+  hide?: (line: string, prev?: string | null) => boolean,
   marker: string = HIDDEN_NAME_LINE,
   names?: FacilityType["nameLines"],
   allowlist = false,
@@ -1045,13 +1101,16 @@ export function hourLines(
   // "Responsável pela matrícula:" keeps "-2ª a 6ª 8h" and "Período parcial", and a name of any length after "Diretora
   // responsável:" is hidden.
   let soft = false;
+  let prev: string | undefined; // the last non-empty line, shown or hidden
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
       if (t === "") continue;
       const tail: boolean = !allowlist && rest && !NOT_A_NAME.test(roleFold(t)) && (t.split(/[,\d]/)[0] ?? "").trim().split(/\s+/).length <= 4;
       const named = soft && !SERVICE_LINE.test(roleFold(t));
-      if (!hide || !(label || named || tail || hide(t) || hide(cleanText(part, Infinity)))) {
+      const before = prev;
+      prev = t;
+      if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before))) {
         lines.push(t);
         label = rest = soft = false;
       } else {
@@ -1067,7 +1126,7 @@ export function hourLines(
       }
     }
   }
-  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "))) return [marker];
+  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
