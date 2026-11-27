@@ -1747,7 +1747,8 @@ Since 0.32.0 this is the `service_areas` part of `place_at_point` ([ADR 0011](ad
   requested. Never requested: `num_eleitores` (number of voters, the same rule as the voting places). The zone of an
   area is not the zone of a voter, whose título de eleitor names it. Order: the zone layer first (when empty the
   bairro layer decides `inside_curitiba`). Not in `all`: a cold `all` (care and safety) already uses the 5 requests
-  that fit the 20 s call budget.
+  that fit the 20 s call budget. A cold `civic` call of the built server took 1.6 s live (1 request, 2026-11-27
+  00:14 UTC) and returned the same zone.
 
 ### `census_at_point`: IBGE 2022 census by sector, via IPPUC GeoCuritiba (since 0.27.0)
 
