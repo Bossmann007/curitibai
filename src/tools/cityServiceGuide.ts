@@ -633,7 +633,7 @@ export const GUIDES = {
       "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). That an e-mail shows the sender's address, so " +
       "e-mail is not an anonymous channel, is this project's own observation, not the PDF's. Not verified: what " +
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
-      "whether a plain reclamação, not a denúncia, can be anonymous (the PDF describes the forms for denúncias). ",
+      "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). ",
     steps: [
       FIRST_STEP,
       {
@@ -672,8 +672,9 @@ export const GUIDES = {
           "resposta chega pelo e-mail cadastrado) e anônima (sem cadastro; a denúncia é apurada, mas sem resposta nem " +
           "acompanhamento). Quem escolhe é o cidadão. No site Curitiba Ouve (passo 4), o guia mostra só as opções " +
           "identificada e anônima. Cadastro: pelo guia de 2024, a identificada e a sigilosa pedem cadastro no e-Cidadão e a " +
-          "anônima não; o que o site pede hoje não foi verificado (o CuritibAI não o abriu). O guia " +
-          "descreve essas formas para denúncias; se uma reclamação comum também pode ser anônima não foi verificado.",
+          "anônima não; o que o site pede hoje não foi verificado (o CuritibAI não o abriu). O registro " +
+          "do guia feito pelo CuritibAI não diz se essas formas valem também para uma reclamação comum: se ela pode " +
+          "ser anônima não foi verificado.",
       },
       {
         ...OPEN_156,
