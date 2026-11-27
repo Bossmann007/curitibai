@@ -10,7 +10,7 @@ import {
   isGardenPersonLine,
   isMaintainerLine,
   isPersonInChargeLine,
-  isGuardedContact,
+  readsNextLine,
   isServiceText,
   isWorkPersonLine,
   MAINTAINER_LABEL,
@@ -1000,7 +1000,7 @@ export function hourLines(
       // Regional:" / "3350-0000 - Fulana").
       const pair = (joined: string, head: string): boolean => hide !== undefined && hide(joined, null) && !hide(head, null);
       const split = (): boolean =>
-        names !== undefined && !allowlist && before !== undefined && (!isServiceText(t) || isGuardedContact(before) || (before2 !== undefined && isGuardedContact(`${before2}\n${before}`))) &&
+        names !== undefined && !allowlist && before !== undefined && (!isServiceText(t) || readsNextLine(before) || (before2 !== undefined && readsNextLine(`${before2}\n${before}`))) &&
         (pair(`${before}\n${full}`, before) || (before2 !== undefined && pair(`${before2}\n${before}\n${full}`, `${before2}\n${before}`)));
       const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(full, before));
       if (!hide || !(label || named || tail || direct || split())) {

@@ -386,3 +386,10 @@ document numbers, e-mail and any detail only the citizen knows; the summary and 
 observation, that the CuritibAI cannot guarantee the anonymous form protects the citizen's identity. No new question,
 source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions
 (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.86.0 (phase B) the work-type person-name filter reads the whole rest of the line after "agendamento com senha
+numerada" or "… senha de atendimento": numbers, punctuation and hours words stay ("senha numerada, das 8h às 17h"),
+anything else is hidden ("senha numerada, Fulana"); a schedule line after such a line stays, and "um dia corrido" is
+no longer a detail. No new question, source or host; the 12 person-hiding layers were re-read once for the check
+(131 hidden-line markers before and after). The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).
