@@ -232,6 +232,13 @@ describe("place_at_point answers", () => {
     expect(pgv).toEqual([["27", 0], ["27.5", 3], ["28.0", null], ["29", null], ["30", null]]);
   });
 
+  it("a PGV code number out of range (negative, 7 digits or more) is null, never masked text", async () => {
+    stubFetch(routes({ pgv: { body: attrs([{ sg_zona: "ZF-T", cd_microbairro: 12345678, cd_microrregiao: -1 }]) } }));
+    expect((await place()).data.pgv!.micro_regions).toEqual([
+      { zone_code: "ZF-T", zone_name: null, bairro: null, microbairro: null, microregion: null },
+    ]);
+  });
+
   it("no PGV polygon at the point is an empty list, not partial", async () => {
     stubFetch(routes({ pgv: { body: EMPTY } }));
     const out = await place();

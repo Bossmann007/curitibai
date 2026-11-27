@@ -9,7 +9,8 @@ PGV codes as number or text, a follow-up of the 0.65.0 review. 27 tools. Publish
 - `place_at_point` `place.pgv`: `microbairro` is read whether the layer publishes `cd_microbairro` as text or as a
   number. A number keeps its JSON form: 27.0 arrives as 27 and is returned as "27" (the ".0" is not invented).
   `microregion` is read from an integer, as before, or from text of 1 to 6 digits ("3" is 3); a blank, "2.5" or other
-  text is null, so a blank never becomes the code 0. Only these two PGV fields change; the shared field cleaner is
+  text is null, so a blank never becomes the code 0. A
+  number below 0 or of 7 digits or more is null for either code (no PGV code is that large). Only these two PGV fields change; the shared field cleaner is
   untouched. Tested.
 - Citizen eval: q143 ("Qual a microrregião do IPTU na Rua XV de Novembro, 1000?") answered at a point on that street
   (the tool takes a point, not an address); its synthetic PGV row has a numeric micro-bairro and a text micro-region,
