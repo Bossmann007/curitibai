@@ -14,6 +14,7 @@ import {
   isGardenPersonLine,
   isPersonInChargeLine,
   isShelterLine,
+  isWorkPersonLine,
   layerQueryUrl,
   parseLayer,
   PRIVATE_ADDRESS_LINE,
@@ -1373,7 +1374,7 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
       ["liceu de oficios", "person"],
       ["inss", "person"],
     ]);
-    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine)) {
+    for (const t of FACILITY_TYPES.filter((t) => t.hideLine === isPersonInChargeLine || t.hideLine === isGardenPersonLine || t.hideLine === isWorkPersonLine)) {
       expect(t.nameLines, t.id).toBe("person");
     }
     const cei = type("cei contratado");
@@ -2029,7 +2030,9 @@ describe("v0.64.0: SINE, Agência do Trabalhador, Liceu de Ofícios and INSS", (
       "Atendimento:",
       "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
       "Não é necessário realizar agendamento prévio para atendimento.",
+      HIDDEN_PERSON_LINE,
     ]);
+    expect(JSON.stringify(out)).not.toMatch(/Fulana/);
     expect(out.note).toMatch(/search by `name`/);
     expect(out.note).toMatch(/Vacancies and anyone's registration are not in this tool/);
     expect(out.note).toMatch(/`agencia do trabalhador`/);
@@ -2186,6 +2189,90 @@ describe("v0.67.0: Casa da Leitura, Bondinho da Leitura, auditoriums, circus and
     for (const id of ["circo", "bondinho da leitura"]) {
       const [f] = parseLayer(type(id), layer({ nome_completo: "Inventado", email: "inventado@curitiba.pr.gov.br" })).facilities;
       expect(f!.emails, id).toEqual(["inventado@curitiba.pr.gov.br"]);
+    }
+  });
+});
+
+describe("v0.70.0: the work types hide a teacher, instructor, attendant or contact line", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+
+  it.each(WORK)("%s hides the role words at the start, before ':' and after it", (id) => {
+    for (const who of [
+      "Professora: Fulana de Tal",
+      "Professor(a) de costura: Fulana de Tal",
+      "Instrutor Fulano de Tal",
+      "Instrutores: Fulano e Fulana",
+      "Atendente: Fulana de Tal",
+      "Atendimento: atendente Fulana",
+      "Contato: Fulana 3333-0000",
+      "Cursos com a professora Fulana",
+      "-Contatos: Fulano",
+    ]) {
+      const out = lines(id, `Atendimento:\n-2ª a 6ª feira, das 8h às 17h\n${who}`);
+      expect(out, `${id}: ${who}`).toEqual(["Atendimento:", "-2ª a 6ª feira, das 8h às 17h", HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s hides the name on the line after a role label", (id) => {
+    for (const label of ["Instrutora:", "Professores:", "Atendente:", "Contato:"]) {
+      expect(lines(id, `${label}\nFulana de Tal Inventada\nAtendimento:\n-2ª a 6ª feira, das 8h às 17h`), label).toEqual([
+        HIDDEN_PERSON_LINE, "Atendimento:", "-2ª a 6ª feira, das 8h às 17h",
+      ]);
+    }
+  });
+
+  it("keeps the lines the work layers published when read (2026-11-27), and the offices' person lines stay hidden", () => {
+    for (const l of [
+      "Atendimento:",
+      "-2ª a 6ª feira, das 8h às 12h e das 13h às 17h",
+      "Não é necessário realizar agendamento prévio para atendimento.",
+      "A cada dia, o Sine Móvel estará em um ponto estratégico de Curitiba.",
+      "Endereço anterior: R. Mons. Celso, 35, Térreo.",
+      "Nome anterior: Liceu de Ofícios Cidadania Boqueirão",
+      "Antigo Centro de Criatividades de Curitiba, readequado para Liceu das Artes após a inauguração do Memorial Paranista em 2021.",
+      "Atendimento ao público e contratação",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+    for (const l of ["Responsável: Fulana", "Coordenadora: Fulana", "Gerente Fulano"]) expect(isWorkPersonLine(l), l).toBe(true);
+  });
+
+  it("only the work types use it: the other office types keep the narrower filter", () => {
+    expect(FACILITY_TYPES.filter((t) => t.hideLine === isWorkPersonLine).map((t) => t.id)).toEqual(WORK);
+    for (const id of ["administracao regional", "cohab", "fazenda urbana", "nucleo de seguranca alimentar", "mesa solidaria", "clube de xadrez"]) {
+      expect(type(id).hideLine, id).toBe(isPersonInChargeLine);
+    }
+    expect(isPersonInChargeLine("Contato: 3350-0000")).toBe(false);
+  });
+});
+
+describe("v0.70.0: a garden partner or programme line needs an entity word after the keyword", () => {
+  const t = type("horta comunitaria");
+  const lines = (s: string) => hourLines(s, 30, false, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+
+  it("hides a partner or programme named after no entity", () => {
+    for (const l of ["Parceria com Fulana de Tal", "Parceria com a Fulana", "Programa Fulano de Tal", "Programa do Fulano", "Parceria com Maria da Associação"]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+      expect(lines(l)).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps the kinds the layer published when read and other entities", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Parceria com a Associação de Moradores Inventada",
+      "Parceria com a Prefeitura",
+      "Parceria com o Instituto Inventado",
+      "Parceria com a Universidade Inventada",
+      "Programa Municipal de Agricultura Urbana",
+      "Programa de Hortas Comunitárias",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
     }
   });
 });

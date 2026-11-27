@@ -322,6 +322,14 @@ const PERSON_IN_CHARGE = new RegExp(
 );
 export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.test(roleFold(line));
 /**
+ * v0.70.0, work types (SINE, Agência do Trabalhador, Liceu, INSS): the offices' rule, or a teacher, instructor,
+ * attendant or contact word anywhere in the line ("Atendimento: atendente Fulana" has it after the colon). Broader than
+ * a role or label on purpose: a name may follow; "atendimento" is not "atendente". Only these types use it, so an office
+ * line such as "Contato: 3350-0000" stays.
+ */
+const WORK_PERSON = /\b(?:professor(?:a|es|as)?|instrutor(?:a|es|as)?|atendentes?|contatos?)\b/;
+export const isWorkPersonLine = (line: string): boolean => isPersonInChargeLine(line) || WORK_PERSON.test(fold(line));
+/**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in
  * GARDEN_LINE (a public label; an hours or number line; the body that keeps the garden, "Mantida pela Associação …";
  * the city programme; a partner; "Horta com N canteiros") or exactly "Contato pelo e-mail da secretaria", and has no
@@ -331,13 +339,23 @@ export const isPersonInChargeLine = (line: string): boolean => PERSON_IN_CHARGE.
  * with roleFold, so "secretária Fulana" is a person, not the body "secretaria".
  */
 const BODY = "associacao|moradores|comunidade|prefeitura|secretaria|escola|igreja|lar|smsan";
+/**
+ * v0.70.0: what "Parceria com" and "Programa" must name right after the keyword (and an article or "de"), else the line
+ * is of no known kind and hidden: a body, an organisation, a programme word, or a public company the layer named when
+ * read (2026-11-27: "Parceria com COPEL.", "Programa Integrado … Eletrosul"). No capital-letter rule: a name in capitals
+ * would pass.
+ */
+const ENTITY =
+  `${BODY}|empresa|instituto|universidade|fundacao|cooperativa|ong|projeto|integrado|municipal|estadual|federal` +
+  "|desenvolvimento|hortas?|agricultura|copel|sanepar|eletrosul";
 const GARDEN_LINE = new RegExp(
   "^(?:" +
     [
       "(?:atendimento|horarios?|funcionamento|endereco|bairro|pomar|cultivos?|area de (?:plantio|lavoura)[a-z ]*|jardins? de mel)\\s*:",
       "(?:(?:atendimento|horarios?(?: de funcionamento)?|funcionamento)\\s*:?\\s*)?(?:(?:de|das?|aos?) )?(?:\\d|(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?\\b)",
       `(?:(?:mantid|coordenad|cuidad)[ao]s? pel[ao]|a coordenacao da horta e d[ao]|an?|o) (?:${BODY})\\b`,
-      "programa\\b|parceria com\\b|horta com \\d",
+      `(?:programa|parceria com)(?: (?:d[aeo]s?|an?|o|as|os))? (?:${ENTITY})\\b`,
+      "horta com \\d",
     ].join("|") +
     ")",
 );
@@ -452,6 +470,7 @@ const equipment = (id: string, layer: number, label: string, aliases: string[] =
 /** Lines that may point at a shelter (social assistance) or name the person in charge (offices) are replaced by a marker. */
 const HIDE_SHELTER = { hideLine: isShelterLine, hiddenLineMarker: HIDDEN_SHELTER_LINE, shelter: true } as const;
 const HIDE_PERSON = { hideLine: isPersonInChargeLine, hiddenLineMarker: HIDDEN_PERSON_LINE, nameLines: "person" } as const;
+const HIDE_WORK_PERSON = { ...HIDE_PERSON, hideLine: isWorkPersonLine } as const;
 
 const social = (id: string, layer: number, label: string, aliases: string[], note: string): FacilityType =>
   equipment(id, layer, label, aliases, { note, ...HIDE_SHELTER });
@@ -676,17 +695,17 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("sine", 150, "Unidade de Atendimento SINE", [
     "sine municipal", "sine curitiba", "unidade do sine", "unidades do sine", "unidade de atendimento sine",
     "unidades de atendimento sine", "agencia do sine",
-  ], { note: SINE_NOTE, ...HIDE_PERSON }),
+  ], { note: SINE_NOTE, ...HIDE_WORK_PERSON }),
   equipment("agencia do trabalhador", 151, "Agência do Trabalhador", [
     "agencias do trabalhador", "agencia do trabalhador de curitiba",
-  ], { note: WORKER_AGENCY_NOTE, ...HIDE_PERSON }),
+  ], { note: WORKER_AGENCY_NOTE, ...HIDE_WORK_PERSON }),
   equipment("liceu de oficios", 149, "Liceu de Ofícios", ["liceu", "liceus", "liceus de oficios", "liceu de oficio"], {
-    note: LICEU_NOTE, wrapLines: true, ...HIDE_PERSON,
+    note: LICEU_NOTE, wrapLines: true, ...HIDE_WORK_PERSON,
   }),
   equipment("inss", 152, "Agência da Previdência Social (INSS)", [
     "agencia do inss", "agencias do inss", "agencia da previdencia social", "agencias da previdencia social",
     "previdencia social",
-  ], { leadNote: INSS_LEAD_NOTE, note: INSS_NOTE, ...HIDE_PERSON }),
+  ], { leadNote: INSS_LEAD_NOTE, note: INSS_NOTE, ...HIDE_WORK_PERSON }),
   // Voting places, added in v0.27.0 (BaseTematica layer 12, 422 records, data_alteracao 31/08/2026 when read).
   {
     id: "local de votacao",

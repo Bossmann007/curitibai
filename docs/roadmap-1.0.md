@@ -280,3 +280,10 @@ identificar?": e-mail is not an anonymous channel; for denúncias the anonymous 
 (not verified for a plain reclamação), and the registration that site asks today was not verified. No new source or host. The Curitiba App rows are
 unchanged (18, 16 covered). The citizen eval answers 136 of 140 questions (q141; q140 is left to v0.68.0, PR #83); 4
 are gaps (real-time buses 2, other cities 2).
+
+At v0.70.0 (phase B) the `city_facilities_search` work types (`sine`, `agencia do trabalhador`, `liceu de oficios`,
+`inss`) also hide a line with a teacher, instructor, attendant or contact word, and the `horta comunitaria` allowlist
+keeps a "Parceria com" or "Programa" line only when an entity word follows; this answers "Onde fica o SINE do
+Pinheirinho? (sem expor nome de pessoa)". No new source or host. The Curitiba App rows are unchanged (18, 16 covered).
+The citizen eval answers 137 of 141 questions (q142; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2,
+other cities 2).

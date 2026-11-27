@@ -2,6 +2,27 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.70.0 - 2026-11-27
+
+Name filter for the work types, a follow-up of the 0.64.0 and 0.63.0 reviews. 27 tools. Publishes nothing.
+
+- `city_facilities_search` `sine`, `agencia do trabalhador`, `liceu de oficios` and `inss`: besides a line naming who
+  is in charge, a line with professor/a, instrutor/a, atendente or contato (plurals too) anywhere in it is hidden with
+  the same marker, and so is the line after such a bare label ("Instrutora:"). Broader on purpose than a role or a
+  label before ':': "Atendimento: atendente Fulana" has the word after the colon. "Atendimento" stays. The other
+  office types (regional offices, COHAB, fazenda urbana, núcleos, mesa solidária, chess club) keep the narrower
+  filter; tested.
+- `horta comunitaria`: a "Parceria com …" or "Programa …" line is a known kind only when a body, an organisation
+  (empresa, instituto, universidade, fundação, cooperativa, ONG, projeto), a programme word (integrado, municipal,
+  estadual, federal, desenvolvimento, hortas, agricultura) or COPEL, Sanepar or Eletrosul follows the keyword (after
+  an optional article or "de"); otherwise it is hidden ("Parceria com Fulana", "Programa do Fulano"). Known limit: a
+  name after that word still passes, caught only by the person words.
+- Checked against the layers as read on 2026-11-27 (150, 151, 149, 152 and 9, `observacao` only): no line named a
+  person, and no record's `hours` changed against 0.69.0. No licence or terms found, as before.
+- Citizen eval: q142 ("Onde fica o SINE do Pinheirinho? (sem expor nome de pessoa)") answered; the synthetic SINE
+  Pinheirinho record gains an attendant line, hidden. 137 of 141. Tool contract snapshot unchanged.
+- No new network host, no new link, no new dependency.
+
 ## 0.69.0 - 2026-11-27
 
 Ouvidoria anonymity, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

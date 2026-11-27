@@ -1,4 +1,4 @@
-# SPEC: v0.69.0 Ouvidoria anonymity
+# SPEC: v0.70.0 Name filter for the work types
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,42 +8,48 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md): answer "Posso reclamar na Ouvidoria sem me identificar?" with
-the existing `city_service_guide` `ouvidoria` guide (since 0.43.0).
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), a follow-up of the 0.64.0 and 0.63.0 reviews: answer "Onde fica
+o SINE do Pinheirinho? (sem expor nome de pessoa)" with the existing `city_facilities_search` work types (`sine`,
+`agencia do trabalhador`, `liceu de oficios`, `inss`), and hide a line that may name a teacher, an instructor, an
+attendant or a contact person. On the safe side: a line is hidden when unsure.
 
 ## Source
 
-Only the 0.43.0 record of "Ouvidoria da CGM – Guia de uso" (2024) in [docs/sources.md](docs/sources.md). No request
-is made: no host is contacted, by hand or by the server. The CGM e-mail spelling matches that record; the PDF is not
-re-read.
-
-What the record settles and what it does not:
-
-- Identified and confidential forms need an e-Cidadão account; the anonymous form needs none; the Curitiba Ouve site
-  steps show the identified and anonymous forms.
-- Not in the record: what the site asks today, and whether a plain reclamação (not a denúncia) can be anonymous.
-  The guide says both were not verified.
-- That an e-mail shows the sender's address is this project's own observation; `what`, step 5 and the `note` say it
-  is not the PDF's.
+No new source. The GeoCuritiba urban-equipment layers 150, 151, 149, 152 (work) and 9 (gardens), already recorded in
+[docs/sources.md](docs/sources.md). robots.txt re-checked on 2026-11-27 02:06 UTC (404, no restriction); then one
+read of `objectid,observacao` per layer, 5 s apart, to check the new rules against today's lines; then the service
+metadata (no terms, no licence text). No new host, no new link.
 
 ## Changes
 
-1. **Guide text** (`src/tools/cityServiceGuide.ts`, `ouvidoria`): `what`, step 5, step 6 and `note` gain the
-   sentences above. No new step; step numbers and links unchanged.
-2. **Test** (`test/cityServiceGuide.test.ts`): the anonymity answer, its attribution and the not-verified parts.
-3. **Eval**: q141 → `city_service_guide` `{service: "ouvidoria"}`, expect `guide`. The guide is bundled and makes no
-   network call, so no fixture is needed. The eval checks shape only, so the anonymity text is guarded by the unit
-   test in item 2. q140 is left to v0.68.0 (PR #83).
-4. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.69.0, version 0.69.0 in
-   `package.json`, `package-lock.json`, `server.json`.
+1. **Work person filter** (`src/sources/geocuritiba.ts`): `isWorkPersonLine` = the offices' `isPersonInChargeLine`, or
+   the words professor/a, instrutor/a, atendente or contato (plurals and "(a)" included) anywhere in the line,
+   word-bounded. Broader on purpose than "as a role or a label before ':'": "Atendimento: atendente Fulana" has the
+   word after the colon. "Atendimento" is not "atendente". The four work types use it; the other `HIDE_PERSON` types
+   (regional offices, COHAB, fazenda urbana, núcleos, mesa solidária, chess club) keep `isPersonInChargeLine`. The
+   label rule of `hourLines` is unchanged, so after a hidden "Instrutora:" the next line is hidden too.
+2. **Garden allowlist** (`isGardenPersonLine`): "Parceria com" and "Programa" are a known kind only when an entity
+   word follows right after the keyword (and an optional article or "de"): a body (`BODY`), an organisation word
+   (empresa, instituto, universidade, fundação, cooperativa, ONG, projeto), a programme word (integrado, municipal,
+   estadual, federal, de desenvolvimento, de hortas, de agricultura) or a named public company seen in the layer
+   (COPEL, Sanepar, Eletrosul). Otherwise the line is of no known kind and hidden. Known limit: a name after the
+   entity word still passes ("Parceria com a Associação e Fulana"), caught only by the existing person words.
+3. **Tests** (`test/cityFacilities.test.ts`): the role words in each position, a label then a name on the next line,
+   "Atendimento:" kept; the other person types unchanged; garden "Parceria com Fulana" and "Programa Fulana" hidden,
+   the live kinds kept.
+4. **Eval**: q142 → `city_facilities_search` `{type: "sine", name: "pinheirinho"}`. The synthetic Pinheirinho record
+   gains an "Atendente: Fulana Inventada" line; the eval checks shape (`hours.3`, the marker), the unit test the text.
+5. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.70.0, version 0.70.0 in
+   `package.json`, `package-lock.json`, `server.json`. Tool contract snapshot only if a description changes.
 
 ## Out of scope
 
-Opening the Curitiba Ouve site or re-reading the PDF, a phone for the Ouvidoria, other offices' ouvidorias, any new
-host or link.
+Adding the words to the offices' global `ROLE` (would change six other types), name detection by capital letters,
+any new type, host or link.
 
 ## Check
 
-- `npx vitest run test/cityServiceGuide.test.ts test/eval`: the anonymity test passes; q141 answers as a guide.
-- `node scripts/eval-summary.mjs`: `answered 136 / 140`.
+- `npx vitest run test/cityFacilities.test.ts test/eval`: new tests pass; q142 answers.
+- The new predicates over today's lines of layers 149–152 and 9: no line hidden that was shown before.
+- `node scripts/eval-summary.mjs`: answered count from the run.
 - `scripts/verify` exits 0 on the PR head; packed size under the `MAX_PACKED_BYTES` limit.
