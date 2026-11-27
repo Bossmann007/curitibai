@@ -2,6 +2,24 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.80.0 - 2026-11-27
+
+Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search`, work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): "gente",
+  "regional", "coordenação" and "RH" are unit words, so "Dúvidas? Fale com a gente pelo 156", "Telefone da Regional:
+  …", "E-mail da coordenação" and "Tratar com o RH da empresa" are shown again (0.76.0 hid them as a name after a
+  channel word or "falar com"). "Fale com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana" stay hidden.
+- "emissão de carteira de trabalho" is a service phrase after "Atendimento:", so that line is shown again;
+  "emissão de carteira de trabalho - Fulana" stays hidden.
+- A value after "Atendimento:" that starts with an appointment ("agendamento", "por/com/mediante agendamento") is not
+  read as hours when "com" and a word that is not a unit or channel word follow: "Atendimento: agendamento com
+  Fulana" is now hidden (0.76.0 showed it). "agendamento com a equipe", "agendamento com 2 dias de antecedência" and
+  "agendamento pelo 156" are shown. Known limits: "agendamento pela Fulana" and "presencial com Fulana" still pass.
+- Tested on synthetic lines for the four types, both sides, and a 50 KB timing case for the new rule.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.79.0 - 2026-11-27
 
 Ouvidoria anonymity wording, second pass (the Security Reviewer's R1-R3 on 0.75.0). 27 tools. Publishes nothing.

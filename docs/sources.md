@@ -1560,6 +1560,17 @@ changes (owner request, 2026-11-23: monthly and automatic).
     4 work records, all with an `observacao`, and 56 community gardens, 26 with one. The parser hid no line in them
     before the change and none after: every record's `hours` is identical. The reads were inspected offline and
     deleted; the tests use synthetic lines. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, fourth pass, v0.80.0** (the lows of the 0.76.0 review). Lines the third pass hid by mistake stay
+    visible: "a gente", "Regional", "coordenação" and "RH" are unit words after a channel word or "falar/fale/tratar
+    com" ("Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "E-mail da coordenação", "Tratar com o RH
+    da empresa"), and "emissão de carteira de trabalho" is a service phrase after "Atendimento:". "Fale com a Fulana",
+    "E-mail da coordenadora" and "Coordenação: Fulana" are still hidden. A value after an attendance label that starts
+    with an appointment ("agendamento", "por/com/mediante agendamento") is no longer read as hours when "com" and a
+    word that is not a unit or channel word follow: "Atendimento: agendamento com Fulana" is hidden;
+    "agendamento com a equipe", "agendamento com 2 dias de antecedência" and "agendamento pelo 156" stay. Known
+    limits: "agendamento pela Fulana", "presencial com Fulana" and a name later in an hours line still pass. No
+    request was made for this version (the layers were not re-read): the change is tested on synthetic lines only.
+    No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
