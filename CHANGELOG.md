@@ -2,6 +2,25 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.66.0 - 2026-11-26
+
+Electoral zone at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `place_at_point` `service_areas`: new `areas` value `civic`. It reads IPPUC's GeoCuritiba thematic layer 13 (Zona
+  Eleitoral, 10 zones, read on 2026-11-27 UTC) and returns `electoral_zones` (`zone`, `polling_places`, `sections`,
+  `reference_date`): the zone as published, its counts of voting places and sections as whole numbers (null when not
+  one) and `data_alteracao`. 1 request cold, 2 when no zone contains the point (the bairro layer then decides
+  `inside_curitiba`). Only `zona_eleitoral`, `num_locais`, `num_secoes` and `data_alteracao` are requested; never
+  `num_eleitores`, the same rule as the voting places. The note says the zone covers the point and is not necessarily
+  where a person votes (their título de eleitor says that), that a bairro can span more than one zone, and points to
+  `city_facilities_search` `local de votacao`.
+- `all` stays care and safety: a cold `all` already uses the 5 requests of the call budget.
+- Tool contract: the `areas` enum and description, the new nullable list `electoral_zones`, and the tool description
+  ("If partial, call again." replaces "Cold calls may be partial: retry.", to stay within 400 characters) (snapshot
+  updated).
+- Citizen eval: q138 ("Qual zona eleitoral cobre o Boqueirão?") answered, with a synthetic fixture; 134 of 138.
+- No new network host, no new link, no new dependency.
+
 ## 0.65.0 - 2026-11-26
 
 IPTU Planta Genérica de Valores micro-region at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.

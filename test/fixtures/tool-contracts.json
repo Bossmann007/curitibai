@@ -4342,12 +4342,13 @@
           }
         },
         "areas": {
-          "description": "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia Civil district and fire (Corpo de Bombeiros) platoon areas. \"registry\": circunscrição imobiliária (registro de imóveis) and registro civil serviço. \"all\": care and safety.",
+          "description": "For service_areas. \"care\" (default): health unit and CRAS. \"safety\": Polícia Militar company, Polícia Civil district and fire (Corpo de Bombeiros) platoon areas. \"registry\": circunscrição imobiliária (registro de imóveis) and registro civil serviço. \"civic\": TRE-PR electoral zone. \"all\": care and safety.",
           "type": "string",
           "enum": [
             "care",
             "safety",
             "registry",
+            "civic",
             "all"
           ]
         }
@@ -4620,13 +4621,14 @@
                         "care",
                         "safety",
                         "registry",
+                        "civic",
                         "all"
                       ],
                       "description": "Which areas were asked (`all`: care and safety)."
                     },
                     "inside_curitiba": {
                       "type": "boolean",
-                      "description": "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for `registry`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
+                      "description": "True when the first layer asked (health unit area; Polícia Militar company for `safety`; circunscrição for `registry`; electoral zone for `civic`) or, when it has none, a Curitiba neighbourhood contains the point; false otherwise (a neighbouring city), and then no other layer is asked."
                     },
                     "health_units": {
                       "anyOf": [
@@ -5001,6 +5003,69 @@
                       ],
                       "description": "`registry`: registro civil serviço areas containing the point (at most 3); null with `all`. Empty: none covers the point. Null: not read (its group not asked, its layer not asked outside Curitiba, or not read; see `partial`)."
                     },
+                    "electoral_zones": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "zone": {
+                                "description": "Electoral zone as published (`zona_eleitoral`), e.g. \"174ª\".",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "polling_places": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Voting places in the zone as published (`num_locais`)."
+                              },
+                              "sections": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Voting sections in the zone as published (`num_secoes`)."
+                              },
+                              "reference_date": {
+                                "description": "`data_alteracao` as published, e.g. \"31/08/2026\"; the counts are as of that date.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "zone",
+                              "polling_places",
+                              "sections",
+                              "reference_date"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`civic`: TRE-PR electoral zones containing the point (at most 3); null with `all` (ask `civic`). Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`)."
+                    },
                     "partial": {
                       "type": "boolean",
                       "description": "True when a layer of a group asked could not be read; its list is then null."
@@ -5029,6 +5094,7 @@
                     "fire",
                     "property_registry",
                     "civil_registry",
+                    "electoral_zones",
                     "partial",
                     "source",
                     "source_url",
