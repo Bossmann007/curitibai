@@ -317,3 +317,11 @@ At v0.75.0 (phase B) the `city_service_guide` `ouvidoria` guide says the anonymo
 2024 guide's, and adds the project's own warning that what the citizen writes or attaches can identify them. No new
 question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
 questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.76.0 (phase B) the `city_facilities_search` person-name filter moves to its own module (`src/sources/nameFilter.ts`,
+a pure move first), the work types keep a service value after "Atendimento:" ("por ordem de chegada", "gratuito")
+and hide a name after a channel word or "falar com" and after palestrante, assistente social or psicólogo/a, and the
+community gardens hide a name after "e/com/da" in a partner or programme phrase. The five layers it reads, re-read on
+2026-11-27, show the same hours before and after. No new question, source or host. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).

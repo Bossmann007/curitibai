@@ -4,17 +4,12 @@ import {
   FACILITY_TYPES,
   GEOCURITIBA_MAX_BYTES,
   getFacilityLayer,
-  HIDDEN_MAINTAINER_LINE,
   HIDDEN_NAME_LINE,
-  HIDDEN_PERSON_LINE,
   HIDDEN_SHELTER_LINE,
   hourLines,
   institutionalEmails,
   institutionalPhones,
-  isGardenPersonLine,
-  isPersonInChargeLine,
   isShelterLine,
-  isWorkPersonLine,
   layerQueryUrl,
   parseLayer,
   PRIVATE_ADDRESS_LINE,
@@ -22,6 +17,13 @@ import {
   WOMEN_EMERGENCY_NOTE,
   type FacilityType,
 } from "../src/sources/geocuritiba.js";
+import {
+  HIDDEN_MAINTAINER_LINE,
+  HIDDEN_PERSON_LINE,
+  isGardenPersonLine,
+  isPersonInChargeLine,
+  isWorkPersonLine,
+} from "../src/sources/nameFilter.js";
 import { cityFacilitiesSearchOutput, MIXED_NOTE } from "../src/tools/cityFacilitiesSearch.js";
 import { connectClient, errorOf, fixture, stubFetch, type Route } from "./helpers.js";
 
@@ -2447,5 +2449,114 @@ describe("v0.72.0: a garden partner, programme or keeper later in the line needs
     ]) {
       expect(isGardenPersonLine(l), l).toBe(false);
     }
+  });
+});
+
+describe("v0.76.0: name filter, third pass (service values, names after a channel or 'falar com', more roles, garden partners)", () => {
+  const WORK = ["sine", "agencia do trabalhador", "liceu de oficios", "inss"];
+  const lines = (id: string, s: string) => {
+    const t = type(id);
+    return hourLines(s, 30, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist);
+  };
+  const HOURS = "-2ª a 6ª feira, das 8h às 17h";
+
+  it.each(WORK)("%s keeps a service value after 'Atendimento:', on the same line or the next one", (id) => {
+    for (const v of ["por ordem de chegada", "Por ordem de chegada.", "preferencial para idosos", "Prioritário para gestantes", "gratuito", "Gratuita", "Carteira de trabalho, seguro-desemprego", "Seguro desemprego", "gratuito com agendamento", "Preferencial com senha"]) {
+      expect(lines(id, `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+      expect(lines(id, `Atendimento:\n${v}\n${HOURS}`), v).toEqual(["Atendimento:", v, HOURS]);
+    }
+  });
+
+  it("a service word only counts at the start of the value, and the name rules still run after it", () => {
+    for (const v of ["Fulana de Tal, gratuito", "Fulana, por ordem de chegada", "gratuito com a Fulana", "preferencial: falar com Fulana", "gratuito, com a psicóloga Fulana",
+      "por ordem de chegada. Fulana de Tal", "gratuito pela Fulana", "gratuito, Fulana Inventada", "Carteira de trabalho - Fulana"]) {
+      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([HIDDEN_PERSON_LINE]);
+      expect(lines("sine", `Atendimento:\n${v}`), v).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it.each(WORK)("%s hides a name after a channel word, after 'falar com' and after the new roles", (id) => {
+    for (const who of [
+      "Contato no WhatsApp da Fulana",
+      "Contato pelo telefone com Fulana",
+      "Telefone do Fulano: 3350-0000",
+      "Falar com Fulana de Tal",
+      "Fale com o Fulano",
+      "Palestrante Fulano",
+      "Palestrantes: Fulana e Fulano",
+      "Assistente social Fulana",
+      "Assistentes sociais: Fulana e Fulano",
+      "Psicóloga Fulana de Tal",
+      "Psicólogo: Fulano",
+    ]) {
+      expect(lines(id, `Atendimento:\n${HOURS}\n${who}`), `${id}: ${who}`).toEqual(["Atendimento:", HOURS, HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps a channel of a unit, a channel with a number and service text with the new words", () => {
+    for (const l of [
+      "Contato pelo e-mail da unidade",
+      "Contato no WhatsApp da unidade",
+      "Contato pelo telefone da Agência do Trabalhador",
+      "Contato pelo telefone do Sine",
+      "Contato pelo telefone 156",
+      "Telefone com DDD 41",
+      "Para cursos, entre em contato pelo 156",
+      "Falar com a recepção da unidade",
+      "Atendimento psicológico gratuito",
+      "Curso de Psicologia aplicada",
+      "Palestras sobre empreendedorismo",
+      "Serviço social da unidade",
+      "WhatsApp do CRAS",
+      "Telefone do atendimento",
+    ]) {
+      expect(isWorkPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("the office types keep the narrower filter", () => {
+    expect(lines("cohab", "Atendimento: Fulana de Tal")).toEqual(["Atendimento: Fulana de Tal"]);
+    expect(lines("cohab", "Psicóloga Fulana")).toEqual(["Psicóloga Fulana"]);
+  });
+
+  it("hides a garden partner or programme that names a person after the entity word", () => {
+    for (const l of [
+      "Parceria com a comunidade e a Fulana de Tal",
+      "Programa Municipal da Fulana",
+      "Parceria com a Prefeitura e Fulano",
+      "Parceria com a Associação de Moradores com a Fulana",
+      "Horta com 20 canteiros. Programa Municipal do Fulano",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(true);
+      expect(lines("horta comunitaria", l), l).toEqual([HIDDEN_PERSON_LINE]);
+    }
+  });
+
+  it("keeps a garden partner or programme with only entity words after 'e', 'com' or 'da'", () => {
+    for (const l of [
+      "Programa Integrado de Desenvolvimento Sustentável Eletrosul - Projeto Hortas Comunitárias.",
+      "Parceria com COPEL.",
+      "Programa Municipal de Agricultura Urbana",
+      "Parceria com a Associação de Moradores e a Prefeitura",
+      "Parceria com a comunidade e moradores",
+      "Parceria com a COPEL e a Sanepar",
+      "Programa Municipal da Prefeitura de Curitiba",
+      "Parceria com a Universidade Inventada. Horta com 20 canteiros e pomar",
+      "Parceria com a Universidade Federal do Paraná.",
+      "Parceria com a Secretaria Municipal do Meio Ambiente",
+      "Programa Municipal de Agricultura Urbana e Segurança Alimentar",
+      "Parceria com a Associação de Moradores da Vila Inventada",
+    ]) {
+      expect(isGardenPersonLine(l), l).toBe(false);
+    }
+  });
+
+  it("the new rules stay fast on 50 KB of their worst shapes", () => {
+    const work = ["contato pelo telefone " + "e ".repeat(25_000), "falar com " + "a ".repeat(25_000), "Atendimento: " + "gratuito ".repeat(5_600) + "x", "Atendimento: " + "gratuito, ".repeat(5_000) + "x"];
+    const garden = ["Programa Municipal " + "da ".repeat(17_000), "Parceria com a comunidade " + "e a ".repeat(12_500), "Parceria com " + "parceria com ".repeat(3_900)];
+    const start = performance.now();
+    for (const s of work) isWorkPersonLine(s);
+    for (const s of garden) isGardenPersonLine(s);
+    expect(performance.now() - start).toBeLessThan(1000);
   });
 });

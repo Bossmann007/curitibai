@@ -1,4 +1,4 @@
-# SPEC: v0.75.0 Ouvidoria anonymity wording
+# SPEC: v0.76.0 Person-name filter, third pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,40 +8,42 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the Security Reviewer's R1-R5 on v0.69.0: the
-`city_service_guide` `ouvidoria` guide (q141, "Posso reclamar na Ouvidoria sem me identificar?") says more precisely
-what the anonymous form does and does not cover, and every claim stays inside the docs/sources.md record of the 2024
-CGM PDF.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the 0.72.0 review: the `city_facilities_search`
+person-name filter shows public service lines it hides today and hides names it still lets through. No new citizen
+question; the tool contract does not change.
 
 ## Source
 
-None new. No request is made: `mid.curitiba.pr.gov.br` and the Curitiba Ouve site are not opened. Every fact comes
-from the 0.43.0 record in docs/sources.md; the rest is marked as the CuritibAI's own observation.
+None new. The only request is a re-read of the five layers the filter changes for (urban-equipment layers 150, 151,
+149, 152 and 9 on `geocuritiba.ippuc.org.br`, already allowed), to count hidden lines before and after.
 
-## Changes (`src/tools/cityServiceGuide.ts`, text only)
+## Changes
 
-1. **R1, step 4**: one sentence, marked "(observação do CuritibAI, não do guia de 2024)": the anonymous form skips
-   the registration, but what the citizen writes or attaches (name, address, phone, a face, the location saved in
-   a photo, the file name) can identify them, so they leave it out to stay anonymous.
-2. **R2, step 5**: the sentence that sends a citizen to the anonymous form carries the hedge "segundo o guia de 2024,
-   que o CuritibAI não conferiu hoje no site".
-3. **R3, step 6**: the anonymous denúncia "é registrada", not "é apurada" (the record says a denúncia can be
-   registered; it does not say it is investigated).
-4. **R4, step 8 and `what`**: the 30 days carry "(não vale para a forma anônima, que não recebe resposta)"; `what`
-   says "sem resposta nem acompanhamento" next to "forma anônima".
-5. **R5, test** (`test/cityServiceGuide.test.ts`): each step 5 sentence that names the anonymous form must carry the
-   R2 hedge; the pinned strings for R1, R3 and R4 are tested too.
-6. **Docs and version**: docs/sources.md (a 0.75.0 paragraph), docs/roadmap-1.0.md, CHANGELOG 0.75.0, version 0.75.0
-   in `package.json`, `package-lock.json`, `server.json`.
+1. **Module move, its own commit, no behaviour change**: the role lists, the work-type and garden person-line tests
+   and the service-line words hourLines uses move from `src/sources/geocuritiba.ts` to `src/sources/nameFilter.ts`.
+   Tests unchanged and green; contract snapshots byte-identical.
+2. **Service values after "Atendimento:"** (work types `sine`, `agencia do trabalhador`, `liceu de oficios`,
+   `inss`): a value made only of service phrases ("por ordem de chegada", "preferencial", "prioritário",
+   "gratuito", "carteira de trabalho", "seguro-desemprego", "com agendamento") is not read as a name, on the same
+   line or after a bare label; anything else in the value keeps it a name. The other rules still run on the line.
+3. **Names that still passed** (work types): a channel word followed by "da/do/com" and a word that is not a unit or
+   channel word ("Contato no WhatsApp da Fulana", "Contato pelo telefone com Fulana"); "falar/fale/tratar/procurar
+   com" and such a word ("Falar com Fulana de Tal"); palestrante, assistente social and psicólogo/a anywhere.
+4. **Gardens** (`horta comunitaria`): in a "Parceria com" or "Programa" phrase (up to ".", ";" or " - "), "e", "com"
+   or "da/do/das/dos" followed by a word that is not an entity, place or topic word hides the line ("Parceria com a comunidade e a
+   Fulana de Tal", "Programa Municipal da Fulana"); bare "de" stays ("Programa Municipal de Agricultura Urbana").
+5. **CHANGELOG 0.76.0** names every type the 0.72.0 NOT_A_NAME/WEEKDAY_START change reached (the eleven types with
+   `nameLines` and no allowlist).
+6. **Docs and version**: docs/sources.md (filter paragraph and host row), docs/roadmap-1.0.md, docs/tools.md row,
+   CHANGELOG 0.76.0, version 0.76.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-Any new step, question, source, host or link; any change to what the citizen types or what the assistant sends (it
-still writes and sends nothing). Re-reading the 2024 PDF or the Curitiba Ouve site.
+A name later in an hours line ("das 8h às 17h com a Fulana"); the office types' narrower filter; any new type, host,
+link or question.
 
 ## Check
 
-- `npx vitest run test/cityServiceGuide.test.ts`: the R5 test fails on the 0.74.0 text and passes on 0.75.0.
-- `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
-- `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
-- `scripts/verify` exits 0 on the PR head.
+- `scripts/verify` exit 0; each case in 2-4 tested kept or hidden through `hourLines` with the real type.
+- A 50 KB worst-shape input for each new regex runs in well under a second.
+- The five real layers, re-read once: hours of every record identical before and after (no public line newly hidden).
