@@ -68,12 +68,14 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
  * capital-letter rule: folded text has none.
  * v0.80.0: also gente, regional, coordenacao and rh ("Fale com a gente pelo 156", "Telefone da Regional", "E-mail da
- * coordenação", "Tratar com o RH da empresa"); "coordenadora" is not "coordenacao".
+ * coordenação", "Tratar com o RH da empresa"; "coordenadora" is not "coordenacao"), but only before the end, ":", ".",
+ * ";", "?", "!" or a connector, so a name right after them is still hidden ("Falar com o RH Fulano", "Telefone da
+ * coordenação, Fulana").
  */
 const UNIT_WORD =
-  "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador" +
-  "|gente|regional|coordenacao|rh";
-const NOT_UNIT_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD})\\b)`;
+  "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
+const GUARDED_UNIT = "(?:gente|regional|coordenacao|rh)(?=\\s*$|\\s*[:.;?!]|\\s+(?:pel[ao]s?|por|via|n[ao]s?|em|d[aeo]s?|e|ou|para)\\b)";
+const NOT_UNIT_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${GUARDED_UNIT}))`;
 const PERSON_NEXT = `${NOT_UNIT_NEXT}\\p{L}`;
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
 const NAMED_CHANNEL = new RegExp(
@@ -93,25 +95,30 @@ const SERVICE_ITEM =
 const SERVICE_VALUE = new RegExp(
   `^[-–•*\\s]*(?:${SERVICE_ITEM})(?:(?:\\s*[,;/]\\s*|\\s+e\\s+|\\s+)(?:${SERVICE_ITEM}))*\\s*\\.?\\s*$`,
 );
-const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || SERVICE_VALUE.test(v);
+/**
+ * v0.80.0: "agendamento", an optional ",", then "com" and a word that is not a unit or channel word or an appointment
+ * detail, anywhere in an attendance or contact value: "agendamento com Fulana", "presencial com agendamento com a
+ * Fulana", "agendamento, com Fulana" are a name; "agendamento com a equipe", "agendamento com antecedência",
+ * "agendamento com documentos" and "agendamento pelo 156" are not. Known limit: "agendamento pela Fulana" passes
+ * ("pelo site", "pelo portal" would need their own list).
+ */
+const APPOINTMENT_DETAIL = "antecedencia|hora marcada|horario marcado|documentos?|documentacao|cpf|rg|senha";
+const APPOINTMENT_NAMED = new RegExp(
+  `\\bagendamento,?\\s+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${PERSON_NEXT}`,
+  "u",
+);
+const isServiceValue = (v: string): boolean => !APPOINTMENT_NAMED.test(v) && (HOURS_VALUE.test(v) || SERVICE_VALUE.test(v));
 /**
  * Hours (folded): a digit; "de/das/às/a partir de" and a digit; a weekday, its abbreviation, "dia" or "feriado" that
  * goes on as hours ("Segunda a sexta", "seg. a sex.", "Sábado, 8h", or a digit later: "Domingos da Silva" is not hours);
  * "diariamente", "todos os dias", "presencial", "online"; an appointment ("sem/com/por/mediante agendamento") or "não
  * é/há …" sentence; "fechado" at the end or before "para/temporariamente". "Somente/apenas" may come first.
- * v0.80.0: an appointment followed by "com" and a word that is not a unit or channel word ("agendamento com Fulana",
- * "por agendamento com a Fulana") is not hours, so the value is a name; "agendamento com a equipe", "agendamento com 2
- * dias de antecedência" and "agendamento pelo 156" stay. Known limits: "agendamento pela Fulana", "presencial com
- * Fulana" and "online com Fulana" still pass ("pelo site", "pelo portal" are not unit words and would be hidden).
- * Folded text and no `u` flag here, so the next letter is [a-z].
  */
-const NO_NAME_AFTER = `(?!\\s+com\\s+${NOT_UNIT_NEXT}[a-z])`;
 const DAY = "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feriado|dia)s?(?:-feira)?\\b";
 const HOURS_BODY =
   "(?:(?:somente|apenas)\\s+)?(?:\\d|(?:d[aeo]s?|aos?|as|a partir d[aeo]s?)\\s+\\d" +
   `|(?:(?:d[aeo]s?|aos?|as|a partir d[aeo]s?|todos? os|todas as)\\s+)?${DAY}(?:\\.?\\s+(?:a|ao|as|e\\s+${DAY}|uteis)\\b|\\.?\\s*[,:;]|\\.?\\s*$|(?=.*\\d))` +
-  "|diariamente\\b|todos os dias\\b|presencial\\b|on-?line\\b" +
-  `|(?:(?:sem|com|por|mediante|somente com) )?agendamento\\b${NO_NAME_AFTER}` +
+  "|diariamente\\b|todos os dias\\b|presencial\\b|on-?line\\b|(?:sem|com|por|mediante|somente com) agendamento\\b|agendamento\\b" +
   "|nao (?:e|ha|abre|funciona|atende|precisa)\\b|(?:temporariamente )?fechad[ao]s?\\s*(?:[.;,]?\\s*$|para\\b|temporariamente\\b))";
 const HOURS_VALUE = new RegExp(`^[-–•*\\s]*${HOURS_BODY}`);
 /**
@@ -130,7 +137,7 @@ const CONTACT_CHANNEL = new RegExp(
 const isContactPerson = (f: string): boolean => {
   for (const m of f.matchAll(/\bcontatos?\b/g)) {
     const rest = f.slice(m.index + m[0].length);
-    if (!CONTACT_VALUE.test(rest) && !CONTACT_CHANNEL.test(rest)) return true;
+    if ((!CONTACT_VALUE.test(rest) && !CONTACT_CHANNEL.test(rest)) || APPOINTMENT_NAMED.test(rest)) return true;
   }
   return false;
 };

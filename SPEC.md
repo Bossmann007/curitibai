@@ -19,19 +19,24 @@ None new. No request is made and the GeoCuritiba layers are not re-read; the cha
 
 ## Changes (`src/sources/nameFilter.ts`)
 
-1. **L1, unit words**: `UNIT_WORD` gains `gente`, `regional`, `coordenacao` and `rh`, so "Dúvidas? Fale com a gente
-   pelo 156", "Telefone da Regional: …", "E-mail da coordenação" and "Tratar com o RH da empresa" are shown.
+1. **L1, unit words**: `gente`, `regional`, `coordenacao` and `rh` count as unit words (`GUARDED_UNIT`), but only
+   before the end, ":", ".", ";", "?", "!" or a connector (pelo, por, via, no, em, da/de/do, e, ou, para), so
+   "Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: …", "E-mail da coordenação" and "Tratar com o RH da
+   empresa" are shown while "Falar com o RH Fulano" and "Telefone da coordenação, Fulana" stay hidden, as in 0.79.0.
    "coordenadora" is not "coordenacao": "E-mail da coordenadora" stays hidden, and so does "Coordenação: Fulana" (the
    in-charge rule).
 2. **L1, service phrase**: `SERVICE_ITEM` reads "emissão de" before "carteira de trabalho".
-3. **L2, appointment**: in `HOURS_BODY`, "agendamento" and "sem/com/por/mediante/somente com agendamento" count as
-   hours only when they are not followed by "com" and a word that is not a unit or channel word (`NO_NAME_AFTER`,
-   built from the same `NOT_UNIT_NEXT` lookahead as `PERSON_NEXT`). `CONTACT_VALUE` shares `HOURS_BODY`, so
-   "Contato: 3350-0000 - agendamento com Fulana" is hidden too. Known limits: "agendamento pela Fulana", "presencial
-   com Fulana" and a name later in an hours line still pass.
+3. **L2, appointment**: `APPOINTMENT_NAMED` ("agendamento", an optional ",", "com", then a word that is not a unit
+   or channel word or an appointment detail: antecedência, hora marcada, documentos, CPF, RG, senha), checked anywhere
+   in an attendance value and in the rest of a "Contato" line, makes the value a name: "agendamento com Fulana",
+   "presencial com agendamento com Fulana", "agendamento, com Fulana" and "Contato: 3350-0000 - agendamento com
+   Fulana" are hidden; "agendamento com antecedência" and "agendamento com a equipe" are shown. `HOURS_BODY` is
+   unchanged. Known limits: "agendamento pela Fulana", "presencial com Fulana" and a name later in an hours line
+   without "agendamento com" still pass.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.80.0 block): the five L1 lines are shown for the four work types;
    a name next to the new words is hidden; the L2 forms are hidden on the same line and after a bare label;
-   appointments with a unit, a channel or a number are shown; the new rule runs on 50 KB worst shapes in under 1 s.
+   appointments with a unit, a channel, a number or an appointment detail are shown; the new rule runs on 50 KB worst
+   shapes in under 1 s.
 5. **Docs and version**: docs/sources.md (a v0.80.0 paragraph), docs/tools.md (the `city_facilities_search` row),
    docs/roadmap-1.0.md, CHANGELOG 0.80.0, version 0.80.0 in `package.json`, `package-lock.json`, `server.json`.
 

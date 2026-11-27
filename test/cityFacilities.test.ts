@@ -2614,24 +2614,30 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
       "Telefone da Fulana da Regional",
       "Atendimento: emissão de carteira de trabalho - Fulana",
       "Atendimento: emissão de carteira de trabalho com a Fulana",
+      "Falar com o RH Fulano",
+      "Fale com a gente Fulana",
+      "Telefone da coordenação, Fulana",
     ]) {
       expect(lines(id, `${HOURS}\n${l}`), `${id}: ${l}`).toEqual([HOURS, HIDDEN_PERSON_LINE]);
     }
   });
 
   it.each(WORK)("%s hides a name after 'agendamento com', on the same line or after a bare label", (id) => {
-    for (const v of ["agendamento com Fulana", "agendamento com a Fulana", "Por agendamento com Fulano de Tal", "mediante agendamento com a Fulana", "com agendamento com Fulana"]) {
+    for (const v of ["agendamento com Fulana", "agendamento com a Fulana", "Por agendamento com Fulano de Tal", "mediante agendamento com a Fulana", "com agendamento com Fulana",
+      "presencial com agendamento com Fulana", "seg a sex com agendamento com Fulana", "agendamento, com Fulana", "Segunda a sexta, das 8h às 17h, agendamento com a Fulana"]) {
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([HIDDEN_PERSON_LINE]);
       expect(lines(id, `Atendimento:\n${v}`), `${id}: ${v}`).toEqual(["Atendimento:", HIDDEN_PERSON_LINE]);
     }
     expect(lines(id, "Contato: 3350-0000 - agendamento com Fulana")).toEqual([HIDDEN_PERSON_LINE]);
   });
 
-  it("keeps an appointment with a unit, a channel or a number", () => {
-    for (const v of ["agendamento", "por agendamento", "agendamento com a equipe", "agendamento com o setor de atendimento", "agendamento com 2 dias de antecedência", "agendamento pelo 156", "mediante agendamento pelo telefone"]) {
-      expect(lines("sine", `Atendimento: ${v}`), v).toEqual([`Atendimento: ${v}`]);
+  it.each(WORK)("%s keeps an appointment with a unit, a channel, a number or an appointment detail", (id) => {
+    for (const v of ["agendamento", "por agendamento", "agendamento com a equipe", "agendamento com o setor de atendimento", "agendamento com 2 dias de antecedência",
+      "agendamento com antecedência", "Agendamento com antecedência mínima de 48h", "agendamento com documentos pessoais", "agendamento com CPF e RG", "agendamento com hora marcada",
+      "agendamento com a coordenação", "agendamento pelo 156", "mediante agendamento pelo telefone"]) {
+      expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
     }
-    expect(isWorkPersonLine("Contato: 3350-0000 - agendamento com a equipe")).toBe(false);
+    for (const l of ["Contato: 3350-0000 - agendamento com a equipe", "Contato: 3350-0000 - agendamento com antecedência"]) expect(isWorkPersonLine(l), l).toBe(false);
   });
 
   it("the new rule stays fast on 50 KB of its worst shapes", () => {

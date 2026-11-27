@@ -1563,11 +1563,13 @@ changes (owner request, 2026-11-23: monthly and automatic).
   - **Name filter, fourth pass, v0.80.0** (the lows of the 0.76.0 review). Lines the third pass hid by mistake stay
     visible: "a gente", "Regional", "coordenação" and "RH" are unit words after a channel word or "falar/fale/tratar
     com" ("Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "E-mail da coordenação", "Tratar com o RH
-    da empresa"), and "emissão de carteira de trabalho" is a service phrase after "Atendimento:". "Fale com a Fulana",
-    "E-mail da coordenadora" and "Coordenação: Fulana" are still hidden. A value after an attendance label that starts
-    with an appointment ("agendamento", "por/com/mediante agendamento") is no longer read as hours when "com" and a
-    word that is not a unit or channel word follow: "Atendimento: agendamento com Fulana" is hidden;
-    "agendamento com a equipe", "agendamento com 2 dias de antecedência" and "agendamento pelo 156" stay. Known
+    da empresa"), but only before the end, a punctuation mark or a connector ("Falar com o RH Fulano" and "Telefone
+    da coordenação, Fulana" are still hidden), and "emissão de carteira de trabalho" is a service phrase after
+    "Atendimento:". "Fale com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana" are still hidden.
+    "agendamento", an optional ",", then "com" and a word that is not a unit or channel word or an appointment detail
+    (antecedência, hora marcada, documentos, CPF, RG, senha), anywhere in an attendance value or a "Contato" line,
+    hides the line: "Atendimento: agendamento com Fulana" and "presencial com agendamento com Fulana" are hidden;
+    "agendamento com a equipe", "agendamento com antecedência" and "agendamento pelo 156" stay. Known
     limits: "agendamento pela Fulana", "presencial com Fulana" and a name later in an hours line still pass. No
     request was made for this version (the layers were not re-read): the change is tested on synthetic lines only.
     No new host for the server and the link allowlist is unchanged.
