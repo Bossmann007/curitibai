@@ -23,7 +23,8 @@ What the record settles and what it does not:
   steps show the identified and anonymous forms.
 - Not in the record: what the site asks today, and whether a plain reclamação (not a denúncia) can be anonymous.
   The guide says both were not verified.
-- That an e-mail shows the sender's address is this project's own observation; the `note` says it is not the PDF's.
+- That an e-mail shows the sender's address is this project's own observation; `what`, step 5 and the `note` say it
+  is not the PDF's.
 
 ## Changes
 
@@ -31,7 +32,8 @@ What the record settles and what it does not:
    sentences above. No new step; step numbers and links unchanged.
 2. **Test** (`test/cityServiceGuide.test.ts`): the anonymity answer, its attribution and the not-verified parts.
 3. **Eval**: q141 → `city_service_guide` `{service: "ouvidoria"}`, expect `guide`. The guide is bundled and makes no
-   network call, so no fixture is needed. q140 is left to v0.68.0 (PR #83).
+   network call, so no fixture is needed. The eval checks shape only, so the anonymity text is guarded by the unit
+   test in item 2. q140 is left to v0.68.0 (PR #83).
 4. **Docs and version**: docs/tools.md, docs/sources.md, docs/roadmap-1.0.md, CHANGELOG 0.69.0, version 0.69.0 in
    `package.json`, `package-lock.json`, `server.json`.
 

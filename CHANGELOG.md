@@ -7,16 +7,18 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 Ouvidoria anonymity, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
 
 - `city_service_guide` (`ouvidoria`): the guide now answers "can I complain without identifying myself?". `what`
-  says not identifying oneself is only the anonymous form on the Portal Curitiba Ouve and that an e-mail identifies
-  the sender. Step 5 (the CGM e-mail `falecomacgm@curitiba.pr.gov.br`) says an e-mail shows the sender's address, so
-  a denúncia by e-mail is not anonymous, and points at the anonymous form (step 4). Step 6 adds registration as the
+  says that for denúncias the 2024 CGM guide gives the anonymous form on the Portal Curitiba Ouve, that this was not
+  verified for a plain reclamação, and that e-mail is not an anonymous channel. Step 5 (the CGM e-mail
+  `falecomacgm@curitiba.pr.gov.br`) says the sender's address shows in an e-mail, marked as this project's own
+  observation, and points at the anonymous form (step 4). Step 6 adds registration as the
   2024 CGM guide gives it (e-Cidadão for the identified and confidential forms, none for the anonymous one), that
   what the site asks today was not verified, and that the 2024 guide describes the forms for denúncias, so whether a
   plain reclamação can be anonymous was not verified. The `note` says the e-mail fact is this project's own
   observation, not the PDF's. Step numbers and links are unchanged.
 - The CGM e-mail spelling matches the 0.43.0 record in docs/sources.md; no page was re-read and no host contacted.
 - Citizen eval: q141 ("Posso reclamar na Ouvidoria sem me identificar?") answered by the guide; q140 is left to
-  0.68.0 (PR #83). 136 of 140.
+  0.68.0 (PR #83). 136 of 140. The eval checks shape only; the anonymity text is guarded by
+  `test/cityServiceGuide.test.ts`.
 - Version 0.69.0: 0.68.0 is PR #83, still open.
 - No new network host, no new link, no new dependency.
 

@@ -276,7 +276,7 @@ auditoriums and the chess club. The Curitiba App rows are unchanged (18, 16 cove
 139 questions; 4 are gaps (real-time buses 2, other cities 2).
 
 At v0.69.0 (phase B) the `city_service_guide` `ouvidoria` guide answers "Posso reclamar na Ouvidoria sem me
-identificar?": an e-mail identifies the sender, not identifying oneself is the anonymous form on the Portal Curitiba
-Ouve, and the registration that site asks today was not verified. No new source or host. The Curitiba App rows are
+identificar?": e-mail is not an anonymous channel; for denúncias the anonymous form is on the Portal Curitiba Ouve
+(not verified for a plain reclamação), and the registration that site asks today was not verified. No new source or host. The Curitiba App rows are
 unchanged (18, 16 covered). The citizen eval answers 136 of 140 questions (q141; q140 is left to v0.68.0, PR #83); 4
 are gaps (real-time buses 2, other cities 2).

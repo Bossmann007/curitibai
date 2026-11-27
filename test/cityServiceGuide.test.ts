@@ -234,16 +234,19 @@ describe("Ouvidoria guide (since 0.43.0)", () => {
     const o = await guide();
     const step = (n: number) => allSteps(o).find((s) => s.step === n)!.action;
     // The e-mail fact is the project's own observation, not attributed to the 2024 PDF.
-    expect(step(5)).toMatch(/Um e-mail mostra o endereço de quem envia: denúncia por e-mail não é anônima/);
-    expect(step(5)).not.toMatch(/guia de 2024[^.]*e-mail mostra/);
+    const ownObservation = /O e-mail não é um canal anônimo: o endereço de quem envia aparece nele \(observação do CuritibAI, não do guia de 2024\)/;
+    expect(step(5)).toMatch(ownObservation);
+    expect(o.data.what).toMatch(ownObservation);
+    expect(text(o)).not.toMatch(/(segundo|pelo) (o )?(guia|PDF)[^.]*endereço de quem envia/i);
     expect(step(5)).toMatch(/forma anônima no Portal Curitiba Ouve \(passo 4\)/);
-    expect(o.data.what).toMatch(/Sem se identificar: só pela forma anônima no Portal Curitiba Ouve; e-mail identifica quem envia/);
+    // Anonymity is settled for denúncias only; the summary hedges a plain reclamação the same way step 6 does.
+    expect(o.data.what).toMatch(/para denúncias, o guia de 2024 prevê a forma anônima no Portal Curitiba Ouve; para reclamação comum isso não foi verificado/);
     // Registration: e-Cidadão for identificada and sigilosa; what the site asks today is not verified.
     expect(step(6)).toMatch(/identificada e a sigilosa pedem cadastro no e-Cidadão/);
     expect(step(6)).toMatch(/o que o site pede hoje não foi verificado/);
     // The 2024 guide describes the forms for denúncias; a plain reclamação is not settled by it.
     expect(step(6)).toMatch(/reclamação comum[^.]*não foi verificado/);
-    expect(o.note).toMatch(/e-mail shows the sender's address[^.]*this project's own observation/);
+    expect(o.note).toMatch(/e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own observation/);
     expect(o.note).toMatch(/not verified[^.]*registration/i);
   });
 

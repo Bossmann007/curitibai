@@ -609,8 +609,10 @@ export const GUIDES = {
       "Canais da Ouvidoria da Controladoria Geral do Município (CGM) para pedir informações, sugerir, reclamar, " +
       "elogiar e denunciar, segundo o guia de uso da CGM de 2024: o Portal Curitiba Ouve (serviços públicos) e o " +
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
-      "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: só " +
-      "pela forma anônima no Portal Curitiba Ouve; e-mail identifica quem envia.",
+      "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
+      "para denúncias, o guia de 2024 prevê a forma anônima no Portal Curitiba Ouve; para reclamação comum isso não " +
+      "foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia aparece nele (observação do " +
+      "CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
     // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
     carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"], ["curitiba", "ouve"]],
@@ -629,7 +631,7 @@ export const GUIDES = {
       "a protocol, not the Ouvidoria's own line. The Portal Curitiba Ouve address (step 4) comes from that PDF and was " +
       "not opened here. Not verified: whether the \"Ouvidoria da CGM\" is the same office a citizen may call the " +
       "\"Ouvidoria-Geral do Município\" (the PDF does not use that name). That an e-mail shows the sender's address, so " +
-      "a denúncia by e-mail is not anonymous, is this project's own observation, not the PDF's. Not verified: what " +
+      "e-mail is not an anonymous channel, is this project's own observation, not the PDF's. Not verified: what " +
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
       "whether a plain reclamação, not a denúncia, can be anonymous (the PDF describes the forms for denúncias). ",
     steps: [
@@ -655,9 +657,9 @@ export const GUIDES = {
       {
         action:
           `Para denunciar ato ilícito contra a Prefeitura ou conduta antiética de servidor: o cidadão escreve, do seu ` +
-          `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail. Um e-mail mostra o endereço de quem ` +
-          "envia: denúncia por e-mail não é anônima. Quem não quer se identificar usa a forma anônima no Portal " +
-          "Curitiba Ouve (passo 4).",
+          `próprio e-mail, para ${CGM_EMAIL}. O assistente não envia o e-mail. O e-mail não é um canal anônimo: o ` +
+          "endereço de quem envia aparece nele (observação do CuritibAI, não do guia de 2024). Quem não quer se " +
+          "identificar usa a forma anônima no Portal Curitiba Ouve (passo 4).",
         consent:
           `O cidadão escreve e envia a mensagem só no seu próprio programa de e-mail, para ${CGM_EMAIL}, não nesta ` +
           "conversa. O assistente não escreve nem envia nada.",

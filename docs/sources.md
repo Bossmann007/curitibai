@@ -2017,8 +2017,8 @@ above:
   says what the site asks today was not verified.
 - The record gives the three forms with the denúncia channels; whether a plain reclamação (not a denúncia) can be
   anonymous is not in it, and the guide says that was not verified.
-- That an e-mail shows the sender's address, so a denúncia by e-mail is not anonymous, is this project's own
-  observation, not a fact from the PDF; the guide's `note` says so.
+- That an e-mail shows the sender's address, so e-mail is not an anonymous channel, is this project's own
+  observation, not a fact from the PDF; the guide's `what`, step 5 and `note` say so.
 
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an
