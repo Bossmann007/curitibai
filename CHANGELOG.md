@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.74.0 - 2026-11-27
+
+E-mail filter, second pass (the low of the 0.67.0 review). 27 tools. Publishes nothing.
+
+- `city_facilities_search` (every type): a `curitiba.pr.gov.br` address shaped like a person's name is now also
+  dropped when its first word is a single letter ("j.silva"), when a later word ends in digits ("maria.souza2") or
+  when the words are joined by "-" ("ana-lima"). The unit and sector words are checked first and keep the address
+  ("cras.boqueirao", "cras-cajuru"); atendimento, contato, falecom, ouvidoria and secretaria join that list. A
+  one-word address ("falecomacgm", "sine") never matches. Tested for each new shape and for generic addresses.
+- Checked against the real records: the 89 urban-equipment layers the tool reads, re-read on 2026-11-27 (2,167
+  records, 1,765 city e-mails, 776 distinct), keep 1,763 e-mails before and after the change; none is newly hidden.
+  None of them has a "-", a one-letter first word or a word ending in digits.
+- Not added: a rule for a unit word followed by a name (left to Enzo).
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- Host contacted only for the check above (`geocuritiba.ippuc.org.br`, already allowed, one request per layer); no
+  new network host, no new link, no new dependency.
+
 ## 0.73.0 - 2026-11-27
 
 Service areas helper and PGV text codes, the lows of the 0.66.0 and 0.71.0 reviews. 27 tools. Publishes nothing.

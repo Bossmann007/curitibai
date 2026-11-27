@@ -1564,10 +1564,15 @@ changes (owner request, 2026-11-23: monthly and automatic).
     named anyone. The `site` field is never
     read. No new host for the server and the link allowlist is unchanged. Since the review of
     this version the shared e-mail filter (every type, old and new) also drops a `curitiba.pr.gov.br` address whose
-    local part is two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva"), unless the first
-    word is a unit prefix (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
-    nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). A one-word local part shaped like a name
-    ("fulanasilva") is not caught by this rule; `noEmails` covers the two types where one was read.
+    local part is two or more alphabetic words joined by "." or "_" ("fulana.silva"), unless the first
+    word is a unit prefix. Since v0.74.0 the first word may be a single letter ("j.silva"), each later word (2+
+    letters) may end in digits ("maria.souza2") and "-" is a separator too ("ana-lima"); the unit prefixes
+    still keep an address whose first word they are (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
+    nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa; since v0.74.0 also atendimento, contato, falecom,
+    ouvidoria, secretaria). A one-word local part shaped like a name
+    ("fulanasilva") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
+    checked on 2026-11-27 against a re-read of the 89 urban-equipment layers (2,167 records, 1,765 city e-mails, 776
+    distinct, one request per layer): 1,763 are kept before and after, none newly hidden.
   - Live call of the built handler on 2026-11-27 from 00:31:16 UTC (3 processes, 1 request each to layer 61): `casa
     da leitura` near Bairro Alto (-25.4055, -49.2035), `radius_m` 3000: `total` 0 in 562 ms, the note naming `farol do
     saber` and `biblioteca`; with `bairro` "bacacheri": the Casa da Leitura Dario Vellozo, 5 lines, 1 phone, 1 e-mail.

@@ -305,3 +305,9 @@ At v0.73.0 (phase B) the `place_at_point` service areas build their answer throu
 the other groups with null (no output change), and a PGV micro-bairro published as text drops a trailing ".0" ("12.0"
 is "12"). No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
 answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
+
+At v0.74.0 (phase B) the e-mail filter of `city_facilities_search` also hides a city address shaped like a person's
+name with a one-letter first word, digits after the surname or "-" between the words; unit and sector words still
+keep an address (no real address newly hidden when checked on 2026-11-27). No new question, source or host. The
+Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to
+v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).
