@@ -147,7 +147,7 @@ const SERVICE_VALUE = new RegExp(
  * other word in the rest hides the line or the field, on the safe side: "exceto feriados", "sábados" and "domingos"
  * (plural weekdays are not steps: "Domingos" is a name), "Documentos: RG" on a later line; a name made only of steps
  * ("Domingo", "Sexta", "Regional") is shown (v0.88.0 tried to read a weekday as a step only next to "a/às", a digit or
- * "fechado"; it hid "segunda-feira a sexta-feira", "sábado de 8h" and "seg-sex, 8h", so it was dropped). When another
+ * "fechado"; it hid ordinary schedules, listed in the v0.88.0 test, so it was dropped). When another
  * line hid on its own rules, the whole-field check is skipped and hourLines' split check reads at most the third line
  * from the "senha numerada" line, so a name on the fourth line or later is shown (v0.88.0 known limit, tested).
  */

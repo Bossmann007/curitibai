@@ -21,7 +21,8 @@ None new. No request was made; every fixture is synthetic (Fulana, Beltrano).
 
 1. **Docs match code**: the 0.86.0 CHANGELOG note and docs/sources.md said that, when the whole-field check is
    skipped, only the next line is read. The split check reads the next two lines (up to the third line from the
-   "senha numerada" line). The text is fixed, not the code, and the 0.88.0 entry says so.
+   "senha numerada" line). The text is fixed, not the code: the CHANGELOG 0.86.0 entry and the docs/sources.md
+   eighth-pass entry are edited on purpose, and the 0.88.0 entry says so.
 2. **KISS**: `APPOINTMENT_DETAIL` no longer builds its senha branch with `.replace("SENHA_REST", SENHA_REST)` on the
    pattern source; `SENHA_REST` is declared first and interpolated. The sources of `APPOINTMENT_NAMED`,
    `APPOINTMENT_NAMED_JOINED` and `SENHA_END` were dumped before and after and are identical, so matching and timing
