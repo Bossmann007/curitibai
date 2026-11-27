@@ -50,7 +50,7 @@ const MicroRegion = z.object({
   zone_code: z.string().nullable().describe("PGV fiscal zone code as published (sg_zona), e.g. \"EE\"; not the zoning of `zoning`."),
   zone_name: z.string().nullable().describe("PGV fiscal zone name as published (nm_zona)."),
   bairro: z.string().nullable().describe("Bairro as the PGV layer names it (nm_bairro)."),
-  microbairro: z.string().nullable().describe("Micro-bairro code as published (cd_microbairro), e.g. \"27.0\"."),
+  microbairro: z.string().nullable().describe("Micro-bairro code (cd_microbairro), e.g. \"27\": a number in its JSON form, text of 1 to 6 digits without a trailing \".0\", other text unchanged."),
   microregion: z.number().int().nullable().describe("Micro-region code inside the zone and micro-bairro (cd_microrregiao); 0 is a code."),
 });
 

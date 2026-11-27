@@ -124,7 +124,8 @@ const NO_LISTS: Lists = {
   civil_registry: null,
   electoral_zones: null,
 };
-const areasData = (p: Point, areas: Data["areas"], inside: boolean, lists: Partial<Lists>, partial: boolean): Data => ({
+/** `Pick`, not `Partial`: a group's list is an array or null, never undefined (a spread undefined would drop the key). */
+const areasData = <K extends keyof Lists>(p: Point, areas: Data["areas"], inside: boolean, lists: Pick<Lists, K>, partial: boolean): Data => ({
   lat: p.lat,
   lon: p.lon,
   areas,

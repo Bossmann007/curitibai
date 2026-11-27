@@ -325,3 +325,9 @@ community gardens hide a name after "e/com/da" in a partner or programme phrase.
 2026-11-27, show the same hours before and after. No new question, source or host. The Curitiba App rows are unchanged
 (18, 16 covered). The citizen eval answers 139 of 143 questions (q140 is left to v0.68.0, PR #83); 4 are gaps
 (real-time buses 2, other cities 2).
+
+At v0.77.0 (phase B) the `place_at_point` PGV `microbairro` description gives the form the tool returns ("27", not
+the published "27.0"), and the service areas helper no longer accepts `undefined` for a list (a type change, no
+output change). No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen
+eval answers 139 of 143 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps
+(real-time buses 2, other cities 2).

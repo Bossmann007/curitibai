@@ -2,6 +2,22 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.77.0 - 2026-11-27
+
+PGV micro-bairro description and the service areas list type (the lows of the 0.73.0 review). 27 tools. Publishes
+nothing.
+
+- `place_at_point` `place.pgv`: the `microbairro` description now gives the form the tool returns, "27", and how it is
+  made (a number in its JSON form; text of 1 to 6 digits without a trailing ".0"; other text unchanged). It said
+  "as published" with the published "27.0" as its example, which the tool has not returned since 0.71.0. No output
+  change.
+- `place_at_point` `service_areas`: the helper that fills each group's lists takes exactly the lists the group sets
+  (`Pick`, not `Partial`), so passing `undefined` for a list no longer type-checks; it would have dropped the key from
+  `data`. No output change; the callers are unchanged.
+- Tool contract: the `microbairro` description (snapshot updated, one line).
+- Citizen eval: no new question; 139 of 143.
+- No host contacted, no new network host, no new link, no new dependency.
+
 ## 0.76.0 - 2026-11-27
 
 Name filter, third pass (the lows of the 0.72.0 review). 27 tools. Publishes nothing.

@@ -1,4 +1,4 @@
-# SPEC: v0.76.0 Person-name filter, third pass
+# SPEC: v0.77.0 PGV micro-bairro description and the service areas `lists` type
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,42 +8,34 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the 0.72.0 review: the `city_facilities_search`
-person-name filter shows public service lines it hides today and hides names it still lets through. No new citizen
-question; the tool contract does not change.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the 0.73.0 review: the `place_at_point`
+`place.pgv` field `microbairro` describes the form the tool returns ("27", not the published "27.0"), and the
+service areas helper's `lists` argument cannot hold `undefined`. No new citizen question; no behaviour change.
 
 ## Source
 
-None new. The only request is a re-read of the five layers the filter changes for (urban-equipment layers 150, 151,
-149, 152 and 9 on `geocuritiba.ippuc.org.br`, already allowed), to count hidden lines before and after.
+None. No request is made and no host is contacted.
 
 ## Changes
 
-1. **Module move, its own commit, no behaviour change**: the role lists, the work-type and garden person-line tests
-   and the service-line words hourLines uses move from `src/sources/geocuritiba.ts` to `src/sources/nameFilter.ts`.
-   Tests unchanged and green; contract snapshots byte-identical.
-2. **Service values after "Atendimento:"** (work types `sine`, `agencia do trabalhador`, `liceu de oficios`,
-   `inss`): a value made only of service phrases ("por ordem de chegada", "preferencial", "prioritário",
-   "gratuito", "carteira de trabalho", "seguro-desemprego", "com agendamento") is not read as a name, on the same
-   line or after a bare label; anything else in the value keeps it a name. The other rules still run on the line.
-3. **Names that still passed** (work types): a channel word followed by "da/do/com" and a word that is not a unit or
-   channel word ("Contato no WhatsApp da Fulana", "Contato pelo telefone com Fulana"); "falar/fale/tratar/procurar
-   com" and such a word ("Falar com Fulana de Tal"); palestrante, assistente social and psicólogo/a anywhere.
-4. **Gardens** (`horta comunitaria`): in a "Parceria com" or "Programa" phrase (up to ".", ";" or " - "), "e", "com"
-   or "da/do/das/dos" followed by a word that is not an entity, place or topic word hides the line ("Parceria com a comunidade e a
-   Fulana de Tal", "Programa Municipal da Fulana"); bare "de" stays ("Programa Municipal de Agricultura Urbana").
-5. **CHANGELOG 0.76.0** names every type the 0.72.0 NOT_A_NAME/WEEKDAY_START change reached (the eleven types with
-   `nameLines` and no allowlist).
-6. **Docs and version**: docs/sources.md (filter paragraph and host row), docs/roadmap-1.0.md, docs/tools.md row,
-   CHANGELOG 0.76.0, version 0.76.0 in `package.json`, `package-lock.json`, `server.json`.
+1. **`microbairro` description** (`src/tools/placeAtPoint.ts`): "Micro-bairro code (cd_microbairro), e.g. "27": a
+   number in its JSON form, text of 1 to 6 digits without a trailing ".0", other text unchanged." It no longer says
+   "as published" or gives "27.0". The tool contract snapshot changes in this one description.
+2. **`lists` type** (`src/tools/serviceAreasAtPoint.ts`): `areasData` takes `Pick<Lists, K>` instead of
+   `Partial<Lists>`, so a group passing `undefined` for a list is a type error (with `exactOptionalPropertyTypes`
+   off, `Partial` allowed it, and the spread would then drop the key from `data`). The callers and the output do not
+   change.
+3. **Docs and version**: docs/sources.md (PGV paragraph), docs/roadmap-1.0.md, CHANGELOG 0.77.0, version 0.77.0 in
+   `package.json`, `package-lock.json`, `server.json`. docs/tools.md already gives the returned form ("27.0 as
+   "27"") and does not change.
 
 ## Out of scope
 
-A name later in an hours line ("das 8h às 17h com a Fulana"); the office types' narrower filter; any new type, host,
-link or question.
+Any change to what `place_at_point` returns, to the other PGV fields' "as published" descriptions, or to
+`tsconfig.json` (`exactOptionalPropertyTypes` stays off); any new type, host, link or question.
 
 ## Check
 
-- `scripts/verify` exit 0; each case in 2-4 tested kept or hidden through `hourLines` with the real type.
-- A 50 KB worst-shape input for each new regex runs in well under a second.
-- The five real layers, re-read once: hours of every record identical before and after (no public line newly hidden).
+- `scripts/verify` exit 0; the snapshot diff is the one `microbairro` description line.
+- Passing `{ electoral_zones: undefined }` to `areasData` fails `tsc --noEmit` with this change and passes without
+  it (checked by hand, then reverted).
