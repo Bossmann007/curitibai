@@ -878,12 +878,13 @@ const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitib
  * since v0.74.0 the first of any length ("j.silva"), each word with optional trailing digits ("maria2.souza",
  * "maria.souza2", "ana-lima") and an optional number at the end ("maria.souza.2", "maria_souza_01"). Since v0.78.0
  * separators may repeat ("maria..silva"), a middle word may be a single letter when the last has 2+ ("ana.c.lima",
- * "joao.e.silva"; "esporte.e.lazer" is dropped too, failing closed), and a first word of 2+ letters followed by exactly
- * one letter is a surname initial ("maria.s"; "sme.d.p.e" and "sec.e.2" stay). A single word ("falecomacgm"), a word
- * and a number ("sec.2") or exactly two single letters ("a.b", "a1.b") never match.
+ * "joao.e.silva"; "esporte.e.lazer" is dropped too, failing closed), and a final single letter is a surname initial
+ * when the first word has 2+ letters and every word between them is a name ("maria.s", "maria.silva.s",
+ * "joao.p.silva.r", "maria.s2", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). A single word
+ * ("falecomacgm"), a word and a number ("sec.2") or exactly two single letters ("a.b", "a1.b") never match.
  */
 const PERSON_LOCAL =
-  /^(?:[a-z]+\d*(?:[._-]+[a-z]+\d*)*[._-]+[a-z]{2,}\d*(?:[._-]+\d+)?|[a-z]{2,}\d*[._-]+[a-z])$/;
+  /^(?:[a-z]+\d*(?:[._-]+[a-z]+\d*)*[._-]+[a-z]{2,}\d*(?:[._-]+\d+)?|[a-z]{2,}\d*(?:(?:[._-]+[a-z]+\d*)*[._-]+[a-z]{2,}\d*)?[._-]+[a-z]\d*(?:[._-]+\d+)?)$/;
 /** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); checked first, kept. */
 const UNIT_PREFIXES = new Set([
   "biblioteca", "caps", "casadepassagem", "ccz", "cei", "cmae", "cmaee", "cmei", "cras", "creas", "escola", "farol",

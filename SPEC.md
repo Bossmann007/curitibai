@@ -23,8 +23,9 @@ apart, through the server's own `fetchText` (its User-Agent, same-host redirects
 ## Changes
 
 1. **`PERSON_LOCAL`** (`src/sources/geocuritiba.ts`): separators may repeat (`[._-]+`); a middle word may be a
-   single letter when the last word has 2+ letters ("ana.c.lima", "j.p.silva", "joao.e.silva"); a first word of 2+ letters followed by exactly one letter is a surname
-   initial ("maria.s"; "sme.d.p.e" and "sec.e.2" stay). Unchanged: the unit prefixes are checked first and keep the
+   single letter when the last word has 2+ letters ("ana.c.lima", "j.p.silva", "joao.e.silva"); a final single letter (digits or a number may follow) is a surname
+   initial when the first word has 2+ letters and every word between them is a name ("maria.s", "maria.silva.s",
+   "joao.p.silva.r", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). Unchanged: the unit prefixes are checked first and keep the
    address; a single word, a word and a number ("sec.2", "sec..2") and exactly two single letters ("a.b", "a1.b")
    never match. The local part is at most 64 characters (`CITY_EMAIL` runs first), so the regex has no long-input
    cost.
@@ -38,7 +39,8 @@ apart, through the server's own `fetchText` (its User-Agent, same-host redirects
 ## Out of scope
 
 A trailing separator ("maria.silva.") and a one-word name ("fulanasilva") still pass, and a connector address
-("esporte.e.lazer") or a word and one letter ("sala.a") is dropped, failing closed (known limits, written down);
+("esporte.e.lazer"), a word and one letter ("sala.a", "sme.d") or a word, a letter and a number ("sec.e.2") is
+dropped, failing closed (known limits, written down);
 sector words in the unit list; any new type, host, link or question.
 
 ## Check
@@ -46,5 +48,5 @@ sector words in the unit list; any new type, host, link or question.
 - `scripts/verify` exit 0; the tool contract snapshot is unchanged.
 - The old `PERSON_LOCAL` keeps every new dropped case of the tests (checked by hand with node).
 - Real records: the re-read above keeps the same number of city e-mails with the old rule and with the first draft
-  of the new rule. The final rule (after review: the surname initial limited to exactly two words)
+  of the new rule. The final rule (after review: a surname initial needs only name words before it, so letter codes stay)
   drops a subset of what that draft dropped and a superset of what the old rule dropped, so the count holds.

@@ -230,7 +230,8 @@ describe("contact fields", () => {
     for (const e of ["ana.c.lima@curitiba.pr.gov.br", "joao.p.silva@sme.curitiba.pr.gov.br", "maria.s@curitiba.pr.gov.br",
       "maria..silva@curitiba.pr.gov.br", "j.p.silva@curitiba.pr.gov.br", "Ana_C_Lima@FCC.curitiba.pr.gov.br",
       "maria-s@sms.curitiba.pr.gov.br", "ana.c.lima2@curitiba.pr.gov.br", "ana.c.lima.2@curitiba.pr.gov.br", "a.b.cd@curitiba.pr.gov.br",
-      "ana.a.lima@curitiba.pr.gov.br", "joao.e.silva@curitiba.pr.gov.br", "j.o.souza@curitiba.pr.gov.br",
+      "maria.s2@curitiba.pr.gov.br", "maria.s.2@sms.curitiba.pr.gov.br", "maria.silva.s@curitiba.pr.gov.br",
+      "ana.lima.c@curitiba.pr.gov.br", "joao.p.silva.r@curitiba.pr.gov.br", "ana.a.lima@curitiba.pr.gov.br", "joao.e.silva@curitiba.pr.gov.br", "j.o.souza@curitiba.pr.gov.br",
       "maria__silva@curitiba.pr.gov.br", "maria.-silva@curitiba.pr.gov.br"]) {
       expect(institutionalEmails(e), e).toEqual([]);
     }
@@ -242,7 +243,7 @@ describe("contact fields", () => {
       "cras.boqueirao@curitiba.pr.gov.br", "cras..cajuru@curitiba.pr.gov.br", "us.b.alto@sms.curitiba.pr.gov.br",
       "sine.s@curitiba.pr.gov.br", "cmei2-xaxim@sme.curitiba.pr.gov.br", "a.b@curitiba.pr.gov.br", "a1.b@curitiba.pr.gov.br",
       "sec.2@curitiba.pr.gov.br", "sec..2@curitiba.pr.gov.br", "smsan2@curitiba.pr.gov.br", "sme.d.p.e@sme.curitiba.pr.gov.br",
-      "fas.n.s@curitiba.pr.gov.br", "sec.e.2@curitiba.pr.gov.br"]) {
+      "fas.n.s@curitiba.pr.gov.br"]) {
       expect(institutionalEmails(e), e).toEqual([e]);
     }
     expect(institutionalEmails("ana.c.lima@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
