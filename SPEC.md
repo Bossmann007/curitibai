@@ -41,8 +41,11 @@ line filter, and only `cei contratado` reads maintainer lines.
    before ends in a contact phrase or "agendamento com" naming a guarded unit (`GUARDED_END`; the phrase may span the
    two lines before), the last line is hidden unless it is made only of channel, unit, connector and hours words,
    numbers and punctuation (`REST_ONLY`) or is a street address (`ADDRESS_START`). Being part of the split check, it
-   leaves the whole-field check on. Known limits: other words there are hidden too; a guarded phrase ending in ',' or
-   ';' is hidden; when the line before hides on its own, the pair is not read.
+   leaves the whole-field check on. "Dia(s)"/"hora(s)" are hours words only after a number or before "útil/úteis". No
+   word is both a rest step and an hours step (each word reads one way, so the check stays linear; a test times every
+   word repeated). Known limits: other words there are hidden too; a guarded phrase ending in ',' or ';' is hidden;
+   when the line before hides on its own, the pair is not read; a guarded phrase complete on the first of three lines, then a contact line, then the name 
+   ("Telefone da Regional:" / "3350-0000" / "- Fulana") shows the name.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.81.0 block): the split keyword after a hidden line, per type that
    uses each pattern; L1 hidden and kept lines for the four work types; the pair check does not drag a line after
    one that hides alone, nor hours or a service after a keyword; a three-line split still hides the whole field; the

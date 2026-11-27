@@ -34,7 +34,8 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   longer than 100 steps (one per character or word) is not read as a unit, so that line is hidden, on the safe side.
   "whats app" could be read two ways ("whats app" or "whats" then "app"), so a line of repeated "whats app" after a
   guarded word backtracked exponentially (0.80.0: 22 repeats 153 ms, 50 repeats over a minute); it reads one way now
-  (50 repeats: under 1 ms).
+  (50 repeats: under 1 ms). The same held for "atendimento" (a unit word and, in a first draft of this version, an
+  hours word): no word is now both, and a test times every word of both lists repeated 30 times.
 - "agendamento com Dias", "com Uma", "com hora" and "com senha" at the end of the line are hidden (older than 0.80):
   um/uma, dia(s), hora and senha count as appointment details only before a number or a detail word ("uma semana",
   "dias úteis", "hora marcada", "senha retirada"), so "agendamento com Dias Ferreira" is hidden too.
@@ -61,9 +62,12 @@ leaks that 0.80.0 introduced** (found by the Security Reviewer after the 0.80.0 
   so the whole-field check still runs. The next line is kept only when it is made of channel, unit, connector and
   hours words, numbers and punctuation ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp",
   "Atendimento presencial", "Horário: 8h às 17h", "Com agendamento") or is a street address ("Rua XV de Novembro,
-  100"). Known limits, on the safe side: any other words on that line are hidden too ("Sala de leitura", "2º
-  andar"), unless the phrase was complete on an earlier line; a guarded phrase that ends in ',' or ';' with no name
-  after it ("Fale com a gente," / hours) is hidden.
+  100"). "Dia(s)" and "hora(s)" count as hours only after a number or before "útil/úteis" ("2 dias", "Dias úteis",
+  "24 horas"), so "Dias" or "Hora" alone is hidden there. Known limits: any other words on that line are hidden too,
+  on the safe side ("Sala de leitura", "2º andar"); a guarded phrase that ends in ',' or ';' with no name after it
+  ("Fale com a gente," / hours) is hidden, on the safe side; and a guarded phrase complete on the first of three
+  lines, then a contact line, then the name ("Telefone da Regional:" / "3350-0000" / "- Fulana") shows the name
+  (only the line right after the phrase, or the third line of a phrase split over two, is read).
 - "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
   carteira de trabalho" stay shown, also before the hours and after a hidden line.
 - Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306

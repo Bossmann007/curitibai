@@ -2856,6 +2856,35 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     }
   });
 
+  it("Security Reviewer on 4c32d11: every rest or hours word repeated after a guarded phrase reads one way only (no exponential time)", () => {
+    const words = ["unidade", "agencia", "sine", "liceu", "inss", "central", "setor", "equipe", "recepcao", "prefeitura", "secretaria", "ddd", "cras", "creas",
+      "atendimento", "ministerio", "posto", "ouvidoria", "trabalhador", "telefone", "fone", "tel", "celular", "whats app", "whatsapp", "whats", "e-mail", "email",
+      "ramal", "sms", "gente", "regional", "coordenacao", "rh", "empresa", "site", "portal", "aplicativo", "app", "pelo", "pela", "por", "via", "no", "na", "em",
+      "da", "do", "das", "a", "an", "o", "as", "os", "e", "ou", "segunda", "seg", "sexta", "feira", "feriado", "uteis", "ate", "de", "h", "hs", "2 dias", "dias uteis",
+      "2 horas", "horario", "funcionamento", "aberto", "fechado", "almoco", "intervalo", "manha", "tarde", "noite", "diariamente", "todos", "todas", "presencial",
+      "online", "agendamento", "com", "sem", "mediante", "previo", "ordem", "chegada", "gratuito", "ª", "º"];
+    for (const w of words) {
+      const s = "Fale com o RH\n" + `${w} `.repeat(30) + "x";
+      const start = performance.now();
+      isWorkPersonLine(s, null);
+      isWorkPersonLine(`Telefone da Regional: ${w} `.repeat(30) + "x");
+      lines("sine", s);
+      expect(performance.now() - start, w).toBeLessThan(200);
+    }
+    const start = performance.now();
+    isWorkPersonLine("Fale com o RH\n" + "atendimento ".repeat(35_000) + "x", null);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it.each(WORK)("R1: %s hides 'Dias' or 'Hora' alone after a guarded phrase; '2 dias' and 'Dias úteis' stay", (id) => {
+    for (const b of ["Dias", "WhatsApp Dias", "ou com a Dias", "Hora", "Horas", "Dia"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente pelo 156", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["Dias úteis, das 8h às 17h", "2 dias de antecedência", "24 horas", "Segunda a sexta, 8 horas por dia útil"]) {
+      expect(lines(id, `Fale com a gente pelo 156\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente pelo 156", b]);
+    }
+  });
+
   it("the split check stays fast on 50 KB of short lines", () => {
     const start = performance.now();
     for (const id of ["cei contratado", "administracao regional", "sine"]) {

@@ -95,13 +95,17 @@ const REST_STEP =
 const GUARDED_UNIT = `(?:${GUARDED_WORD})\\b(?=(?:${REST_STEP}){0,100}(?<![,;])(?:$|\\n))`;
 /** A whole line made only of rest steps ("pelo 156", "3350-0000", "WhatsApp", "ou pelo telefone"). */
 /**
- * Hours words that are not rest steps (each alternative matches different text, so a line reads one way only and the
- * check stays linear): weekdays, "h", "às", "até", "de", "horário", "atendimento", "fechado", "agendamento" …
+ * Hours words that are not rest steps: weekdays, "h", "às", "até", "de", "horário", "fechado", "agendamento" …
+ * No word may be both a rest step and an hours step, nor match two alternatives here: a word read two ways doubles
+ * the work on each repeat (0.81.0 review: "atendimento", in UNIT_WORD and here, made "atendimento " x27 take 5 s).
+ * test/cityFacilities.test.ts times every word of both lists repeated.
  */
 const HOURS_STEP =
-  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|dias?|uteis|ate|de|h|hs|" +
-  "horas?|horarios?|atendimento|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
-  "todas|presencial|online|agendamento|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
+  "(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom|feiras?|feriados?|util|uteis|ate|de|h|hs|" +
+  // "dia(s)" and "hora(s)" can be a name ("Dias"): only after a number, or "dia(s)" before "útil/úteis" (disjoint paths).
+  "dias?(?=\\s+(?:util|uteis)\\b)|(?<=\\d\\s?)(?:dias?(?!\\s+(?:util|uteis)\\b)|horas?)|" +
+  "horarios?|funcionamento|abert[ao]s?|fechad[ao]s?|almoco|intervalo|manha|tarde|noite|diariamente|todos|" +
+  "todas|presencial|online|agendamento|antecedencia|com|sem|mediante|previo|ordem|chegada|gratuit[ao]s?)\\b|[ªº]";
 const REST_ONLY = new RegExp(`^(?:${REST_STEP}|${HOURS_STEP})*$`, "u");
 /** A street address ("Rua XV de Novembro, 100", "Av. …"): kept after a guarded contact phrase. */
 const ADDRESS_START = /^(?:rua|r|av|avenida|travessa|alameda|praca|rodovia|estrada)\b/;

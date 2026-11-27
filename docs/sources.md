@@ -1588,7 +1588,9 @@ changes (owner request, 2026-11-23: monthly and automatic).
     gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the split check hides the
     next line unless it is made only of channel, unit, connector and hours words, numbers and punctuation, or is a
     street address. Known limits: other words on that line are hidden too, on the safe side; after a guarded
-    phrase ending in ',' or ';' with no name after it the line is hidden, on the safe side; when the line
+    phrase ending in ',' or ';' with no name after it the line is hidden, on the safe side; a guarded phrase complete on the
+    first of three lines, then a contact line, then the name ("Telefone da Regional:" / "3350-0000" / "- Fulana")
+    shows the name; when the line
     before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima", "Coordenadora" / "geral:
     Fulana") the pair is not read and the name passes, as in 0.80.0. Checked on 2026-11-27 (UTC) with the server's own
     query and User-Agent, one GET per layer to `geocuritiba.ippuc.org.br` (the 12 layers whose type hides person
