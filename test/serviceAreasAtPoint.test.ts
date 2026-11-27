@@ -99,6 +99,7 @@ describe("service_areas_at_point answers", () => {
       fire: null,
       property_registry: null,
       civil_registry: null,
+      electoral_zones: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (SMS e FAS)");
@@ -221,6 +222,7 @@ describe("service_areas_at_point areas: safety (v0.27.0)", () => {
       fire: [{ platoon: "Pelotão Teste", platoon_code: "9ª Pel. BM", company: "Companhia Teste", battalion: "Batalhão Teste", source_agency: "CBMPR TESTE" }],
       property_registry: null,
       civil_registry: null,
+      electoral_zones: null,
       partial: false,
     });
     expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (PMPR, PCPR e CBMPR)");
@@ -313,6 +315,7 @@ describe("place_at_point service_areas, areas: registry (v0.57.0)", () => {
       fire: null,
       property_registry: [{ circumscription: "9ª CIRCUNSCRIÇÃO", legal_basis: "Tribunal Teste, 1900" }],
       civil_registry: [{ service: "9º SERVIÇO DE REGISTRO CIVIL", legal_basis: LEGAL }],
+      electoral_zones: null,
       partial: false,
     });
     expect(out.note).toMatch(/does not replace a certidão/);
@@ -455,5 +458,87 @@ describe("service_areas_at_point cache", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect((await pending).isError).toBeFalsy();
     expect(calls.filter((c) => c.url === key("bairro").slice(4))).toHaveLength(1);
+  });
+});
+
+// Synthetic, with the real fields of layer 13 as read on 2026-11-27 UTC (invented values; counts arrive as doubles).
+type CivicLayer = Extract<PointLayer, "bairro" | "electoral_zone">;
+const ckey = (layer: CivicLayer) => `GET ${pointQueryUrl(layer, P)}`;
+const ZONE = attrs([{ zona_eleitoral: "999ª", num_locais: 45.0, num_secoes: 415.0, data_alteracao: "31/08/2099" }]);
+function civicRoutes(over: Partial<Record<CivicLayer, Route>> = {}): Record<string, Route> {
+  const base: Record<CivicLayer, Route> = { bairro: { body: BAIRRO }, electoral_zone: { body: ZONE } };
+  const out: Record<string, Route> = {};
+  for (const layer of Object.keys(base) as CivicLayer[]) out[ckey(layer)] = { contentType: JSON_TYPE, ...base[layer], ...over[layer] };
+  return out;
+}
+
+describe("place_at_point service_areas, areas: civic (v0.66.0)", () => {
+  it("asks layer 13 for four fields only: never num_eleitores", () => {
+    const u = new URL(pointQueryUrl("electoral_zone", P));
+    expect(u.pathname.endsWith("/Publico_Interno_GeoCuritiba_BaseTematica/MapServer/13/query")).toBe(true);
+    expect(u.searchParams.get("geometry")).toBe("-49.2713,-25.4296");
+    expect(u.searchParams.get("outFields")).toBe("zona_eleitoral,num_locais,num_secoes,data_alteracao");
+    expect(u.toString()).not.toMatch(/eleitores|where=/);
+  });
+
+  it("returns the electoral zone with its counts in 1 request", async () => {
+    const calls = stubFetch(civicRoutes());
+    const res = await call({ ...AT, areas: "civic" });
+    const out = pointPart(res.structuredContent, "service_areas");
+    expect(out.data).toEqual({
+      lat: -25.4296,
+      lon: -49.2713,
+      areas: "civic",
+      inside_curitiba: true,
+      health_units: null,
+      cras: null,
+      police_military: null,
+      police_civil: null,
+      fire: null,
+      property_registry: null,
+      civil_registry: null,
+      electoral_zones: [{ zone: "999ª", polling_places: 45, sections: 415, reference_date: "31/08/2099" }],
+      partial: false,
+    });
+    expect(out.source).toBe("Fonte: IPPUC/GeoCuritiba (TRE-PR)");
+    expect(out.note).toMatch(/not necessarily the zone where a person votes/);
+    expect(out.note).toMatch(/local de votacao/);
+    expect(calls.map((c) => c.url)).toEqual([ckey("electoral_zone").slice(4)]);
+    expect(JSON.stringify(res) + JSON.stringify(calls)).not.toMatch(/4296123|2713123/);
+  });
+
+  it("a count that is not a non-negative whole number is null", async () => {
+    const odd = attrs([{ zona_eleitoral: "999ª", num_locais: 4.5, num_secoes: -1, data_alteracao: null }]);
+    stubFetch(civicRoutes({ electoral_zone: { body: odd } }));
+    const out = await areas({ ...AT, areas: "civic" });
+    expect(out.data.electoral_zones).toEqual([{ zone: "999ª", polling_places: null, sections: null, reference_date: null }]);
+  });
+
+  it("no zone: the bairro layer decides; outside Curitiba the zone list is empty and not partial", async () => {
+    const calls = stubFetch(civicRoutes({ electoral_zone: { body: EMPTY }, bairro: { body: EMPTY } }));
+    const out = await areas({ ...AT, areas: "civic" });
+    expect(out.data).toMatchObject({ inside_curitiba: false, electoral_zones: [], partial: false });
+    expect(out.note).toMatch(/neighbouring city/);
+    expect(calls.map((c) => c.url)).toEqual([ckey("electoral_zone"), ckey("bairro")].map((k) => k.slice(4)));
+  });
+
+  it("no zone inside Curitiba says the layer does not cover the point", async () => {
+    stubFetch(civicRoutes({ electoral_zone: { body: EMPTY } }));
+    const out = await areas({ ...AT, areas: "civic" });
+    expect(out.data).toMatchObject({ inside_curitiba: true, electoral_zones: [] });
+    expect(out.note).toMatch(/No electoral zone found here/);
+  });
+
+  it("two named zones are a boundary", async () => {
+    const two = attrs([{ zona_eleitoral: "998ª", num_locais: 1, num_secoes: 2, data_alteracao: "x" }, { zona_eleitoral: "999ª", num_locais: 1, num_secoes: 2, data_alteracao: "x" }]);
+    stubFetch(civicRoutes({ electoral_zone: { body: two } }));
+    const out = await areas({ ...AT, areas: "civic" });
+    expect(out.data.electoral_zones).toHaveLength(2);
+    expect(out.note).toMatch(/on a boundary/);
+  });
+
+  it("a failing zone layer is source_unavailable", async () => {
+    stubFetch(civicRoutes({ electoral_zone: { status: 500 } }));
+    expect(errorOf(await call({ ...AT, areas: "civic" }))).toMatchObject({ error: "source_unavailable" });
   });
 });
