@@ -1587,20 +1587,22 @@ changes (owner request, 2026-11-23: monthly and automatic).
     named anyone. The `site` field is never
     read. No new host for the server and the link allowlist is unchanged. Since the review of
     this version the shared e-mail filter (every type, old and new) also drops a `curitiba.pr.gov.br` address whose
-    local part is two or more words joined by "." or "_" ("fulana.silva"), unless the first
+    local part is two or more words joined by ".", "_" or (since v0.74.0) "-" ("fulana.silva"), unless the first
     word is a unit prefix. Since v0.74.0 the first word may be a single letter ("j.silva"), each word may end in
     digits ("maria2.souza", "maria.souza2"), a number may close it ("maria.souza.2", "maria_souza_01") and "-" is a
-    separator too ("ana-lima"). Since v0.78.0 a middle word may be a single letter when the last has 2+ letters
-    ("ana.c.lima"), the last may be a single letter when the first has 2+ ("maria.s") and separators may repeat
-    ("maria..silva"); two single letters ("a.b") or a word and a number ("sec.2") never match. The unit prefixes are checked first and
+    separator too ("ana-lima"). Since v0.78.0 separators may repeat ("maria..silva"), a middle word may be a single
+    letter other than a, e or o when the last has 2+ letters ("ana.c.lima"; "esporte.e.lazer" stays), and a word of
+    2+ letters followed by exactly one letter is a surname initial ("maria.s"; "sme.d.p.e" and "sec.e.2" stay);
+    exactly two single letters ("a.b") or a word and a number ("sec.2") never match. The unit prefixes are checked first and
     keep an address whose first word (trailing digits ignored) they are (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
     nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). Known limits: a one-letter code before a sector
-    word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a") are dropped like names (none was read). A one-word local part shaped like a name
+    word ("r.cic"), two acronyms joined by "-" ("sme-dpe") and, since v0.78.0, a word and a single letter ("sala.a", "ti.a") are dropped like names (none was read). A one-word local part shaped like a name
     ("fulanasilva") or one ending in a separator ("maria.silva.") is not caught by this rule; `noEmails` covers the two types where one was read. The v0.74.0 shapes were
     checked on 2026-11-27 against a re-read of the 89 urban-equipment layers (2,167 records, 1,765 city e-mails, 776
     distinct, one request per layer, read again for the final rule with the same counts): 1,763 are kept before and
     after, none newly hidden. The v0.78.0 shapes were checked the same way on 2026-11-27 (one re-read, same counts): 1,763 kept
-    with the old and the new rule, no distinct address changed.
+    with the old rule and with the first draft of the new one (the final rule drops less than that draft and more
+    than the old rule, so the count holds).
   - Live call of the built handler on 2026-11-27 from 00:31:16 UTC (3 processes, 1 request each to layer 61): `casa
     da leitura` near Bairro Alto (-25.4055, -49.2035), `radius_m` 3000: `total` 0 in 562 ms, the note naming `farol do
     saber` and `biblioteca`; with `bairro` "bacacheri": the Casa da Leitura Dario Vellozo, 5 lines, 1 phone, 1 e-mail.

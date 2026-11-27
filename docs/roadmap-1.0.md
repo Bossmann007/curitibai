@@ -333,8 +333,8 @@ eval answers 139 of 143 questions (no new question in this version; q140 is left
 (real-time buses 2, other cities 2).
 
 At v0.78.0 (phase B) the `city_facilities_search` e-mail filter also drops a city address with a middle initial
-("ana.c.lima"), a surname initial ("maria.s") or a repeated separator ("maria..silva"); unit, regional and sector
-addresses stay, and a re-read of the 89 urban-equipment layers on 2026-11-27 keeps the same 1,763 e-mails. No new
+("ana.c.lima"), a surname initial ("maria.s") or a repeated separator ("maria..silva"); ouvidoria, sine, unit and
+regional addresses stay, and a re-read of the 89 urban-equipment layers on 2026-11-27 keeps the same 1,763 e-mails. No new
 question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 139 of 143
 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps (real-time buses 2, other
 cities 2).
