@@ -2228,23 +2228,25 @@ R1-R4 on 0.83.0). **No request was made**: no host was contacted, by hand or by 
 `www.curitiba.pr.gov.br` and `servicos.curitiba.pr.gov.br` were not opened, and the PDF was not re-read. Each changed
 sentence rests on the 0.43.0 record above or is marked as the project's own:
 
-- Step 4, R1-R2: "para reduzir o risco de ser identificado, deixe de fora nome, endereço, telefone, rosto, a
-  localização gravada na foto, o nome do arquivo, nomes ou rostos de outras pessoas, placas de carro, números de
-  documentos, e-mail e qualquer detalhe que só você conheça, como uma data ou um lugar" (was "para continuar anônimo,
-  deixe de fora …" with the first six items). Still in the sentence marked "Observação do CuritibAI, não do guia de
+- Step 4, R1-R2: "para reduzir o risco de ser identificado, deixe de fora o que a denúncia não precisa: nome,
+  endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo, nomes ou rostos de outras pessoas,
+  placas de carro, números de documentos, e-mail, datas ou lugares e qualquer detalhe que só você conheça" (was "para
+  continuar anônimo, deixe de fora …" with the first six items). "o que a denúncia não precisa" keeps the facts a
+  denúncia needs (who, when, where) out of the list (review of this PR). Still in the sentence marked "Observação do CuritibAI, não do guia de
   2024"; the record only says photos and documents may be attached.
 - Step 4, R4: "Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma anônima
   proteja a sua identidade, e não sabe o que o site registra sobre o acesso" (was "a forma anônima não garante
   anonimato"). This project's own observation; the record describes the anonymous form, not what the site logs.
-- `what`, R3, a new sentence: "O CuritibAI não pode garantir que a forma anônima proteja a sua identidade (observação
-  do CuritibAI, não do guia de 2024)". The same observation; the `note` names the summary and step 4.
-- Hedges added where a sentence named anonymity or identification without one: step 4, "o cidadão escolhe a forma
-  (identificada ou anônima) e pode anexar fotos e documentos (o CuritibAI não conferiu isso hoje no site)", and
-  `what`, "para reclamação comum isso não foi verificado, e o CuritibAI não conferiu hoje no site". Both rest on the
-  record's three forms and the "Not opened" line above.
+- `what`, R3, a new sentence: "O CuritibAI não pode garantir que a forma anônima proteja a identidade do cidadão
+  (observação do CuritibAI, não do guia de 2024)". The same observation; the `note` names the summary and step 4.
+- Hedges where a sentence named anonymity or identification without one: step 4 joins its two "Pelo guia de 2024"
+  sentences into one, "o cidadão escolhe a forma (identificada ou anônima) e pode anexar fotos e documentos, e a forma
+  anônima não pede cadastro e não recebe resposta nem acompanhamento (o CuritibAI não conferiu isso hoje no site)";
+  `what` says "no Portal Curitiba Ouve (o CuritibAI não conferiu isso hoje no site)" after the 2024 guide's denúncia
+  clause. Both rest on the record's three forms and the "Not opened" line above.
 - Tested: each sentence of `what` and step 4 that names anonymity or identification (`/anônim|identific/`) carries
-  either the 2024-guide hedge ("guia de 2024 … o CuritibAI não conferiu hoje no site") or the project's own marker; no
-  text of the guide says "continuar anônimo" or "não garante anonimato".
+  either the 2024-guide hedge in the same clause ("guia de 2024 … o CuritibAI não conferiu hoje no site", no ";"
+  between) or the project's own marker; no text of the guide says "continuar anônimo" or "não garante anonimato".
 
 Prior art for 0.43.0: the existing `city_service_guide` (a new guide id in the same table, the same consent steps,
 `fromDocument` from 0.42.0) and `useful_phones` (no Ouvidoria entry) are reused. No outside search for an

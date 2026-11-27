@@ -21,15 +21,16 @@ None new. No request is made; every changed sentence rests on the 0.43.0 record 
 
 1. **R1** (step 4): "para continuar anônimo, deixe de fora …" becomes "para reduzir o risco de ser identificado,
    deixe de fora …".
-2. **R2** (step 4): the list adds other people's names or faces, car plates, document numbers and e-mail, and ends
-   with "e qualquer detalhe que só você conheça, como uma data ou um lugar".
+2. **R2** (step 4): the list is "o que a denúncia não precisa", adds other people's names or faces, car plates,
+   document numbers, e-mail, dates or places, and ends with "e qualquer detalhe que só você conheça".
 3. **R4** (step 4): "a forma anônima não garante anonimato" becomes "o CuritibAI não pode garantir que a forma
    anônima proteja a sua identidade", still marked "Observação do CuritibAI, não do guia de 2024".
-4. **R3** (`what`): one short sentence with the R4 wording and the "(observação do CuritibAI, não do guia de 2024)"
+4. **R3** (`what`): one short sentence with the R4 wording, said of "a identidade do cidadão", and the "(observação do CuritibAI, não do guia de 2024)"
    marker. The `note` names the summary and step 4.
 5. **Hedge test**: each sentence of `what` and step 4 that matches `/anônim|identific/` carries the 2024-guide hedge
-   ("guia de 2024 … o CuritibAI não conferiu hoje no site") or the CuritibAI-observation marker. Two sentences gain
-   the hedge to pass: step 4's "identificada ou anônima" and the summary's "reclamação comum".
+   in the same clause ("guia de 2024 … o CuritibAI não conferiu hoje no site", no ";" between) or the
+   CuritibAI-observation marker. Step 4's two "Pelo guia de 2024" sentences become one with one hedge; the summary's
+   denúncia clause gains the hedge.
 6. **Docs and version**: docs/sources.md, docs/tools.md, docs/roadmap-1.0.md, CHANGELOG 0.85.0, version 0.85.0 in
    `package.json`, `package-lock.json`, `server.json`.
 

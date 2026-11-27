@@ -611,10 +611,10 @@ export const GUIDES = {
       `e-mail ${CGM_EMAIL} (atos ilícitos contra a Prefeitura e conduta antiética de servidores). Esse guia não ` +
       "publica telefone da Ouvidoria: o CuritibAI não dá nenhum número como sendo da Ouvidoria. Sem se identificar: " +
       "para denúncias, o guia de 2024 prevê a forma anônima (sem resposta nem acompanhamento) no Portal Curitiba " +
-      "Ouve; para reclamação comum isso não foi verificado, e o CuritibAI não conferiu hoje no site. O e-mail não é um canal anônimo: o endereço de quem envia " +
+      "Ouve (o CuritibAI não conferiu isso hoje no site); para reclamação comum isso não foi verificado. O e-mail não é um canal anônimo: o endereço de quem envia " +
       "aparece nele (observação do CuritibAI, não do guia de 2024). Mesmo na forma anônima, o texto e os anexos podem " +
       "identificar o cidadão (observação do CuritibAI, não do guia de 2024). O CuritibAI não pode garantir que a forma " +
-      "anônima proteja a sua identidade (observação do CuritibAI, não do guia de 2024).",
+      "anônima proteja a identidade do cidadão (observação do CuritibAI, não do guia de 2024).",
     // Not the bare word: other offices have an ouvidoria of their own (Saúde, URBS); this guide is the CGM's.
     // "Ouvidoria-Geral do Município" is taken as the Prefeitura's (the note says that name was not verified).
     carta: [["ouvidoria", "cgm"], ["ouvidoria", "controladoria"], ["ouvidoria", "geral", "municipio"], ["curitiba", "ouve"]],
@@ -637,8 +637,8 @@ export const GUIDES = {
       "registration the Curitiba Ouve site asks today (the 2024 PDF says the anonymous form needs no account), and " +
       "whether a plain reclamação, not a denúncia, can be anonymous (this project's record of the PDF does not say). " +
       "That the text and the attachments a citizen sends can identify them (the summary, steps 4 and 5) is also this " +
-      "project's own observation, not the PDF's. So is \"o CuritibAI não pode garantir que a forma anônima proteja a sua " +
-      "identidade\" (the summary and step 4): this project does not know what the Curitiba Ouve site records about " +
+      "project's own observation, not the PDF's. So is step 4's \"o CuritibAI não pode garantir que a forma anônima " +
+      "proteja a sua identidade\", said of \"a identidade do cidadão\" in the summary too: this project does not know what the Curitiba Ouve site records about " +
       "the visit. ",
     steps: [
       FIRST_STEP,
@@ -654,12 +654,12 @@ export const GUIDES = {
         action:
           "Abrir o Portal Curitiba Ouve, o canal da Ouvidoria para assuntos de serviços públicos. Pelo guia de 2024, " +
           "uma denúncia também pode ser registrada ali: o cidadão escolhe a forma (identificada ou anônima) e pode " +
-          "anexar fotos e documentos (o CuritibAI não conferiu isso hoje no site). Pelo guia de 2024, a forma anônima não pede cadastro e não recebe resposta nem " +
-          "acompanhamento (o CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
+          "anexar fotos e documentos, e a forma anônima não pede cadastro e não recebe resposta nem acompanhamento (o " +
+          "CuritibAI não conferiu isso hoje no site). Observação do CuritibAI, não do guia de 2024: " +
           "o texto e os anexos podem identificar o cidadão; para reduzir o risco de ser identificado, deixe de fora " +
-          "nome, endereço, telefone, rosto, a localização gravada na foto, o nome do arquivo, nomes ou rostos de outras " +
-          "pessoas, placas de carro, números de documentos, e-mail e qualquer detalhe que só você conheça, como uma " +
-          "data ou um lugar. Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma " +
+          "o que a denúncia não precisa: nome, endereço, telefone, rosto, a localização gravada na foto, o nome do " +
+          "arquivo, nomes ou rostos de outras pessoas, placas de carro, números de documentos, e-mail, datas ou lugares " +
+          "e qualquer detalhe que só você conheça. Observação do CuritibAI, não do guia de 2024: o CuritibAI não pode garantir que a forma " +
           "anônima proteja a sua identidade, e não sabe o que o site registra sobre o acesso.",
         consent:
           "Abrir www.curitiba.pr.gov.br/lei13460/ no navegador do cidadão. Nada é digitado. O endereço vem do guia " +
