@@ -174,12 +174,13 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 };
 /**
  * v0.81.0: a line whose contact phrase ends in a guarded word ("Falar com o RH", "Fale com a gente", "Telefone da
- * Regional:", "E-mail da coordenação") may have the name on the next line. That next line is hidden unless it reads as
- * hours or a service value, or what comes before its first digit, "[masked]" or ':' is empty, a service or address
- * word (NOT_A_NAME) or starts with a unit, channel or connector word ("Segunda a sexta …", "3350-0000", "pelo 156",
- * "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000" and "Fulana: segunda
- * a sexta" are hidden). Known limit: a line of any other words is hidden too ("Fale com a gente" / "Sala 3" stays,
- * "Fale com a gente" / "Térreo do prédio" is hidden).
+ * Regional:", "E-mail da coordenação") may have the name on the next line. That next line is hidden unless what comes
+ * before its first digit, "[masked]" or ':' (after a leading dash or bullet) is empty, reads as hours or a service
+ * value, or starts with a service or address word (SERVICE_LINE) or a unit, channel or connector word ("Segunda a
+ * sexta …", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana
+ * (41) 3350-0000", "- Fulana", "Fulana, telefone …" and "Fulana: segunda a sexta" are hidden). Known limits: a line
+ * of any other words is hidden too ("Térreo do prédio"); "Presencial com Fulana" passes (it reads as hours); a
+ * guarded phrase itself split over two lines ("Telefone da" / "Regional" / "Fulana") is not read.
  */
 const GUARDED_END = namedChannel(`(?:(?:an?|o|as|os)\\s+)?(?:${GUARDED_WORD})\\b[^\\p{L}]*$`);
 const NOT_A_NAME_START = new RegExp(
@@ -188,17 +189,22 @@ const NOT_A_NAME_START = new RegExp(
   "u",
 );
 const isNameAfterGuarded = (f: string, prev: string): boolean => {
-  if (!GUARDED_END.test(fold(prev)) || isServiceValue(f)) return false;
-  const head = (f.split(/\d|\[masked\]|:/)[0] ?? "").trim();
-  return head !== "" && !NOT_A_NAME.test(head) && !NOT_A_NAME_START.test(head);
+  if (!GUARDED_END.test(prev)) return false;
+  const head = (f.replace(/^[-–•*\s]+/, "").split(/\d|\[masked\]|:/)[0] ?? "").trim();
+  return head !== "" && !isServiceValue(head) && !SERVICE_LINE.test(head) && !NOT_A_NAME_START.test(head);
 };
-/** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
+/**
+ * `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count;
+ * or two lines joined by a line break (hourLines' split check), where a name after a guarded contact phrase is read.
+ */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
   const [channel, appointment] = prev === null ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
   if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
-  if (prev === null) return false;
-  return isContactPerson(f) || isServiceValuePerson(f, prev) || (prev !== undefined && isNameAfterGuarded(f, prev));
+  if (prev !== null) return isContactPerson(f) || isServiceValuePerson(f, prev);
+  // hourLines' split check (v0.81.0) joins a line to the one before it with a line break.
+  const br = f.indexOf("\n");
+  return br >= 0 && isNameAfterGuarded(f.slice(br + 1), f.slice(0, br));
 };
 /**
  * v0.63.0, community gardens (run with residents): an allowlist. A line is shown only when it is one of the kinds in

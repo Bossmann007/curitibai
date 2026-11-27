@@ -8,27 +8,30 @@ Person-name filter, fifth pass (the lows of the 0.80.0 review). 27 tools. Publis
 
 - `city_facilities_search`, every type that hides person lines (`cei contratado`, `clube de xadrez`, `administracao
   regional`, `cohab`, `mesa solidaria`, `fazenda urbana`, `nucleo de seguranca alimentar`, `sine`, `agencia do
-  trabalhador`, `liceu de oficios`, `inss`): a keyword split over two lines ("Mantida" / "pela Fulana de Tal",
-  "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano", "Técnica" / "Fulana") is hidden on its second line
+  trabalhador`, `liceu de oficios`, `inss`): a keyword split over two lines ("Mantida" / "pela Fulana de Tal" in a
+  contracted CEI; "Mantida" / "por Fulana", "Assistente" / "social Fulana", "Coordenação" / "geral: Fulano", "Técnica"
+  / "Fulana" for the office and work types) is hidden on its second line
   even when another line of the record is already hidden. Before, only the whole-field check caught it, and that
   check is skipped once a line is hidden, so the name showed. Each line is now read together with the one before it,
   the way the whole-field check reads the record, and is hidden when the pair hides and the line before does not
   hide alone; the first half stays. A second line that reads as hours or a service ("Horário: 8h", "por
   agendamento") is not read with the one before. The multi-word patterns accept a line break wherever they had a
-  space. The whole-field check is now skipped only when a line hid on its own text, so a keyword split over three
-  lines ("Mantido" / "por" / "Fulano de Tal Souza Lima") still hides the whole field, as before. `horta comunitaria`
+  space. The whole-field check is now skipped only when a line hid on its own rules (not by the split check), so a
+  keyword split over three lines ("Mantido" / "por" / "Fulano de Tal Souza Lima") still hides the whole field, as before. `horta comunitaria`
   is unchanged (its allowlist already hid both halves). Known limit: when the line before hides on its own
   ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima"), the pair is not read and a name of five or more
-  words on the next line passes (as in 0.80.0).
+  words on the next line passes, and so does "Coordenadora" / "geral: Fulana" (as in 0.80.0).
 - Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`): after a line whose contact phrase ends in
   "a gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Fale com a gente", "Telefone da Regional:"), a
-  name on the next line is hidden ("Fulano de Tal", "Sra. Fulana", "Fulana (41) 3350-0000", "Fulana: segunda a
-  sexta"). The next line is kept when it reads as hours or a service value, or when what comes before its first
-  digit, "[masked]" or ':' is empty, a service or address word, or starts with a unit, channel or connector word
+  name on the next line is hidden ("Fulano de Tal", "Sra. Fulana", "- Fulana", "Fulana (41) 3350-0000", "Fulana,
+  telefone …", "Fulana: segunda a sexta"); this is read by the split check, so the whole-field check still runs. The
+  next line is kept when what comes before its first digit, "[masked]" or ':' (after a leading dash) is empty, reads
+  as hours or a service value, or starts with a service or address word or a unit, channel or connector word
   ("Segunda a sexta, das 8h às 17h", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Rua XV de
   Novembro, 100", "Com agendamento"). Known limits: any other words on that line are hidden too, on the safe side;
-  after "Fale com a gente pelo 156" (the phrase goes on after the unit word) a name alone on the next line still
-  passes.
+  "Presencial com Fulana" passes (it reads as hours); after "Fale com a gente pelo 156" (the phrase goes on after the
+  unit word), or after a guarded phrase itself split over two lines ("Telefone da" / "Regional"), a name on the next
+  line still passes.
 - "Fale com a gente pelo 156", "Telefone da Regional: …", "Tratar com o RH da empresa" and "Atendimento: emissão de
   carteira de trabalho" stay shown, also before the hours and after a hidden line.
 - Checked against the real records: the 12 layers whose type hides person lines, re-read once on 2026-11-27 (306

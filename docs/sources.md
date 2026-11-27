@@ -1583,14 +1583,15 @@ changes (owner request, 2026-11-23: monthly and automatic).
     before it, joined by a line break, the way the whole-field check reads the record; when that pair hides, the line
     before does not hide alone and the second line does not read as hours or a service, the second line is hidden (the
     first half stays). The multi-word patterns accept a line break wherever they had a space. The whole-field check is
-    skipped only when a line hid on its own text, so a keyword split over three lines still hides the whole field. The
+    skipped only when a line hid on its own rules (not by the split check), so a keyword split over three lines still hides the whole field. The
     garden allowlist already hid both halves and is unchanged. Work types: after a line whose contact phrase ends in "a
-    gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the next line is hidden
-    unless it reads as hours or a service value, or what comes before its first digit, "[masked]" or ':' is empty, a
-    service or address word, or starts with a unit, channel or connector word. Known limits: other words on that line
-    are hidden too, on the safe side; after "Fale com a gente pelo 156" a name alone on the next line still passes;
-    when the line before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima") the pair
-    is not read and a name of five or more words passes. Checked on 2026-11-27 (UTC) with the server's own
+    gente", "Regional", "coordenação" or "RH" ("Falar com o RH", "Telefone da Regional:"), the split check hides the
+    next line unless what comes before its first digit, "[masked]" or ':' (after a leading dash) is empty, reads as
+    hours or a service value, or starts with a service or address word or a unit, channel or connector word. Known
+    limits: other words on that line are hidden too, on the safe side; "Presencial com Fulana" passes; after "Fale com
+    a gente pelo 156" or a guarded phrase split over two lines a name on the next line still passes; when the line
+    before hides on its own ("Responsável: Fulana. Mantida" / "por Fulano de Tal Souza Lima", "Coordenadora" / "geral:
+    Fulana") the pair is not read and the name passes, as in 0.80.0. Checked on 2026-11-27 (UTC) with the server's own
     query and User-Agent, one GET per layer to `geocuritiba.ippuc.org.br` (the 12 layers whose type hides person
     lines; 306 records, 253 with an `observacao`), replayed offline before and after the change: 131 hidden-line
     markers before and 131 after, and every record's `hours` is identical. The reads were deleted after the check; the

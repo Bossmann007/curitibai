@@ -978,9 +978,10 @@ export function hourLines(
   // responsável:" is hidden.
   let soft = false;
   let prev: string | undefined; // the last non-empty line, shown or hidden
-  // v0.81.0: a line hidden on its own text (not only by the lines before it): only then is the whole-field check
-  // skipped, so a keyword split over three lines is still caught after the split check below hid one half.
-  let alone = false;
+  // v0.81.0: a line hidden on its own rules (not by the split check below, nor only as the value or the rest of a name
+  // after one): only then is the whole-field check skipped, as before, so a keyword split over three lines is still
+  // caught after the split check hid one half.
+  let other = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
@@ -993,8 +994,8 @@ export function hourLines(
       // whole-field check below (prev null) on this line and the one before, which must not hide alone; that one stays.
       // A line that reads as hours or a service ("Horário: 8h", "por agendamento") is not read with the one before.
       const split = names !== undefined && !allowlist && before !== undefined && !isServiceText(t);
-      if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before) ||
-        (split && hide(`${before}\n${t}`, null) && !hide(before, null)))) {
+      const direct = !label && !named && !tail && hide !== undefined && (hide(t, before) || hide(cleanText(part, Infinity), before));
+      if (!hide || !(label || named || tail || direct || (split && hide(`${before}\n${t}`, null) && !hide(before, null)))) {
         lines.push(t);
         label = rest = soft = false;
       } else {
@@ -1006,12 +1007,12 @@ export function hourLines(
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
         label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && names === "person") : t.endsWith(":") && !label;
         soft = colon && !label;
-        alone ||= hide(t) || hide(cleanText(part, Infinity));
+        other ||= direct;
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
   }
-  if (hide && !allowlist && !alone && hide(s.replace(/\s+/g, " "), null)) return [marker];
+  if (hide && !allowlist && !other && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];

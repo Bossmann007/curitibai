@@ -2752,6 +2752,12 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
     for (const b of ["Fulana (41) 3350-0000", "Fulana: segunda a sexta", "Sra. Fulana - 3350-0000"]) {
       expect(lines(id, `${HOURS}\nFale com a gente\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente", HIDDEN_PERSON_LINE]);
     }
+    for (const b of ["- Fulana de Tal", "Fulana, telefone 3350-0000", "Fulana - fone", "Fulana Atendimento", "Fulana Silva - Rua XV"]) {
+      expect(lines(id, `${HOURS}\nTelefone da Regional:\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Telefone da Regional:", HIDDEN_PERSON_LINE]);
+    }
+    // A line hidden after a bare label still turns the whole-field check off, as in 0.80.0: the hours stay.
+    expect(lines(id, "Atendimento:\nFulana\nSegunda a sexta 8h às 17h, falar com\nHorário de almoço: 12h fechado")).toEqual(
+      ["Atendimento:", HIDDEN_PERSON_LINE, "Segunda a sexta 8h às 17h, falar com", "Horário de almoço: 12h fechado"]);
     for (const b of ["Rua XV de Novembro, 100", "Av. Inventada", "Horário: 8h às 17h", "Telefone: 3350-0000"]) {
       expect(lines(id, `Fale com a gente\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente", b.replace("3350-0000", "[masked]")]);
     }

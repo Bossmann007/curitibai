@@ -32,16 +32,19 @@ line filter, and only `cei contratado` reads maintainer lines.
    the shelter types), each line that does not read as hours or a service (`isServiceText`) is also tested joined
    with the line before it by a line break, in the whole-field mode (`prev` null); when that pair hides and the line
    before does not hide alone, the line is hidden. The line before stays as it was. The whole-field check is skipped
-   only when a line hid on its own text (`alone`), so a keyword split over three lines still hides the whole field.
+   only when a line hid on its own rules (`other`: not by the split check, nor only as a label value or the rest of
+   a name after it), so a keyword split over three lines still hides the whole field.
 2. **L2, patterns (`src/sources/nameFilter.ts`)**: the multi-word hide patterns use `\s+` where they had a space
    (`MAINTAINER`, `PERSON_IN_CHARGE`, `WORK_PERSON`, `GARDEN_PERSON`), so the joined pair matches. The keep-side
    patterns (service values, hours, garden kinds) are unchanged.
-3. **L1, `isWorkPersonLine`**: when `prev` ends in a contact phrase whose guarded word ends the line
-   (`GUARDED_END`), the line is hidden unless it reads as a service value (`isServiceValue`) or what comes before
-   its first digit, "[masked]" or ':' is empty, a service or address word (`NOT_A_NAME`) or starts with a unit,
-   channel or connector word (`NOT_A_NAME_START`). Known limits: other words there are hidden too; after "Fale com a
-   gente pelo 156" a name alone on the next line still passes; when the line before hides on its own, the pair is
-   not read.
+3. **L1, `isWorkPersonLine`** in the split check's mode (`prev` null, two lines joined by a line break): when the
+   first line ends in a contact phrase whose guarded word ends the line (`GUARDED_END`), the pair hides unless what
+   comes before the second line's first digit, "[masked]" or ':' (after a leading dash) is empty, reads as a service
+   value (`isServiceValue`), or starts with a service or address word (`SERVICE_LINE`) or a unit, channel or
+   connector word (`NOT_A_NAME_START`). Being part of the split check, it leaves the whole-field check on. Known
+   limits: other words there are hidden too; "Presencial com Fulana" passes; after "Fale com a gente pelo 156" or a
+   guarded phrase split over two lines a name on the next line still passes; when the line before hides on its own,
+   the pair is not read.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.81.0 block): the split keyword after a hidden line, per type that
    uses each pattern; L1 hidden and kept lines for the four work types; the pair check does not drag a line after
    one that hides alone, nor hours or a service after a keyword; a three-line split still hides the whole field; the
