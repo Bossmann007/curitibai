@@ -1,4 +1,4 @@
-# SPEC: v0.79.0 Ouvidoria anonymity wording, second pass
+# SPEC: v0.80.0 Person-name filter, fourth pass
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,39 +8,54 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the Security Reviewer's R1-R3 on v0.75.0: the
-`city_service_guide` `ouvidoria` guide keeps what the 2024 CGM guide says apart from what the CuritibAI observes, and
-warns in every place it talks about not identifying oneself that the text and the attachments can identify the
-citizen. No new citizen question; the eval count is unchanged.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the v0.76.0 review on the `city_facilities_search`
+person-name filter of the work types (`src/sources/nameFilter.ts`). L1: service lines the v0.76.0 pass hid by mistake
+are shown again. L2: "Atendimento: agendamento com Fulana", which passed as hours, is hidden. No new citizen question;
+the eval count is unchanged.
 
 ## Source
 
-None new. No request is made: `mid.curitiba.pr.gov.br` and the Curitiba Ouve site are not opened. Every fact comes
-from the 0.43.0 record in docs/sources.md; the rest is marked as the CuritibAI's own observation.
+None new. No request is made and the GeoCuritiba layers are not re-read; the change is tested on synthetic lines.
 
-## Changes (`src/tools/cityServiceGuide.ts`, text only)
+## Changes (`src/sources/nameFilter.ts`)
 
-1. **R1, `what` and step 5**: one sentence each, marked "(observação do CuritibAI, não do guia de 2024)": the text
-   and the attachments can identify the citizen (in step 5, those of the e-mail). The `note` says the observation is
-   the project's own for the summary and steps 4 and 5.
-2. **R2, step 4**: "Pelo guia de 2024, a forma anônima não pede cadastro [...] (o CuritibAI não conferiu isso hoje no
-   site)" is its own sentence; the CuritibAI's warning follows in a separate sentence that starts "Observação do
-   CuritibAI, não do guia de 2024:". docs/sources.md says the same.
-3. **R3, step 4**: the same 2024-guide sentence says the anonymous form "não recebe resposta nem acompanhamento".
-4. **Test** (`test/cityServiceGuide.test.ts`): each step 5 sentence matching `/anônim|identific/` carries the
-   2024-guide hedge or the CuritibAI's own marker; step 4 has no sentence that mixes the registration or the answer
-   with the CuritibAI's observation; the new `what`, step 4, step 5 and `note` strings are pinned.
-5. **Docs and version**: docs/sources.md (a 0.79.0 paragraph), docs/tools.md (the Curitiba Ouve link row),
-   docs/roadmap-1.0.md, CHANGELOG 0.79.0, version 0.79.0 in `package.json`, `package-lock.json`, `server.json`.
+1. **L1, unit words**: `gente`, `regional`, `coordenacao` and `rh` count as unit words (`GUARDED_UNIT`) only when
+   the rest of the line holds nothing but numbers, "[masked]", punctuation, channel and unit words, "empresa",
+   "site/portal/aplicativo" and connectors. So "Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: …",
+   "E-mail da coordenação" and "Tratar com o RH da empresa" are shown, while "Falar com o RH Fulano", "Tratar com o RH
+   da Fulana", "Telefone da Regional: 3350-0000 - Fulana" and "Telefone da Regional (Fulana)" stay hidden, as in
+   0.79.0. The brief said to add the four words to `UNIT_WORD`; plainly added, they let a name after them through, so
+   they are guarded instead. "Telefone da coordenação: 3350-0000" stays hidden (`isPersonInChargeLine`, the
+   "coordenação:" label), and so does "E-mail da coordenadora". The whole-field check (lines joined with spaces,
+   unchanged) does not know where a line ends, so there the four words are plain unit words; each line was already
+   checked with the guard, and these lines stay shown before the hours too. Known limit: a name alone
+   on the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
+2. **L1, service phrase**: `SERVICE_ITEM` reads "emissão de" before "carteira de trabalho".
+3. **L2, appointment**: `APPOINTMENT_NAMED` ("agendamento", optionally "prévio" and ",", "(", ":" or "-", then "com"
+   and a word that is not a unit or channel word or an appointment detail: um/uma, no/pelo, até, mínimo,
+   antecedência, hora, horário, documentos, comprovante, carteira, CPF, RG, senha) is checked on the whole line, like
+   `NAMED_CHANNEL`: "Atendimento: agendamento com Fulana", "presencial com agendamento com Fulana", "mediante
+   agendamento prévio com a Fulana", "Contato: 3350-0000 - agendamento com Fulana" and a line "Agendamento com Fulana"
+   are hidden; "agendamento com antecedência", "com no mínimo 48h" and "agendamento com a equipe" are shown.
+   `HOURS_BODY` is unchanged. Known limits: only the first word after "com" is checked ("agendamento pela Fulana",
+   "agendamento com uma Fulana", "agendamento com antecedência, Fulana" pass), a detail word missing from the list
+   hides the line, and "presencial com Fulana" or a name later in an hours line without "agendamento com" still pass.
+4. **Tests** (`test/cityFacilities.test.ts`, a v0.80.0 block): the five L1 lines are shown for the four work types;
+   a name next to the new words is hidden; the L2 forms are hidden on the same line and after a bare label;
+   appointments with a unit, a channel, a number or an appointment detail are shown; the new rule runs on 50 KB worst
+   shapes in under 1 s.
+5. **Docs and version**: docs/sources.md (a v0.80.0 paragraph), docs/tools.md (the `city_facilities_search` row),
+   docs/roadmap-1.0.md, CHANGELOG 0.80.0, version 0.80.0 in `package.json`, `package-lock.json`, `server.json`.
 
 ## Out of scope
 
-Any new step, question, source, host or link; any change to what the citizen types or what the assistant sends (it
-still writes and sends nothing). Re-reading the 2024 PDF or the Curitiba Ouve site.
+The office types' narrower filter, the garden allowlist, "agendamento pela …", names later in an hours line, any new
+question, source, host or link.
 
 ## Check
 
-- `npx vitest run test/cityServiceGuide.test.ts`: the pinned step 4 test fails on the 0.78.0 text and passes on 0.79.0.
+- `npx vitest run test/cityFacilities.test.ts`: the v0.80.0 block fails on 0.79.0 (L1 shown lines and L2 hidden lines)
+  and passes on 0.80.0; every earlier block still passes.
 - `node scripts/eval-summary.mjs`: answered 139 / 143, as before.
 - `git diff --stat origin/main` does not list `test/fixtures/tool-contracts.json`.
 - `scripts/verify` exits 0 on the PR head.

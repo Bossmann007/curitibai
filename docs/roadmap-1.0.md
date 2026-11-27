@@ -345,3 +345,10 @@ the project's own warning that the text and the attachments can identify the cit
 that warning too. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The citizen
 eval answers 139 of 143 questions (no new question in this version; q140 is left to v0.68.0, PR #83); 4 are gaps
 (real-time buses 2, other cities 2).
+
+At v0.80.0 (phase B) the `city_facilities_search` person-name filter of the work types keeps lines the v0.76.0 pass
+hid by mistake ("Fale com a gente pelo 156", "Telefone da Regional", "E-mail da coordenação", "Tratar com o RH da
+empresa", "Atendimento: emissão de carteira de trabalho") and hides "Atendimento: agendamento com Fulana", which
+passed as hours. No new question, source or host; the layers were not re-read. The Curitiba App rows are unchanged
+(18, 16 covered). The citizen eval answers 139 of 143 questions (no new question in this version; q140 is left to
+v0.68.0, PR #83); 4 are gaps (real-time buses 2, other cities 2).

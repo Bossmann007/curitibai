@@ -67,27 +67,62 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * v0.76.0: the next word is a person unless it is a unit or channel word ("da unidade", "do Sine", "com DDD"), after
  * an optional article (checked inside the lookahead, so skipping the article cannot let "a" pass as the word). No
  * capital-letter rule: folded text has none.
+ * v0.80.0: also gente, regional, coordenacao and rh ("Fale com a gente pelo 156", "Telefone da Regional", "E-mail da
+ * coordenação", "Tratar com o RH da empresa"; "coordenadora" is not "coordenacao"), but only when the rest of the
+ * line holds nothing but numbers, "[masked]", punctuation, channel and unit words, "empresa", "site/portal/aplicativo"
+ * and the connectors "pelo/por/via/no/em/da/do". Any other word after them keeps 0.79.0's result: "Falar com o RH
+ * Fulano", "Tratar com o RH da Fulana", "Telefone da Regional: 3350-0000 - Fulana", "Telefone da Regional (Fulana)"
+ * and "Fale com a gente pelo 156 ou com a Fulana" are hidden, and so is "Telefone da Regional: 156, de segunda a sexta"
+ * (on the safe side). "Telefone da coordenação: 3350-0000" stays hidden too: "coordenação:" is a label of who is in
+ * charge (isPersonInChargeLine). The whole-field check (`prev` null) joins the lines with spaces, so the rest of a
+ * line is not known there: it takes the four words as plain unit words (`*_JOINED`), or "Fale com a gente pelo 156"
+ * before the hours would hide the hours. Each line was already checked with the guard. Known limit: a name alone on
+ * the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
-const PERSON_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:${UNIT_WORD}|${CHANNEL_WORD})\\b)\\p{L}`;
+const GUARDED_WORD = "gente|regional|coordenacao|rh";
+const GUARDED_UNIT =
+  `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
+  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b)*$)";
+const personNext = (guarded: string): string =>
+  `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${guarded}))\\p{L}`;
+const PERSON_NEXT = personNext(GUARDED_UNIT);
+const PERSON_NEXT_JOINED = personNext(`(?:${GUARDED_WORD})\\b`);
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
-const NAMED_CHANNEL = new RegExp(
-  `\\b(?:${CHANNEL_WORD})\\s+(?:com|d[ao]s?)\\s+${PERSON_NEXT}|\\b(?:falar|fale|tratar|procurar|procure)\\s+com\\s+${PERSON_NEXT}`,
-  "u",
-);
+const namedChannel = (next: string): RegExp =>
+  new RegExp(`\\b(?:${CHANNEL_WORD})\\s+(?:com|d[ao]s?)\\s+${next}|\\b(?:falar|fale|tratar|procurar|procure)\\s+com\\s+${next}`, "u");
+const NAMED_CHANNEL = namedChannel(PERSON_NEXT);
+const NAMED_CHANNEL_JOINED = namedChannel(PERSON_NEXT_JOINED);
 /**
  * v0.76.0: a value after "Atendimento:" made only of service phrases is not a name ("por ordem de chegada",
  * "preferencial para idosos", "gratuito", "Carteira de trabalho, seguro-desemprego", "gratuito com agendamento"):
  * phrases joined by ",", ";", "/", "e" or a space, then the end (a final "." allowed). Anything else after them
  * ("por ordem de chegada. Fulana", "gratuito pela Fulana") keeps the value a name, so the line is hidden.
+ * v0.80.0: "emissão de carteira de trabalho" too.
  */
 const SERVICE_ITEM =
   "(?:por )?ordem de chegada|(?:preferencia(?:l|is)|prioritari[ao]s?)(?: para (?:idos[ao]s|gestantes|pessoas com deficiencia|pcd))?" +
-  "|gratuit[ao]s?|carteira de trabalho(?: digital)?|seguro[- ]desemprego|(?:com|mediante|por) (?:agendamento|senha|hora marcada)";
+  "|gratuit[ao]s?|(?:emissao de )?carteira de trabalho(?: digital)?|seguro[- ]desemprego|(?:com|mediante|por) (?:agendamento|senha|hora marcada)";
 const SERVICE_VALUE = new RegExp(
   `^[-–•*\\s]*(?:${SERVICE_ITEM})(?:(?:\\s*[,;/]\\s*|\\s+e\\s+|\\s+)(?:${SERVICE_ITEM}))*\\s*\\.?\\s*$`,
 );
+/**
+ * v0.80.0, anywhere in the line (like NAMED_CHANNEL): "agendamento", an optional "prévio", then "," "(" ":" or "-" if
+ * any, "com" and a word that is not a unit or channel word or an appointment detail: "Atendimento: agendamento com
+ * Fulana", "presencial com agendamento com a Fulana", "mediante agendamento prévio com a Fulana", "agendamento (com
+ * Fulana)" and a line "Agendamento com Fulana" are a name; "agendamento com a equipe", "com antecedência", "com no
+ * mínimo 48h", "com uma semana de antecedência", "com comprovante de residência" and "agendamento pelo 156" are not.
+ * Known limits: only the first word after "com" is checked, so "agendamento pela Fulana", "agendamento com uma
+ * Fulana" and "agendamento com antecedência, Fulana" pass; a detail word missing from the list hides the line.
+ */
+const APPOINTMENT_DETAIL =
+  "um|uma|no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|dias?|hora|horario|marcacao|retirada|" +
+  "documentos?|documentacao|comprovantes?|carteira|cpf|rg|senha";
+const appointmentNamed = (next: string): RegExp =>
+  new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
+const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);
+const APPOINTMENT_NAMED_JOINED = appointmentNamed(PERSON_NEXT_JOINED);
 const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || SERVICE_VALUE.test(v);
 /**
  * Hours (folded): a digit; "de/das/às/a partir de" and a digit; a weekday, its abbreviation, "dia" or "feriado" that
@@ -140,7 +175,8 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 /** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
-  if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || NAMED_CHANNEL.test(f)) return true;
+  const [channel, appointment] = prev === null ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
+  if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
   return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
 };
 /**
