@@ -1514,8 +1514,12 @@ changes (owner request, 2026-11-23: monthly and automatic).
     xadrez` uses the offices' person-line filter (its lines pass it); `auditorio` does not: that filter reads
     "Atendimento Secretaria:" as a role label and would hide the real hours of two records, and no auditorium line
     named anyone. The `site` field is never
-    read. No new host for the server and the link allowlist is unchanged. Not checked: whether older types return
-    city e-mails shaped like a person's name (left for a later version).
+    read. No new host for the server and the link allowlist is unchanged. Since the review of
+    this version the shared e-mail filter (every type, old and new) also drops a `curitiba.pr.gov.br` address whose
+    local part is two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva"), unless the first
+    word is a unit prefix (biblioteca, caps, casadepassagem, ccz, cei, cmae, cmaee, cmei, cras, creas, escola, farol,
+    nrgm, regional, ruadacidadania, sine, ubs, upa, us, visa). A one-word local part shaped like a name
+    ("fulanasilva") is not caught by this rule; `noEmails` covers the two types where one was read.
   - Live call of the built handler on 2026-11-27 from 00:31:16 UTC (3 processes, 1 request each to layer 61): `casa
     da leitura` near Bairro Alto (-25.4055, -49.2035), `radius_m` 3000: `total` 0 in 562 ms, the note naming `farol do
     saber` and `biblioteca`; with `bairro` "bacacheri": the Casa da Leitura Dario Vellozo, 5 lines, 1 phone, 1 e-mail.

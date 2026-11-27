@@ -193,6 +193,17 @@ describe("contact fields", () => {
       expect(institutionalEmails(e)).toEqual([]);
     }
   });
+
+  it("v0.67.0: drops a city address shaped like a person's name and keeps unit and plain institutional ones", () => {
+    for (const e of ["fulana.silva@curitiba.pr.gov.br", "fulano_de_tal@sme.curitiba.pr.gov.br", "Beltrano.Souza@FCC.curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([]);
+    }
+    for (const e of ["ouvidoria@curitiba.pr.gov.br", "cras.boqueirao@curitiba.pr.gov.br", "visa.cajuru@sms.curitiba.pr.gov.br",
+      "ccz.inventado@sms.curitiba.pr.gov.br", "us.bairroalto@sms.curitiba.pr.gov.br", "smsan@curitiba.pr.gov.br", "sec.2@curitiba.pr.gov.br"]) {
+      expect(institutionalEmails(e), e).toEqual([e]);
+    }
+    expect(institutionalEmails("fulana.silva@curitiba.pr.gov.br; ouvidoria@curitiba.pr.gov.br")).toEqual(["ouvidoria@curitiba.pr.gov.br"]);
+  });
 });
 
 describe("parseLayer", () => {
@@ -2162,6 +2173,13 @@ describe("v0.67.0: Casa da Leitura, Bondinho da Leitura, auditoriums, circus and
     const out = await search({ type: "clube de xadrez" });
     expect(out.note).toMatch(/0800 numbers only; anything else is dropped/);
     expect(out.note).not.toMatch(/e-mails curitiba\.pr\.gov\.br addresses only/);
+  });
+
+  it("a person-shaped city e-mail is dropped for an older type (biblioteca) and a new one (casa da leitura)", () => {
+    for (const id of ["biblioteca", "casa da leitura"]) {
+      const [f] = parseLayer(type(id), layer({ nome_completo: "Inventada", email: "fulana.inventada@curitiba.pr.gov.br; biblioteca.inventada@curitiba.pr.gov.br" })).facilities;
+      expect(f!.emails, id).toEqual(["biblioteca.inventada@curitiba.pr.gov.br"]);
+    }
   });
 
   it("circo and bondinho da leitura keep their city e-mail", () => {

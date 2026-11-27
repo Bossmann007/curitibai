@@ -39,6 +39,9 @@ What the read showed and how this version handles it:
    (contract snapshot updated).
 2. **Option** `noEmails` on `FacilityType`: `emails` is always `[]` for that type, and the general note no longer
    says city e-mails are kept.
+2b. **Shared e-mail filter** (review of #82): `institutionalEmails` also drops a city address whose local part is two
+   or more alphabetic words of 2+ letters joined by `.` or `_` (a person's shape), unless the first word is a unit
+   prefix (`cras`, `visa`, `ccz`, `us`, `cmei`, …). It applies to every type.
 3. **Eval**: q139 → `city_facilities_search` `{type: "casa da leitura", near: Bairro Alto, radius_m: 3000}`, expect
    `not_found`; synthetic fixture with every record over 3 km from that point.
 4. **Docs and version**: docs/tools.md, docs/sources.md (robots recheck, layer paragraph with the hand requests),
@@ -47,8 +50,7 @@ What the read showed and how this version handles it:
 
 ## Out of scope
 
-Raising the `near` limit, a "nearest even if far" mode, the person-shaped e-mails of older types, programme or event
-listings, any new host or link.
+Raising the `near` limit, a "nearest even if far" mode, programme or event listings, any new host or link.
 
 ## Check
 

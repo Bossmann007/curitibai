@@ -14,6 +14,9 @@ Neighbourhood culture and reading, phase B of the 1.0 roadmap. 27 tools. Publish
   person's name: a new type option `noEmails` returns no e-mail for `auditorio` and `clube de xadrez`, their notes
   say to call. The chess club uses the offices' person-line filter; auditorio does not, since that filter would hide
   the real "Atendimento Secretaria:" hours of two records and no auditorium line named anyone. The Casa da Leitura note says not every bairro has one and points at `farol do saber` and `biblioteca`.
+- E-mails, every `city_facilities_search` type: a `curitiba.pr.gov.br` address whose local part is two or more
+  alphabetic words joined by "." or "_" (shaped like "nome.sobrenome") is dropped as a person's own, unless the first
+  word names a unit (`cras`, `visa`, `ccz`, `us`, `cmei` and others listed in docs/sources.md).
 - Tool contract: the `type` description (snapshot updated).
 - Citizen eval: q139 ("Tem Casa da Leitura perto do Bairro Alto?") answered. In the live read the nearest Casa da
   Leitura is about 3.7 km from Bairro Alto, beyond the 3 km `near` limit, so the honest answer is none within 3 km

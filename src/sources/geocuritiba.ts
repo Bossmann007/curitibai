@@ -917,9 +917,23 @@ export function institutionalPhones(raw: unknown): string[] {
 
 const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitiba\.pr\.gov\.br$/;
 
+/** v0.67.0: a local part of two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva") is a person's. */
+const PERSON_LOCAL = /^[a-z]{2,}(?:[._][a-z]{2,})+$/;
+/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); kept. */
+const UNIT_PREFIXES = new Set([
+  "biblioteca", "caps", "casadepassagem", "ccz", "cei", "cmae", "cmaee", "cmei", "cras", "creas", "escola", "farol",
+  "nrgm", "regional", "ruadacidadania", "sine", "ubs", "upa", "us", "visa",
+]);
+
+function isPersonShaped(email: string): boolean {
+  const local = email.slice(0, email.indexOf("@"));
+  return PERSON_LOCAL.test(local) && !UNIT_PREFIXES.has(local.split(/[._]/)[0]!);
+}
+
 /**
  * Institutional e-mails only: an address at curitiba.pr.gov.br or one of its subdomains. Any other domain (webmail,
  * universities, private companies, other governments, typos such as "gpv.br") is dropped: it can be a person's own.
+ * Since v0.67.0 a city address shaped like a person's name (PERSON_LOCAL, unless UNIT_PREFIXES) is dropped too.
  */
 export function institutionalEmails(raw: unknown): string[] {
   const s = str(raw);
@@ -927,7 +941,7 @@ export function institutionalEmails(raw: unknown): string[] {
   const out = s
     .toLowerCase()
     .split(/[\s;,/]+/)
-    .filter((e) => CITY_EMAIL.test(e));
+    .filter((e) => CITY_EMAIL.test(e) && !isPersonShaped(e));
   return [...new Set(out)].slice(0, MAX_EMAILS);
 }
 
