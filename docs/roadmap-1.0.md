@@ -268,3 +268,9 @@ At v0.66.0 (phase B) `place_at_point` `service_areas` has `areas: "civic"`: the 
 contains a point (IPPUC's thematic layer 13, 10 zones), with its counts of voting places and sections as published;
 never the number of voters, and not a given voter's own zone. The citizen eval answers 134 of 138 questions; 4 are
 gaps (real-time buses 2, other cities 2).
+
+At v0.67.0 (phase B) `city_facilities_search` `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo` and
+`clube de xadrez` read IPPUC's urban-equipment layers 61, 60, 52, 57 and 58 (17 Casas da Leitura, the Bondinho da
+Leitura, 26 auditoriums of every owner, 2 circus spaces, 1 chess club), hours as published; no e-mail is returned for
+auditoriums and the chess club. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval answers 135 of
+139 questions; 4 are gaps (real-time buses 2, other cities 2).

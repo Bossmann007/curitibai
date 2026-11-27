@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://github.com/Bossmann007/curitibai#readme",
-  "version": "0.66.0",
+  "version": "0.67.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "curitibai-mcp",
-      "version": "0.66.0",
+      "version": "0.67.0",
       "transport": {
         "type": "stdio"
       },

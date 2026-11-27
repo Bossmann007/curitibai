@@ -271,6 +271,27 @@ const INSS_LEAD_NOTE =
 const INSS_NOTE =
   "The INSS agencies (Agência da Previdência Social) in Curitiba as listed by IPPUC; hours as published (see " +
   "`updated`). A phone of 135 is the INSS's central line, not the agency's own.";
+/** v0.67.0. Layer 61 read on 2026-11-27: 17 records in 17 bairros, hours and the collection size in `observacao`. */
+const READING_HOUSE_NOTE =
+  "The Prefeitura's Casas da Leitura (neighbourhood reading rooms), as listed by IPPUC; hours as published (see " +
+  "`updated`). Not every bairro has one: when none is near, try type `farol do saber` or `biblioteca`.";
+const READING_TRAM_NOTE =
+  "The Bondinho da Leitura, a reading room in an old tram, as listed by IPPUC; hours as published (see `updated`). " +
+  "The neighbourhood reading rooms are type `casa da leitura`.";
+/**
+ * v0.67.0. Layer 52 read on 2026-11-27: 26 records, city, state, federal and private; one city e-mail named a person. No
+ * line named anyone, and the person-line filter would hide real hours ("Atendimento Secretaria:"), so it is not used.
+ */
+const AUDITORIUM_NOTE =
+  "Auditoriums as listed by IPPUC; hours as published (see `updated`), many with none. E-mails are not shown for " +
+  "this type (some are a person's own): call. Programmes and bookings are not in this tool.";
+const CIRCUS_NOTE =
+  "The Prefeitura's circus spaces, as listed by IPPUC; hours as published (see `updated`). Shows and dates are not " +
+  "in this tool.";
+/** v0.67.0. Layer 58 read on 2026-11-27: one record, whose e-mail was a person's own. */
+const CHESS_NOTE =
+  "The Prefeitura's chess club, as listed by IPPUC; hours as published (see `updated`). Its e-mail is not shown (it " +
+  "can be a person's own): call.";
 /** Every CEI line naming its maintainer, owner or head, or a firm (ME, MEI, Eireli, Ltda): some are a person's name. */
 export const HIDDEN_MAINTAINER_LINE = "[the maintainer line is not shown: it can carry a person's name]";
 /** v0.59.0: the same lines hidden for an office (Administração Regional, COHAB), where "maintainer" is the wrong word. */
@@ -397,6 +418,8 @@ export interface FacilityType {
   where?: string;
   /** `divulgar_endereco` not "Sim": name, phones and PRIVATE_ADDRESS_LINE only. */
   privateAddress?: true;
+  /** v0.67.0: no e-mail is returned (a layer where city addresses can be a person's own name). */
+  noEmails?: true;
 }
 
 /** What an entry may set besides its identity and layer (equipment(), social()). */
@@ -466,6 +489,14 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
     "espaco para espetaculo ao ar livre",
   ], { mixedOwnership: true }),
   equipment("gibiteca", 62, "Gibiteca", ["gibitecas"]),
+  // Neighbourhood culture, added in v0.67.0 (read on 2026-11-27 UTC: layers 61, 60, 52, 57 and 58; 17, 1, 26, 2 and 1 records).
+  equipment("casa da leitura", 61, "Casa da Leitura", [
+    "casas da leitura", "casa de leitura", "casas de leitura",
+  ], { note: READING_HOUSE_NOTE }),
+  equipment("bondinho da leitura", 60, "Bondinho da Leitura", ["bondinho"], { note: READING_TRAM_NOTE }),
+  equipment("auditorio", 52, "Auditório", ["auditorios"], { mixedOwnership: true, noEmails: true, note: AUDITORIUM_NOTE }),
+  equipment("circo", 57, "Circo", ["circos", "lona de circo"], { note: CIRCUS_NOTE }),
+  equipment("clube de xadrez", 58, "Clube de Xadrez", ["xadrez", "clubes de xadrez"], { noEmails: true, note: CHESS_NOTE, ...HIDE_PERSON }),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),
   equipment("centro de esporte e lazer", 86, "Centro de Esporte e Lazer"),
@@ -886,9 +917,23 @@ export function institutionalPhones(raw: unknown): string[] {
 
 const CITY_EMAIL = /^[a-z0-9][a-z0-9._-]{0,63}@(?:[a-z0-9-]{1,63}\.){0,3}curitiba\.pr\.gov\.br$/;
 
+/** v0.67.0: a local part of two or more alphabetic words of 2+ letters joined by "." or "_" ("fulana.silva") is a person's. */
+const PERSON_LOCAL = /^[a-z]{2,}(?:[._][a-z]{2,})+$/;
+/** First words of such local parts that name a unit, not a person ("visa.boqueirao", "cras.cajuru"); kept. */
+const UNIT_PREFIXES = new Set([
+  "biblioteca", "caps", "casadepassagem", "ccz", "cei", "cmae", "cmaee", "cmei", "cras", "creas", "escola", "farol",
+  "nrgm", "regional", "ruadacidadania", "sine", "ubs", "upa", "us", "visa",
+]);
+
+function isPersonShaped(email: string): boolean {
+  const local = email.slice(0, email.indexOf("@"));
+  return PERSON_LOCAL.test(local) && !UNIT_PREFIXES.has(local.split(/[._]/)[0]!);
+}
+
 /**
  * Institutional e-mails only: an address at curitiba.pr.gov.br or one of its subdomains. Any other domain (webmail,
  * universities, private companies, other governments, typos such as "gpv.br") is dropped: it can be a person's own.
+ * Since v0.67.0 a city address shaped like a person's name (PERSON_LOCAL, unless UNIT_PREFIXES) is dropped too.
  */
 export function institutionalEmails(raw: unknown): string[] {
   const s = str(raw);
@@ -896,7 +941,7 @@ export function institutionalEmails(raw: unknown): string[] {
   const out = s
     .toLowerCase()
     .split(/[\s;,/]+/)
-    .filter((e) => CITY_EMAIL.test(e));
+    .filter((e) => CITY_EMAIL.test(e) && !isPersonShaped(e));
   return [...new Set(out)].slice(0, MAX_EMAILS);
 }
 
@@ -1035,7 +1080,7 @@ function equipmentRecord(a: Record<string, unknown>, g: Record<string, unknown> 
     hours: hourLines(a.observacao, t.maxHourLines ?? MAX_HOUR_LINES, t.wrapLines === true, t.hideLine, t.hiddenLineMarker, t.nameLines, t.allowlist),
     open_periods: Object.values(periods).every((v) => v === null) ? null : periods,
     phones: institutionalPhones(a.telefone),
-    emails: institutionalEmails(a.email).filter((e) => !t.shelter || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
+    emails: t.noEmails ? [] : institutionalEmails(a.email).filter((e) => !t.shelter || !/passagem|abrigo|albergue|acolhi|pernoite|sigilos/.test(e)),
     updated: updated(a.dt_atualiz),
     lat: at?.lat ?? null,
     lon: at?.lon ?? null,

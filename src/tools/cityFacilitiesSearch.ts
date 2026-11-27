@@ -50,7 +50,8 @@ export const cityFacilitiesSearchInput = {
         "\"centro de referencia afro\", \"escola municipal\", \"cmei\", \"cmaee\", \"cei contratado\", " +
         "\"rodoviaria\" (or \"rodoferroviaria\"), \"ferroviaria\", \"administracao regional\", \"cohab\", " +
         "\"mesa solidaria\", \"horta comunitaria\", \"fazenda urbana\", \"nucleo de seguranca alimentar\", " +
-        "\"sine\", \"agencia do trabalhador\", \"liceu de oficios\", \"inss\". Fire " +
+        "\"sine\", \"agencia do trabalhador\", \"liceu de oficios\", \"inss\", \"casa da leitura\", " +
+        "\"bondinho da leitura\", \"auditorio\", \"circo\", \"clube de xadrez\". Fire " +
         "stations and Polícia Militar units: places_search. " +
         "\"list types\" (or \"tipos\") returns every accepted type and makes no network call.",
     ),
@@ -273,7 +274,9 @@ export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; f
     noCoords > 0 ? `${noCoords} matching record(s) without a usable position were left out of this distance search.` : "",
     t.mixedOwnership ? MIXED_NOTE : "",
     t.note ?? "",
-    t.kind === "facility" ? "Phones keep Curitiba landlines, service numbers and 0800 numbers only, e-mails curitiba.pr.gov.br addresses only; anything else is dropped." : "",
+    t.kind === "facility"
+      ? `Phones keep Curitiba landlines, service numbers and 0800 numbers only${t.noEmails ? "" : ", e-mails curitiba.pr.gov.br addresses only"}; anything else is dropped.`
+      : "",
   ].filter(Boolean);
   return {
     data: {
