@@ -507,11 +507,11 @@ describe("place_at_point service_areas, areas: civic (v0.66.0)", () => {
     expect(JSON.stringify(res) + JSON.stringify(calls)).not.toMatch(/4296123|2713123/);
   });
 
-  it("a count that is not a non-negative whole number is null", async () => {
-    const odd = attrs([{ zona_eleitoral: "999ª", num_locais: 4.5, num_secoes: -1, data_alteracao: null }]);
+  it("a count that is not a non-negative whole number is null; a long zone label is kept whole", async () => {
+    const odd = attrs([{ zona_eleitoral: "999ª ZONA ELEITORAL", num_locais: 4.5, num_secoes: -1, data_alteracao: null }]);
     stubFetch(civicRoutes({ electoral_zone: { body: odd } }));
     const out = await areas({ ...AT, areas: "civic" });
-    expect(out.data.electoral_zones).toEqual([{ zone: "999ª", polling_places: null, sections: null, reference_date: null }]);
+    expect(out.data.electoral_zones).toEqual([{ zone: "999ª ZONA ELEITORAL", polling_places: null, sections: null, reference_date: null }]);
   });
 
   it("no zone: the bairro layer decides; outside Curitiba the zone list is empty and not partial", async () => {

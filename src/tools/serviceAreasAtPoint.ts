@@ -74,7 +74,7 @@ const ElectoralZone = z.object({
   zone: z.string().nullable().describe("Electoral zone as published (`zona_eleitoral`), e.g. \"174ª\"."),
   polling_places: count.describe("Voting places in the zone as published (`num_locais`)."),
   sections: count.describe("Voting sections in the zone as published (`num_secoes`)."),
-  reference_date: z.string().nullable().describe("`data_alteracao` as published, e.g. \"31/08/2026\"; the counts are as of that date."),
+  reference_date: z.string().nullable().describe("`data_alteracao` as published, day/month/year, e.g. \"31/08/2026\"; the counts are as of that date."),
 });
 
 const UNREAD_FIRST = " Empty: none covers the point. Null: not read (its group not asked, or its layer not read; see `partial`).";
@@ -235,7 +235,7 @@ const wholeCount = (v: unknown): number | null => (typeof v === "number" && Numb
 
 function zonesOf(features: PointFeature[]): ZoneOut[] {
   const rows = features.map(({ attributes: a }) => ({
-    zone: cleanPointField(a.zona_eleitoral, 10),
+    zone: cleanPointField(a.zona_eleitoral, 20),
     polling_places: wholeCount(a.num_locais),
     sections: wholeCount(a.num_secoes),
     reference_date: cleanPointField(a.data_alteracao, 50),

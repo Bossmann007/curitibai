@@ -5044,7 +5044,7 @@
                                 "description": "Voting sections in the zone as published (`num_secoes`)."
                               },
                               "reference_date": {
-                                "description": "`data_alteracao` as published, e.g. \"31/08/2026\"; the counts are as of that date.",
+                                "description": "`data_alteracao` as published, day/month/year, e.g. \"31/08/2026\"; the counts are as of that date.",
                                 "type": [
                                   "string",
                                   "null"
