@@ -1,0 +1,23 @@
+[
+ {
+  "categoriaItemId": 1,
+  "quantidadeItens": 50,
+  "valorTotal": 2000000.0,
+  "categoriaItemNome": "Material",
+  "_synthetic": true
+ },
+ {
+  "categoriaItemId": 2,
+  "quantidadeItens": 30,
+  "valorTotal": 6000000.0,
+  "categoriaItemNome": "Serviço",
+  "_synthetic": true
+ },
+ {
+  "categoriaItemId": 3,
+  "quantidadeItens": 5,
+  "valorTotal": 1200000.0,
+  "categoriaItemNome": "Obra",
+  "_synthetic": true
+ }
+]

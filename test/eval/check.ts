@@ -35,6 +35,7 @@ export const RESULT_PATH: Record<string, string | string[]> = {
   dataset_files: "data.files",
   health_units_search: "data.units",
   procurement_search: "data.items",
+  procurement_plan: "data.units",
   local_csv_summary: "data.row_count",
   weather_forecast: "data.days",
   weather_alerts: "data.alerts",
