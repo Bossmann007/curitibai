@@ -5,7 +5,8 @@ Newest first. Current behaviour and its sources are described in [docs/sources.m
 ## 0.89.0 - 2026-11-27
 
 Annual procurement plan (PCA), phase B of the 1.0 roadmap. 27 tools. Publishes nothing. Built as 0.68.0 in PR #83
-and renumbered after merging main (0.88.0).
+and renumbered after merging main (0.88.0); no 0.68.0 was released, so the notes "left to 0.68.0" and "0.68.0 was
+taken by PR #83" below mean this version.
 
 - `procurement_search`: new `mode` `plan` (default `search`, unchanged). It returns the Plano de Contratações Anual
   that one listed Curitiba municipal body published in PNCP for a `year` (default next year in Brasília, at most next
@@ -17,7 +18,7 @@ and renumbered after merging main (0.88.0).
 - Source: PNCP's own read routes on the same host, `GET /api/pncp/v1/orgaos/{cnpj}/pca/{ano}/consolidado/unidades`
   and `.../valorescategoriaitem`, about 0.1 s each, two requests at most through the PNCP gate. The Consulta PCA route
   named in the brief (`/api/consulta/v1/pca/atualizacao`) timed out twice at 40 s, then took 27.8 s for one page of
-  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422 (an empty 204 counts too):
+  10 items out of 9,015 with no year filter, so it is not used. A body with no plan for the year gets HTTP 404 or 422 (an empty 204 or an empty list counts too):
   answered as `plan_found: false` with that status, and kept inside the gate's turn so it does not hold back the next
   PNCP request; unit rows that all fail the strict check are `source_unavailable` (a renamed field is not "no plan").
   When the category request fails or none of its rows passes the check, the unit totals are kept, `categories` is

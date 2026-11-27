@@ -102,6 +102,14 @@ describe("procurement_search mode plan", () => {
     expect(dataOf(await plan()).plan_found).toBe(true);
   });
 
+  it("reads an empty list as no plan, without asking for the categories", async () => {
+    const calls = stubFetch({ [`GET ${pcaUnitsUrl(FAS, 2027)}`]: { body: "[]", contentType: JSON_TYPE } });
+    const data = dataOf(await plan({ body_cnpj: FAS }));
+    expect(calls).toHaveLength(1);
+    expect(data.plan_found).toBe(false);
+    expect(data.note).toMatch(/no units for this body and year/);
+  });
+
   it("reads an empty HTTP 204 as no plan", async () => {
     stubFetch({ [`GET ${pcaUnitsUrl(FAS, 2027)}`]: { status: 204 } });
     const data = dataOf(await plan({ body_cnpj: FAS }));

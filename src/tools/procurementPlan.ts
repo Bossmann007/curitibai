@@ -40,6 +40,10 @@ export async function answerPlan(year: number, cnpj: string, limit: number) {
       return ok({ data: { mode: "plan", year, body_cnpj: cnpj, ...empty, categories: [], units: [], units_total: 0, discarded: 0, note }, ...meta });
     }
     const { body_name, units, received, discarded } = unitsRes.value.found;
+    if (received === 0) {
+      const note = `PNCP returned no units for this body and year: no plan published. ${scope}`;
+      return ok({ data: { mode: "plan", year, body_cnpj: cnpj, ...empty, categories: [], units: [], units_total: 0, discarded: 0, note }, ...meta });
+    }
     // Rows came back and none passed the strict check: a renamed field, not "no plan".
     if (received > 0 && units.length === 0) throw new SourceUnavailableError("layout_changed");
     const notes = [scope, "Totals are the sum of the requesting units' plans; a plan is what the body intends to buy, not a purchase. Values in BRL."];

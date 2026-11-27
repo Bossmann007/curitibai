@@ -412,4 +412,5 @@ At v0.89.0 (phase B; built as v0.68.0 in PR #83, renumbered after merging main) 
 `mode: "plan"`: the Plano de Contratações Anual a listed Curitiba municipal body published in PNCP for a year, as
 planned totals per category and per requesting unit (Município de Curitiba 2027, read 2026-11-27: 31 units, 4,897
 items, R$ 4.16 billion); never items or suppliers. The Curitiba App rows are unchanged (18, 16 covered). The citizen
-eval answers 140 of 144 questions (q140); 4 are gaps (real-time buses 2, other cities 2).
+eval answers 140 of 144 questions (q140); 4 are gaps (real-time buses 2, other cities 2). No 0.68.0 was released:
+the earlier notes "q140 is left to v0.68.0, PR #83" mean this version.
