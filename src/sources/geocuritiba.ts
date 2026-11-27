@@ -278,7 +278,10 @@ const READING_HOUSE_NOTE =
 const READING_TRAM_NOTE =
   "The Bondinho da Leitura, a reading room in an old tram, as listed by IPPUC; hours as published (see `updated`). " +
   "The neighbourhood reading rooms are type `casa da leitura`.";
-/** v0.67.0. Layer 52 read on 2026-11-27: 26 records, city, state, federal and private; one city e-mail named a person. */
+/**
+ * v0.67.0. Layer 52 read on 2026-11-27: 26 records, city, state, federal and private; one city e-mail named a person. No
+ * line named anyone, and the person-line filter would hide real hours ("Atendimento Secretaria:"), so it is not used.
+ */
 const AUDITORIUM_NOTE =
   "Auditoriums as listed by IPPUC; hours as published (see `updated`), many with none. E-mails are not shown for " +
   "this type (some are a person's own): call. Programmes and bookings are not in this tool.";
@@ -493,7 +496,7 @@ export const FACILITY_TYPES: readonly FacilityType[] = [
   equipment("bondinho da leitura", 60, "Bondinho da Leitura", ["bondinho"], { note: READING_TRAM_NOTE }),
   equipment("auditorio", 52, "Auditório", ["auditorios"], { mixedOwnership: true, noEmails: true, note: AUDITORIUM_NOTE }),
   equipment("circo", 57, "Circo", ["circos", "lona de circo"], { note: CIRCUS_NOTE }),
-  equipment("clube de xadrez", 58, "Clube de Xadrez", ["xadrez", "clubes de xadrez"], { noEmails: true, note: CHESS_NOTE }),
+  equipment("clube de xadrez", 58, "Clube de Xadrez", ["xadrez", "clubes de xadrez"], { noEmails: true, note: CHESS_NOTE, ...HIDE_PERSON }),
   equipment("academia ao ar livre", 91, "Academia ao Ar Livre", ["academias ao ar livre", "academia"]),
   equipment("clube da gente", 85, "Clube da Gente"),
   equipment("centro de esporte e lazer", 86, "Centro de Esporte e Lazer"),

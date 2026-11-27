@@ -1510,7 +1510,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
     outside the city domain (dropped as always). The type returns no e-mail (`noEmails`) and its note says to call.
   - 57: 2 records (Lona Zé Priguiça, Parque Náutico), one programme e-mail; hours on one.
   - 58: 1 record (Centro), hours and a city e-mail shaped like a person's name: no e-mail is returned (`noEmails`).
-  - Run through the parser, no line was replaced by a marker and no record was skipped. The `site` field is never
+  - Run through the parser, no line was replaced by a marker and no record was skipped. After review, `clube de
+    xadrez` uses the offices' person-line filter (its lines pass it); `auditorio` does not: that filter reads
+    "Atendimento Secretaria:" as a role label and would hide the real hours of two records, and no auditorium line
+    named anyone. The `site` field is never
     read. No new host for the server and the link allowlist is unchanged. Not checked: whether older types return
     city e-mails shaped like a person's name (left for a later version).
   - Live call of the built handler on 2026-11-27 from 00:31:16 UTC (3 processes, 1 request each to layer 61): `casa

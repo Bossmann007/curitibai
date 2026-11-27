@@ -274,7 +274,9 @@ export function facilitiesResult(t: FacilityType, res: { value: FacilityLayer; f
     noCoords > 0 ? `${noCoords} matching record(s) without a usable position were left out of this distance search.` : "",
     t.mixedOwnership ? MIXED_NOTE : "",
     t.note ?? "",
-    t.kind === "facility" ? "Phones keep Curitiba landlines, service numbers and 0800 numbers only, e-mails curitiba.pr.gov.br addresses only; anything else is dropped." : "",
+    t.kind === "facility"
+      ? `Phones keep Curitiba landlines, service numbers and 0800 numbers only${t.noEmails ? "" : ", e-mails curitiba.pr.gov.br addresses only"}; anything else is dropped.`
+      : "",
   ].filter(Boolean);
   return {
     data: {

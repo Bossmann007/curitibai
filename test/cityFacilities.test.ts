@@ -1349,6 +1349,7 @@ describe("v0.53.0: escolas municipais, CMEIs, CMAEEs and contracted CEIs", () =>
 
   it("v0.62.0: the type's nameLines flag, not which hideLine it uses, turns on the split-name and label rules", () => {
     expect(FACILITY_TYPES.filter((t) => t.nameLines !== undefined).map((t) => [t.id, t.nameLines])).toEqual([
+      ["clube de xadrez", "person"],
       ["cei contratado", "maintainer"],
       ["administracao regional", "person"],
       ["cohab", "person"],
@@ -2141,6 +2142,26 @@ describe("v0.67.0: Casa da Leitura, Bondinho da Leitura, auditoriums, circus and
     })).facilities;
     expect(c).toMatchObject({ phones: ["(41) 3333-7800"], emails: [] });
     expect(FACILITY_TYPES.filter((t) => t.noEmails === true).map((t) => t.id)).toEqual(["auditorio", "clube de xadrez"]);
+  });
+
+  it("clube de xadrez hides a line naming who is in charge and keeps its venue lines; auditorio keeps its Secretaria hours", () => {
+    const obs = [
+      "Atendimento:", "-2ª a 6ª feira, das 12h às 21h", "Responsável: Fulana Inventada",
+      "Convênio com a Federação de Xadrez do Paraná.", "SCABI - Sociedade de Cultura Artística Brasílio Itiberê.",
+      "Temporariamente fechada até a conclusão das obras de restauro do Solar do Barão.", "Utilização sob demanda.",
+    ];
+    const [c] = parseLayer(type("clube de xadrez"), layer({ nome_completo: "Inventado", observacao: obs.join("\r\n") })).facilities;
+    expect(c!.hours).toEqual([...obs.slice(0, 2), HIDDEN_PERSON_LINE, ...obs.slice(3)]);
+    const hall = ["Atendimento Secretaria:", "-2ª a 6ª feira, das 9h às 12h e das 14h às 18h", "Utilização sob demanda."];
+    const [a] = parseLayer(type("auditorio"), layer({ nome_completo: "Inventado", observacao: hall.join("\r\n") })).facilities;
+    expect(a!.hours).toEqual(hall);
+  });
+
+  it("the note of a noEmails type does not promise city e-mails", async () => {
+    stubFetch({ [`GET ${url("clube de xadrez")}`]: { body: layer({ nome_completo: "Clube Inventado" }), contentType: JSON_TYPE } });
+    const out = await search({ type: "clube de xadrez" });
+    expect(out.note).toMatch(/0800 numbers only; anything else is dropped/);
+    expect(out.note).not.toMatch(/e-mails curitiba\.pr\.gov\.br addresses only/);
   });
 
   it("circo and bondinho da leitura keep their city e-mail", () => {

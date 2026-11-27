@@ -21,8 +21,9 @@ only, IPPUC cited). No new host, no new link. Details: [docs/sources.md](docs/so
 
 What the read showed and how this version handles it:
 
-- `observacao` carries hours in most records (the queue item said there were none): shown as published, with the
-  default line rules (no person-line filter: the lines name only the writers and artists the venues are named after).
+- `observacao` carries hours in most records (the queue item said there were none): shown as published. The lines
+  name only the writers and artists the venues are named after. `clube de xadrez` uses the offices' person-line
+  filter (review); `auditorio` does not, since it would hide the real "Atendimento Secretaria:" hours of two records.
 - Layer 52 lists private (`Particular`), state and federal auditoriums next to the city's: `mixedOwnership`, as
   museu and teatro.
 - One layer 52 record and the layer 58 record publish a city e-mail shaped like a person's name. The new type option
@@ -34,9 +35,10 @@ What the read showed and how this version handles it:
 
 1. **Types** in `FACILITY_TYPES` (`src/sources/geocuritiba.ts`): `casa da leitura` (61; aliases include `casa de
    leitura`, `casas da leitura`), `bondinho da leitura` (60), `auditorio` (52, `mixedOwnership`, `noEmails`), `circo`
-   (57), `clube de xadrez` (58, `noEmails`; alias `xadrez`), each with a short note. `type` description lists them
+   (57), `clube de xadrez` (58, `noEmails`, person-line filter; alias `xadrez`), each with a short note. `type` description lists them
    (contract snapshot updated).
-2. **Option** `noEmails` on `FacilityType`: `emails` is always `[]` for that type.
+2. **Option** `noEmails` on `FacilityType`: `emails` is always `[]` for that type, and the general note no longer
+   says city e-mails are kept.
 3. **Eval**: q139 → `city_facilities_search` `{type: "casa da leitura", near: Bairro Alto, radius_m: 3000}`, expect
    `not_found`; synthetic fixture with every record over 3 km from that point.
 4. **Docs and version**: docs/tools.md, docs/sources.md (robots recheck, layer paragraph with the hand requests),
