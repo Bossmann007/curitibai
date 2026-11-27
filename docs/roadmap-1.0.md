@@ -373,3 +373,9 @@ observation, that the anonymous form does not guarantee anonymity and that the p
 records about the visit. No new question, source or host. The Curitiba App rows are unchanged (18, 16 covered). The
 citizen eval answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other
 cities 2).
+
+At v0.84.0 (phase B) the work-type person-name filter reads um/uma before dia(s) or hora(s) in "agendamento com …"
+only as a detail when útil/úteis, corridos, antes or "de antecedência/prazo" follows ("agendamento com Uma Dias" is
+hidden; "com um dia de antecedência" stays), and "senha de atendimento" and "senha numerada" stay. No new question,
+source or host; the layers were not re-read. The Curitiba App rows are unchanged (18, 16 covered). The citizen eval
+answers 139 of 143 questions (no new question in this version); 4 are gaps (real-time buses 2, other cities 2).

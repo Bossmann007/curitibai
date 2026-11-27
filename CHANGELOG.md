@@ -2,6 +2,35 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.84.0 - 2026-11-27
+
+Person-name filter, seventh pass (the Security Reviewer's R1-R3 on 0.82.0). 27 tools. Publishes nothing.
+
+- Work types (`sine`, `agencia do trabalhador`, `liceu de oficios`, `inss`), "agendamento com" followed by um/uma:
+  um/uma before dia(s) or hora(s) counted as an appointment detail with nothing after, so "agendamento com Uma Dias"
+  (first name Uma, surname Dias) was shown, and so was any word after it ("com Uma Dias Silva", "com Uma Dias de
+  Souza"). Um/uma before dia(s) or hora(s) now counts only when the detail words of dia(s) follow (útil/úteis,
+  corrido(s), antes, "de antecedência/prazo"), or hora(s) marcada/agendada or "e meia de antecedência/prazo". "com um
+  dia de antecedência", "com uma hora antes", "com uma hora marcada", "com uma hora e meia de antecedência", "com um
+  dia útil de antecedência" and "com uma semana de antecedência" stay; the three name forms and "com Um Hora" are
+  hidden. Known limits: um/uma and dia(s) or hora(s) followed by anything else ("com um dia", "com uma hora de
+  tolerância", "com um dia de espera") is hidden, on the safe side; a name after a full detail ("com um dia de
+  antecedência Fulana") passes, as on 0.83.0.
+- Senha also counts as a detail before "de atendimento" and "numerada", but only before the end of the line, a digit
+  or punctuation: "agendamento com senha de atendimento", "com senha numerada." and "com senha de atendimento, das 8h
+  às 17h" were hidden and now stay; "com senha numerada Fulana", "com senha de atendimento da Fulana" and "com senha de
+  Souza" are hidden. Known limit: the whole-field check joins lines with spaces, so "agendamento com senha numerada"
+  followed by a line that starts with a word ("Segunda a sexta, 8h") hides the field, as on 0.83.0.
+- Known limit, now stated and tested: "30 dias" and "1 dia" alone on the line after a guarded phrase ("Telefone da
+  Regional:", "Fale com a gente pelo 156", "Tratar com" / "o RH") are hidden, on the safe side (dia(s) after a number
+  counts as hours only before "de"). "10 horas" there reads as hours, like "24 horas" (since 0.82.0), and is shown.
+- Every line the 0.82.0 review lists as legitimate is tested as kept ("2 dias úteis", "48 horas de antecedência",
+  "agendamento com uma semana / dias corridos / um dia de antecedência / senha retirada"). 2,000 repeats of each new
+  alternative ("uma dias", "um hora", "senha numerada", "uma hora e meia de" …) after "agendamento com" run under 1 s; the
+  50 KB and 400 KB timing tests are unchanged and green.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No host contacted (synthetic lines only); no new host, link or dependency.
+
 ## 0.83.0 - 2026-11-27
 
 Ouvidoria anonymity wording, third pass (the Security Reviewer's R1-R2 on 0.79.0). 27 tools. Publishes nothing.

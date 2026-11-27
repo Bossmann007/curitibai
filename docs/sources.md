@@ -1616,6 +1616,16 @@ changes (owner request, 2026-11-23: monthly and automatic).
     "Util" and "Úteis" are hidden there; "2 dias de antecedência", "24 horas" and "Dias úteis" stay. Known limits:
     "8 Hora" still reads as hours; "100 horas" and "2 dias" alone there are hidden, on the safe side. No request was made for this
     version (synthetic lines only). No new host for the server and the link allowlist is unchanged.
+  - **Name filter, seventh pass, v0.84.0** (work types). After "agendamento com", um/uma before dia(s) or hora(s)
+    counts as a detail only when útil/úteis, corrido(s), antes or "de antecedência/prazo" follows, as for dia(s), or
+    hora(s) marcada/agendada or "e meia de antecedência/prazo": "com Uma Dias", "com Uma Dias Silva" and "com Uma Dias
+    de Souza" are hidden; "com um dia de antecedência", "com uma hora antes" and "com uma hora marcada" stay. Senha
+    also counts before "de atendimento" and "numerada", only before the end, a digit or punctuation ("com senha
+    numerada Fulana" is hidden). Known limits: um/uma and dia(s) or hora(s) before any other word ("com uma hora de
+    tolerância") is hidden, on the safe side; a name after a full detail passes, as before; "agendamento com senha
+    numerada" followed by a line that starts with a word hides the field (the whole-field check joins lines with
+    spaces); "30 dias" and "1 dia" alone on the line after a guarded phrase are hidden, on the safe side,
+    while "10 horas" there reads as hours (like "24 horas"). No request was made; no new host.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
