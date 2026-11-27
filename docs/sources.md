@@ -1634,9 +1634,10 @@ changes (owner request, 2026-11-23: monthly and automatic).
     and "… numerada 3350-0000 Fulana" are hidden (0.84.0 read only the first character after the words and showed
     them). The whole-field check (lines joined with spaces) reads the rest the same way, so "Agendamento com senha
     numerada" followed by "Segunda a sexta, 8h às 17h" keeps both lines (0.84.0 hid the field) and a name on any later
-    line hides the field when that check runs (not when another line hid on its own rules); the split check reads the line after such a line (also "com a senha numerada") even when it
-    starts with a number, so "… senha numerada," / "3350-0000 Fulana" hides the second line when the whole-field check
-    is skipped. "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido" is now
+    line hides the field when that check runs (not when another line hid on its own rules); the split check reads the
+    next two lines after such a line (also "com a senha numerada"), up to the third line from it, even when they start
+    with a number, so "… senha numerada," / "3350-0000 Fulana" hides the second line when the whole-field check is
+    skipped (corrected in v0.88.0: this entry first said only the next line was read). "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido" is now
     hidden. Known limits: any other word in the rest hides the line or the field, on the safe side ("exceto feriados",
     "sábados", "domingos", since "Domingos" is a name; a later line "Documentos: RG"); a name made only of hours,
     unit or channel words ("Domingo", "Sexta", "Regional") reads as hours and is shown. Checked on 2026-11-27 (UTC) by a one-off script (not the server, so not through the host gate; the
@@ -1645,6 +1646,17 @@ changes (owner request, 2026-11-23: monthly and automatic).
     `observacao`), replayed offline with 0.85.0 and 0.86.0: 131 hidden-line markers in each and every record's
     `hours` identical; no record has "agendamento com senha". The reads were deleted after the check; the tests use
     synthetic lines. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, ninth pass, v0.88.0** (work types; the 0.86.0 review follow-ups). After "agendamento com senha
+    numerada" or "… senha de atendimento", a weekday word counts as hours only after "a/ao/aos/às" or before
+    "a/ao/aos/às/e", a digit, "das" and a digit, or "fechado": "senha numerada Domingo", "…, Sexta" and a line
+    "Domingo" after such a line are hidden; "de segunda a sexta", "seg. a sex., 8h", "domingo fechado" and a next
+    line "Segunda a sexta, 8h às 17h" stay. The line after a guarded contact phrase reads weekdays as before. Known
+    limits: when another line hid on its own rules, the whole-field check is skipped and the split check reads at
+    most the third line from the "senha numerada" line, so a name on the fourth line or later, after two schedule
+    lines ("Agendamento com senha numerada" / "Segunda a sexta" / "das 8h às 17h" / "Fulana"), is shown (the same
+    class as the v0.81.0 limit; tested); with no other hidden line the field is hidden. A name made only of other
+    steps ("Regional", "Central") is still shown; "segunda, quarta, 8h" is hidden, on the safe side
+    ("segunda" has no "a", digit or "fechado" next to it). No request was made; no new host.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
