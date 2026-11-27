@@ -1574,7 +1574,7 @@ changes (owner request, 2026-11-23: monthly and automatic).
     "agendamento com a equipe", "agendamento com antecedência", "com no mínimo 48h" and "agendamento pelo 156" stay.
     Known limits: only the first word after "com" is checked ("agendamento pela Fulana", "agendamento com antecedência,
     Fulana" pass), "presencial com Fulana" and a name later in an hours line still pass, and a name alone on the next
-    line after "Fale com a gente" is shown (the guarded rest ends at the line break). No request was made for this version (the layers were not re-read): the change is
+    line after "Fale com a gente" is shown (the whole-field check, which joins the lines with spaces, takes the four words as plain unit words). No request was made for this version (the layers were not re-read): the change is
     tested on synthetic lines only. No new host for the server and the link allowlist is unchanged.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58

@@ -13,8 +13,8 @@ Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publi
   after a channel word or "falar com"). "Falar com o RH Fulano", "Tratar com o RH da Fulana", "Telefone da Regional:
   3350-0000 - Fulana", "Fale com a gente pelo 156 ou com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana"
   stay hidden, and so do "Telefone da Regional: 156, de segunda a sexta" and "Telefone da coordenação: 3350-0000" (the
-  "coordenação:" label), on the safe side. The whole-field check now joins lines with a line break, so these lines
-  stay shown before the hours. Known limit: a name alone on the next line after "Fale com a gente" is shown.
+  "coordenação:" label), on the safe side. In the whole-field check (lines joined with spaces) the four words are
+  plain unit words, so these lines stay shown before the hours. Known limit: a name alone on the next line after "Fale com a gente" is shown.
 - "emissão de carteira de trabalho" is a service phrase after "Atendimento:", so that line is shown again;
   "emissão de carteira de trabalho - Fulana" stays hidden.
 - "agendamento" (optionally "prévio" and ",", "(", ":" or "-"), then "com" and a word that is not a unit or channel

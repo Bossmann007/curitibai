@@ -26,8 +26,9 @@ None new. No request is made and the GeoCuritiba layers are not re-read; the cha
    da Fulana", "Telefone da Regional: 3350-0000 - Fulana" and "Telefone da Regional (Fulana)" stay hidden, as in
    0.79.0. The brief said to add the four words to `UNIT_WORD`; plainly added, they let a name after them through, so
    they are guarded instead. "Telefone da coordenação: 3350-0000" stays hidden (`isPersonInChargeLine`, the
-   "coordenação:" label), and so does "E-mail da coordenadora". The rest ends at a line break (the whole-field check
-   joins lines with "\n" now, not a space), so these lines stay shown before the hours too. Known limit: a name alone
+   "coordenação:" label), and so does "E-mail da coordenadora". The whole-field check (lines joined with spaces,
+   unchanged) does not know where a line ends, so there the four words are plain unit words; each line was already
+   checked with the guard, and these lines stay shown before the hours too. Known limit: a name alone
    on the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
 2. **L1, service phrase**: `SERVICE_ITEM` reads "emissão de" before "carteira de trabalho".
 3. **L2, appointment**: `APPOINTMENT_NAMED` ("agendamento", optionally "prévio" and ",", "(", ":" or "-", then "com"

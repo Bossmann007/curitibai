@@ -1001,7 +1001,7 @@ export function hourLines(
       }
     }
   }
-  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/[^\S\n]+/g, " "), null)) return [marker];
+  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];

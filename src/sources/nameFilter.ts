@@ -74,23 +74,26 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * Fulano", "Tratar com o RH da Fulana", "Telefone da Regional: 3350-0000 - Fulana", "Telefone da Regional (Fulana)"
  * and "Fale com a gente pelo 156 ou com a Fulana" are hidden, and so is "Telefone da Regional: 156, de segunda a sexta"
  * (on the safe side). "Telefone da coordenação: 3350-0000" stays hidden too: "coordenação:" is a label of who is in
- * charge (isPersonInChargeLine). The rest ends at a line break, so the whole-field check (`prev` null) keeps "Fale
- * com a gente pelo 156" before the hours. Known limit: a name alone on the next line after a guarded word that ends
- * its line ("Fale com a gente" / "Fulana") is shown.
+ * charge (isPersonInChargeLine). The whole-field check (`prev` null) joins the lines with spaces, so the rest of a
+ * line is not known there: it takes the four words as plain unit words (`*_JOINED`), or "Fale com a gente pelo 156"
+ * before the hours would hide the hours. Each line was already checked with the guard. Known limit: a name alone on
+ * the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
 const GUARDED_WORD = "gente|regional|coordenacao|rh";
 const GUARDED_UNIT =
   `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
-  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b)*(?:\\n|$))";
-const NOT_UNIT_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${GUARDED_UNIT}))`;
-const PERSON_NEXT = `${NOT_UNIT_NEXT}\\p{L}`;
+  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b)*$)";
+const personNext = (guarded: string): string =>
+  `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${guarded}))\\p{L}`;
+const PERSON_NEXT = personNext(GUARDED_UNIT);
+const PERSON_NEXT_JOINED = personNext(`(?:${GUARDED_WORD})\\b`);
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
-const NAMED_CHANNEL = new RegExp(
-  `\\b(?:${CHANNEL_WORD})\\s+(?:com|d[ao]s?)\\s+${PERSON_NEXT}|\\b(?:falar|fale|tratar|procurar|procure)\\s+com\\s+${PERSON_NEXT}`,
-  "u",
-);
+const namedChannel = (next: string): RegExp =>
+  new RegExp(`\\b(?:${CHANNEL_WORD})\\s+(?:com|d[ao]s?)\\s+${next}|\\b(?:falar|fale|tratar|procurar|procure)\\s+com\\s+${next}`, "u");
+const NAMED_CHANNEL = namedChannel(PERSON_NEXT);
+const NAMED_CHANNEL_JOINED = namedChannel(PERSON_NEXT_JOINED);
 /**
  * v0.76.0: a value after "Atendimento:" made only of service phrases is not a name ("por ordem de chegada",
  * "preferencial para idosos", "gratuito", "Carteira de trabalho, seguro-desemprego", "gratuito com agendamento"):
@@ -116,10 +119,10 @@ const SERVICE_VALUE = new RegExp(
 const APPOINTMENT_DETAIL =
   "um|uma|no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|dias?|hora|horario|marcacao|retirada|" +
   "documentos?|documentacao|comprovantes?|carteira|cpf|rg|senha";
-const APPOINTMENT_NAMED = new RegExp(
-  `\\bagendamentos?(?: previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${PERSON_NEXT}`,
-  "u",
-);
+const appointmentNamed = (next: string): RegExp =>
+  new RegExp(`\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`, "u");
+const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);
+const APPOINTMENT_NAMED_JOINED = appointmentNamed(PERSON_NEXT_JOINED);
 const isServiceValue = (v: string): boolean => HOURS_VALUE.test(v) || SERVICE_VALUE.test(v);
 /**
  * Hours (folded): a digit; "de/das/às/a partir de" and a digit; a weekday, its abbreviation, "dia" or "feriado" that
@@ -172,7 +175,8 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 /** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
-  if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || NAMED_CHANNEL.test(f) || APPOINTMENT_NAMED.test(f)) return true;
+  const [channel, appointment] = prev === null ? [NAMED_CHANNEL_JOINED, APPOINTMENT_NAMED_JOINED] : [NAMED_CHANNEL, APPOINTMENT_NAMED];
+  if (isPersonInChargeLine(line) || WORK_PERSON.test(f) || channel.test(f) || appointment.test(f)) return true;
   return prev !== null && (isContactPerson(f) || isServiceValuePerson(f, prev));
 };
 /**

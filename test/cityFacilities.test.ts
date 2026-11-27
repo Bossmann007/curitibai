@@ -2604,6 +2604,9 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     }
     expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
     expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
+    for (const l of ["Assistente\nsocial Fulana", "Mantido\npor Fulano", "Fale com\nFulana"]) {
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HIDDEN_PERSON_LINE]);
+    }
     for (const l of ["Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "Tratar com o RH da empresa", "Fale com a gente pelo 156 ou pelo e-mail", "Telefone da Regional e e-mail da unidade"]) {
       expect(lines(id, `${l}\n${HOURS}`), `${id}: ${l} before the hours`).toEqual([l, HOURS]);
     }
