@@ -29,20 +29,23 @@ line filter, and only `cei contratado` reads maintainer lines.
 ## Changes
 
 1. **L2, `hourLines` (`src/sources/geocuritiba.ts`)**: for a type with `nameLines` (not the garden allowlist, not
-   the shelter types), each line is also tested joined with the line before it by a line break, in the whole-field
-   mode (`prev` null); when that pair hides and the line before does not hide alone, the line is hidden. The line
-   before stays as it was.
+   the shelter types), each line that does not read as hours or a service (`isServiceText`) is also tested joined
+   with the line before it by a line break, in the whole-field mode (`prev` null); when that pair hides and the line
+   before does not hide alone, the line is hidden. The line before stays as it was. The whole-field check is skipped
+   only when a line hid on its own text (`alone`), so a keyword split over three lines still hides the whole field.
 2. **L2, patterns (`src/sources/nameFilter.ts`)**: the multi-word hide patterns use `\s+` where they had a space
    (`MAINTAINER`, `PERSON_IN_CHARGE`, `WORK_PERSON`, `GARDEN_PERSON`), so the joined pair matches. The keep-side
    patterns (service values, hours, garden kinds) are unchanged.
 3. **L1, `isWorkPersonLine`**: when `prev` ends in a contact phrase whose guarded word ends the line
-   (`GUARDED_END`), the line is hidden unless it has a digit, "[masked]" or ':', reads as a service value
-   (`isServiceValue`) or starts with a unit, channel or connector word (`NOT_A_NAME_START`). Known limit: after
-   "Fale com a gente pelo 156" a name alone on the next line still passes.
+   (`GUARDED_END`), the line is hidden unless it reads as a service value (`isServiceValue`) or what comes before
+   its first digit, "[masked]" or ':' is empty, a service or address word (`NOT_A_NAME`) or starts with a unit,
+   channel or connector word (`NOT_A_NAME_START`). Known limits: other words there are hidden too; after "Fale com a
+   gente pelo 156" a name alone on the next line still passes; when the line before hides on its own, the pair is
+   not read.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.81.0 block): the split keyword after a hidden line, per type that
    uses each pattern; L1 hidden and kept lines for the four work types; the pair check does not drag a line after
-   one that hides alone; the real service lines of 0.76/0.80 stay; 50 KB of short lines in under 2 s. The v0.80.0
-   split-name case now keeps the hours line (updated on purpose).
+   one that hides alone, nor hours or a service after a keyword; a three-line split still hides the whole field; the
+   real service lines of 0.76/0.80 stay; 50 KB of short lines in under 2 s.
 5. **Docs and version**: docs/sources.md (a v0.81.0 paragraph), docs/tools.md (the `city_facilities_search` row),
    docs/roadmap-1.0.md, CHANGELOG 0.81.0, version 0.81.0 in `package.json`, `package-lock.json`, `server.json`.
 

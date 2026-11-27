@@ -174,9 +174,12 @@ const isServiceValuePerson = (f: string, prev: string | undefined): boolean => {
 };
 /**
  * v0.81.0: a line whose contact phrase ends in a guarded word ("Falar com o RH", "Fale com a gente", "Telefone da
- * Regional:", "E-mail da coordenação") may have the name alone on the next line. That next line is hidden unless it has
- * a digit, "[masked]" or ':', reads as hours or a service value, or starts with a unit, channel or connector word
- * ("Segunda a sexta …", "3350-0000", "pelo 156", "WhatsApp", "Atendimento presencial", "Com agendamento" stay).
+ * Regional:", "E-mail da coordenação") may have the name on the next line. That next line is hidden unless it reads as
+ * hours or a service value, or what comes before its first digit, "[masked]" or ':' is empty, a service or address
+ * word (NOT_A_NAME) or starts with a unit, channel or connector word ("Segunda a sexta …", "3350-0000", "pelo 156",
+ * "WhatsApp", "Atendimento presencial", "Rua …", "Com agendamento" stay; "Fulana (41) 3350-0000" and "Fulana: segunda
+ * a sexta" are hidden). Known limit: a line of any other words is hidden too ("Fale com a gente" / "Sala 3" stays,
+ * "Fale com a gente" / "Térreo do prédio" is hidden).
  */
 const GUARDED_END = namedChannel(`(?:(?:an?|o|as|os)\\s+)?(?:${GUARDED_WORD})\\b[^\\p{L}]*$`);
 const NOT_A_NAME_START = new RegExp(
@@ -184,8 +187,11 @@ const NOT_A_NAME_START = new RegExp(
     "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|e|ou|com)\\b",
   "u",
 );
-const isNameAfterGuarded = (f: string, prev: string): boolean =>
-  GUARDED_END.test(fold(prev)) && !/\d|\[masked\]|:/.test(f) && !isServiceValue(f) && !NOT_A_NAME_START.test(f);
+const isNameAfterGuarded = (f: string, prev: string): boolean => {
+  if (!GUARDED_END.test(fold(prev)) || isServiceValue(f)) return false;
+  const head = (f.split(/\d|\[masked\]|:/)[0] ?? "").trim();
+  return head !== "" && !NOT_A_NAME.test(head) && !NOT_A_NAME_START.test(head);
+};
 /** `prev` null: the whole field joined (hourLines), where what follows a label is the next line, so only the words count. */
 export const isWorkPersonLine = (line: string, prev?: string | null): boolean => {
   const f = fold(line);
@@ -278,3 +284,8 @@ export const SERVICE_LINE = new RegExp(`^[-\\s]*(?:\\d|integral\\b|${SERVICE_PAR
  */
 const WEEKDAY_START = "^(?:segunda|terca|quarta|quinta|sexta|sabado|domingo)s?(?:-feira|\\s+(?:a|e|das?|de)\\b|\\s*[,:])(?=.*\\d)";
 export const NOT_A_NAME = new RegExp(`^[-\\d]|:|^integral\\b|${WEEKDAY_START}|${SERVICE_PART}|\\b(?:${SERVICE_WORD})\\b`);
+/** v0.81.0: a line that reads as hours or a service (SERVICE_LINE, or a service value): not the rest of a split keyword. */
+export const isServiceText = (line: string): boolean => {
+  const f = roleFold(line);
+  return SERVICE_LINE.test(f) || isServiceValue(f);
+};

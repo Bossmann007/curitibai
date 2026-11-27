@@ -2604,9 +2604,8 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     }
     expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
     expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
-    // v0.81.0: the split keyword is caught on its second line, so the hours and the first half stay.
     for (const l of ["Assistente\nsocial Fulana", "Mantido\npor Fulano", "Fale com\nFulana"]) {
-      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HOURS, l.split("\n")[0], HIDDEN_PERSON_LINE]);
+      expect(lines(id, `${HOURS}\n${l}`), `${id}: a name split over two lines`).toEqual([HIDDEN_PERSON_LINE]);
     }
     for (const l of ["Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "Tratar com o RH da empresa", "Fale com a gente pelo 156 ou pelo e-mail", "Telefone da Regional e e-mail da unidade"]) {
       expect(lines(id, `${l}\n${HOURS}`), `${id}: ${l} before the hours`).toEqual([l, HOURS]);
@@ -2733,6 +2732,29 @@ describe("v0.81.0: name filter, fifth pass (a keyword split over two lines; a na
       expect(lines(id, `${a}\n${b}`), `${id}: ${a} / ${b}`).toEqual([a, b.replace("3350-0000", "[masked]")]);
     }
     expect(lines(id, "Fale com a gente pelo 156\nFulana"), "the phrase goes on after the unit word: 0.80.0's rule, the name line passes (known limit)").toEqual(["Fale com a gente pelo 156", "Fulana"]);
+  });
+
+  it("review: a split hidden by the new checks keeps the whole-field check, so a third line is caught too", () => {
+    expect(lines("cei contratado", "Mantido\npor\nFulano de Tal Souza Lima")).toEqual([HIDDEN_MAINTAINER_LINE]);
+    expect(lines("sine", "Assistente\nsocial\nFulana de Tal Souza Lima")).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", `Assistente\nsocial: atendimento às terças\n${HOURS}\nFale\ncom\nFulana`)).toEqual([HIDDEN_PERSON_LINE]);
+    expect(lines("sine", "Fale com a gente\nFulana\nFale\ncom\nFulano")).toEqual([HIDDEN_PERSON_LINE]);
+  });
+
+  it("review: hours or a service on the second line are not read with the line before", () => {
+    for (const id of ["cei contratado", "administracao regional", "sine"]) {
+      expect(lines(id, `${FIRST}\nHorário mantido\npor agendamento`), id).toEqual([type(id).hiddenLineMarker, "Horário mantido", "por agendamento"]);
+      expect(lines(id, `${FIRST}\nCoordenação\nHorário: 8h às 17h`), id).toEqual([type(id).hiddenLineMarker, "Coordenação", "Horário: 8h às 17h"]);
+    }
+  });
+
+  it.each(WORK)("review: %s hides a name before a phone, ':' or hours on the line after the contact phrase; an address stays", (id) => {
+    for (const b of ["Fulana (41) 3350-0000", "Fulana: segunda a sexta", "Sra. Fulana - 3350-0000"]) {
+      expect(lines(id, `${HOURS}\nFale com a gente\n${b}`), `${id}: ${b}`).toEqual([HOURS, "Fale com a gente", HIDDEN_PERSON_LINE]);
+    }
+    for (const b of ["Rua XV de Novembro, 100", "Av. Inventada", "Horário: 8h às 17h", "Telefone: 3350-0000"]) {
+      expect(lines(id, `Fale com a gente\n${b}`), `${id}: ${b}`).toEqual(["Fale com a gente", b.replace("3350-0000", "[masked]")]);
+    }
   });
 
   it("the split check stays fast on 50 KB of short lines", () => {

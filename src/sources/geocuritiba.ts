@@ -10,6 +10,7 @@ import {
   isGardenPersonLine,
   isMaintainerLine,
   isPersonInChargeLine,
+  isServiceText,
   isWorkPersonLine,
   MAINTAINER_LABEL,
   NOT_A_NAME,
@@ -977,6 +978,9 @@ export function hourLines(
   // responsável:" is hidden.
   let soft = false;
   let prev: string | undefined; // the last non-empty line, shown or hidden
+  // v0.81.0: a line hidden on its own text (not only by the lines before it): only then is the whole-field check
+  // skipped, so a keyword split over three lines is still caught after the split check below hid one half.
+  let alone = false;
   for (const line of s.split(/\r\n|\r|\n/)) {
     for (const part of wrap ? wrapAtCommas(line, LINE_MAX) : [line]) {
       const t = cleanText(part, LINE_MAX);
@@ -987,7 +991,8 @@ export function hourLines(
       prev = t;
       // v0.81.0, person types (nameLines) only: a keyword split over two lines ("Mantida\npela Fulana") is read like the
       // whole-field check below (prev null) on this line and the one before, which must not hide alone; that one stays.
-      const split = names !== undefined && !allowlist && before !== undefined;
+      // A line that reads as hours or a service ("Horário: 8h", "por agendamento") is not read with the one before.
+      const split = names !== undefined && !allowlist && before !== undefined && !isServiceText(t);
       if (!hide || !(label || named || tail || hide(t, before) || hide(cleanText(part, Infinity), before) ||
         (split && hide(`${before}\n${t}`, null) && !hide(before, null)))) {
         lines.push(t);
@@ -1001,11 +1006,12 @@ export function hourLines(
         const colon: boolean = m && !label && /^[^,]*:$/.test(t);
         label = m ? MAINTAINER_LABEL.test(fold(t)) || (colon && names === "person") : t.endsWith(":") && !label;
         soft = colon && !label;
+        alone ||= hide(t) || hide(cleanText(part, Infinity));
         if (lines[lines.length - 1] !== marker) lines.push(marker);
       }
     }
   }
-  if (hide && !allowlist && !lines.includes(marker) && hide(s.replace(/\s+/g, " "), null)) return [marker];
+  if (hide && !allowlist && !alone && hide(s.replace(/\s+/g, " "), null)) return [marker];
   if (lines.length <= max) return lines;
   const kept = lines.slice(0, max - 1);
   return [...kept, `[${lines.length - kept.length} more lines not shown: ask the 156]`];
