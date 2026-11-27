@@ -334,7 +334,7 @@ describe("city_facilities_search", () => {
 
   it("warns about mixed ownership only on the layers that hold private venues", () => {
     const mixed = FACILITY_TYPES.filter((t) => t.mixedOwnership).map((t) => t.id);
-    expect(mixed).toEqual(["museu", "teatro", "centro cultural", "espaco expositivo", "cinema", "espetaculos ao ar livre"]);
+    expect(mixed).toEqual(["museu", "teatro", "centro cultural", "espaco expositivo", "cinema", "espetaculos ao ar livre", "auditorio"]);
   });
 
   it("v0.24.0: a sport layer keeps the address flag and the contact allowlist, with the SMELJ / SMMA credit", async () => {

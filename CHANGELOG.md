@@ -2,6 +2,23 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.67.0 - 2026-11-27
+
+Neighbourhood culture and reading, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
+
+- `city_facilities_search`: new `type`s from IPPUC's GeoCuritiba urban-equipment layers, read on 2026-11-27:
+  `casa da leitura` (layer 61, 17 records; aliases include `casa de leitura`), `bondinho da leitura` (60, 1),
+  `auditorio` (52, 26), `circo` (57, 2) and `clube de xadrez` (58, 1; alias `xadrez`). Address, hours and public
+  contacts as published. `auditorio` lists private, state and federal auditoriums too, so it carries the mixed-ownership
+  note of museu and teatro. When read, one auditorium and the chess club published a city e-mail shaped like a
+  person's name: a new type option `noEmails` returns no e-mail for `auditorio` and `clube de xadrez`, and their notes
+  say to call. The Casa da Leitura note says not every bairro has one and points at `farol do saber` and `biblioteca`.
+- Tool contract: the `type` description (snapshot updated).
+- Citizen eval: q139 ("Tem Casa da Leitura perto do Bairro Alto?") answered, with a synthetic fixture: the nearest
+  Casa da Leitura is about 3.7 km from Bairro Alto, beyond the 3 km `near` limit, so the honest answer is none within
+  3 km (`not_found`) and the note names the other reading places; 135 of 139.
+- No new network host, no new link, no new dependency.
+
 ## 0.66.0 - 2026-11-26
 
 Electoral zone at a point, phase B of the 1.0 roadmap. 27 tools. Publishes nothing.
