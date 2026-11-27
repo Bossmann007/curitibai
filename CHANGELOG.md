@@ -2,6 +2,26 @@
 
 Newest first. Current behaviour and its sources are described in [docs/sources.md](docs/sources.md).
 
+## 0.88.0 - 2026-11-27
+
+Person-name filter after "senha numerada", follow-ups of the 0.86.0 reviews (PR #101). 27 tools. Publishes nothing.
+
+- Docs match the code: the 0.86.0 CHANGELOG note and docs/sources.md said that, when another line hid on its own
+  rules, only the line after "agendamento com senha numerada" was read. The split check reads the next two lines, up
+  to the third line from it; both texts are corrected. No behaviour change.
+- Known limit, now stated and tested: in that case a name on the fourth line or later, after two schedule lines
+  ("Responsável: Beltrano." / "Agendamento com senha numerada" / "Segunda a sexta" / "das 8h às 17h" / "Fulana"), is
+  shown, the same class as the 0.81.0 limit. With no other hidden line the whole field is hidden, as before.
+- Code: the senha rest is interpolated into the appointment-detail pattern directly, not with a `.replace` on a
+  placeholder, so a renamed marker cannot silently drop it. The three patterns built from it have the same source as
+  in 0.87.0 (dumped and compared); the 0.86.0 timing test still covers them.
+- Not done: reading a weekday word after "senha numerada" as hours only next to "a/às", a digit or "fechado", to hide
+  "senha numerada, Domingo". The review of this change showed it hid ordinary schedules that 0.87.0 kept
+  ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)", "sábado e domingo"), so
+  it was dropped. A new test keeps those schedules visible; "senha numerada, Domingo" stays a tested known limit.
+- Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
+- No request made, no new network host, no new link, no new dependency.
+
 ## 0.87.0 - 2026-11-27
 
 Ouvidoria anonymity wording, fifth pass (review follow-ups of 0.85.0). 27 tools. Publishes nothing.
@@ -32,17 +52,19 @@ Publishes nothing.
   only of numbers, punctuation, channel, unit and hours words and connectors (a step is one word or one character,
   at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h", "com senha de atendimento, de segunda a
   sexta" and "(com senha numerada)" stay; the five forms above are hidden.
-- "Agendamento com senha numerada" followed by a schedule line ("Segunda a sexta, 8h às 17h") hid the whole field
-  (the whole-field check joins lines with spaces and read only the next character). That check now reads the rest
-  the same way, so a field whose lines after these words are only hours and numbers stays, and a name on any later
-  line hides it when that check runs (it is skipped when another line hid on its own rules; then only the next line
-  is read, as before). The split check also reads the line after such a line (with or without an article, "com a senha
-  numerada") even when it starts with a number, so "… senha numerada," / "3350-0000 Fulana" hides the name line when
-  another line hid on its own rules and the whole-field check is skipped. Known limits: any other word in the rest
-  hides the line or the field, on the safe side: "exceto feriados", "sábados", "domingos" (plural weekdays are not
-  read as hours: "Domingos" is a name) and a later line such as "Documentos: RG" (0.84.0 hid the field too when the
-  next line started with a word). A name made only of such words ("Domingo", "Sexta", "Central", "Regional") reads
-  as hours and is shown after "senha numerada" (Security Reviewer, LOW; ", Domingo" was shown in 0.85.0 too).
+- "Agendamento com senha numerada" followed by a schedule line ("Segunda a sexta, 8h às 17h") hid the whole field (the
+  whole-field check joins lines with spaces and read only the next character). That check now reads the rest the same
+  way, so a field whose lines after these words are only hours and numbers stays, and a name on any later line hides
+  it when that check runs (it is skipped when another line hid on its own rules; then the split check reads the next
+  two lines, up to the third line from the "senha numerada" line, and a name on the fourth line or later is shown:
+  corrected in 0.88.0, which first said "only the next line"). The split check also reads the line after such a line
+  (with or without an article, "com a senha numerada") even when it starts with a number, so "… senha numerada," /
+  "3350-0000 Fulana" hides the name line when another line hid on its own rules and the whole-field check is skipped.
+  Known limits: any other word in the rest hides the line or the field, on the safe side: "exceto feriados",
+  "sábados", "domingos" (plural weekdays are not read as hours: "Domingos" is a name) and a later line such as
+  "Documentos: RG" (0.84.0 hid the field too when the next line started with a word). A name made only of such words
+  ("Domingo", "Sexta", "Central", "Regional") reads as hours and is shown after "senha numerada" (Security Reviewer,
+  LOW; ", Domingo" was shown in 0.85.0 too).
 - "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido", kept in 0.84.0, is
   now hidden, on the safe side. Since 0.84.0, "agendamento com uma hora" and "agendamento com um dia" with nothing
   after are hidden too (0.83.0 showed them); tested.

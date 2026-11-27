@@ -135,6 +135,23 @@ const SERVICE_ITEM =
 const SERVICE_VALUE = new RegExp(
   `^[-–•*\\s]*(?:${SERVICE_ITEM})(?:(?:\\s*[,;/]\\s*|\\s+e\\s+|\\s+)(?:${SERVICE_ITEM}))*\\s*\\.?\\s*$`,
 );
+/**
+ * v0.86.0: after "senha numerada" or "senha de atendimento", the rest of the text must be made only of rest and hours
+ * steps (numbers, punctuation, channel, unit and hours words, connectors, line breaks; a step is one word or one
+ * character, at most 300): "senha numerada.", "senha numerada, das 8h às 17h" and "(com senha numerada)" stay;
+ * "senha numerada, Fulana", "senha numerada. Fulana", "senha numerada (Fulana)" and "senha numerada 3350-0000 Fulana"
+ * are a name (0.84.0 read only the first character after the words, so they passed). The whole field, joined with
+ * spaces, is read the same way, so "Agendamento com senha numerada" / "Segunda a sexta, 8h às 17h" keeps both lines
+ * (0.84.0 hid the field) and a name on any later line hides it when that check runs. Only "agendamento com senha" can start the rest, so
+ * the 300 steps are read once per such phrase, not once per word (the guarded rest's 0.81.0 trap). Known limits: any
+ * other word in the rest hides the line or the field, on the safe side: "exceto feriados", "sábados" and "domingos"
+ * (plural weekdays are not steps: "Domingos" is a name), "Documentos: RG" on a later line; a name made only of steps
+ * ("Domingo", "Sexta", "Regional") is shown (v0.88.0 tried to read a weekday as a step only next to "a/às", a digit or
+ * "fechado"; it hid ordinary schedules, listed in the v0.88.0 test, so it was dropped). When another
+ * line hid on its own rules, the whole-field check is skipped and hourLines' split check reads at most the third line
+ * from the "senha numerada" line, so a name on the fourth line or later is shown (v0.88.0 known limit, tested).
+ */
+const SENHA_REST = `(?=(?:${REST_STEP}|${HOURS_STEP}|\\n){0,300}$)`;
 /** What must follow dia(s), or um/uma and dia(s)/hora(s), after "agendamento com" for it to be a detail. */
 const DAY_DETAIL = "(?:util|uteis|corridos|antes|de\\s+(?:antecedencia|prazo))";
 /**
@@ -156,28 +173,14 @@ const APPOINTMENT_DETAIL =
   // and "com Dias marcados" are a name too. v0.84.0: um/uma before dia(s) or hora(s) only when DAY_DETAIL follows them
   // ("um dia de antecedência", "uma hora antes"), or hora(s) marcada/agendada or "e meia de antecedência/prazo", so
   // "com Uma Dias", "com Uma Dias Silva" and "com Uma Dias de Souza" are a name; senha also before "de atendimento" and
-  // "numerada" (v0.86.0: only before SENHA_REST; see appointmentNamed).
+  // "numerada" (v0.86.0: only when SENHA_REST matches after them).
   "(?:um|uma)(?=\\s+(?:semanas?|minutos?|mes|antecedencia|prazo|(?:dias?|horas?)\\s+" +
   `${DAY_DETAIL}|horas?\\s+(?:marcada|agendada|e\\s+meia\\s+de\\s+(?:antecedencia|prazo)))\\b)|dias?(?=\\s+${DAY_DETAIL}\\b)` +
   "|hora(?=\\s+(?:marcada|agendada)\\b)" +
-  "|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:numerada|de\\s+atendimento)SENHA_REST|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|local|balcao|guiche|totem|hora|site|internet|telefone|aplicativo|app|156))\\b)";
-/**
- * v0.86.0: after "senha numerada" or "senha de atendimento", the rest of the text must be made only of rest and hours
- * steps (numbers, punctuation, channel, unit and hours words, connectors, line breaks; a step is one word or one
- * character, at most 300): "senha numerada.", "senha numerada, das 8h às 17h" and "(com senha numerada)" stay;
- * "senha numerada, Fulana", "senha numerada. Fulana", "senha numerada (Fulana)" and "senha numerada 3350-0000 Fulana"
- * are a name (0.84.0 read only the first character after the words, so they passed). The whole field, joined with
- * spaces, is read the same way, so "Agendamento com senha numerada" / "Segunda a sexta, 8h às 17h" keeps both lines
- * (0.84.0 hid the field) and a name on any later line hides it when that check runs. Only "agendamento com senha" can start the rest, so
- * the 300 steps are read once per such phrase, not once per word (the guarded rest's 0.81.0 trap). Known limits: any
- * other word in the rest hides the line or the field, on the safe side: "exceto feriados", "sábados" and "domingos"
- * (plural weekdays are not steps: "Domingos" is a name), "Documentos: RG" on a later line; a name made only of steps
- * ("Domingo", "Sexta", "Regional") is shown.
- */
-const SENHA_REST = `(?=(?:${REST_STEP}|${HOURS_STEP}|\\n){0,300}$)`;
+  `|senha(?=\\s+(?:retirad[ao]|previ[ao]|(?:numerada|de\\s+atendimento)${SENHA_REST}|(?:n[ao]|pel[ao])\\s+(?:recepcao|portaria|unidade|local|balcao|guiche|totem|hora|site|internet|telefone|aplicativo|app|156))\\b)`;
 const appointmentNamed = (next: string): RegExp =>
   new RegExp(
-    `\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL.replace("SENHA_REST", SENHA_REST)})\\b)${next}`,
+    `\\bagendamentos?(?:\\s+previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${next}`,
     "u",
   );
 const APPOINTMENT_NAMED = appointmentNamed(PERSON_NEXT);

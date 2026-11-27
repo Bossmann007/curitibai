@@ -1626,25 +1626,37 @@ changes (owner request, 2026-11-23: monthly and automatic).
     numerada" followed by a line that starts with a word hides the field (the whole-field check joins lines with
     spaces); "30 dias" and "1 dia" alone on the line after a guarded phrase are hidden, on the safe side,
     while "10 horas" there reads as hours (like "24 horas"). No request was made; no new host.
-  - **Name filter, eighth pass, v0.86.0** (work types; the 0.84.0 Change Reviewer's Lows and the Security
-    Reviewer's R1-R3). After "agendamento com senha numerada" or "… senha de atendimento", the rest of the line must be
-    made only of numbers, punctuation, channel, unit and hours words and connectors (the steps of the guarded-phrase
-    rest; a step is one word or one character, at most 300): "com senha numerada.", "com senha numerada, das 8h às
-    17h" and "(com senha numerada)" stay; "com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)"
-    and "… numerada 3350-0000 Fulana" are hidden (0.84.0 read only the first character after the words and showed
-    them). The whole-field check (lines joined with spaces) reads the rest the same way, so "Agendamento com senha
-    numerada" followed by "Segunda a sexta, 8h às 17h" keeps both lines (0.84.0 hid the field) and a name on any later
-    line hides the field when that check runs (not when another line hid on its own rules); the split check reads the line after such a line (also "com a senha numerada") even when it
-    starts with a number, so "… senha numerada," / "3350-0000 Fulana" hides the second line when the whole-field check
-    is skipped. "corrido" alone is no longer a day detail ("corridos" is): "agendamento com um dia corrido" is now
-    hidden. Known limits: any other word in the rest hides the line or the field, on the safe side ("exceto feriados",
-    "sábados", "domingos", since "Domingos" is a name; a later line "Documentos: RG"); a name made only of hours,
-    unit or channel words ("Domingo", "Sexta", "Regional") reads as hours and is shown. Checked on 2026-11-27 (UTC) by a one-off script (not the server, so not through the host gate; the
-    server's fixed query and User-Agent `curitibai-mcp/0.7 (+https://github.com/Bossmann007/curitibai)`, one GET per
-    layer, 6 s apart, 19:44:03 to 19:45:16): the 12 layers whose type hides person lines (306 records, 253 with an
-    `observacao`), replayed offline with 0.85.0 and 0.86.0: 131 hidden-line markers in each and every record's
-    `hours` identical; no record has "agendamento com senha". The reads were deleted after the check; the tests use
-    synthetic lines. No new host for the server and the link allowlist is unchanged.
+  - **Name filter, eighth pass, v0.86.0** (work types; the 0.84.0 Change Reviewer's Lows and the Security Reviewer's
+    R1-R3). After "agendamento com senha numerada" or "… senha de atendimento", the rest of the line must be made only
+    of numbers, punctuation, channel, unit and hours words and connectors (the steps of the guarded-phrase rest; a
+    step is one word or one character, at most 300): "com senha numerada.", "com senha numerada, das 8h às 17h" and
+    "(com senha numerada)" stay; "com senha numerada, Fulana", "… numerada. Fulana", "… numerada (Fulana)" and "…
+    numerada 3350-0000 Fulana" are hidden (0.84.0 read only the first character after the words and showed them). The
+    whole-field check (lines joined with spaces) reads the rest the same way, so "Agendamento com senha numerada"
+    followed by "Segunda a sexta, 8h às 17h" keeps both lines (0.84.0 hid the field) and a name on any later line
+    hides the field when that check runs (not when another line hid on its own rules); the split check reads the next
+    two lines after such a line (also "com a senha numerada"), up to the third line from it, even when they start with
+    a number, so "… senha numerada," / "3350-0000 Fulana" hides the second line when the whole-field check is skipped
+    (corrected in v0.88.0: this entry first said only the next line was read). "corrido" alone is no longer a day
+    detail ("corridos" is): "agendamento com um dia corrido" is now hidden. Known limits: any other word in the rest
+    hides the line or the field, on the safe side ("exceto feriados", "sábados", "domingos", since "Domingos" is a
+    name; a later line "Documentos: RG"); a name made only of hours, unit or channel words ("Domingo", "Sexta",
+    "Regional") reads as hours and is shown. Checked on 2026-11-27 (UTC) by a one-off script (not the server, so not
+    through the host gate; the server's fixed query and User-Agent `curitibai-mcp/0.7
+    (+https://github.com/Bossmann007/curitibai)`, one GET per layer, 6 s apart, 19:44:03 to 19:45:16): the 12 layers
+    whose type hides person lines (306 records, 253 with an `observacao`), replayed offline with 0.85.0 and 0.86.0:
+    131 hidden-line markers in each and every record's `hours` identical; no record has "agendamento com senha". The
+    reads were deleted after the check; the tests use synthetic lines. No new host for the server and the link
+    allowlist is unchanged.
+  - **Name filter, ninth pass, v0.88.0** (work types; the 0.86.0 review follow-ups). No behaviour change. Known
+    limits, tested: when another line hid on its own rules, the whole-field check is skipped and the split check reads
+    at most the third line from the "agendamento com senha numerada" line, so a name on the fourth line or later,
+    after two schedule lines ("Responsável: Beltrano." / "Agendamento com senha numerada" / "Segunda a sexta" / "das
+    8h às 17h" / "Fulana"), is shown (the same class as the v0.81.0 limit); with no other hidden line the field is
+    hidden. A weekday word alone after "senha numerada" ("senha numerada, Domingo") reads as hours and is shown: a
+    rule that read a weekday as hours only next to "a/às", a digit or "fechado" was tried and dropped, because it hid
+    ordinary schedules ("segunda-feira a sexta-feira", "sábado de 8h às 12h", "seg-sex, 8h", "sábado (8h às 12h)",
+    "sábado e domingo"), now tested as kept. No request was made; no new host.
 - **Added in v0.67.0** (types `casa da leitura`, `bondinho da leitura`, `auditorio`, `circo`, `clube de xadrez`):
   urban-equipment MapServer layers 61 "Casa da Leitura", 60 "Bondinho da Leitura", 52 "Auditório", 57 "Circo" and 58
   "Clube de Xadrez". Checked on 2026-11-27 (UTC) with curl and User-Agent `curitibai-mcp/0.67
