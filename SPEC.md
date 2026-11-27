@@ -1,4 +1,4 @@
-# SPEC: v0.77.0 PGV micro-bairro description and the service areas `lists` type
+# SPEC: v0.78.0 E-mail filter, third pass (middle initial, surname initial, repeated separator)
 
 Approved: task brief from Boss (routine run under Enzo's standing go-ahead of 2026-11-25, "continua até pelo menos a 0.60"), not reviewed by Enzo
 **This change publishes nothing**: no workflow run, no tag, no merge.
@@ -8,34 +8,46 @@ versions: `CHANGELOG.md`, `git show v<version>:SPEC.md` and the ADRs in `docs/ad
 
 ## Goal
 
-Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the lows of the 0.73.0 review: the `place_at_point`
-`place.pgv` field `microbairro` describes the form the tool returns ("27", not the published "27.0"), and the
-service areas helper's `lists` argument cannot hold `undefined`. No new citizen question; no behaviour change.
+Phase B of [docs/roadmap-1.0.md](docs/roadmap-1.0.md), the low of the 0.74.0 review: three person-shaped city
+addresses still passed the `city_facilities_search` e-mail filter and must be dropped: a middle initial
+("ana.c.lima", "joao.p.silva"), a surname written as an initial ("maria.s") and a doubled separator
+("maria..silva"). Institutional addresses (ouvidoria@, sine@, unit and regional addresses) stay. No new citizen
+question; the eval count is unchanged.
 
 ## Source
 
-None. No request is made and no host is contacted.
+No new source and no new host or link. To count what the new shape changes, the 89 urban-equipment layers the tool
+already reads were re-read once each from `geocuritiba.ippuc.org.br` (already allowed) by a one-off script, 5.5 s
+apart, through the server's own `fetchText` (its User-Agent, same-host redirects only) and fixed query.
 
 ## Changes
 
-1. **`microbairro` description** (`src/tools/placeAtPoint.ts`): "Micro-bairro code (cd_microbairro), e.g. "27": a
-   number in its JSON form, text of 1 to 6 digits without a trailing ".0", other text unchanged." It no longer says
-   "as published" or gives "27.0". The tool contract snapshot changes in this one description.
-2. **`lists` type** (`src/tools/serviceAreasAtPoint.ts`): `areasData` takes `Pick<Lists, K>` instead of
-   `Partial<Lists>`, so a group passing `undefined` for a list is a type error (with `exactOptionalPropertyTypes`
-   off, `Partial` allowed it, and the spread would then drop the key from `data`). The callers and the output do not
-   change.
-3. **Docs and version**: docs/sources.md (PGV paragraph), docs/roadmap-1.0.md, CHANGELOG 0.77.0, version 0.77.0 in
-   `package.json`, `package-lock.json`, `server.json`. docs/tools.md already gives the returned form ("27.0 as
-   "27"") and does not change.
+1. **`PERSON_LOCAL`** (`src/sources/geocuritiba.ts`): separators may repeat (`[._-]+`); a middle word may be a
+   single letter when the last word has 2+ letters ("ana.c.lima", "j.p.silva", "joao.e.silva"); a final single letter (digits or a number may follow) is a surname
+   initial when the first word and the word just before it have 2+ letters ("maria.s", "maria.silva.s",
+   "joao.p.silva.r", "maria.s.2"); letter codes stay ("sme.d.p.e", "fas.n.s"). Unchanged: the unit prefixes are checked first and keep the
+   address; a single word, a word and a number ("sec.2", "sec..2") and exactly two single letters ("a.b", "a1.b")
+   never match. The local part is at most 64 characters (`CITY_EMAIL` runs first), so the regex has no long-input
+   cost.
+2. **Tests** (`test/cityFacilities.test.ts`): each new shape is dropped; ouvidoria, sine, falecomacgm, bare
+   regional names (boqueirao, cic), regional and unit addresses with a single-letter middle word or a doubled
+   separator, letter codes ("sme.d.p.e", "fas.n.s"), two single letters and a word and a number stay.
+3. **Docs and version**: docs/sources.md (the e-mail filter paragraph), docs/roadmap-1.0.md, CHANGELOG 0.78.0,
+   version 0.78.0 in `package.json`, `package-lock.json`, `server.json`. docs/tools.md and the tool contract do not
+   describe the name shapes and do not change.
 
 ## Out of scope
 
-Any change to what `place_at_point` returns, to the other PGV fields' "as published" descriptions, or to
-`tsconfig.json` (`exactOptionalPropertyTypes` stays off); any new type, host, link or question.
+A trailing separator ("maria.silva."), two initials at the end ("joao.p.s"), a word starting with a number
+("2maria.silva") and a one-word name ("fulanasilva") still pass, and a connector address
+("esporte.e.lazer"), a word and one letter ("sala.a", "sme.d") or a word, a letter and a number ("sec.e.2") is
+dropped, failing closed (known limits, written down);
+sector words in the unit list; any new type, host, link or question.
 
 ## Check
 
-- `scripts/verify` exit 0; the snapshot diff is the one `microbairro` description line.
-- Passing `{ electoral_zones: undefined }` to `areasData` fails `tsc --noEmit` with this change and passes without
-  it (checked by hand, then reverted).
+- `scripts/verify` exit 0; the tool contract snapshot is unchanged.
+- The old `PERSON_LOCAL` keeps every new dropped case of the tests (checked by hand with node).
+- Real records: the re-read above keeps the same number of city e-mails with the old rule and with the first draft
+  of the new rule. The final rule (after review: a surname initial needs only name words before it, so letter codes stay)
+  drops a subset of what that draft dropped and a superset of what the old rule dropped, so the count holds.
