@@ -26,7 +26,9 @@ None new. No request is made and the GeoCuritiba layers are not re-read; the cha
    da Fulana", "Telefone da Regional: 3350-0000 - Fulana" and "Telefone da Regional (Fulana)" stay hidden, as in
    0.79.0. The brief said to add the four words to `UNIT_WORD`; plainly added, they let a name after them through, so
    they are guarded instead. "Telefone da coordenação: 3350-0000" stays hidden (`isPersonInChargeLine`, the
-   "coordenação:" label), and so does "E-mail da coordenadora".
+   "coordenação:" label), and so does "E-mail da coordenadora". The rest ends at a line break (the whole-field check
+   joins lines with "\n" now, not a space), so these lines stay shown before the hours too. Known limit: a name alone
+   on the next line after a guarded word that ends its line ("Fale com a gente" / "Fulana") is shown.
 2. **L1, service phrase**: `SERVICE_ITEM` reads "emissão de" before "carteira de trabalho".
 3. **L2, appointment**: `APPOINTMENT_NAMED` ("agendamento", optionally "prévio" and ",", "(", ":" or "-", then "com"
    and a word that is not a unit or channel word or an appointment detail: um/uma, no/pelo, até, mínimo,
@@ -34,8 +36,9 @@ None new. No request is made and the GeoCuritiba layers are not re-read; the cha
    `NAMED_CHANNEL`: "Atendimento: agendamento com Fulana", "presencial com agendamento com Fulana", "mediante
    agendamento prévio com a Fulana", "Contato: 3350-0000 - agendamento com Fulana" and a line "Agendamento com Fulana"
    are hidden; "agendamento com antecedência", "com no mínimo 48h" and "agendamento com a equipe" are shown.
-   `HOURS_BODY` is unchanged. Known limits: "agendamento pela Fulana", "agendamento com uma Fulana", "presencial com
-   Fulana" and a name later in an hours line without "agendamento com" still pass.
+   `HOURS_BODY` is unchanged. Known limits: only the first word after "com" is checked ("agendamento pela Fulana",
+   "agendamento com uma Fulana", "agendamento com antecedência, Fulana" pass), a detail word missing from the list
+   hides the line, and "presencial com Fulana" or a name later in an hours line without "agendamento com" still pass.
 4. **Tests** (`test/cityFacilities.test.ts`, a v0.80.0 block): the five L1 lines are shown for the four work types;
    a name next to the new words is hidden; the L2 forms are hidden on the same line and after a bare label;
    appointments with a unit, a channel, a number or an appointment detail are shown; the new rule runs on 50 KB worst

@@ -74,14 +74,16 @@ const CHANNEL_WORD = "telefones?|fones?|tel|celular|whats ?app|whats|e-?mails?|r
  * Fulano", "Tratar com o RH da Fulana", "Telefone da Regional: 3350-0000 - Fulana", "Telefone da Regional (Fulana)"
  * and "Fale com a gente pelo 156 ou com a Fulana" are hidden, and so is "Telefone da Regional: 156, de segunda a sexta"
  * (on the safe side). "Telefone da coordenação: 3350-0000" stays hidden too: "coordenação:" is a label of who is in
- * charge (isPersonInChargeLine).
+ * charge (isPersonInChargeLine). The rest ends at a line break, so the whole-field check (`prev` null) keeps "Fale
+ * com a gente pelo 156" before the hours. Known limit: a name alone on the next line after a guarded word that ends
+ * its line ("Fale com a gente" / "Fulana") is shown.
  */
 const UNIT_WORD =
   "unidades?|agencias?|sine|liceus?|inss|central|setor|equipe|recepcao|prefeitura|secretaria|ddd|cras|creas|atendimento|ministerio|posto|ouvidoria|trabalhador";
 const GUARDED_WORD = "gente|regional|coordenacao|rh";
 const GUARDED_UNIT =
-  `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
-  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os)\\b)*$)";
+  `(?:${GUARDED_WORD})\\b(?=(?:[^\\p{L}\\n]|\\[masked\\]|(?:${UNIT_WORD}|${CHANNEL_WORD}|${GUARDED_WORD}|empresa|site|portal|aplicativo|app` +
+  "|pel[ao]s?|por|via|n[ao]s?|em|d[ao]s?|an?|o|as|os|e|ou)\\b)*(?:\\n|$))";
 const NOT_UNIT_NEXT = `(?!(?:(?:an?|o|as|os)\\s+)?(?:(?:${UNIT_WORD}|${CHANNEL_WORD})\\b|${GUARDED_UNIT}))`;
 const PERSON_NEXT = `${NOT_UNIT_NEXT}\\p{L}`;
 /** "WhatsApp da Fulana", "telefone com Fulana", "Falar com Fulana de Tal" (anywhere in the line). */
@@ -108,10 +110,12 @@ const SERVICE_VALUE = new RegExp(
  * Fulana", "presencial com agendamento com a Fulana", "mediante agendamento prévio com a Fulana", "agendamento (com
  * Fulana)" and a line "Agendamento com Fulana" are a name; "agendamento com a equipe", "com antecedência", "com no
  * mínimo 48h", "com uma semana de antecedência", "com comprovante de residência" and "agendamento pelo 156" are not.
- * Known limit: "agendamento pela Fulana" passes ("pelo site", "pelo portal" would need their own list).
+ * Known limits: only the first word after "com" is checked, so "agendamento pela Fulana", "agendamento com uma
+ * Fulana" and "agendamento com antecedência, Fulana" pass; a detail word missing from the list hides the line.
  */
 const APPOINTMENT_DETAIL =
-  "um|uma|no|pelo|ate|minimo|antecedencia|hora|horario|documentos?|documentacao|comprovantes?|carteira|cpf|rg|senha";
+  "um|uma|no|pelo|ate|minimo|menos|todos|todas|antecedencia|prazo|datas?|dias?|hora|horario|marcacao|retirada|" +
+  "documentos?|documentacao|comprovantes?|carteira|cpf|rg|senha";
 const APPOINTMENT_NAMED = new RegExp(
   `\\bagendamentos?(?: previo)?[\\s,(:\\-–]+com\\s+(?!(?:(?:an?|o|as|os)\\s+)?(?:${APPOINTMENT_DETAIL})\\b)${PERSON_NEXT}`,
   "u",

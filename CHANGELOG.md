@@ -13,7 +13,8 @@ Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publi
   after a channel word or "falar com"). "Falar com o RH Fulano", "Tratar com o RH da Fulana", "Telefone da Regional:
   3350-0000 - Fulana", "Fale com a gente pelo 156 ou com a Fulana", "E-mail da coordenadora" and "Coordenação: Fulana"
   stay hidden, and so do "Telefone da Regional: 156, de segunda a sexta" and "Telefone da coordenação: 3350-0000" (the
-  "coordenação:" label), on the safe side.
+  "coordenação:" label), on the safe side. The whole-field check now joins lines with a line break, so these lines
+  stay shown before the hours. Known limit: a name alone on the next line after "Fale com a gente" is shown.
 - "emissão de carteira de trabalho" is a service phrase after "Atendimento:", so that line is shown again;
   "emissão de carteira de trabalho - Fulana" stays hidden.
 - "agendamento" (optionally "prévio" and ",", "(", ":" or "-"), then "com" and a word that is not a unit or channel
@@ -21,8 +22,9 @@ Person-name filter, fourth pass (the lows of the 0.76.0 review). 27 tools. Publi
   carteira, CPF, RG, senha), anywhere in the line, hides it: "Atendimento: agendamento com Fulana", "presencial com
   agendamento com Fulana", "mediante agendamento prévio com a Fulana" and a line "Agendamento com Fulana" are now
   hidden (0.76.0 showed them). "agendamento com a equipe", "com antecedência", "com no mínimo 48h", "com comprovante
-  de residência" and "agendamento pelo 156" are shown. Known limits: "agendamento pela Fulana", "agendamento com uma
-  Fulana" and "presencial com Fulana" still pass.
+  de residência", "com prazo de 48h" and "agendamento pelo 156" are shown. Known limits: only the first word after
+  "com" is checked ("agendamento pela Fulana", "agendamento com antecedência, Fulana" pass), and "presencial com
+  Fulana" still passes.
 - Tested on synthetic lines for the four types, both sides, and a 50 KB timing case for the new rule.
 - Citizen eval: no new question; 139 of 143. Tool contract snapshot unchanged.
 - No request made, no new network host, no new link, no new dependency.

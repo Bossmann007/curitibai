@@ -2604,6 +2604,9 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     }
     expect(lines(id, "Atendimento:\nemissão de carteira de trabalho")).toEqual(["Atendimento:", "emissão de carteira de trabalho"]);
     expect(lines(id, "Telefone da Regional 3350-0000")).toEqual(["Telefone da Regional [masked]"]);
+    for (const l of ["Dúvidas? Fale com a gente pelo 156", "Telefone da Regional: 156", "Tratar com o RH da empresa", "Fale com a gente pelo 156 ou pelo e-mail", "Telefone da Regional e e-mail da unidade"]) {
+      expect(lines(id, `${l}\n${HOURS}`), `${id}: ${l} before the hours`).toEqual([l, HOURS]);
+    }
   });
 
   it.each(WORK)("%s still hides a name next to the new words", (id) => {
@@ -2648,7 +2651,7 @@ describe("v0.80.0: name filter, fourth pass (unit words gente, regional, coorden
     for (const v of ["agendamento", "por agendamento", "agendamento com a equipe", "agendamento com o setor de atendimento", "agendamento com 2 dias de antecedência",
       "agendamento com antecedência", "Agendamento com antecedência mínima de 48h", "agendamento com documentos pessoais", "agendamento com CPF e RG", "agendamento com hora marcada",
       "agendamento com a coordenação", "agendamento pelo 156", "mediante agendamento pelo telefone", "agendamento com no mínimo 48h de antecedência",
-      "agendamento com uma semana de antecedência", "agendamento com comprovante de residência", "Segunda a sexta 8h às 17h, agendamento com pelo menos 2 dias de antecedência"]) {
+      "agendamento com uma semana de antecedência", "agendamento com comprovante de residência", "agendamento com prazo de 48h", "agendamento com data marcada", "agendamento com marcação prévia", "Segunda a sexta 8h às 17h, agendamento com pelo menos 2 dias de antecedência"]) {
       expect(lines(id, `Atendimento: ${v}`), `${id}: ${v}`).toEqual([`Atendimento: ${v}`]);
     }
     for (const l of ["Contato: 3350-0000 - agendamento com a equipe", "Contato: 3350-0000 - agendamento com antecedência", "Agendamento com antecedência"]) expect(isWorkPersonLine(l), l).toBe(false);
